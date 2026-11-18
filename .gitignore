@@ -1,0 +1,6 @@
+# Private reference material (video frames, audio, transcript) - never publish
+reference/
+*.blend1
+__pycache__/
+build/
+.venv/
