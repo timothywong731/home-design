@@ -1,7 +1,8 @@
 # Living room (`living`) — visual / dimensional specification
 
 Source frames: f_0087–f_0233, f_0783–f_0793 (room) and f_0073–f_0086 (pedimented surround, hall side).
-No transcript was available. All dimensions are estimates from reference objects (door leaf 762 x 1981,
+Cross-checked against `reference/transcript.txt` in the verification round: all owner-named items are
+present. All dimensions are estimates from reference objects (door leaf 762 x 1981,
 85" TV 1.89 x 1.06 m, Daikin floor console 750 x 600 mm, UK socket 146 x 86 mm); tolerance about ±5 % unless
 flagged. Colours: "sampled" = median sRGB of a clean patch under the warm LED/HDR video; "true" = my
 neutral-daylight estimate. **Use the "true" value for materials.**
@@ -492,3 +493,22 @@ All lamps are warm white (≈ 2700 K); the room reads distinctly warm/amber in t
   are neutral-light estimates, not matched paint references.
 - Socket/thermostat positions are approximate; the thermostat is on the west nib's room face (or at the
   very front end of the W wall — the two readings differ by 0.1 m).
+
+---
+
+## Reconciled dimensions (from `spec/house.json`, see `spec/RECONCILE.md` D4, D7, D8, D13)
+- Main room: x 0.80..4.30, y 0.99..4.73 (3.50 x 3.74; this spec had 3.60 x 3.80). Ceiling 2.95 (was 3.05).
+- Bay: x 1.10..4.00, y 0..0.99 (2.90 wide; 0.74 of return plus the 0.25 front wall). Nibs 0.30 x 0.25.
+- Local to global, keeping each item's gap to the wall it sits on:
+  - x: W-wall items + 0.80; E-wall items + 0.70; bay items and centre items (rose, chandelier, rug,
+    coffee table) + 0.75; N-wall items keep their order between x 0.80 and 4.30.
+  - y: N-wall and door-keyed items (door, TV, switches, sconces) + 0.93; front-wall items + 0.99;
+    items in the bay + 0.85; centre items + 0.96.
+- Door D1: opening y 3.70..4.48, centre (0.725, 4.09), wall 0.15 thick. TV y 1.38..3.27, leaving 0.39 to
+  the west nib (was 0.45).
+- Heights: scale items tied to the ceiling (cornice, picture rail, bay head) by 2.95 / 3.05; keep the
+  door, TV and sill heights.
+- Verification round: the bay's west cheek is a thin 0.20 window wall (faces x 0.90 vestibule / 1.10
+  bay); the room side does not move. Floor direction re-checked and **kept along Y**: the full-res still
+  t=114 (f_0115) shows long board edges receding toward the bay with short end joints across, and
+  f_0234/f_0235 show long edges parallel to the door line, continuous with the hall boards.

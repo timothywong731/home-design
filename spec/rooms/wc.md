@@ -85,7 +85,9 @@ It is the continuation of the bulkhead on the utility's window wall.
 
 - **Upper walls (1.20 m → ceiling), all four walls + bulkhead**: mid/dark **cool grey matt emulsion** with a
   faint blue-violet cast (owner: "dark gray colour wall"). Sampled #A7A49D, #AFABA0, #99958C, #817C76 (warm LED
-  + HDR lift); neutral estimate **#8C8D92**.
+  + HDR lift); neutral estimate **#A5A5A8** (verification round: anchored to the adjacent tiles under the
+  same light, wall/tile ratio 0.76–0.79, which gives #B5B3B3–#BDBBB8 against tile #EFEDE8; pulled darker
+  for the owner's wording and HDR mid-tone lift). Do not go darker than #999A9E.
 - **Tile dado, floor → 1.20 m, all four walls** (12 courses): white **Carrara-marble-effect ceramic metro,
   300 × 100 mm, gloss, flat, horizontal half-bond (brick bond)**, 2–3 mm light grout — the same tile as the
   utility splashback. Sampled #CCC6BA / #D0CCC0; neutral body **#EFEDE8**, grey veining **#A3A3A0**, grout
@@ -199,8 +201,19 @@ in the dish; everything reflected in the mirror (person filming).
 - Radiator x position (centred ≈ 1.20) ±0.10 m; size 400 × 1200 inferred from proportions.
 - Window: glass size/visible frame partly hidden by the plant; whether it opens; obscure glass assumed.
 - Bulkhead size (0.25 × 0.15) estimated from below.
-- Wall grey: sampled values span #817C76–#AFABA0 under warm light with HDR; #8C8D92 is my best neutral
-  estimate — owner calls it "dark gray".
+- Wall grey: sampled values span #817C76–#AFABA0 under warm light with HDR; #A5A5A8 is the tile-anchored
+  estimate (was #8C8D92, darker than every sample) — owner calls it "dark gray".
 - Print 4 subject is not legible; mirror exact ornament pattern simplified.
 - What is behind W-rad (kitchen) and W-basin (hallway) is inferred from the walk-through order, not seen.
 - Downlight positions ±0.2 m, colour temperature assumed.
+
+---
+
+## Reconciled dimensions (from `spec/house.json`, see `spec/RECONCILE.md` D10, D11)
+- Global rectangle: x 0.60..3.10, y 9.36..10.14 (2.50 x 0.78, exactly as measured here). Ceiling 2.40.
+  (Moved +0.10 in x in the verification round: the rear corridor is 1.10 wide.)
+- Local to global: X = x + 0.60, Y = y + 9.36. No scaling.
+- Pocket door centre (1.775, 10.20); window centre (3.20, 9.58) in a 0.20 m flank wall. Cistern duct
+  x 2.90..3.10.
+- W-rad backs onto the kitchen's bar nook (nook back face y 9.25, 0.11 m of wall); W-basin onto the
+  rear corridor.

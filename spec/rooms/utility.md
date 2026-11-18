@@ -5,8 +5,8 @@ full-res stills in `reference/work/utility_wc/`. Owner narration (transcript 07:
 two kinds of light, one is the spotlights, the other one is the light down here [under-cabinet strip] … washing
 machine … tumble dryer … a tap … lots of cabinets, remember the layout of the cabinets, these are in gray wooden
 colour … I can hang my clothes up there … there's a window by the back … wooden worktop, a tall tower here, light
-switches, now behind here there is a toilet". At 09:24 he calls it "the most important part" — layout accuracy
-matters.
+switches, now behind here there is a toilet". ("The most important part" at 09:24 refers to the dining room,
+not this room.)
 
 Dimension confidence: lengths along the cabinet runs ±50 mm (derived from 300 mm wall tiles, 600 mm appliances,
 146 mm double socket); room width ±100 mm; heights ±30 mm.
@@ -29,7 +29,7 @@ Interior size **x 0 → 2.50 m (length), y 0 → 1.72 m (width), ceiling 2.40 m*
 | W-ext | x = 2.50 | right (+X) — exterior side wall | "FAR wall as you enter": window (near the left corner), corner worktop + 2 base doors, tall cupboard at the right end |
 | W-wc | y = 0 | front (-Y) — the cloakroom WC is behind it, kitchen beyond that | "RIGHT wall as you enter": hall door folds back against it, WC pocket-door opening, horse plaque, switches, side of tall cupboard |
 
-Where it sits in the house (verified by walking frames): leaving the kitchen through its oak double doors you are
+Where it sits in the house (verified by walking frames): leaving the kitchen through its single glazed oak door you are
 in the rear part of the hallway facing -X; turn right (now facing +Y, the dining-room door is in the end wall
 ahead, f_0443–f_0445, f_0560–f_0564); the utility door is the **last opening in the right-hand (+X) hallway wall**;
 about 0.65 m of hallway wall (with a lake painting and a light switch) separates its architrave from the hall's end
@@ -290,6 +290,8 @@ top of wall door D2 (looks like a clip-on hanger hook, not part of the door).
 - **Room width (1.72 m)** is the least certain dimension (1.65–1.85 plausible): it is the sum 0.60 corner +
   2 × 0.30 base doors + 0.50 tall cupboard + filler. If `house.json` needs a different width, absorb the
   difference in the tall cupboard width (0.50 ↔ 0.60) and keep the aisle ≥ 1.0 m.
+  **Superseded: `house.json` now has 1.97** — see "Reconciled dimensions" at the end, which overrides every
+  y coordinate above that is keyed to W-rear or to the W-ext run.
 - **Right-wall budget is tight**: leaf zone 0.02–0.78, WC opening 0.87–1.48, plaque wall 1.55–1.92, cupboard
   1.92–2.50. The WC clear opening could be up to 0.69 (then the plaque wall is only ≈ 0.30 m). Room length 2.50
   is from counting 300 mm tiles on W-rear (2.46–2.48 tile-to-tile).
@@ -305,3 +307,26 @@ top of wall door D2 (looks like a clip-on hanger hook, not part of the door).
 - Floor level vs hallway: assumed equal; the threshold strip may hide a few mm difference.
 - Absolute position in world coordinates is for `house.json`; only adjacency is asserted here (hall on -X,
   WC on -Y, exterior on +X, dining room presumed on +Y).
+
+---
+
+## Reconciled dimensions (from `spec/house.json`, see `spec/RECONCILE.md` D10-D12 and "Verification round")
+- Global rectangle: x 0.60..3.10, y 10.26..12.23 (**2.50 x 1.97**; this spec measured 2.50 x 1.72).
+  Ceiling 2.40. Length, cabinet order, every x coordinate and every height are unchanged.
+- Why wider: on W-hall the tiled strip between the door architrave and the worktop front is about 1.4
+  tiles = 0.42 m, not 0.19 (still t=534); the hall wall north of the utility door measures 1.0–1.2 m
+  (still t=290); the far-wall units read wider than 0.30 / 0.50 (still t=448).
+- Local to global: X = x + 0.60. Y depends on what the item is keyed to:
+  - keyed to W-wc (hall door y 0.08..0.84, pocket door, plaque, switches, leaf zone, skirting): Y = y + 10.26;
+  - keyed to W-rear (washer, dryer, sink, worktop piece 1, wall cabinets D1..D5, tap, drainer grooves,
+    splashback, under-cabinet lights; local y 1.10..1.72): Y = y + 10.51. W-rear is local y 1.97, base
+    fronts 1.37, worktop front edge 1.35, wall-cabinet fronts 1.64.
+- W-ext run, replacing the §4.2 table (local y from W-wc): filler 0.00–0.02; **tall cupboard 0.02–0.62
+  (0.60 wide, doors ≈ 596)**; base door **B 0.62–0.99**; base door **A 0.99–1.36** (0.37 each); blind corner
+  1.36–1.97. Worktop piece 2: y 0.62 → 1.35. Bulkhead: y 0.62 → 1.97.
+- Window keeps its 0.34 m from the W-rear corner: local y 1.07 → 1.63, centre (3.20, 11.61).
+- W-hall tiling runs local y 0.91 → 1.97. Aisle between W-wc and the base fronts is 1.37 wide; centre the
+  ceiling clothes rail and the downlights on the aisle (shift +0.12 in y).
+- Hall door centre (0.525, 10.72) in a 0.15 m wall; pocket door centre (1.775, 10.20) in a 0.12 m
+  partition; flank wall 0.20 m (inner face x 3.10).
+- W-rear backs onto the dining room through a 0.13 m wall; W-wc onto the WC.

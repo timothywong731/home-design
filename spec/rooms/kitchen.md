@@ -1,8 +1,8 @@
 # Kitchen (`kitchen`) — visual / dimensional specification
 
-Source frames: f_0287–f_0435 (main tour) and f_0755–f_0767 (second, cleaner sweep). No
-`reference/transcript.txt` existed when this was written, so nothing here is cross-checked against
-narration. All dimensions in mm unless stated; "≈" = estimated from reference objects (worktop
+Source frames: f_0287–f_0435 (main tour) and f_0755–f_0767 (second, cleaner sweep). Cross-checked
+against `reference/transcript.txt` in the verification round: all owner-named items are present (the two
+rubbish bins and the shelf mugs/glasses were added then). All dimensions in mm unless stated; "≈" = estimated from reference objects (worktop
 900–910, UK door leaf 1981x762, door handle 1000, 100 mm tile courses, American fridge 912x1780).
 Tolerance on room-scale numbers ±100 mm, on joinery modules ±30 mm.
 
@@ -330,9 +330,9 @@ No radiator in this room.
 
 ## 5. Furniture
 
-There is **no loose furniture** to model in the kitchen — it is entirely fitted. (A black
-two-step folding stool, a black folding step-ladder and two pedal bins are present in the video
-and are on the declutter list.) The clear floor is an L: a ≈ 1830-wide zone between the nook
+There is **no loose furniture** to model in the kitchen — it is entirely fitted, apart from the
+two owner-named pedal bins in §6. (A black two-step folding stool and a black folding step-ladder
+are present in the video and are on the declutter list.) The clear floor is an L: a ≈ 1830-wide zone between the nook
 wall and the fridge/tower fronts, and a ≈ 1830 × 2200 zone between the hob run, sink run and
 the tower.
 
@@ -343,7 +343,9 @@ the tower.
 | **Peacock relief plaque** | nook wall pier | centre x 1640, z 1920 | 440 × 590, ≈ 35 relief | One-piece cast plaque in antique bronze-brown. Wavy scalloped "cartouche" outline with scrolled corners and a raised rolled border; inside, in high relief, a **peacock perched facing right, head turned back, long tail sweeping down to the lower left with overlapping eyed feathers**, surrounded by open roses and leaves and a few beaded dots. Sampled #5f5441 → neutral **#5c4b3a**, low-sheen metallic (metallic 0.6, roughness 0.5), darker in the recesses. | **f_0332**, quad TL (268,478) TR (497,478) BR (497,778) BL (268,778) in the 720×1280 frame (full-res: t = 331 s, multiply by 1.5). Use as albedo + derive a height/bump map; cut to the scalloped outline. Alt: f_0766 (460,318)–(605,525). |
 | **Glass memo board** | hob wall, in the clear zone H0 | y 3350 → 2550, z 950 → 1950 | 800 × 1000, 5 thick | Frameless frosted pale-green/white glass board on 4 satin-chrome stand-off buttons 30 in from the corners; stands 15 off the wall. Sampled #c0c2b4 → neutral **#dfe6e0**, slight translucency, glossy. **Render it blank** — the hand-written meal planner must not be reproduced (privacy rule). A small black magnetic eraser 60 × 30 at the top right is optional. | none (do not crop) |
 | Hanging stemware | nook, under soffit | see §4.5 | — | ≈ 14 clear wine glasses and 2 martini glasses hanging bowl-down in two rows. | — |
-| Shelf glassware (optional, light) | nook glass shelves | — | — | Upper shelf: a row of clear tumblers/tankards and three small blue-and-white patterned tea canisters at the +X end; a chrome cocktail shaker and a silver teapot at the −X end. Lower shelf: a few white mugs. Keep to ≈ 12 objects in total; no branded bottles. | — |
+| **Shelf mugs and glassware** (owner: "lots of wine glasses, mugs" — required) | nook glass shelves | — | — | Upper shelf: a row of clear tumblers/tankards and three small blue-and-white patterned tea canisters at the +X end; a chrome cocktail shaker and a silver teapot at the −X end. **Lower shelf: ≈ 6 mugs (two lime-yellow, the rest white) plus ≈ 8 clear glass tankards** (f_0311, f_0314). No branded bottles. | — |
+| **Stainless pedal bin** (owner: "there's a rubbish bin") | door wall, between the fridge housing and the hall door | centre (150, 2330) | 300 × 400 plan × 650 high | Rectangular brushed-stainless pedal bin, flat lid, black pedal bar at the foot (f_0385). Simple prop on a viewer toggle, default on. | — |
+| **Black pedal bin** (owner: "another rubbish bin here") | against the nook-wall pier between the nook and the back door | centre ≈ (1680, 3250) | 330 × 400 plan × 620 high | Matt-black plastic pedal bin, slightly domed lid (f_0766, f_0756). Simple prop on the same toggle, default on. | — |
 | White plates | plate rack T3 | — | Ø 270 | 10 plain white rimmed dinner plates on edge + 1 larger Ø 300 at the −X end. | — |
 | Wine bottles | wine rack T4 | — | — | 5–6 dark-green bottles lying neck-out in random cells (foil caps: green, silver, one natural cork). | — |
 
@@ -373,9 +375,8 @@ enough fill that the navy reads as navy-black rather than pure black.
   dish rack, kettle, water bottles, soap/washing-up bottles, sponges, cloths, oven gloves, bread
   maker, toaster, soda maker, snack packets, foil/film dispenser on the nook tiles, cork trivet.
 - Tea towel hanging on the oven handle.
-- Black plastic pedal bin (by the nook pier) and stainless pedal bin (between fridge housing
-  and hall door); black folding two-step stool in the middle of the floor; black folding
-  step-ladder leaning at the hob-wall cabinet end.
+- Black folding two-step stool in the middle of the floor; black folding step-ladder leaning at
+  the hob-wall cabinet end. (The two pedal bins are owner-named and kept — §6.)
 - Grey/black speckled door mat inside the back door (≈ 500 × 800).
 - Stickers/energy labels on the oven doors and hob.
 - Reflections of the person filming in the nook mirror and back-door glass.
@@ -439,3 +440,13 @@ Camera positions are local (x, y) in mm, eye height ≈ 1450–1550; "looking" i
     from visual 3:1 proportion and could be 100 × 250.
 13. Floor plank module (≈ 200 × 1200) ±30 on width; laying direction (long axis parallel to the
     door wall) is certain.
+
+---
+
+## Reconciled dimensions (from `spec/house.json`, see `spec/RECONCILE.md` D6, D13)
+- Global rectangle: x 1.25..4.30, y 5.31..8.73 (3.05 x 3.42, exactly as measured here). Ceiling 2.95.
+- Local to global: X = 1.25 + x/1000, Y = 5.31 + y/1000. No scaling; every module stays as specified.
+- Bar nook: x 1.37..2.62, y 8.73..9.25. Hall door centre (1.12, 8.24) in a 0.26 m wall. Back door centre
+  (3.725, 8.88) in the 0.30 m external wall; it opens onto the side return east of the flank wall.
+- Behind the sink wall is a 0.58 m unseen zone, then the living room. Behind the door wall are the stairs
+  (y < 7.58) and the lobby.
