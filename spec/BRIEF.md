@@ -131,3 +131,18 @@ look like an architectural CAD drawing as seen in a typical DWG file**, not a co
   font — no address, no owner name.
 Everything is generated from `spec/house.json` (+ fittings/furniture footprints exported from the
 Blender scene) so it stays in exact registration with the 3D model.
+
+### Floor plan downloads — owner requirement
+The plan panel has download buttons:
+- **DXF** (opens in AutoCAD/any CAD; DWG itself is proprietary): a real CAD file generated at
+  build time from the same data as the on-screen plan — units mm, true scale, entities on named
+  layers (e.g. A-WALL, A-DOOR, A-GLAZ, A-STRS, A-FURN, A-FIXT, A-DIMS, A-ANNO-TEXT) with layer
+  colours matching the on-screen palette, proper LINE/LWPOLYLINE/ARC/HATCH/TEXT/DIMENSION
+  entities (not an exploded picture). Written to `docs/assets/ground-floor-plan.dxf`; verify by
+  re-reading it with `ezdxf` (audit passes, layer/entity counts sane) and rendering it back to an
+  image to compare with the on-screen plan.
+- **PDF**: vector PDF of the paper-white drawing sheet with title block at a stated scale (1:50 on
+  A3, or the largest standard scale that fits), black linework with CAD lineweights. Either
+  generated at build time to `docs/assets/ground-floor-plan.pdf` or produced client-side from the
+  plan SVG — it must be vector, not a screenshot.
+Neither file may contain the address, owner name or anything from the privacy list.
