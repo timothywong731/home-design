@@ -109,3 +109,25 @@ nothing upstairs is modelled.
   the middle of the wall flanked by two wood carvings.
 - Porch: outside lights, front door with two windows on top and an arch, floor tiles, light
   switch, red-coloured wooden door frame (the mahogany inner doors), cornice, spotlights.
+
+## 2D floor plan — owner requirement
+The viewer includes a 2D property layout linked to the 3D scene, showing where the viewer stands
+and which way they look (position marker + view cone; click the plan to move there). **It must
+look like an architectural CAD drawing as seen in a typical DWG file**, not a coloured diagram:
+- thin precise vector linework (SVG/canvas), monochrome CAD palette (AutoCAD model-space look:
+  near-black background with white/yellow/cyan/green layer colours; offer a paper-white toggle);
+- walls drawn as double lines at true thickness with solid/hatched poché, cut cleanly at openings;
+- doors as leaf line + quarter-circle swing arc (double doors: two arcs; sliding/pocket door:
+  dashed leaf in the wall), windows as triple-line symbols in the wall, bay window drawn true;
+- stairs as tread lines with direction arrow and "UP", break line where they pass the cut plane;
+- fixed fittings in plan symbol form on their own layer: kitchen base units + worktop edge
+  (wall units dashed), hob (burner circles), sink bowls, fridge, ovens, washer/dryer (circle in
+  square), WC, basin, radiators, fireplace/chimney breast, arch as dashed lines;
+- loose furniture as thin outline symbols (sofa, table + chairs, bookcase, rug dashed);
+- dimension chains outside the plan with extension lines, tick/arrow terminators and values in
+  mm; room name tags in capitals with internal dimensions and area (m²); level change marks;
+- drafting furniture: north-less orientation note ("FRONT"/"REAR"), scale bar, drawing title
+  block ("GROUND FLOOR PLAN", scale 1:50, drawn-from-video note) in a CAD monospace/ISO-style
+  font — no address, no owner name.
+Everything is generated from `spec/house.json` (+ fittings/furniture footprints exported from the
+Blender scene) so it stays in exact registration with the 3D model.
