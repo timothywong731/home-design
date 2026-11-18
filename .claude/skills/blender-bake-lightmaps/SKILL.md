@@ -29,7 +29,7 @@ Tested helper: `bake.py` (`setup_cycles`, `bake_lightmap(objs, path, size)`), `t
 - Bake needs an Image node *selected and active* in every material of every baked object; missing -> "No active image found". One image shared by many objects is fine if their `Lightmap` UVs are packed together (atlas): pack ALL objects of a room into one UV space with `uv.pack_islands` in a joint edit session, or bake per object with a per-object image.
 - Overlapping `Lightmap` islands or islands outside 0-1 bake garbage. Check with `uv.pack_islands(margin=0.003)`.
 - Seams: `margin_type='EXTEND'`, margin >= 4 px at 2k; mipmapped sampling needs margin ~8 px or leaks dark at distance.
-- Denoise: `scene.cycles.use_denoising` affects baking in 4.x/5.x; denoise leaks light across islands - prefer high samples + light clamp, and bake with `sample_clamp_indirect=10`.
+- Denoise: `scene.cycles.use_denoising` does NOT apply to bakes on 5.1.1 (measured: identical noise on/off). Denoise each baked atlas with an OpenImageDenoise compositor node instead (see `blender/export_bake.py`), plus high samples and `sample_clamp_indirect=10`.
 - Emission-only fixtures need `Emission Strength` > 0 on their mesh; bulbs look black otherwise.
 - Bake runs on the *evaluated* mesh; apply modifiers/booleans first so UVs exist.
 - GPU: set Cycles device in preferences inside the script (`setup_cycles(gpu=True)` tries OPTIX then CUDA); factory-startup resets prefs each run.

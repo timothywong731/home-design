@@ -138,7 +138,7 @@ Open on the east side of zone B from the nib to the lobby — see `stairs.md`.
 | element | sampled | true | finish |
 |---|---|---|---|
 | Walls **above** the dado — white | #cbc7be (f_0062), #b9b6ad (f_0263), #bcb8b2 (f_0550) | **#F2F0EA** | matt emulsion |
-| Walls **below** the dado — light warm grey | #817b6a (f_0062), #938e7b (f_0263), #888373 (f_0550) | **#B9B5A8** | matt emulsion |
+| Walls **below** the dado — light warm grey | #817b6a (f_0062), #938e7b (f_0263), #888373 (f_0550) | **#C8C5BB** (first estimate #B9B5A8 rendered a khaki band; lightened after the shell review, f_0770 lower/upper ≈ 0.78; `M.PAINT['hall_dado_grey']`) | matt emulsion |
 | Dado rail, skirting, architraves, doorcase, spandrel — white | #e4e3e0 (rail), #b3afa9 (spandrel in shade) | **#F4F2EC** | gloss on joinery |
 | Cornice, arch, corbels, ceiling | #9c988d (ceiling in shade) | **#F4F3EE** | matt |
 

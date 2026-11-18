@@ -84,7 +84,7 @@ frame's hall face, +x east, +y north, z up from the hall oak floor. World = loca
   the nosing line measured vertically**, parallel to the pitch from the nib to the landing. At the nib's
   internal corner it meets the horizontal hall rail (z 0.965) through a short vertical knee: the
   horizontal rail returns round the nib corner, runs along the nib's north face, and turns up the rake.
-- Paint: **below the raking rail light warm grey #B9B5A8** (a parallelogram band between string and
+- Paint: **below the raking rail light warm grey #C8C5BB** (`M.PAINT['hall_dado_grey']`, same as the hall dado) (a parallelogram band between string and
   rail), **above it white #F2F0EA** to the top of the stairwell. Matt emulsion.
 - Sampled on the stair wall (hr_243, brightly lit): above #c8c5be, below #b6b3a7 — the same two paints
   as the hall; the contrast between them is gentle.

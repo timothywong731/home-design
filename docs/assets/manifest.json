@@ -1,0 +1,555 @@
+{
+ "lightmaps": [
+  {
+   "room": "dining",
+   "image": "lightmaps/dining.jpg",
+   "intensity": 4.4588,
+   "size": 4096,
+   "pxPerM": 204,
+   "objects": [
+    "dining.ceiling",
+    "dining.floor",
+    "dining.walls",
+    "dining.d_dining.lining",
+    "dining.d_dining.surround",
+    "dining.d_dining.leaf",
+    "dining.d_french.frame",
+    "dining.d_french.leaf.0",
+    "dining.d_french.leaf.1",
+    "dining.screen",
+    "dining.w_dining_n_w.frame",
+    "dining.w_dining_n_e.frame",
+    "dining.w_dining_e_s.frame",
+    "dining.w_dining_e_s.surround",
+    "dining.w_dining_e_n.frame",
+    "dining.w_dining_e_n.surround",
+    "dining.skirting",
+    "dining.dado",
+    "dining.cornice",
+    "dining.rose",
+    "dining.pelmet"
+   ]
+  },
+  {
+   "room": "hallway",
+   "image": "lightmaps/hallway.jpg",
+   "intensity": 3.84413,
+   "size": 4096,
+   "pxPerM": 199,
+   "objects": [
+    "hallway.ceiling",
+    "hallway.floor",
+    "hallway.walls",
+    "hallway.arch_fill",
+    "hallway.d_inner.frame",
+    "hallway.d_inner.leaf.0",
+    "hallway.d_inner.leaf.1",
+    "hallway.d_living.surround",
+    "hallway.d_understairs.lining",
+    "hallway.d_understairs.surround",
+    "hallway.d_understairs.leaf",
+    "hallway.d_kitchen.lining",
+    "hallway.d_kitchen.surround",
+    "hallway.d_kitchen.leaf",
+    "hallway.d_utility.surround",
+    "hallway.d_dining.surround",
+    "hallway.skirting",
+    "hallway.dado",
+    "hallway.cornice",
+    "hallway.arch_corbels"
+   ]
+  },
+  {
+   "room": "kitchen",
+   "image": "lightmaps/kitchen.jpg",
+   "intensity": 3.92836,
+   "size": 2048,
+   "pxPerM": 155,
+   "objects": [
+    "kitchen.ceiling",
+    "kitchen.floor",
+    "kitchen.walls",
+    "kitchen.d_kitchen.surround",
+    "kitchen.d_back.frame",
+    "kitchen.d_back.leaf",
+    "kitchen.skirting",
+    "kitchen.cornice"
+   ]
+  },
+  {
+   "room": "living",
+   "image": "lightmaps/living.jpg",
+   "intensity": 5.0421,
+   "size": 4096,
+   "pxPerM": 221,
+   "objects": [
+    "living.ceiling",
+    "living.floor",
+    "living.walls",
+    "living.d_living.lining",
+    "living.d_living.surround",
+    "living.d_living.leaf",
+    "living.w_bay_front.timber",
+    "living.w_bay_front.frame",
+    "living.w_bay_front.shutters",
+    "living.bay.sill",
+    "living.w_bay_cheek_w.timber",
+    "living.w_bay_cheek_w.frame",
+    "living.w_bay_cheek_w.shutters",
+    "living.w_bay_cheek_e.timber",
+    "living.w_bay_cheek_e.frame",
+    "living.w_bay_cheek_e.shutters",
+    "living.skirting",
+    "living.cornice",
+    "living.rose"
+   ]
+  },
+  {
+   "room": "shell",
+   "image": "lightmaps/shell.jpg",
+   "intensity": 2.14225,
+   "size": 1024,
+   "pxPerM": 57,
+   "objects": [
+    "shell.exterior",
+    "shell.wall_tops",
+    "shell.threshold.d_inner",
+    "shell.threshold.d_kitchen",
+    "shell.threshold.d_utility"
+   ]
+  },
+  {
+   "room": "stairs",
+   "image": "lightmaps/stairs.jpg",
+   "intensity": 2.3576,
+   "size": 1024,
+   "pxPerM": 132,
+   "objects": [
+    "stairs.ceiling",
+    "stairs.floor",
+    "stairs.walls"
+   ]
+  },
+  {
+   "room": "utility",
+   "image": "lightmaps/utility.jpg",
+   "intensity": 3.33375,
+   "size": 2048,
+   "pxPerM": 202,
+   "objects": [
+    "utility.ceiling",
+    "utility.floor",
+    "utility.walls",
+    "utility.d_utility.lining",
+    "utility.d_utility.surround",
+    "utility.d_utility.leaf",
+    "utility.d_wc.lining",
+    "utility.d_wc.surround",
+    "utility.d_wc.leaf",
+    "utility.w_utility.frame",
+    "utility.skirting",
+    "utility.cornice"
+   ]
+  },
+  {
+   "room": "vestibule",
+   "image": "lightmaps/vestibule.jpg",
+   "intensity": 2.30035,
+   "size": 1024,
+   "pxPerM": 117,
+   "objects": [
+    "vestibule.ceiling",
+    "vestibule.floor",
+    "vestibule.walls",
+    "vestibule.vault_fill",
+    "vestibule.d_street.frame",
+    "vestibule.d_street.leaf.0",
+    "vestibule.d_street.leaf.1",
+    "vestibule.w_bay_cheek_w.surround",
+    "vestibule.skirting",
+    "vestibule.dado",
+    "vestibule.arch_mouldings"
+   ]
+  },
+  {
+   "room": "wc",
+   "image": "lightmaps/wc.jpg",
+   "intensity": 2.46285,
+   "size": 1024,
+   "pxPerM": 166,
+   "objects": [
+    "wc.ceiling",
+    "wc.floor",
+    "wc.walls",
+    "wc.d_wc.surround",
+    "wc.w_wc.frame",
+    "wc.cornice"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "room": "vestibule",
+   "image": "probes/vestibule.jpg",
+   "pos": [
+    -0.25,
+    1.6,
+    1.5
+   ],
+   "intensity": 2.42585
+  },
+  {
+   "room": "hallway",
+   "image": "probes/hallway.jpg",
+   "pos": [
+    0.55,
+    4.03,
+    1.5
+   ],
+   "intensity": 3.51448
+  },
+  {
+   "room": "stairs",
+   "image": "probes/stairs.jpg",
+   "pos": [
+    0.35,
+    5.03,
+    1.5
+   ],
+   "intensity": 3.05329
+  },
+  {
+   "room": "living",
+   "image": "probes/living.jpg",
+   "pos": [
+    2.4,
+    2.6,
+    1.5
+   ],
+   "intensity": 4.77037
+  },
+  {
+   "room": "kitchen",
+   "image": "probes/kitchen.jpg",
+   "pos": [
+    3.05,
+    7.31,
+    1.5
+   ],
+   "intensity": 5.07265
+  },
+  {
+   "room": "wc",
+   "image": "probes/wc.jpg",
+   "pos": [
+    1.8,
+    9.76,
+    1.5
+   ],
+   "intensity": 2.17421
+  },
+  {
+   "room": "utility",
+   "image": "probes/utility.jpg",
+   "pos": [
+    2.0,
+    11.06,
+    1.5
+   ],
+   "intensity": 5.5685
+  },
+  {
+   "room": "dining",
+   "image": "probes/dining.jpg",
+   "pos": [
+    1.15,
+    14.36,
+    1.5
+   ],
+   "intensity": 4.87227
+  }
+ ],
+ "rooms": [
+  {
+   "id": "vestibule",
+   "name": "Vestibule / porch",
+   "polygon": [
+    [
+     -0.65,
+     0
+    ],
+    [
+     0.9,
+     0
+    ],
+    [
+     0.9,
+     0.74
+    ],
+    [
+     0.65,
+     0.74
+    ],
+    [
+     0.65,
+     1.73
+    ],
+    [
+     -0.65,
+     1.73
+    ]
+   ],
+   "ceilZ": 2.85,
+   "floorZ": 0
+  },
+  {
+   "id": "hallway",
+   "name": "Hallway",
+   "polygon": [
+    [
+     -0.65,
+     1.83
+    ],
+    [
+     0.65,
+     1.83
+    ],
+    [
+     0.65,
+     4.83
+    ],
+    [
+     0.15,
+     4.83
+    ],
+    [
+     0.15,
+     7.68
+    ],
+    [
+     0.99,
+     7.68
+    ],
+    [
+     0.99,
+     8.73
+    ],
+    [
+     0.45,
+     8.73
+    ],
+    [
+     0.45,
+     12.23
+    ],
+    [
+     -0.65,
+     12.23
+    ]
+   ],
+   "ceilZ": 2.95,
+   "floorZ": 0
+  },
+  {
+   "id": "stairs",
+   "name": "Staircase",
+   "polygon": [
+    [
+     0.15,
+     4.83
+    ],
+    [
+     0.99,
+     4.83
+    ],
+    [
+     0.99,
+     7.58
+    ],
+    [
+     0.15,
+     7.58
+    ]
+   ],
+   "ceilZ": 5.6,
+   "floorZ": 0
+  },
+  {
+   "id": "living",
+   "name": "Living room",
+   "polygon": [
+    [
+     0.8,
+     0.99
+    ],
+    [
+     1.1,
+     0.99
+    ],
+    [
+     1.1,
+     0
+    ],
+    [
+     4.0,
+     0
+    ],
+    [
+     4.0,
+     0.99
+    ],
+    [
+     4.3,
+     0.99
+    ],
+    [
+     4.3,
+     4.73
+    ],
+    [
+     0.8,
+     4.73
+    ]
+   ],
+   "ceilZ": 2.95,
+   "floorZ": 0
+  },
+  {
+   "id": "kitchen",
+   "name": "Kitchen",
+   "polygon": [
+    [
+     1.25,
+     5.31
+    ],
+    [
+     4.3,
+     5.31
+    ],
+    [
+     4.3,
+     8.73
+    ],
+    [
+     2.62,
+     8.73
+    ],
+    [
+     2.62,
+     9.25
+    ],
+    [
+     1.37,
+     9.25
+    ],
+    [
+     1.37,
+     8.73
+    ],
+    [
+     1.25,
+     8.73
+    ]
+   ],
+   "ceilZ": 2.95,
+   "floorZ": 0
+  },
+  {
+   "id": "wc",
+   "name": "Cloakroom WC",
+   "polygon": [
+    [
+     0.6,
+     9.36
+    ],
+    [
+     3.1,
+     9.36
+    ],
+    [
+     3.1,
+     10.14
+    ],
+    [
+     0.6,
+     10.14
+    ]
+   ],
+   "ceilZ": 2.4,
+   "floorZ": 0
+  },
+  {
+   "id": "utility",
+   "name": "Utility / laundry",
+   "polygon": [
+    [
+     0.6,
+     10.26
+    ],
+    [
+     3.1,
+     10.26
+    ],
+    [
+     3.1,
+     12.23
+    ],
+    [
+     0.6,
+     12.23
+    ]
+   ],
+   "ceilZ": 2.4,
+   "floorZ": 0
+  },
+  {
+   "id": "dining",
+   "name": "Dining room",
+   "polygon": [
+    [
+     -0.65,
+     12.36
+    ],
+    [
+     3.1,
+     12.36
+    ],
+    [
+     3.1,
+     16.86
+    ],
+    [
+     -0.65,
+     16.86
+    ]
+   ],
+   "ceilZ": 2.8,
+   "floorZ": 0
+  }
+ ],
+ "spawn": {
+  "pos": [
+   0.0,
+   3.0
+  ],
+  "yaw": 0
+ },
+ "toneMapping": "agx",
+ "exposure": 0.6598,
+ "encoding": "8-bit sRGB JPEG; linear = srgbDecode(px) * intensity; lightmaps = Cycles diffuse direct+indirect without albedo (radiance of a white surface: multiply by PI for three.js lightMap), on TEXCOORD_1, flipY false; probes = equirect radiance, image centre +X, pos in plan metres (x, y, z up); white balance of the previews already applied",
+ "glb": {
+  "nodes": 127,
+  "meshes": 127,
+  "instanced_nodes": 0,
+  "triangles": 102468,
+  "materials": 38,
+  "images": 24,
+  "nodes_with_extras": 127,
+  "extensions": [
+   "EXT_meshopt_compression",
+   "EXT_texture_webp",
+   "KHR_mesh_quantization"
+  ],
+  "bytes": 5975072
+ }
+}

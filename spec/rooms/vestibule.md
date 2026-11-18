@@ -124,7 +124,7 @@ y = 0.37:
 | element | sampled | true | notes |
 |---|---|---|---|
 | Above dado — white, matt emulsion | #e4e2d5 (f_0033), #cbc7be | **#F2F0EA** | includes the vault, imposts' background wall, ceilings |
-| Below dado — light warm grey, matt | #ada892 (f_0033), #888373 | **#B9B5A8** | same paint as the hallway dado |
+| Below dado — light warm grey, matt | #ada892 (f_0033), #888373 | **#C8C5BB** (first estimate #B9B5A8 rendered a khaki band; lightened after the shell review, f_0770 lower/upper ≈ 0.78; `M.PAINT['hall_dado_grey']`) | same paint as the hallway dado |
 | Dado rail, skirting, architraves — white gloss | #e4e3e0 | **#F4F2EC** | |
 
 - **Dado rail:** top edge at **z = 0.965**, 70 mm high x 30 mm projection: 12 mm square top fillet,

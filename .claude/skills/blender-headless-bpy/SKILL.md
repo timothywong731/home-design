@@ -25,7 +25,7 @@ Run (Windows, repo convention): `"C:/Program Files/Blender Foundation/Blender 5.
 - Actions are slotted; `action.fcurves/groups/id_root` removed. Use `bpy_extras.anim_utils.action_ensure_channelbag_for_slot()` and `channelbag.fcurves`; `fcurves.new(..., group_name=)`. Avoid keyframes in the model.
 - Principled BSDF input names (verified 5.1): `Base Color, Metallic, Roughness, IOR, Alpha, Normal, Diffuse Roughness, Subsurface Weight, Specular IOR Level, Specular Tint, Transmission Weight, Coat Weight, Sheen Weight, Emission Color, Emission Strength`. Old names (`Specular`, `Transmission`, `Emission`) are gone. Find the node by `.type == 'BSDF_PRINCIPLED'`, never by localized name.
 - `material.use_nodes` / `scene.use_nodes` are deprecated (always on) - harmless. `scene.node_tree` removed -> `scene.compositing_node_group`.
-- Colour management: `view_transform` takes `'AgX'`, `'Filmic'`, `'Standard'`, `'Khronos PBR Neutral'`; **look names are bare** (`'Medium High Contrast'`), not `'AgX - Medium High Contrast'` (4.0/4.1 style) - that raises TypeError.
+- Colour management: `view_transform` takes `'AgX'`, `'Filmic'`, `'Standard'`, `'Khronos PBR Neutral'`; **look names vary by build**: on 5.1.1 the enum is `'AgX - Medium High Contrast'` and the bare `'Medium High Contrast'` raises TypeError (measured) - try both spellings in try/except.
 - Lights: `light.use_temperature/temperature`; portal flag is `light.cycles.is_portal`.
 - `ImageFormatSettings.media_type` must be set before `file_format` when switching formats; image-texture node lost `use_mipmap`/`filter_type`; Sky Texture lost `sun_direction`/`turbidity`; `scene.eevee.use_gtao/gtao_*` removed.
 - UV selection is shared across UV maps (`BMLoopUV.select` removed).

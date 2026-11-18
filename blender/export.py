@@ -1,0 +1,282 @@
+"""Export a saved build to the web viewer: lightmaps, probes, home.glb, manifest, footprints, hero renders.
+Documented in blender/lib/README.md (section "export").
+
+blender -b [--factory-startup] build/home.blend --python blender/export.py -- --out docs/assets
+        [--bake-res 2048] [--samples 256] [--density 160] [--probe-res 1024] [--rooms a,b] [--skip-bake] [--renders]
+"""
+import argparse
+import json
+import shutil
+import struct
+import subprocess
+import sys
+import time
+import traceback
+from pathlib import Path
+
+import bpy
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+sys.path.insert(0, str(HERE))
+T0 = time.time()
+GLTF_TRANSFORM = 'npx --yes @gltf-transform/cli@4.5.1'
+
+
+def log(msg):
+    print(f'[export {time.time() - T0:6.1f}s] {msg}', flush=True)
+
+
+def parse():
+    ap = argparse.ArgumentParser(prog='export.py')
+    ap.add_argument('--out', default='docs/assets')
+    ap.add_argument('--bake-res', type=int, default=2048, help='largest lightmap atlas side')
+    ap.add_argument('--samples', type=int, default=256, help='Cycles samples for lightmaps and probes')
+    ap.add_argument('--density', type=float, default=None, help='lightmap texels per metre aimed for (default 160)')
+    ap.add_argument('--probe-res', type=int, default=1024, help='probe panorama width')
+    ap.add_argument('--rooms', default='', help='bake / render only these rooms (others keep their old images)')
+    ap.add_argument('--skip-bake', action='store_true', help='no lightmaps or probes: GLB, manifest, footprints only')
+    ap.add_argument('--renders', action='store_true', help='hero stills into <out>/../renders')
+    a = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
+    a.out = (ROOT / a.out).resolve()
+    a.rooms = [s for s in a.rooms.split(',') if s]
+    return a
+
+
+# ------------------------------------------------------------------ GLB
+def export_glb(path):
+    """Everything except lights, cameras and obj['no_export'], +Y up, custom props as extras, both UV sets,
+    textures embedded in their source format (JPEG). Modifiers were applied by export_bake.apply_modifiers."""
+    import export_bake as EB
+    EB.select([o for o in bpy.context.scene.objects if o.type not in {'LIGHT', 'CAMERA'} and not o.get('no_export')])
+    bpy.ops.export_scene.gltf(
+        filepath=str(path), export_format='GLB', use_selection=True, export_apply=True, export_yup=True,
+        export_texcoords=True, export_normals=True, export_tangents=False, export_materials='EXPORT',
+        export_image_format='AUTO', export_extras=True, export_cameras=False, export_lights=False,
+        export_animations=False, export_skins=False, export_morph=False, export_gpu_instances=False)
+
+
+def compress(raw, out):
+    """glTF-Transform: textures capped at 2048, colour textures to WebP (normal / ORM maps stay JPEG: recompressing
+    them only adds artefacts), meshopt geometry. No dedup / join / instance / prune / simplify: those drop the
+    unused-looking TEXCOORD_1, merge named nodes or lose the extras."""
+    a, b = raw, raw.with_suffix('.tmp.glb')
+    for step in ('resize {a} {b} --width 2048 --height 2048',
+                 'webp {a} {b} --slots "{{baseColorTexture,emissiveTexture}}" --quality 88',
+                 'meshopt {a} {b} --level medium --quantize-texcoord 14'):
+        cmd = f'{GLTF_TRANSFORM} ' + step.format(a=f'"{a}"', b=f'"{b}"')
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        if r.returncode:
+            raise RuntimeError(f'{cmd}\n{r.stdout}\n{r.stderr}')
+        shutil.move(b, out)
+        a = out
+
+
+def glb_json(path):
+    with open(path, 'rb') as f:
+        f.seek(12)
+        n, _ = struct.unpack('<I4s', f.read(8))
+        return json.loads(f.read(n))
+
+
+def check_glb(path, lightmapped):
+    """The check that fails when the export breaks: every lightmapped object is a named mesh node whose primitives
+    all carry TEXCOORD_1, extras survived, no lights or cameras. Returns a summary dict."""
+    g = glb_json(path)
+    nodes = {n.get('name'): n for n in g['nodes']}
+    acc = g['accessors']
+    bad = [name for name in lightmapped if 'mesh' not in nodes.get(name, {}) or
+           any('TEXCOORD_1' not in p['attributes'] for p in g['meshes'][nodes[name]['mesh']]['primitives'])]
+    assert not bad, f'lightmapped objects without TEXCOORD_1 in {path.name}: {bad[:10]}'
+    assert not g.get('cameras') and 'KHR_lights_punctual' not in g.get('extensionsUsed', []), 'lights/cameras in the GLB'
+    meshed = [n['mesh'] for n in g['nodes'] if 'mesh' in n]
+    tagged = sum('kind' in n.get('extras', {}) for n in g['nodes'])
+    assert tagged, 'custom props (extras) missing from the GLB nodes'
+    tris = sum(acc[p['indices']]['count'] // 3 for m in meshed for p in g['meshes'][m]['primitives'])
+    return dict(nodes=len(g['nodes']), meshes=len(g['meshes']), instanced_nodes=len(meshed) - len(set(meshed)),
+                triangles=tris, materials=len(g.get('materials', [])), images=len(g.get('images', [])),
+                nodes_with_extras=tagged, extensions=g.get('extensionsUsed', []), bytes=path.stat().st_size)
+
+
+# ------------------------------------------------------------------ plan footprints
+def footprints():
+    """Every object tagged plan_sym: tight oriented rectangle of its (and its children's) vertices in world XY."""
+    import export_bake as EB
+    out = []
+    for o in bpy.context.scene.objects:
+        if not o.get('plan_sym') or o.get('no_export'):
+            continue
+        pts = []
+        for m in [o] + list(o.children_recursive):
+            if m.type == 'MESH' and len(m.data.vertices):
+                co = np.empty(len(m.data.vertices) * 3, np.float32)
+                m.data.vertices.foreach_get('co', co)
+                pts.append(co.reshape(-1, 3) @ np.array(m.matrix_world.to_3x3()).T + np.array(m.matrix_world.translation))
+        if not pts:
+            continue
+        p = np.concatenate(pts)
+        R, lo, hi = EB.fit_box(p[:, :2])
+        obb = np.array([[lo[0], lo[1]], [hi[0], lo[1]], [hi[0], hi[1]], [lo[0], hi[1]]]) @ R      # back to world
+        zmin, zmax = float(p[:, 2].min()), float(p[:, 2].max())
+        out.append(dict(name=o.name, room=o.get('room'), plan_sym=o['plan_sym'], obb=np.round(obb, 4).tolist(),
+                        zmin=round(zmin, 4), zmax=round(zmax, 4), height=round(zmax - zmin, 4)))
+    return sorted(out, key=lambda r: r['name'])
+
+
+def strip_notes(v):
+    if isinstance(v, dict):
+        return {k: strip_notes(x) for k, x in v.items() if k != 'notes'}
+    return [strip_notes(x) for x in v] if isinstance(v, list) else v
+
+
+# ------------------------------------------------------------------ hero renders
+def renders(house, rooms, out, samples):
+    """Cycles stills (1920x1080, AgX and white balance of the scene, denoised) from each room module's CAMERAS, or
+    the reference-matched preview defaults. The cameras are ultrawide portrait matches of the phone frames, so the
+    field of view is capped at 90 degrees for the landscape stills. Merges into an existing index.json."""
+    from build import load_room
+    from lib import preview
+    out.mkdir(parents=True, exist_ok=True)
+    idx = out / 'index.json'
+    index = [e for e in (json.loads(idx.read_text(encoding='utf-8')) if idx.exists() else []) if e.get('room') not in rooms]
+    for r in house['rooms']:
+        rid = r['id']
+        if rid not in rooms:
+            continue
+        try:
+            cams = getattr(load_room(rid), 'CAMERAS', None)
+        except Exception:
+            traceback.print_exc()
+            cams = None
+        for c in cams or preview.DEFAULT_CAMERAS.get(rid, []):
+            cam = preview.camera(f'hero.{rid}.{c["name"]}', c['pos'], c['look'], min(c.get('fov_deg', 75), 90))
+            preview.render(cam, out / f'{rid}_{c["name"]}.jpg', (1920, 1080), samples)
+            bpy.data.objects.remove(cam)
+            index.append(dict(file=f'{rid}_{c["name"]}.jpg', room=rid, title=f'{r["name"].split(" /")[0]} - {c["name"]}'))
+            log(f'render {rid}_{c["name"]}.jpg')
+    order = [r['id'] for r in house['rooms']]
+    index.sort(key=lambda e: order.index(e['room']) if e['room'] in order else 99)
+    idx.write_text(json.dumps(index, indent=1), encoding='utf-8')
+
+
+# ------------------------------------------------------------------ main
+def main():
+    args = parse()
+    import export_bake as EB
+    from lib import lighting
+    house = json.loads((ROOT / 'spec' / 'house.json').read_text(encoding='utf-8'))
+    room_ids = [r['id'] for r in house['rooms']]
+    out, tmp = args.out, ROOT / 'build' / 'export'
+    for d in (out, tmp):
+        d.mkdir(parents=True, exist_ok=True)
+    sc = bpy.context.scene
+    lighting.setup_cycles(args.samples)          # GPUs + denoiser (preferences are per run), AgX, white balance
+    sc.cycles.adaptive_threshold = 0.01
+
+    objs = EB.mesh_objects()
+    applied, unique = EB.apply_modifiers(objs)
+    atlases, demoted, unlinked = EB.classify(objs)
+    log(f'{len(objs)} mesh objects; modifiers applied on {applied} ({unique} meshes); lightmapped '
+        f'{sum(map(len, atlases.values()))} in {len(atlases)} atlases; {demoted} small/metal/glass static objects '
+        f'demoted to dynamic; {unlinked} shared static meshes made single-user')
+    bad = [r for r in args.rooms if r not in room_ids and r not in atlases]
+    if bad:
+        raise SystemExit(f'unknown room(s) {bad}; valid: {sorted(set(room_ids) | set(atlases))}')
+
+    def todo(room):
+        return not args.skip_bake and (not args.rooms or room in args.rooms)
+
+    # previous manifest: rooms that are not rebaked keep their images (only valid while their geometry is unchanged)
+    old = json.loads((out / 'manifest.json').read_text(encoding='utf-8')) if (out / 'manifest.json').exists() else {}
+    old = {} if old.get('standin') else old
+    lightmaps = {e['room']: e for e in old.get('lightmaps', []) if e.get('room') in atlases}
+    probes = {e['room']: e for e in old.get('probes', []) if e.get('room') in room_ids}
+    M = EB.wb_matrix()
+    log('white balance matrix ' + np.array2string(M, precision=3, suppress_small=True).replace('\n', ''))
+
+    # 1. lightmap UVs for every atlas (they go into the GLB even with --skip-bake), bake where asked
+    for room, obs in sorted(atlases.items()):
+        entry = lightmaps.get(room)
+        t = time.time()
+        fill, cuts = EB.unwrap(obs)
+        m2 = sum(EB.area(o) for o in obs)
+        res = EB.atlas_size(m2, fill, (args.density or EB.DENSITY) * (1 if room in room_ids else EB.OUTSIDE_SCALE), args.bake_res)
+        density = res * (fill / m2) ** 0.5
+        log(f'uv   {room:10s} {len(obs):4d} objects {m2:6.1f} m2 -> {res} px, {density:.0f} px/m, fill {fill:.2f}, '
+            f'{cuts} islands cut ({time.time() - t:.1f}s)')
+        if todo(room):
+            t = time.time()
+            px = EB.denoise(EB.bake(room, obs, res), res, tmp)
+            k = EB.encode(px, res, res, out / 'lightmaps' / f'{room}.jpg', M)
+            entry = dict(room=room, image=f'lightmaps/{room}.jpg', intensity=k, size=res, pxPerM=round(density))
+            log(f'bake {room:10s} {res} px, {args.samples} spp, intensity {k} ({time.time() - t:.1f}s)')
+        if entry:
+            entry['objects'] = [o.name for o in obs]
+            lightmaps[room] = entry
+
+    # 2. probes
+    for r in house['rooms']:
+        rid = r['id']
+        if not todo(rid):
+            continue
+        t = time.time()
+        pos = EB.probe_point([tuple(p) for p in r['polygon']], r['floorZ'] + EB.EYE)
+        if pos is None:
+            probes.pop(rid, None)
+            log(f'probe {rid}: no free spot, skipped')
+            continue
+        px = EB.render_probe(pos, args.probe_res, args.samples, tmp)
+        k = EB.encode(px, args.probe_res, args.probe_res // 2, out / 'probes' / f'{rid}.jpg', M, quality=90)
+        probes[rid] = dict(room=rid, image=f'probes/{rid}.jpg', pos=list(pos), intensity=k)
+        log(f'probe {rid:10s} at {pos}, intensity {k} ({time.time() - t:.1f}s)')
+
+    # 3. GLB
+    t = time.time()
+    raw = tmp / 'home_raw.glb'
+    export_glb(raw)
+    log(f'glb  raw {raw.stat().st_size / 1e6:.2f} MB ({time.time() - t:.1f}s)')
+    t = time.time()
+    compress(raw, out / 'home.glb')
+    static = [o.name for obs in atlases.values() for o in obs]
+    check_glb(raw, static)
+    info = check_glb(out / 'home.glb', static)
+    log(f'glb  home.glb {info["bytes"] / 1e6:.2f} MB, {info["triangles"]} triangles, {info["nodes"]} nodes, '
+        f'{info["meshes"]} meshes ({info["instanced_nodes"]} nodes reuse a mesh), {info["images"]} images, '
+        f'TEXCOORD_1 + extras verified ({time.time() - t:.1f}s)')
+
+    # 4. manifest, house.json, 5. footprints
+    vs = sc.view_settings
+    manifest = dict(
+        lightmaps=[lightmaps[k] for k in sorted(lightmaps)],
+        probes=[probes[r] for r in room_ids if r in probes],
+        rooms=[dict(id=r['id'], name=r['name'], polygon=r['polygon'], ceilZ=r['ceilingZ'], floorZ=r['floorZ'])
+               for r in house['rooms']],
+        spawn=dict(pos=list(house.get('spawn', [0, 3]))[:2], yaw=0),
+        toneMapping='agx' if vs.view_transform == 'AgX' else 'none', exposure=round(2 ** vs.exposure, 4),
+        encoding='8-bit sRGB JPEG; linear = srgbDecode(px) * intensity; lightmaps = Cycles diffuse direct+indirect '
+                 'without albedo (radiance of a white surface: multiply by PI for three.js lightMap), on TEXCOORD_1, '
+                 'flipY false; probes = equirect radiance, image centre +X, pos in plan metres (x, y, z up); '
+                 'white balance of the previews already applied',
+        glb=info)
+    (out / 'manifest.json').write_text(json.dumps(manifest, indent=1), encoding='utf-8')
+    (out / 'house.json').write_text(json.dumps(strip_notes(house), indent=1), encoding='utf-8')
+    fp = footprints()
+    (out / 'footprints.json').write_text(json.dumps(fp, indent=1), encoding='utf-8')
+    log(f'manifest: {len(manifest["lightmaps"])} lightmaps, {len(manifest["probes"])} probes; {len(fp)} footprints')
+
+    # 6. hero stills
+    if args.renders:
+        renders(house, args.rooms or room_ids, out.parent / 'renders', max(256, args.samples))
+    log('done')
+    print('EXPORT OK')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException:
+        traceback.print_exc()
+        sys.exit(1)

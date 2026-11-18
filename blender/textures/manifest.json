@@ -1,0 +1,709 @@
+{
+ "_brushed": {
+  "metal": 1.0,
+  "note": "streaks along U",
+  "nrm": "brushed_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "brushed_orm.jpg",
+  "rough": 0.3,
+  "seam": [
+   0.9,
+   0.7
+  ],
+  "size_m": [
+   0.3,
+   0.3
+  ]
+ },
+ "_paint": {
+  "metal": 0.0,
+  "note": "shared by materials.paint() for matt walls",
+  "nrm": "paint_nrm.jpg",
+  "nrm_strength": 1.0,
+  "rough": 0.9,
+  "seam": [
+   0.94,
+   0.96
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ]
+ },
+ "_stipple": {
+  "metal": 0.0,
+  "note": "obscure glass relief",
+  "nrm": "glass_stipple_nrm.jpg",
+  "nrm_strength": 1.0,
+  "rough": 0.15,
+  "seam": [
+   0.93,
+   0.97
+  ],
+  "size_m": [
+   0.15,
+   0.15
+  ]
+ },
+ "carpet_mink": {
+  "base": "carpet_mink_col.jpg",
+  "mean": "#9C968A",
+  "metal": 0.0,
+  "nrm": "carpet_mink_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.94,
+   0.96
+  ],
+  "sheen": 0.3,
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#9C958A"
+ },
+ "check_grey": {
+  "base": "check_grey_col.jpg",
+  "mean": "#B3AD9E",
+  "metal": 0.0,
+  "note": "ivory #E7E1D3 / taupe #9A9382 / crossing #7F7868",
+  "nrm": "check_grey_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.95,
+  "seam": [
+   0.71,
+   0.69
+  ],
+  "size_m": [
+   0.2,
+   0.2
+  ]
+ },
+ "dark_joinery": {
+  "base": "dark_joinery_col.jpg",
+  "mean": "#41342C",
+  "metal": 0.0,
+  "nrm": "wood_black_walnut_veneer_01_nrm.jpg",
+  "nrm_strength": 0.5,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.25,
+  "seam": [
+   0.82,
+   0.92
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#40342C"
+ },
+ "dark_oak_antique": {
+  "base": "dark_oak_antique_col.jpg",
+  "mean": "#3A2A1E",
+  "metal": 0.0,
+  "nrm": "wood_oak_veneer_01_nrm.jpg",
+  "nrm_strength": 0.8,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.3,
+  "seam": [
+   0.41,
+   0.84
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#3A2A1E"
+ },
+ "grey_cabinet": {
+  "base": "grey_cabinet_col.jpg",
+  "mean": "#BCBDB7",
+  "metal": 0.0,
+  "nrm": "wood_ash_veneer_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.4,
+  "seam": [
+   0.46,
+   0.81
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#BDBDB8"
+ },
+ "hardwood_threshold": {
+  "base": "hardwood_threshold_col.jpg",
+  "mean": "#543520",
+  "metal": 0.0,
+  "nrm": "wood_black_walnut_veneer_01_nrm.jpg",
+  "nrm_strength": 0.5,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.4,
+  "seam": [
+   0.82,
+   0.92
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#54351F"
+ },
+ "hearth_marble": {
+  "base": "hearth_marble_col.jpg",
+  "mean": "#E2DBCE",
+  "metal": 0.0,
+  "note": "veins #C4B8A0",
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.25,
+  "seam": [
+   0.61,
+   0.1
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#E2DCCF"
+ },
+ "linen_cream": {
+  "base": "linen_cream_col.jpg",
+  "mean": "#E6D9B8",
+  "metal": 0.0,
+  "nrm": "linen_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.73,
+   0.9
+  ],
+  "size_m": [
+   0.271,
+   0.271
+  ],
+  "target": "#E6D9B8"
+ },
+ "mahogany": {
+  "base": "mahogany_col.jpg",
+  "mean": "#4A2216",
+  "metal": 0.0,
+  "nrm": "wood_sapele_veneer_02_nrm.jpg",
+  "nrm_strength": 0.3,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.12,
+  "seam": [
+   0.54,
+   0.93
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#4A2216"
+ },
+ "mahogany_dark": {
+  "base": "mahogany_dark_col.jpg",
+  "mean": "#3B241A",
+  "metal": 0.0,
+  "nrm": "wood_sapele_veneer_02_nrm.jpg",
+  "nrm_strength": 0.4,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.25,
+  "seam": [
+   0.54,
+   0.92
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#3B241A"
+ },
+ "mahogany_mid": {
+  "base": "mahogany_mid_col.jpg",
+  "mean": "#6A452C",
+  "metal": 0.0,
+  "nrm": "wood_sapele_veneer_02_nrm.jpg",
+  "nrm_strength": 0.4,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.25,
+  "seam": [
+   0.54,
+   0.92
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#6A452C"
+ },
+ "marble_metro": {
+  "base": "marble_metro_col.jpg",
+  "mean": "#EDECE7",
+  "metal": 0.0,
+  "note": "300x100 mm half-bond, grout #DAD8D2",
+  "nrm": "marble_metro_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "marble_metro_orm.jpg",
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.12,
+  "seam": [
+   0.26,
+   0.28
+  ],
+  "size_m": [
+   0.9075,
+   0.615
+  ],
+  "target": "#EFEDE8"
+ },
+ "marble_quartz": {
+  "base": "marble_quartz_col.jpg",
+  "mean": "#F0EFEC",
+  "metal": 0.0,
+  "note": "veins #B5B3AE",
+  "px": [
+   2048,
+   1024
+  ],
+  "rough": 0.1,
+  "seam": [
+   0.27,
+   0.54
+  ],
+  "size_m": [
+   2.4,
+   1.2
+  ],
+  "target": "#F2F1EE"
+ },
+ "metro_grey": {
+  "base": "metro_grey_col.jpg",
+  "mean": "#C5C4BF",
+  "metal": 0.0,
+  "note": "300x100 mm half-bond, grout #EEECE6",
+  "nrm": "metro_grey_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "metro_grey_orm.jpg",
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.12,
+  "seam": [
+   0.16,
+   0.16
+  ],
+  "size_m": [
+   0.909,
+   0.618
+  ],
+  "target": "#C4C2BD"
+ },
+ "navy_cabinet": {
+  "base": "navy_cabinet_col.jpg",
+  "mean": "#22252C",
+  "metal": 0.0,
+  "nrm": "wood_ash_veneer_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.4,
+  "seam": [
+   0.46,
+   0.81
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#23252D"
+ },
+ "oak_door": {
+  "base": "oak_door_col.jpg",
+  "mean": "#C6AC78",
+  "metal": 0.0,
+  "nrm": "wood_oak_veneer_03_nrm.jpg",
+  "nrm_strength": 0.5,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.45,
+  "seam": [
+   0.8,
+   0.92
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#C6AC78"
+ },
+ "oak_floor": {
+  "base": "oak_floor_col.jpg",
+  "mean": "#C4B690",
+  "metal": 0.0,
+  "note": "boards 220 mm along V",
+  "nrm": "oak_floor_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "oak_floor_orm.jpg",
+  "px": [
+   2048,
+   2048
+  ],
+  "rough": 0.5,
+  "seam": [
+   0.14,
+   0.27
+  ],
+  "size_m": [
+   2.2,
+   4.4
+  ],
+  "target": "#C4B790"
+ },
+ "oak_light": {
+  "base": "oak_light_col.jpg",
+  "mean": "#C9A877",
+  "metal": 0.0,
+  "nrm": "wood_oak_veneer_01_nrm.jpg",
+  "nrm_strength": 0.5,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.45,
+  "seam": [
+   0.41,
+   0.85
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#C9A877"
+ },
+ "oak_rustic": {
+  "base": "oak_rustic_col.jpg",
+  "mean": "#A98851",
+  "metal": 0.0,
+  "nrm": "wood_oak_veneer_01_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.5,
+  "seam": [
+   0.41,
+   0.84
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#A98850"
+ },
+ "oak_table": {
+  "base": "oak_table_col.jpg",
+  "mean": "#5F4631",
+  "metal": 0.0,
+  "nrm": "wood_oak_veneer_01_nrm.jpg",
+  "nrm_strength": 0.8,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.3,
+  "seam": [
+   0.41,
+   0.84
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#5E4631"
+ },
+ "oak_worktop": {
+  "base": "oak_worktop_col.jpg",
+  "mean": "#B28D58",
+  "metal": 0.0,
+  "note": "staves 40 mm along V",
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.42,
+  "seam": [
+   0.54,
+   0.65
+  ],
+  "size_m": [
+   1.0,
+   1.8
+  ],
+  "target": "#B38E58"
+ },
+ "shade_ivory": {
+  "base": "shade_ivory_col.jpg",
+  "mean": "#F0E5CF",
+  "metal": 0.0,
+  "nrm": "linen_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.73,
+   0.9
+  ],
+  "size_m": [
+   0.271,
+   0.271
+  ],
+  "target": "#F0E6CF"
+ },
+ "sunflower_tile": {
+  "base": "sunflower_tile_col.jpg",
+  "mean": "#706128",
+  "metal": 0.0,
+  "note": "one 152 mm tube-lined tile per repeat",
+  "nrm": "sunflower_tile_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   512,
+   512
+  ],
+  "rough": 0.1,
+  "seam": [
+   0.02,
+   0.03
+  ],
+  "size_m": [
+   0.152,
+   0.152
+  ]
+ },
+ "tapestry_floral": {
+  "base": "tapestry_floral_col.jpg",
+  "mean": "#DBD1BE",
+  "metal": 0.0,
+  "note": "generic Jacobean floral, repeat 0.30 m, main flower ~0.10 m",
+  "nrm": "tapestry_floral_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.61,
+   0.56
+  ],
+  "size_m": [
+   0.3,
+   0.3
+  ]
+ },
+ "tartan_red": {
+  "base": "tartan_red_col.jpg",
+  "mean": "#907567",
+  "metal": 0.0,
+  "note": "2/2 twill, yarns #8E8271 #A04A45 #E3DCCB #3C3836",
+  "nrm": "tartan_red_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.95,
+  "seam": [
+   0.21,
+   0.21
+  ],
+  "size_m": [
+   0.2,
+   0.2
+  ]
+ },
+ "velvet_champagne": {
+  "base": "velvet_champagne_col.jpg",
+  "mean": "#D3C6A6",
+  "metal": 0.0,
+  "nrm": "velvet_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.85,
+  "seam": [
+   0.82,
+   0.84
+  ],
+  "sheen": 0.6,
+  "size_m": [
+   0.284,
+   0.2735
+  ],
+  "target": "#D3C6A6"
+ },
+ "velvet_orange": {
+  "base": "velvet_orange_col.jpg",
+  "mean": "#B56840",
+  "metal": 0.0,
+  "nrm": "velvet_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.85,
+  "seam": [
+   0.82,
+   0.84
+  ],
+  "sheen": 0.6,
+  "size_m": [
+   0.284,
+   0.2735
+  ],
+  "target": "#B5683F"
+ },
+ "velvet_orange_light": {
+  "base": "velvet_orange_light_col.jpg",
+  "mean": "#C98959",
+  "metal": 0.0,
+  "nrm": "velvet_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.85,
+  "seam": [
+   0.82,
+   0.84
+  ],
+  "sheen": 0.6,
+  "size_m": [
+   0.284,
+   0.2735
+  ],
+  "target": "#C98958"
+ },
+ "victorian_tile": {
+  "base": "victorian_tile_col.jpg",
+  "mean": "#94918E",
+  "metal": 0.0,
+  "note": "blue square at UV (0.5,0.5); black/white/tan/blue #2E2E30 #EDEBE4 #A58F78 #97A3AE",
+  "nrm": "victorian_tile_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "victorian_tile_orm.jpg",
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.45,
+  "seam": [
+   0.05,
+   0.04
+  ],
+  "size_m": [
+   0.33,
+   0.33
+  ]
+ },
+ "wallcovering_aubergine": {
+  "base": "wallcovering_aubergine_col.jpg",
+  "mean": "#44333B",
+  "metal": 0.0,
+  "nrm": "linen_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.73,
+   0.9
+  ],
+  "size_m": [
+   0.54,
+   0.54
+  ],
+  "target": "#44333A"
+ },
+ "wood_tile_floor": {
+  "base": "wood_tile_floor_col.jpg",
+  "mean": "#918979",
+  "metal": 0.0,
+  "note": "planks 200x1200 along V, grout #CFCABB",
+  "nrm": "wood_tile_floor_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "wood_tile_floor_orm.jpg",
+  "px": [
+   1024,
+   2048
+  ],
+  "rough": 0.45,
+  "seam": [
+   0.16,
+   0.17
+  ],
+  "size_m": [
+   1.221,
+   3.6105
+  ],
+  "target": "#8E8676"
+ }
+}

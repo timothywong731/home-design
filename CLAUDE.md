@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A realistic 3D model of the owner's home (ground floor), built in Blender by Python scripts from a
+A realistic 3D model of the owner's home, built in Blender by Python scripts from a
 phone walkthrough video, and published as an interactive three.js viewer with a linked 2D floor
 plan at https://timothywong731.github.io/home-design/.
 
