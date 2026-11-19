@@ -42,7 +42,7 @@ LAYERS = [
 TAG = {"vestibule": "VESTIBULE", "hallway": "HALLWAY", "stairs": None, "living": "LIVING ROOM", "kitchen": "KITCHEN",
        "wc": "WC", "utility": "UTILITY", "dining": "DINING ROOM"}
 TAG_AT = {"vestibule": (0.0, 1.02), "hallway": (0.0, 3.1), "living": (2.0, 1.42), "kitchen": (2.83, 7.3),
-          "wc": (1.72, 9.82), "utility": (1.95, 11.05), "dining": (2.45, 16.25)}   # else representative point
+          "wc": (1.72, 9.82), "utility": (1.95, 11.05), "dining": (2.33, 12.86)}   # else representative point
 CHAR_W = 0.826          # advance / cap height of the reference monospace face (DejaVu Sans Mono)
 CAP = 0.72              # cap height / font size (em): plan.json text h is the font size, DXF TEXT height = CAP * h
 
@@ -472,7 +472,8 @@ def draw_footprints(P, recs):
         for room in sorted({r["room"] for r in recs}):
             rings = [Polygon(r["obb"]).exterior for r in recs if r["plan_sym"] == sym and r["room"] == room]
             if rings:
-                g = linemerge(snap(unary_union(rings)))
+                g = snap(unary_union(rings))
+                g = linemerge(g) if g.geom_type == "MultiLineString" else g          # a single ring is already one line
                 P.geom(g, "A-FLOR-OVHD" if sym in OVHD else "A-FLOR-FIXT", "hidden" if sym in OVHD else None)
     tops = unary_union(tables)
     labs = []

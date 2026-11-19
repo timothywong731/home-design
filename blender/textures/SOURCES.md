@@ -34,7 +34,7 @@ here: whoever adds a crop records its source frame in `art/SOURCES.md`.
 | metro_grey_nrm.jpg | synthesised by gen/tiles.py | project-generated, no third-party content |
 | metro_grey_orm.jpg | synthesised by gen/tiles.py | project-generated, no third-party content |
 | navy_cabinet_col.jpg | Poly Haven CC0: ash_veneer Diffuse, desaturated and recoloured to #23252D | CC0 1.0 (Poly Haven), derivative |
-| oak_door_col.jpg | Poly Haven CC0: oak_veneer_03 Diffuse, recoloured to #C6AC78 | CC0 1.0 (Poly Haven), derivative |
+| oak_door_col.jpg | Poly Haven CC0: oak_veneer_03 Diffuse, recoloured to #A7954E | CC0 1.0 (Poly Haven), derivative |
 | oak_floor_col.jpg | Poly Haven CC0: washed_grey_oak_veneer Diffuse cut into 220 mm boards by gen/woods.py, knots synthesised | CC0 1.0 (Poly Haven), derivative |
 | oak_floor_nrm.jpg | synthesised (board bevels + grain) gen/woods.py | project-generated, no third-party content |
 | oak_floor_orm.jpg | synthesised gen/woods.py | project-generated, no third-party content |

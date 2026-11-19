@@ -1,1 +1,97 @@
-[]
+[
+ {
+  "file": "vestibule_inner.jpg",
+  "room": "vestibule",
+  "title": "Vestibule - inner doors"
+ },
+ {
+  "file": "hallway_front.jpg",
+  "room": "hallway",
+  "title": "Hallway - from the inner doors"
+ },
+ {
+  "file": "hallway_rear.jpg",
+  "room": "hallway",
+  "title": "Hallway - looking to the front"
+ },
+ {
+  "file": "stairs_foot.jpg",
+  "room": "stairs",
+  "title": "Staircase"
+ },
+ {
+  "file": "living_door.jpg",
+  "room": "living",
+  "title": "Living room - from the door"
+ },
+ {
+  "file": "living_gallery.jpg",
+  "room": "living",
+  "title": "Living room - bookcase and paintings"
+ },
+ {
+  "file": "living_tv.jpg",
+  "room": "living",
+  "title": "Living room - TV wall"
+ },
+ {
+  "file": "living_bay.jpg",
+  "room": "living",
+  "title": "Living room - bay window"
+ },
+ {
+  "file": "kitchen_corner.jpg",
+  "room": "kitchen",
+  "title": "Kitchen - from the garden door"
+ },
+ {
+  "file": "kitchen_sink.jpg",
+  "room": "kitchen",
+  "title": "Kitchen - sink, plate rack and wine rack"
+ },
+ {
+  "file": "kitchen_nook.jpg",
+  "room": "kitchen",
+  "title": "Kitchen - bar nook and garden door"
+ },
+ {
+  "file": "kitchen_hob.jpg",
+  "room": "kitchen",
+  "title": "Kitchen - hob and extractor"
+ },
+ {
+  "file": "utility_door.jpg",
+  "room": "utility",
+  "title": "Utility room"
+ },
+ {
+  "file": "utility_tall.jpg",
+  "room": "utility",
+  "title": "Utility room - tall unit"
+ },
+ {
+  "file": "wc_pan.jpg",
+  "room": "wc",
+  "title": "Cloakroom"
+ },
+ {
+  "file": "dining_entry.jpg",
+  "room": "dining",
+  "title": "Dining room - from the door"
+ },
+ {
+  "file": "dining_fire.jpg",
+  "room": "dining",
+  "title": "Dining room - fireplace"
+ },
+ {
+  "file": "dining_north.jpg",
+  "room": "dining",
+  "title": "Dining room - table and French doors"
+ },
+ {
+  "file": "dining_west.jpg",
+  "room": "dining",
+  "title": "Dining room - mirror and crest plaques"
+ }
+]

@@ -73,7 +73,7 @@ def metro(key, tile, grout_m, nx, ny, px, body, grout_hex, seed, var=0.04, vein=
     shade = (1 + rng.normal(0, var * 0.6, nx * ny))[tid]
     col = lin(hex3(body))[None, None, :] * shade[..., None]
     if vein:                                   # each tile is a different crop of one marble print
-        V = 0.8 * veins(1024, 1024, seed + 3, n=9, angle=32, length=(0.25, 0.6), width=2.0)
+        V = 0.9 * veins(1024, 1024, seed + 3, n=12, angle=32, length=(0.25, 0.6), width=3.5)     # soft 3-8 mm bands on about every other tile
         ox, oy = rng.integers(0, 1024, nx * ny)[tid], rng.integers(0, 1024, nx * ny)[tid]
         a = V[((ly / hm * H).astype(int) + oy) % 1024, ((lx / wm * W).astype(int) + ox) % 1024]
         col = col * (1 - a[..., None]) + lin(hex3(vein)) * a[..., None]
@@ -178,7 +178,7 @@ def sunflower():
 def main():
     victorian()
     metro('metro_grey', (0.300, 0.100), 0.003, 3, 6, (1024, 1024), '#C4C2BD', '#EEECE6', seed=41, var=0.04)
-    metro('marble_metro', (0.300, 0.100), 0.0025, 3, 6, (1024, 1024), '#EFEDE8', '#DAD8D2', seed=51, var=0.01, vein='#A3A3A0')
-    slab('marble_quartz', '#F2F1EE', '#B5B3AE', (2.4, 1.2), (2048, 1024), seed=61, rough=0.1, n=5, angle=33, width=5.0, length=(0.45, 0.9))
+    metro('marble_metro', (0.300, 0.100), 0.0025, 3, 6, (1024, 1024), '#EFEDE8', '#C9C7C0', seed=51, var=0.01, vein='#A3A3A0')
+    slab('marble_quartz', '#F2F1EE', '#9E9A92', (2.4, 1.2), (2048, 1024), seed=61, rough=0.1, n=7, angle=33, width=8.0, length=(0.45, 0.9))
     slab('hearth_marble', '#E2DCCF', '#C4B8A0', (1.2, 1.2), (1024, 1024), seed=71, rough=0.25, n=5, angle=12, width=3.0, cloud=0.03, strength=0.7, length=(0.4, 0.8))
     sunflower()

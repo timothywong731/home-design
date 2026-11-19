@@ -278,9 +278,9 @@
  },
  "marble_metro": {
   "base": "marble_metro_col.jpg",
-  "mean": "#EDECE7",
+  "mean": "#ECEBE6",
   "metal": 0.0,
-  "note": "300x100 mm half-bond, grout #DAD8D2",
+  "note": "300x100 mm half-bond, grout #C9C7C0",
   "nrm": "marble_metro_nrm.jpg",
   "nrm_strength": 1.0,
   "orm": "marble_metro_orm.jpg",
@@ -290,8 +290,8 @@
   ],
   "rough": 0.12,
   "seam": [
-   0.26,
-   0.28
+   0.14,
+   0.15
   ],
   "size_m": [
    0.9075,
@@ -301,17 +301,17 @@
  },
  "marble_quartz": {
   "base": "marble_quartz_col.jpg",
-  "mean": "#F0EFEC",
+  "mean": "#ECEBE8",
   "metal": 0.0,
-  "note": "veins #B5B3AE",
+  "note": "veins #9E9A92",
   "px": [
    2048,
    1024
   ],
   "rough": 0.1,
   "seam": [
-   0.27,
-   0.54
+   0.24,
+   0.44
   ],
   "size_m": [
    2.4,
@@ -365,28 +365,28 @@
  },
  "oak_door": {
   "base": "oak_door_col.jpg",
-  "mean": "#C6AC78",
+  "mean": "#A7954E",
   "metal": 0.0,
   "nrm": "wood_oak_veneer_03_nrm.jpg",
-  "nrm_strength": 0.5,
+  "nrm_strength": 0.6,
   "px": [
    1024,
    1024
   ],
-  "rough": 0.45,
+  "rough": 0.42,
   "seam": [
    0.8,
-   0.92
+   0.91
   ],
   "size_m": [
    1.2,
    1.2
   ],
-  "target": "#C6AC78"
+  "target": "#A7954E"
  },
  "oak_floor": {
   "base": "oak_floor_col.jpg",
-  "mean": "#C4B690",
+  "mean": "#AE9E66",
   "metal": 0.0,
   "note": "boards 220 mm along V",
   "nrm": "oak_floor_nrm.jpg",
@@ -396,16 +396,16 @@
    2048,
    2048
   ],
-  "rough": 0.5,
+  "rough": 0.38,
   "seam": [
-   0.14,
-   0.27
+   0.28,
+   0.38
   ],
   "size_m": [
    2.2,
    4.4
   ],
-  "target": "#C4B790"
+  "target": "#AF9F66"
  },
  "oak_light": {
   "base": "oak_light_col.jpg",
@@ -685,7 +685,7 @@
  },
  "wood_tile_floor": {
   "base": "wood_tile_floor_col.jpg",
-  "mean": "#918979",
+  "mean": "#847E67",
   "metal": 0.0,
   "note": "planks 200x1200 along V, grout #CFCABB",
   "nrm": "wood_tile_floor_nrm.jpg",
@@ -697,13 +697,13 @@
   ],
   "rough": 0.45,
   "seam": [
-   0.16,
-   0.17
+   0.14,
+   0.13
   ],
   "size_m": [
    1.221,
    3.6105
   ],
-  "target": "#8E8676"
+  "target": "#807A62"
  }
 }

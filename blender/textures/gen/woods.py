@@ -10,9 +10,10 @@ PH = 'Poly Haven CC0: '
 # ---------------------------------------------------------------- plain veneers
 # key: (asset, rot90s so grain is vertical, hex, contrast, declared size m, roughness, normal strength)
 PLAIN = {
-    # light straw oak door leaves (living/kitchen/utility/dining, pocket door): frames f_0741 / f_0499 read far lighter and
-    # yellower than the room specs' #B08A56 (dining.md: #CFB682); fine straight grain with a faint cathedral
-    'oak_door':           ('oak_veneer_03', 1, '#C6AC78', 0.9, 1.2, 0.45, 0.5),
+    # golden oak door leaves (living/kitchen/utility/dining, pocket door + lining). Integration: the first straw value
+    # #C6AC78 rendered pale peach (#BBA993) beside white joinery where f_0499 / f_0745 show #A48A4E lit, #7B6742 in
+    # shade (door/white luminance ~0.5), so it is now deeper and yellower than the specs' neutral #B08A56 / #B8915A
+    'oak_door':           ('oak_veneer_03', 1, '#A7954E', 1.2, 1.2, 0.42, 0.6),
     'oak_rustic':         ('oak_veneer_01', 0, '#A98850', 1.1, 1.2, 0.50, 1.0),   # waxed rustic oak TV unit
     'oak_light':          ('oak_veneer_01', 0, '#C9A877', 0.8, 1.2, 0.45, 0.5),   # bare oak carcass / filler strip
     'oak_table':          ('oak_veneer_01', 0, '#5E4631', 1.1, 1.2, 0.30, 0.8),   # dining table top, coffee table
@@ -124,40 +125,46 @@ def grain_height(img, sigma_px):
 
 def oak_floor():
     """Engineered oak, rustic grade: boards 220 mm wide, 1.2-2.2 m long, micro-bevelled, satin.
-    Pale grey-beige with fine straight (quarter-sawn) grain and sparse brown knots, as filmed
-    (f_0064, f_0741): low figure contrast, per-channel std ~8/255."""
+    Golden straw oak with visible cathedral figure, board-to-board tone steps and brown knots, as filmed
+    (f_0064, f_0745). Integration retune: the first pale grey-beige #C4B790 rendered #BBAE96 (pinkish straw
+    laminate) where the frames read #AC9D74, so the target is yellower and ~8 % darker, and satin (0.38)
+    so the downlight streaks show."""
     W, H, wm, hm = 2048, 2048, 2.2, 4.4
     px = (wm / W, hm / H)
-    hx = '#C4B790'                                            # hallway.md #C9B48A, greyed toward the frame samples
-    src = recolor(equalize(load('washed_grey_oak_veneer', 'Diffuse', None, 1)), hx, contrast=0.8)
+    hx = '#AF9F66'
+    a = equalize(load('washed_grey_oak_veneer', 'Diffuse', 2048, 1))      # fine straight grain ...
+    b = equalize(load('oak_veneer_01', 'Diffuse', 2048, 0))               # ... plus flat-sawn cathedral figure
+    src = recolor(0.45 * a + 0.55 * b, hx, contrast=1.25)
     src = resize(src, (int(1.83 / px[0]), int(1.83 / px[1])))
     sk = noise(src.shape[0], src.shape[1], 5, 36, 13, aniso=(90, 30))     # rustic grade: soft darker streaks along the grain
-    src = srgb(lin(src) * (1 - 0.06 * np.clip(sk, 0, 2.5))[..., None])
-    col, dx, dy = planks(src, W, H, 10, (1.2 / px[1], 2.2 / px[1]), seed=11, var=0.035, hue=0.2)
+    src = srgb(lin(src) * (1 - 0.09 * np.clip(sk, 0, 2.5))[..., None])
+    col, dx, dy = planks(src, W, H, 10, (1.2 / px[1], 2.2 / px[1]), seed=11, var=0.065, hue=0.2)
     col = recolor(col, hx)
-    col = knots(col, 11, px, seed=12, dark=1.0)               # ~1 knot per 2-3 boards, brown not black
+    col = knots(col, 24, px, seed=12, hx='#5B4A33', size=(0.007, 0.022), dark=0.8)   # ~1 knot per board; dull brown (redder ones rendered as pink dots)
     d = np.minimum(dx * px[0], dy * px[1])                    # metres to the board edge
     bevel = np.clip(1 - d / 0.0016, 0, 1)                     # 1.6 mm micro-bevel each side
     col = srgb(lin(col) * (1 - 0.45 * bevel ** 2)[..., None])
     gh = grain_height(col, 3)
     height = -0.0006 * bevel + 0.00003 * gh
-    rough = np.clip(0.50 + 0.04 * blur(gh, 1) + 0.25 * bevel, 0.2, 0.9)
+    rough = np.clip(0.38 + 0.05 * blur(gh, 1) + 0.25 * bevel, 0.2, 0.9)
     print('oak_floor std/255', (col * 255).reshape(-1, 3).std(0).round(1))
     b = save('oak_floor_col', col, PH + 'washed_grey_oak_veneer Diffuse cut into 220 mm boards by gen/woods.py, knots synthesised')
     n = save('oak_floor_nrm', normal(height, *px), 'synthesised (board bevels + grain) gen/woods.py')
     o = save('oak_floor_orm', orm(rough), 'synthesised gen/woods.py')
-    reg('oak_floor', b, (wm, hm), nrm=n, orm=o, rough=0.50, target=hx, note='boards 220 mm along V')
+    reg('oak_floor', b, (wm, hm), nrm=n, orm=o, rough=0.38, target=hx, note='boards 220 mm along V')
 
 
 def wood_tile_floor():
     """Wood-effect porcelain planks 200 x 1200, 3.5 mm light grout, irregular third-bond.
-    Weathered grey-brown barn-wood print (f_0388, f_0499): streaky dark grain, pale worn patches,
-    clear tone steps from plank to plank."""
+    Weathered grey-brown barn-wood print (f_0388, f_0499): soft low-contrast weathering, fine grain,
+    clear tone steps from plank to plank. Integration retune: the first version's bold dark streaks read
+    as zebra stripes in every kitchen / utility / WC view; they are now ~60 % of that depth, the base is
+    greyer-olive and ~8 % darker (#807A62), and the plank-to-plank steps are larger."""
     grout_m, pw, pl = 0.0035, 0.200, 1.200
     W, H = 1024, 2048
     wm, hm = 6 * (pw + grout_m), 3 * (pl + grout_m)
     px = (wm / W, hm / H)
-    hx, dark, light = '#8E8676', '#5C564B', '#ABA392'          # kitchen.md 3.5: base / dark grain / light streaks
+    hx, dark, light = '#807A62', '#5C564B', '#A69C8A'          # base / dark grain / light streaks
     a = load('smoked_walnut_veneer', 'Diffuse', None, 1)
     b = load('washed_grey_oak_veneer', 'Diffuse', None, 1)
     src = recolor(0.45 * a + 0.55 * b, hx, contrast=1.1, sat=0.4)
@@ -166,12 +173,12 @@ def wood_tile_floor():
     st = noise(sh, sw, 4, 16, 24, aniso=(90, 40))             # long dark streaks along the plank, 5-15 mm wide
     sm = noise(sh, sw, 40, 150, 26, aniso=(90, 6))            # smoky weathered patches the streaks gather in
     pt = noise(sh, sw, 30, 120, 25, aniso=(90, 10))           # broad worn / pale bands
-    ad = (np.clip((0.55 * st + 1.25 * sm - 0.35) / 2.0, 0, 1) ** 1.2)[..., None]
+    ad = 0.6 * (np.clip((0.55 * st + 1.25 * sm - 0.35) / 2.0, 0, 1) ** 1.2)[..., None]
     al = (0.7 * np.clip((pt - 0.2) / 1.8, 0, 1))[..., None]
     L, base = lin(src), lin(hex3(hx))
     L = L * (1 + al * (lin(hex3(light)) / base - 1)) * (1 + ad * (lin(hex3(dark)) / base * 0.8 - 1))
     src = srgb(np.clip(L, 0, 1))
-    col, dx, dy = planks(src, W, H, 6, H // 3, seed=21, var=0.08, stagger=[0.0, 0.34, 0.71, 0.12, 0.60, 0.88], hue=0.12)
+    col, dx, dy = planks(src, W, H, 6, H // 3, seed=21, var=0.12, stagger=[0.0, 0.34, 0.71, 0.12, 0.60, 0.88], hue=0.12)
     col = recolor(col, hx)
     col = knots(col, 10, px, seed=22, hx=dark, size=(0.006, 0.012))
     d = np.minimum(dx * px[0], dy * px[1])

@@ -64,4 +64,15 @@ const obs = G.obstaclesFrom({ items: [{ sym: 'table', center: [1.2, 14.6], size:
 assert.equal(obs.length, 1);
 const W2 = G.buildWalk(house, { obstacles: obs });
 assert.ok(!G.isFree(W2, 1.2, 14.6) && G.isFree(W, 1.2, 14.6));
-console.log('geom ok:', W.portals.length, 'portals,', W.rooms.length, 'walkable rooms');
+// the furnished export: with the real furniture footprints as obstacles every room viewpoint can still be walked to
+// from the spawn (flood fill on a 5 cm grid at the viewer's body radius), and the dining table really blocks
+const foot = JSON.parse(readFileSync(new URL('../assets/footprints.json', import.meta.url)));
+const WF = G.buildWalk(house, { radius: 0.2, obstacles: G.obstaclesFrom(foot) });
+assert.ok(WF.obstacles.length > 30 && !G.isFree(WF, 1.14, 14.61), 'furniture footprints loaded, dining table solid');
+const h = 0.05, cell = (x, y) => Math.round(x / h) + ',' + Math.round(y / h), seen = new Set([cell(...house.spawn)]);
+for (const stack = [house.spawn.map((v) => Math.round(v / h))]; stack.length;) {
+  const [i, j] = stack.pop();
+  for (const [a, b] of [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]) if (!seen.has(a + ',' + b) && G.isFree(WF, a * h, b * h)) { seen.add(a + ',' + b); stack.push([a, b]); }
+}
+for (const [id, v] of Object.entries(G.viewpoints(WF, house.spawn))) assert.ok(seen.has(cell(...v.pos)), `no walkable route from the spawn into ${id}`);
+console.log('geom ok:', W.portals.length, 'portals,', W.rooms.length, 'walkable rooms,', WF.obstacles.length, 'furniture obstacles,', (seen.size * h * h).toFixed(1), 'm2 reachable');

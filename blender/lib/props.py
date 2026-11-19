@@ -27,11 +27,12 @@ except ImportError:                      # run directly as the contact-sheet scr
 # ----------------------------------------------------------------------------- materials
 # Props-only constant colours: key -> (hex, roughness, metallic). Everything else is a lib.materials key.
 _PAL = {
-    'gold_antique': ('#9C8440', .42, 1), 'gold_bronze': ('#8C7446', .45, 1),
+    # golds: olive bases - the first orange-leaning ones (#9C8440 / #8C7446) rendered copper next to coloured walls
+    'gold_antique': ('#928A52', .42, 1), 'gold_bronze': ('#8E8458', .45, 1),
     'olive_bronze': ('#7C7048', .45, .8), 'silver_green': ('#B9B59F', .45, .6),
     'frame_dark': ('#2E261C', .45, 0), 'walnut': ('#4A3524', .45, 0),
     'plastic_dark': ('#151515', .5, 0), 'ivory': ('#EFE6CF', .7, 0),
-    'cream_mount': ('#ECE7DA', .9, 0), 'tassel_gold': ('#C9B45A', .7, 0),
+    'cream_mount': ('#ECE7DA', .9, 0), 'tassel_gold': ('#B5A174', .7, 0),
     'soil': ('#2B2019', .95, 0), 'bark': ('#5A4632', .85, 0),
     'leaf_green': ('#2F5A2A', .35, 0), 'leaf_mid': ('#3F6B2E', .4, 0), 'leaf_lime': ('#A9C24A', .4, 0),
     'leaf_grey': ('#8A9A86', .7, 0), 'fruit_orange': ('#E08A1E', .45, 0), 'terracotta': ('#B0603C', .8, 0),

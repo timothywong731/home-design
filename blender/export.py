@@ -2,7 +2,8 @@
 Documented in blender/lib/README.md (section "export").
 
 blender -b [--factory-startup] build/home.blend --python blender/export.py -- --out docs/assets
-        [--bake-res 2048] [--samples 256] [--density 160] [--probe-res 1024] [--rooms a,b] [--skip-bake] [--renders]
+        [--bake-res 2048] [--samples 256] [--density 160] [--probe-res 1024] [--rooms a,b] [--skip-bake]
+        [--renders] [--stills-only] [--still-res 1920x1080]
 """
 import argparse
 import json
@@ -37,14 +38,30 @@ def parse():
     ap.add_argument('--probe-res', type=int, default=1024, help='probe panorama width')
     ap.add_argument('--rooms', default='', help='bake / render only these rooms (others keep their old images)')
     ap.add_argument('--skip-bake', action='store_true', help='no lightmaps or probes: GLB, manifest, footprints only')
-    ap.add_argument('--renders', action='store_true', help='hero stills into <out>/../renders')
+    ap.add_argument('--renders', action='store_true', help='hero stills (HEROES) into <out>/../renders')
+    ap.add_argument('--stills-only', action='store_true', help='only the hero stills: no bake, GLB or manifest')
+    ap.add_argument('--still-res', default='1920x1080', help='hero still size (smaller for framing tests)')
     a = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
     a.out = (ROOT / a.out).resolve()
     a.rooms = [s for s in a.rooms.split(',') if s]
+    a.still_res = tuple(int(v) for v in a.still_res.split('x'))
     return a
 
 
 # ------------------------------------------------------------------ GLB
+def flatten():
+    """Clear every parent, keeping world transforms. A glTF node that has both a mesh and children gets its mesh
+    moved into an unnamed child by the quantisation of glTF-Transform, and the viewer could then no longer tell a
+    lightmapped cabinet from the probe-lit handles parented to it. Flat, every node is a named mesh with its own
+    extras. Call after footprints() (which needs the children)."""
+    bpy.context.view_layer.update()
+    for o in [o for o in bpy.context.scene.objects if o.parent]:
+        mw = o.matrix_world.copy()
+        o.parent = None
+        o.matrix_world = mw
+    bpy.context.view_layer.update()
+
+
 def export_glb(path):
     """Everything except lights, cameras and obj['no_export'], +Y up, custom props as extras, both UV sets,
     textures embedded in their source format (JPEG). Modifiers were applied by export_bake.apply_modifiers."""
@@ -101,11 +118,14 @@ def check_glb(path, lightmapped):
 
 # ------------------------------------------------------------------ plan footprints
 def footprints():
-    """Every object tagged plan_sym: tight oriented rectangle of its (and its children's) vertices in world XY."""
+    """Every object tagged plan_sym: tight oriented rectangle of its (and its children's) vertices in world XY.
+    The kitchen pedal bins carry obj['toggle'] = 'bins' instead of a plan symbol; they stand on the floor, so they
+    are written as plan_sym 'bin' (drawn on the plan, solid for the walker)."""
     import export_bake as EB
     out = []
     for o in bpy.context.scene.objects:
-        if not o.get('plan_sym') or o.get('no_export'):
+        sym = o.get('plan_sym') or ('bin' if o.get('toggle') == 'bins' else None)
+        if not sym or o.get('no_export'):
             continue
         pts = []
         for m in [o] + list(o.children_recursive):
@@ -119,7 +139,7 @@ def footprints():
         R, lo, hi = EB.fit_box(p[:, :2])
         obb = np.array([[lo[0], lo[1]], [hi[0], lo[1]], [hi[0], hi[1]], [lo[0], hi[1]]]) @ R      # back to world
         zmin, zmax = float(p[:, 2].min()), float(p[:, 2].max())
-        out.append(dict(name=o.name, room=o.get('room'), plan_sym=o['plan_sym'], obb=np.round(obb, 4).tolist(),
+        out.append(dict(name=o.name, room=o.get('room'), plan_sym=sym, obb=np.round(obb, 4).tolist(),
                         zmin=round(zmin, 4), zmax=round(zmax, 4), height=round(zmax - zmin, 4)))
     return sorted(out, key=lambda r: r['name'])
 
@@ -131,32 +151,54 @@ def strip_notes(v):
 
 
 # ------------------------------------------------------------------ hero renders
-def renders(house, rooms, out, samples):
-    """Cycles stills (1920x1080, AgX and white balance of the scene, denoised) from each room module's CAMERAS, or
-    the reference-matched preview defaults. The cameras are ultrawide portrait matches of the phone frames, so the
-    field of view is capped at 90 degrees for the landscape stills. Merges into an existing index.json."""
-    from build import load_room
+# Landscape stills for the gallery: (file stem, room, title, camera position, look-at point, horizontal fov in
+# degrees), world metres. Framed by hand on the furnished model (the room modules' CAMERAS are portrait matches of
+# the phone frames); every one was rendered and looked at. Keep cameras >= 0.25 m clear of furniture.
+HEROES = [
+    ('vestibule_inner', 'vestibule', 'Vestibule - inner doors', (0.0, 0.15, 1.55), (0.0, 1.78, 0.95), 90),
+    ('hallway_front', 'hallway', 'Hallway - from the inner doors', (0.2, 2.2, 1.55), (-0.1, 8.0, 1.2), 80),
+    ('hallway_rear', 'hallway', 'Hallway - looking to the front', (-0.1, 12.0, 1.55), (-0.1, 5.0, 1.3), 75),
+    ('stairs_foot', 'stairs', 'Staircase', (-0.2, 3.7, 1.5), (0.6, 6.6, 1.35), 75),
+    ('living_door', 'living', 'Living room - from the door', (1.05, 4.3, 1.5), (3.6, 1.6, 1.0), 85),
+    ('living_gallery', 'living', 'Living room - bookcase and paintings', (1.3, 1.6, 1.45), (4.0, 4.2, 1.5), 85),
+    ('living_tv', 'living', 'Living room - TV wall', (3.3, 3.4, 1.4), (0.8, 2.2, 1.3), 80),
+    ('living_bay', 'living', 'Living room - bay window', (2.5, 3.9, 1.5), (2.55, 0.0, 1.3), 80),
+    ('kitchen_corner', 'kitchen', 'Kitchen - from the garden door', (4.0, 8.4, 1.55), (1.9, 5.6, 1.1), 85),
+    ('kitchen_sink', 'kitchen', 'Kitchen - sink, plate rack and wine rack', (2.9, 7.7, 1.5), (2.55, 5.31, 1.3), 80),
+    ('kitchen_nook', 'kitchen', 'Kitchen - bar nook and garden door', (3.55, 7.0, 1.5), (1.9, 9.1, 1.3), 85),
+    ('kitchen_hob', 'kitchen', 'Kitchen - hob and extractor', (1.75, 8.3, 1.5), (4.3, 6.4, 1.2), 85),
+    ('utility_door', 'utility', 'Utility room', (0.75, 10.6, 1.5), (2.6, 12.0, 1.1), 90),
+    ('utility_tall', 'utility', 'Utility room - tall unit', (1.0, 11.3, 1.5), (3.1, 10.9, 1.3), 85),
+    ('wc_pan', 'wc', 'Cloakroom', (1.2, 9.75, 1.5), (3.1, 9.75, 1.0), 90),
+    ('dining_entry', 'dining', 'Dining room - from the door', (-0.35, 12.7, 1.5), (2.4, 15.6, 1.1), 85),
+    ('dining_fire', 'dining', 'Dining room - fireplace', (-0.4, 14.0, 1.5), (3.0, 14.9, 1.2), 80),
+    ('dining_north', 'dining', 'Dining room - table and French doors', (1.9, 12.62, 1.55), (0.9, 16.9, 1.2), 80),
+    ('dining_west', 'dining', 'Dining room - mirror and crest plaques', (2.6, 15.9, 1.5), (-0.65, 14.0, 1.5), 85),
+]
+
+
+def renders(rooms, out, samples, res):
+    """Cycles stills of HEROES (AgX and white balance of the scene, denoised, JPEG quality 88) -> <out>/<stem>.jpg
+    and index.json [{file, room, title}] in HEROES order; rooms not asked for keep their old entries."""
     from lib import preview
     out.mkdir(parents=True, exist_ok=True)
     idx = out / 'index.json'
-    index = [e for e in (json.loads(idx.read_text(encoding='utf-8')) if idx.exists() else []) if e.get('room') not in rooms]
-    for r in house['rooms']:
-        rid = r['id']
-        if rid not in rooms:
-            continue
-        try:
-            cams = getattr(load_room(rid), 'CAMERAS', None)
-        except Exception:
-            traceback.print_exc()
-            cams = None
-        for c in cams or preview.DEFAULT_CAMERAS.get(rid, []):
-            cam = preview.camera(f'hero.{rid}.{c["name"]}', c['pos'], c['look'], min(c.get('fov_deg', 75), 90))
-            preview.render(cam, out / f'{rid}_{c["name"]}.jpg', (1920, 1080), samples)
+    old = {e['file']: e for e in (json.loads(idx.read_text(encoding='utf-8')) if idx.exists() else [])}
+    sc, index = bpy.context.scene, []
+    for stem, room, title, pos, look, fov in HEROES:
+        entry = dict(file=f'{stem}.jpg', room=room, title=title)
+        if room in rooms:
+            cam = preview.camera('hero.' + stem, pos, look, fov)
+            sc.camera, sc.cycles.samples = cam, samples
+            sc.render.resolution_x, sc.render.resolution_y = res
+            sc.render.image_settings.file_format, sc.render.image_settings.quality = 'JPEG', 88
+            sc.render.filepath = str(out / entry['file'])
+            bpy.ops.render.render(write_still=True)
             bpy.data.objects.remove(cam)
-            index.append(dict(file=f'{rid}_{c["name"]}.jpg', room=rid, title=f'{r["name"].split(" /")[0]} - {c["name"]}'))
-            log(f'render {rid}_{c["name"]}.jpg')
-    order = [r['id'] for r in house['rooms']]
-    index.sort(key=lambda e: order.index(e['room']) if e['room'] in order else 99)
+            log(f'render {entry["file"]}')
+        elif entry['file'] not in old:
+            continue
+        index.append(entry)
     idx.write_text(json.dumps(index, indent=1), encoding='utf-8')
 
 
@@ -173,6 +215,10 @@ def main():
     sc = bpy.context.scene
     lighting.setup_cycles(args.samples)          # GPUs + denoiser (preferences are per run), AgX, white balance
     sc.cycles.adaptive_threshold = 0.01
+    if args.stills_only:
+        renders(args.rooms or room_ids, out.parent / 'renders', max(256, args.samples), args.still_res)
+        print('EXPORT OK')
+        return
 
     objs = EB.mesh_objects()
     applied, unique = EB.apply_modifiers(objs)
@@ -231,7 +277,9 @@ def main():
         probes[rid] = dict(room=rid, image=f'probes/{rid}.jpg', pos=list(pos), intensity=k)
         log(f'probe {rid:10s} at {pos}, intensity {k} ({time.time() - t:.1f}s)')
 
-    # 3. GLB
+    # 3. GLB (plan footprints first: they need the parent-child links that flatten() removes)
+    fp = footprints()
+    flatten()
     t = time.time()
     raw = tmp / 'home_raw.glb'
     export_glb(raw)
@@ -254,20 +302,24 @@ def main():
                for r in house['rooms']],
         spawn=dict(pos=list(house.get('spawn', [0, 3]))[:2], yaw=0),
         toneMapping='agx' if vs.view_transform == 'AgX' else 'none', exposure=round(2 ** vs.exposure, 4),
+        whiteBalance=np.round(M, 5).tolist(),      # 3x3, rows: the viewer applies it to emissive colours
+        sky=EB.display_hex([c * lighting.SKY_STRENGTH for c in lighting.SKY_COLOR]),     # world colour as displayed
         encoding='8-bit sRGB JPEG; linear = srgbDecode(px) * intensity; lightmaps = Cycles diffuse direct+indirect '
                  'without albedo (radiance of a white surface: multiply by PI for three.js lightMap), on TEXCOORD_1, '
                  'flipY false; probes = equirect radiance, image centre +X, pos in plan metres (x, y, z up); '
-                 'white balance of the previews already applied',
+                 'white balance of the previews already applied; whiteBalance = that matrix (scene linear, rows) for '
+                 'emissive colours, which the GLB carries unbalanced; sky = sRGB of the world behind the windows',
+        # room-jump views of the viewer: the first hero still of each room (the viewer snaps pos to walkable floor)
+        viewpoints={room: dict(pos=list(pos[:2]), look=list(look[:2])) for _, room, _, pos, look, _ in reversed(HEROES)},
         glb=info)
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=1), encoding='utf-8')
     (out / 'house.json').write_text(json.dumps(strip_notes(house), indent=1), encoding='utf-8')
-    fp = footprints()
     (out / 'footprints.json').write_text(json.dumps(fp, indent=1), encoding='utf-8')
     log(f'manifest: {len(manifest["lightmaps"])} lightmaps, {len(manifest["probes"])} probes; {len(fp)} footprints')
 
     # 6. hero stills
     if args.renders:
-        renders(house, args.rooms or room_ids, out.parent / 'renders', max(256, args.samples))
+        renders(args.rooms or room_ids, out.parent / 'renders', max(256, args.samples), args.still_res)
     log('done')
     print('EXPORT OK')
 

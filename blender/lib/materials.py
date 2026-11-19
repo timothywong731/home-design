@@ -25,13 +25,15 @@ CONST = {
     # metals
     # polished brass (door furniture, chandeliers, picture rail). The specs' #C9A44C is the colour it looks; as a metallic
     # base colour that rendered copper-orange, so the reflectance is paler (frames show pale polished brass).
-    'brass':            dict(hex='#E3CC8E', rough=0.18, metal=1),
+    # Integration: all gold / brass bases moved from orange toward olive-yellow - hall, living, stairs, dining and WC
+    # each measured the old ones (#E3CC8E, #B0903C, #C8A84B, #B9A56A) as orange / rose against the frames.
+    'brass':            dict(hex='#D3C882', rough=0.18, metal=1),
     'brass_antique':    dict(hex='#B09A62', rough=0.35, metal=1),   # satin knurled kitchen handles
     'bronze_antique':   dict(hex='#6F5C3A', rough=0.40, metal=1),   # utility handles
     'bronze_dark':      dict(hex='#5C4B3A', rough=0.50, metal=1),   # relief plaques, fireplace insert
-    'gilt':             dict(hex='#B0903C', rough=0.35, metal=1),   # antique gold frames
-    'gilt_bright':      dict(hex='#C8A84B', rough=0.25, metal=1),   # bright gold frames (WC mirror)
-    'gold_champagne':   dict(hex='#B9A56A', rough=0.40, metal=1),   # brushed champagne frames
+    'gilt':             dict(hex='#A2924A', rough=0.35, metal=1),   # antique gold frames
+    'gilt_bright':      dict(hex='#B8A655', rough=0.25, metal=1),   # bright gold frames (WC mirror)
+    'gold_champagne':   dict(hex='#B8AE7C', rough=0.40, metal=1),   # brushed champagne frames
     'chrome':           dict(hex='#D0D2D2', rough=0.05, metal=1),
     'steel_brushed':    dict(hex='#B9B9B6', rough=0.30, metal=1, tex='_brushed', nrm=1.0),   # hood, appliances
     'nickel_brushed':   dict(hex='#A9AAA8', rough=0.30, metal=1, tex='_brushed', nrm=1.0),   # sink, filter tap

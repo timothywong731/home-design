@@ -12,8 +12,10 @@ WHITE_TINT = -10                     # slightly yellow whites (wall #F2F0EA rend
 SUN_DIR = (-0.38, 0.72, -0.58)       # direction the light TRAVELS: from the front-right, 35 deg up
 SUN_STRENGTH = 2.5
 SUN_KELVIN = 3600                    # low golden sun; with SKY_COLOR keeps daylit rooms from going lilac under the lamp white balance
-SKY_STRENGTH = 0.6
-SKY_COLOR = (0.86, 0.92, 1.0)
+# Dusk sky. Integration: the first daylight sky (0.86, 0.92, 1.0) x 0.6 showed saturated bright blue in every window
+# under the 3000 K view white balance, where the video (shot at night) has dark glass; interiors barely changed.
+SKY_STRENGTH = 0.22
+SKY_COLOR = (1.0, 0.86, 0.74)
 FILL_W_PER_M2 = 30.0                 # default per-room fill: wide downward spots on a ~1.3 m grid under the ceiling ...
 FILL_UP_W_PER_M2 = 2.5               # ... plus one soft point light per rectangle for the ceiling and cornices
 FILL_PITCH = 1.3

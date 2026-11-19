@@ -36,7 +36,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight, false);
 const scene = new THREE.Scene();
-const SKY = new THREE.Color(0x8ab0d6), DARK = new THREE.Color(0x15181b);   // walk: the sky as Cycles shows it through the windows; dollhouse: neutral
+const SKY = new THREE.Color(0x296c97), DARK = new THREE.Color(0x15181b);   // walk: the sky as Cycles shows it through the windows (manifest.sky); dollhouse: neutral
 scene.background = SKY;
 const camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 0.05, 100);
 camera.rotation.order = 'YXZ';
@@ -57,6 +57,13 @@ msg.textContent = 'Loading plan…';
 const [manifest, house, planJson, foot, renders] = await Promise.all(
   ['assets/manifest.json', 'assets/house.json', 'assets/plan.json', 'assets/footprints.json', 'renders/index.json'].map(getJSON));
 const realtime = qs.get('lighting') === 'realtime' || !manifest?.lightmaps?.length;
+if (manifest?.sky) SKY.set(manifest.sky);
+// Lamps, lit shades and LED strips are authored warm for the 3000 K white balance of the Cycles view. The bake has
+// that balance multiplied in; emissive colours come unbalanced in the GLB, so the same matrix is applied here.
+if (!realtime && manifest?.whiteBalance) {
+  const M = manifest.whiteBalance, col = (j) => `vec3( ${M.map((r) => r[j].toFixed(5)).join(', ')} )`;
+  THREE.ShaderChunk.emissivemap_fragment += `\ntotalEmissiveRadiance = max( mat3( ${col(0)}, ${col(1)}, ${col(2)} ) * totalEmissiveRadiance, vec3( 0.0 ) );\n`;
+}
 const rooms = (manifest?.rooms || planJson?.rooms || house?.rooms || [])
   .map((r) => ({ id: r.id, name: r.name || r.id, polygon: r.polygon, ceilZ: r.ceilZ ?? r.ceilingZ ?? 2.9 }));
 const walk = house ? G.buildWalk(house, { radius: BODY, obstacles: G.obstaclesFrom(foot) }) : null;
@@ -64,6 +71,12 @@ const spawn = { pos: (manifest?.spawn?.pos || house?.spawn || G.centroid(rooms[0
   yaw: ((manifest?.spawn?.yaw ?? 0) * Math.PI) / 180 };          // manifest yaw: degrees, 0 = facing +Y, CCW positive
 const vps = walk ? G.viewpoints(walk, spawn.pos)
   : Object.fromEntries(rooms.map((r) => [r.id, { pos: G.centroid(r.polygon), yaw: 0 }]));
+// hand-framed room-jump views from the export (first hero still of each room), snapped to walkable floor;
+// the room holding the spawn point keeps the spawn view
+for (const [id, v] of Object.entries((walk && manifest?.viewpoints) || {})) {
+  const p = vps[id] && G.roomAt(rooms, ...spawn.pos)?.id !== id ? G.nearestFree(walk, v.pos[0], v.pos[1], 0.6) : null;
+  if (p && G.roomAt(rooms, ...p)?.id === id) vps[id] = { pos: p, yaw: G.dirYaw(v.look[0] - p[0], v.look[1] - p[1]) };
+}
 
 const TM = { agx: THREE.AgXToneMapping, neutral: THREE.NeutralToneMapping, aces: THREE.ACESFilmicToneMapping, none: THREE.NoToneMapping };
 renderer.toneMapping = TM[qs.get('tm') || manifest?.toneMapping] ?? THREE.AgXToneMapping;

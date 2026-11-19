@@ -281,11 +281,13 @@ class MB:
                                            ((j + 1) / 4, (i + 1) / segs), (j / 4, (i + 1) / segs)])
         self._soft = 0
 
-    def tube(self, path, r, mat, n=8, closed=False):
-        """Round bar along a polyline (any direction)."""
+    def tube(self, path, r, mat, n=8, closed=False, up=None):
+        """Round bar along a polyline. The section frame is built on one constant `up` (default: Z, or X
+        for a steep chord), so the bar pinches where the path runs parallel to it: for a loop lying in a
+        plane pass up=<plane normal> (e.g. the wall normal for a ring on a wall)."""
         P = [Vector(p) for p in path]
         d = (P[-1] - P[0]).normalized()
-        up = Vector((0, 0, 1)) if abs(d.z) < 0.9 else Vector((1, 0, 0))
+        up = Vector(up) if up is not None else Vector((0, 0, 1)) if abs(d.z) < 0.9 else Vector((1, 0, 0))
         prof = [(r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n)) for i in range(n)]
         self.sweep(prof + prof[:1], P, mat, closed=closed, up=up)
 
@@ -724,7 +726,7 @@ ROSES = {'living': dict(style='acanthus_whorl', d=0.75), 'dining': dict(style='f
 def ceiling_rose(style='acanthus_whorl', name='rose', mat='plaster_white'):
     """-> Object, origin at the ceiling centre point, relief hanging down (-Z).
     'acanthus_whorl' (living, dia 0.75): boss + 8 broad inner leaves + 16 outer leaves, scalloped rim.
-    'floral_dish' (dining, dia 0.90): 36 pointed leaves + bosses, bead ring, dish with 3 blooms."""
+    'floral_dish' (dining, dia 0.80): 36 pointed leaves + bosses, bead ring, dish with 3 blooms."""
     mb = MB()
     tau = 2 * math.pi
     def acanthus(length, width, relief, curl, skew=1.3):
@@ -740,26 +742,26 @@ def ceiling_rose(style='acanthus_whorl', name='rose', mat='plaster_white'):
         mb.lathe([(0.047, -0.008), (0.335, -0.008), (0.345, -0.004), (0.345, 0)], mat, 40)
         for i in range(16):                                   # outer whorl: scalloped outline
             mb.at(_radial(tau * (i + 0.5) / 16, 0.165, -0.0075))
-            acanthus(0.210, 0.150, 0.016, 0.55)
+            acanthus(0.210, 0.150, 0.028, 0.55)
         for i in range(8):                                    # inner whorl: broad leaves over the joints
             mb.at(_radial(tau * i / 8, 0.040, -0.008))
-            acanthus(0.215, 0.185, 0.028, 0.30)
+            acanthus(0.215, 0.185, 0.046, 0.30)       # integration: leaf relief x1.7 (read as a flat disc from below)
         for i in range(8):                                    # small leaves round the boss
             mb.at(_radial(tau * (i + 0.5) / 8, 0.030, -0.012))
-            mb.leaf(0.080, 0.046, 0.022, mat, 5, serrate=0.2, curl=0.2, base=0.5, round_=0.6)
+            mb.leaf(0.080, 0.046, 0.034, mat, 5, serrate=0.2, curl=0.2, base=0.5, round_=0.6)
     else:                                                     # floral dish: total relief ~45 mm
         mb.lathe([(0, -0.010), (0.325, -0.010), (0.332, -0.017), (0.340, -0.025), (0.350, -0.027), (0.358, -0.021),
                   (0.362, -0.012), (0.400, -0.008), (0.405, 0)], mat, 48)
         for i in range(36):                                   # dense band of broad pointed leaves, touching side by side
             mb.at(_radial(tau * i / 36, 0.364, -0.009))
-            mb.leaf(0.082, 0.096, 0.015, mat, 7, curl=0.6, base=0.6, rib=0.5, round_=0.35, skew=0.8)
+            mb.leaf(0.082, 0.096, 0.027, mat, 7, curl=0.6, base=0.6, rib=0.5, round_=0.35, skew=0.8)
             mb.at(_radial(tau * i / 36, 0.368, -0.016))
-            mb.leaf(0.070, 0.012, 0.010, mat, 4, curl=0.6, base=0.8, rib=1.0, round_=1.0)     # raised midrib
+            mb.leaf(0.070, 0.012, 0.018, mat, 4, curl=0.6, base=0.8, rib=1.0, round_=1.0)     # raised midrib
             mb.at(_radial(tau * (i + 0.5) / 36, 0.376, -0.012))
-            mb.dome(0.0125, 0.0125, 0.012, mat, 8, 2)         # 25 mm boss between the leaf bases
+            mb.dome(0.0125, 0.0125, 0.020, mat, 8, 2)         # 25 mm boss between the leaf bases
         blooms = ((0.4, 0.07, 1.5), (2.3, 0.20, 1.3), (4.4, 0.19, 1.2))        # angle, radius, size
-        rings = ((7, 0.074, 0.072, 0.014, 0.5, 0.000, 0.0), (6, 0.052, 0.058, 0.014, 0.8, 0.004, 0.5),
-                 (5, 0.032, 0.042, 0.012, 1.0, 0.008, 0.25))  # n, length, width, relief, curl (cupping), lift, turn
+        rings = ((7, 0.074, 0.072, 0.024, 0.5, 0.000, 0.0), (6, 0.052, 0.058, 0.024, 0.8, 0.008, 0.5),
+                 (5, 0.032, 0.042, 0.020, 1.0, 0.016, 0.25))  # n, length, width, relief, curl (cupping), lift, turn
         for a, r, k in blooms:                                # naturalistic blooms: three tiers of cupped petals
             C = _radial(a, r, -0.010)
             mb.at(C)
@@ -773,13 +775,16 @@ def ceiling_rose(style='acanthus_whorl', name='rose', mat='plaster_white'):
                   (5.0, 0.29, -0.8, 0.09), (1.0, 0.29, 0.2, 0.09))
         for a, r, tw, ln in leaves:                                              # curling leaves between the blooms
             mb.at(_radial(a, r, -0.010) @ Matrix.Rotation(tw, 4, 'Z'))
-            mb.leaf(ln, ln * 0.45, 0.014, mat, 8, serrate=0.28, curl=0.7, rib=0.45)
+            mb.leaf(ln, ln * 0.45, 0.024, mat, 8, serrate=0.28, curl=0.7, rib=0.45)
         for a, r in ((0.75, 0.27), (3.05, 0.21), (6.0, 0.22)):                    # fruit clusters
             for da, dr in ((0, 0), (0.09, 0.02), (-0.06, 0.03)):
                 mb.at(_radial(a + da, r + dr, -0.010))
                 mb.dome(0.017, 0.017, 0.016, mat, 8, 2)
     mb.at()
-    return mb.finish(name)
+    ob = mb.finish(name)
+    if style != 'acanthus_whorl':                             # integration: 0.89 -> 0.80 over the leaf tips (the footage
+        ob.data.transform(Matrix.Diagonal((0.9, 0.9, 1.0, 1.0)))   # has the chandelier as wide as the rose: f_0705, f_0574)
+    return ob
 
 
 def brass_rail(points, name='rail', r=0.0095, off=0.045, spacing=0.9):

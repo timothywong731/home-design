@@ -305,6 +305,27 @@ def wb_matrix():
     return out.reshape(3, 4)[:, :3].T.astype(np.float64) @ np.linalg.inv(P.T)
 
 
+def display_hex(rgb):
+    """Scene-linear colour -> '#rrggbb' as the scene's view settings show it (AgX, look, exposure, white balance)."""
+    sc = bpy.context.scene
+    fmt = sc.render.image_settings
+    src = bpy.data.images.new('display_probe', 1, 1, alpha=False, float_buffer=True)
+    src.pixels.foreach_set([*rgb, 1.0])
+    keep = (fmt.file_format, fmt.color_mode, fmt.color_depth)
+    path = str(Path(bpy.app.tempdir) / 'display_probe.png')
+    try:
+        fmt.file_format, fmt.color_mode, fmt.color_depth = 'PNG', 'RGB', '8'
+        src.save_render(path, scene=sc)
+    finally:
+        fmt.file_format, fmt.color_mode, fmt.color_depth = keep
+    back = bpy.data.images.load(path)
+    back.colorspace_settings.name = 'Non-Color'              # read the stored display bytes as they are
+    px = [round(v * 255) for v in back.pixels[:3]]
+    bpy.data.images.remove(src)
+    bpy.data.images.remove(back)
+    return '#%02x%02x%02x' % tuple(px)
+
+
 def encode(px, w, h, path, M, quality=93):
     """Scene-linear float pixels (n, 3+) -> 8-bit sRGB JPEG with the white balance M applied.
     Returns the intensity k of the encoding:  linear = srgb_decode(pixel / 255) * k.

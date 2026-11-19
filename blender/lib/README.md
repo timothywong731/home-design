@@ -252,7 +252,7 @@ OptiX GPUs with the OptiX denoiser, AgX + look `Medium High Contrast`, plus dayl
 | `EXPOSURE` | -0.6 EV | view exposure |
 | `WHITE_BALANCE`, `WHITE_TINT` | 3000 K, -10 | preview white point = the lamps, like the phone at night: a `#F2F0EA` wall renders ≈ `#B9B4A8` (video ≈ `#BDB9AF`). View setting only |
 | `SUN_DIR`, `SUN_STRENGTH`, `SUN_KELVIN` | (-0.38, 0.72, -0.58), 2.5, 3600 K | low sun through the bay and the east flank windows |
-| `SKY_COLOR`, `SKY_STRENGTH` | (0.86, 0.92, 1.0), 0.6 | world background |
+| `SKY_COLOR`, `SKY_STRENGTH` | (1.0, 0.86, 0.74), 0.22 | world background: a dim dusk sky (reads deep blue-grey through the lamp white balance; the video is shot at night) |
 | `FILL_W_PER_M2`, `FILL_UP_W_PER_M2`, `FILL_PITCH` | 30, 2.5, 1.3 m | default fill per room: wide downward spots on a grid 0.35 m under the ceiling (lit like the real downlights, so floors and the wall below the dado get their share) + one soft point light per rectangle for the ceiling |
 
 A Cycles portal sits just inside every external opening (collection `lighting`).
@@ -276,6 +276,12 @@ lighting.fill(ctx, room) -> [objects]
   Chandelier: `for p in P.bulb_points(root): lighting.bulb(ctx, 'dining', p, watts=10)`.
 - Keep emitters ≥ 2 cm clear of geometry; do not put emissive meshes inside glass shades (use a
   `bulb` and let the shade be plain geometry).
+- A `bulb` at `P.bulb_points` sits **inside** the opaque emissive lamp mesh of the prop: it only
+  shines while its `radius` (default 0.025) is larger than the lamp. A smaller radius is silently
+  blocked (a whole chandelier goes dark) — keep the default or move the light clear of the lamp.
+- Emission is **not** white-balanced like reflected lamp light: an emissive colour paler than about
+  `#FFC489` renders blue-white in the previews. Author lit shades / strips warm (e.g. `#F4CB94`).
+  The viewer applies no white balance to emissive factors, so these read more amber there (export / viewer note).
 - **Export / bake:** lamps are 2700–3000 K blackbodies, i.e. orange in a D65 pipeline; previews look
   right only because of the view white balance. Lightmaps are baked without view settings, so apply
   the same white balance to them. Skip `obj['fill']` lights and `obj['no_export']` objects.
@@ -341,16 +347,16 @@ the mesh and its material slots are final (it works on the base mesh, not on mod
 **Textured keys** (size = metres per repeat; colour = spec hex the texture mean was matched to):
 | key | size_m | maps | colour | rough | notes |
 |---|---|---|---|---|---|
-| `oak_floor` | 2.2 x 4.4 | 2048² col+nrm+orm | #C4B790 | 0.50 | pale grey-beige engineered oak, fine straight grain (per-channel std ~9/255), boards 220 mm, 1.2–2.2 m, micro-bevel, sparse brown knots |
-| `wood_tile_floor` | 1.221 x 3.61 | 1024x2048 col+nrm+orm | #8E8676 | 0.45 | weathered grey-brown porcelain planks 200x1200 (dark streaks #5C564B, pale patches #ABA392), 3.5 mm grout #CFCABB (kitchen/utility/WC) |
+| `oak_floor` | 2.2 x 4.4 | 2048² col+nrm+orm | #AF9F66 | 0.38 | golden straw engineered oak (renders ≈ `#B1A47C` like f_0064), straight grain + cathedral figure, boards 220 mm, 1.2–2.2 m, micro-bevel, board-to-board tone steps, ~1 brown knot per board |
+| `wood_tile_floor` | 1.221 x 3.61 | 1024x2048 col+nrm+orm | #807A62 | 0.45 | weathered grey-brown porcelain planks 200x1200, soft low-contrast weathering, plank-to-plank tone steps, 3.5 mm grout #CFCABB (kitchen/utility/WC) |
 | `victorian_tile` | 0.33 x 0.33 | 1024² col+nrm+orm | 4 colours | 0.45 | vestibule floor, from the spec's cell table |
 | `metro_grey` | 0.909 x 0.618 | 1024² col+nrm+orm | #C4C2BD | 0.12 | 300x100 half-bond, 3 mm white grout (kitchen) |
-| `marble_metro` | 0.9075 x 0.615 | 1024² col+nrm+orm | #EFEDE8 | 0.12 | 300x100 half-bond Carrara print, grout #DAD8D2 (utility/WC) |
+| `marble_metro` | 0.9075 x 0.615 | 1024² col+nrm+orm | #EFEDE8 | 0.12 | 300x100 half-bond Carrara print (soft grey veins #A3A3A0 on about every other tile), grout #C9C7C0 (utility/WC) |
 | `sunflower_tile` | 0.152 x 0.152 | 512² col+nrm | — | 0.10 | dining fireplace tile strips, one tile per repeat |
-| `marble_quartz` | 2.4 x 1.2 | 2048x1024 col | #F2F1EE | 0.10 | kitchen worktop, sparse diagonal veins #B5B3AE |
+| `marble_quartz` | 2.4 x 1.2 | 2048x1024 col | #F2F1EE | 0.10 | kitchen worktop, wide forked diagonal veins #9E9A92 |
 | `hearth_marble` | 1.2 x 1.2 | 1024² col | #E2DCCF | 0.25 | dining hearth slab |
 | `oak_worktop` | 1.0 x 1.8 | 1024² col | #B38E58 | 0.42 | utility stave worktop, staves 40 mm |
-| `oak_door` `oak_rustic` `oak_light` `oak_table` `dark_oak_antique` | 1.2 x 1.2 | 1024² col + shared nrm | #C6AC78 #A98850 #C9A877 #5E4631 #3A2A1E | 0.3–0.5 | door leaves (light straw oak, fine straight grain, 0.45); TV unit; bare carcass; dining/coffee table top; antique dark oak furniture + fire surround |
+| `oak_door` `oak_rustic` `oak_light` `oak_table` `dark_oak_antique` | 1.2 x 1.2 | 1024² col + shared nrm | #A7954E #A98850 #C9A877 #5E4631 #3A2A1E | 0.3–0.5 | door leaves (golden oak, renders ≈ `#A88E52` like f_0499; 0.42); TV unit; bare carcass; dining/coffee table top; antique dark oak furniture + fire surround |
 | `dark_joinery` `hardwood_threshold` | 1 x 1 | 1024² col + shared nrm | #40342C #54351F | 0.25 / 0.4 | dining stained joinery + living bay timber; threshold bars |
 | `mahogany` `mahogany_dark` `mahogany_mid` | 1 x 1 | 1024² col + shared nrm | #4A2216 #3B241A #6A452C | 0.12 / 0.25 | gloss inner doors, newel, handrail; chairs, sofa frame, bookcase; polished mid-brown tops |
 | `navy_cabinet` `grey_cabinet` | 1 x 1 | 1024² col + shared ash nrm | #23252D #BDBDB8 | 0.40 | painted ash-grain shaker cabinets |
@@ -422,9 +428,10 @@ looked at (contact sheet, see **Test**). All sizes metres.
   leaf_grey fruit_orange terracotta marble_green dial_cream cone_grey skin_ref`. Shorthands
   `antique_brass gold_bright champagne silver rope_cream` resolve to the library's `brass_antique
   gilt_bright gold_champagne silver_satin linen_cream`. `finish` shorthands: `brass antique_brass
-  black steel chrome white gilt bronze`. Library colours always win: `brass` is `#E3CC8E` (the
+  black steel chrome white gilt bronze`. Library colours always win: `brass` is `#D3C882` (the
   reflectance of polished brass; the specs' `#C9A44C` as a metallic base rendered copper-orange), `gilt`
-  is `#B0903C` (use `gilt_bright` for `#C8A84B`).
+  is `#A2924A` (use `gilt_bright` for `#B8A655`). All gold / brass bases are olive-yellow on purpose:
+  orange-leaning ones render copper / rose beside coloured walls under the 3000 K view.
   UVs are in metres divided by the material's `size_m` (same convention as `materials.uv_box`,
   in object space: grain vertical on upright faces); picture / rug images use 0..1 UVs.
 - **Double-sided**: library materials cull back faces in the GLB. Single-surface parts (curtain
@@ -692,7 +699,7 @@ mb.box(a, b, mat, bev=0.0, grain=None)                 # cuboid between corners 
 mb.sweep(profile, path, mat, closed=False, up=(0, 0, 1), caps=True, ends=(None, None))
 mb.prism(base_pts, vec, mat, grain=None)               # planar polygon extruded along vec
 mb.lathe(profile_rz, mat, segs=24, ell=(1, 1), a0=0, a1=2*pi)   # revolve [(r, z)...] round local Z
-mb.tube(path, r, mat, n=8, closed=False)               # round bar along a polyline
+mb.tube(path, r, mat, n=8, closed=False, up=None)      # round bar along a polyline; loop in a plane: up=<plane normal>
 mb.dome(rx, ry, h, mat, segs=8, rings=3)               # half-ellipsoid on the local XY plane
 mb.leaf(length, width, relief, mat, segs=6, serrate=0.0, curl=0.0, base=0.25, rib=0.55, round_=0.6, skew=1.0)
 mb.face(pts, mat, hint=None, grain=None)               # one planar polygon, normal toward `hint`
@@ -736,8 +743,8 @@ mo.tri_count(objects) -> int
   leaf-and-dart relief band (75 mm repeat, real low-relief mesh, no textures) for the dining room.
   `mo.stations(path, closed, pitch, dm)` gives the block set-out; `mo.modillion(mb)` one block.
 - `mo.ceiling_rose(style, name) -> Object` (origin at the ceiling, relief down): `'acanthus_whorl'`
-  dia 0.75 (living: 8 + 16 lobed leaves with midrib and spine, relief 40 -> 10 mm), `'floral_dish'`
-  dia 0.90 (dining: band of 36 broad touching leaves with bosses, bead ring, three three-tier blooms,
+  dia 0.75 (living: 8 + 16 lobed leaves with midrib and spine, leaf relief 46 / 28 mm), `'floral_dish'`
+  dia 0.80 (dining: band of 36 broad touching leaves with bosses, bead ring, three three-tier blooms,
   relief ~45 mm). Installed centres: `mo.ROSE_AT` =
   `{'living': (2.55, 2.86), 'dining': (1.225, 14.61)}` - hang the chandeliers there.
 - `mo.arch_corbel(mb, length, proj, height)` (hall arch: stepped cap, neck, cavetto sweeping back on

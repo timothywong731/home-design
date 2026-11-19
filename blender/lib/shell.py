@@ -433,7 +433,7 @@ def _fan_prism(name, pieces, y0, y1, spec):
 
 
 def _curved(ctx):
-    N = 12
+    N = 24                                                        # segments per haunch / half arch
     for f in ctx.features:
         if f['type'] == 'arch':                                   # segmental arch in a wall along X
             o = ctx.openings[f['opening']]
