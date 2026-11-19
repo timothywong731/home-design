@@ -1,14 +1,14 @@
 """Regenerate every texture in blender/textures/ + manifest.json + SOURCES.md.
 Run (system Python 3 with numpy + opencv):
     python -I blender/textures/gen/fetch.py                # once: Poly Haven sources -> build/texsrc/
-    python -I blender/textures/gen/make_all.py [woods tiles fabrics misc]
+    python -I blender/textures/gen/make_all.py [woods tiles fabrics misc phase2]
 Also writes build/texsrc/_tiled.jpg: every base colour tiled 2x2, to eyeball the seams."""
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np, cv2
 import common
 
-GROUPS = ('woods', 'tiles', 'fabrics', 'misc')
+GROUPS = ('woods', 'tiles', 'fabrics', 'misc', 'phase2')
 
 
 def sources_md(manifest, sources):

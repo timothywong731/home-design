@@ -1,4 +1,5 @@
-"""Material library (owner: materials). See the "materials" section of blender/lib/README.md.
+"""Material library (owner: materials). See the "materials" section of blender/lib/README.md and, for the
+phase-2 keys (SPEC_KEYS), blender/lib/README.md.
 
     from lib import materials as M
     floor.data.materials.append(M.mat('oak_floor')); M.uv_box(floor)
@@ -67,11 +68,29 @@ CONST = {
     'pot_olive':        dict(hex='#6F7A45', rough=0.20),
     'alabaster':        dict(hex='#C99A7A', rough=0.30),
     'cork':             dict(hex='#B58F62', rough=0.90),
+    # facades (MULTILEVEL section 8): smooth masonry paint over render, shared fine sand normal map
+    'white_masonry_paint': dict(hex='#F2F2EE', rough=0.85, tex='_render', nrm=0.7),
+    'render_sandstone':    dict(hex='#D2C596', rough=0.90, tex='_render', nrm=1.0),
+    'plinth_black':        dict(hex='#2A2A2C', rough=0.80, tex='_render', nrm=1.0),
+    'paint_oxblood':       dict(hex='#7A3B2E', rough=0.40),         # shed store doors
 }
 
 # names used in spec/house.json -> library key
 ALIAS = {'oak_plank': 'oak_floor', 'victorian_geometric_tile': 'victorian_tile',
-         'wood_effect_porcelain_plank': 'wood_tile_floor', 'carpet_mink_grey': 'carpet_mink'}
+         'wood_effect_porcelain_plank': 'wood_tile_floor', 'carpet_mink_grey': 'carpet_mink',
+         'wood_effect_porcelain_plank_dark': 'wood_tile_floor_dark', 'concrete_or_flags': 'concrete_flags',
+         'chipboard': 'vinyl_grey_sheet'}    # eaves floor: grey sheet flooring laid over the boards (eaves.md 4)
+
+# every finish / material key of blender/MULTILEVEL.md section 8 (mat() resolves each; test_joinery.py asserts it)
+SPEC_KEYS = (
+    'carpet_grey', 'carpet_grey_twist', 'carpet_pale', 'carpet_silver_beige', 'chipboard', 'porcelain_grey',
+    'porcelain_pale', 'steel_chequer_plate', 'wood_effect_porcelain_plank_dark',
+    'marble_metro', 'metro_carrara_100x400', 'porcelain_calacatta_slab',
+    'asphalt', 'clay_block_paving_red_herringbone', 'composite_deck_dark_brown', 'concrete_flags', 'concrete_or_flags',
+    'concrete_setts_grey_buff', 'grass', 'sandstone_flags_grey', 'soil_lavender', 'timber_box_dark',
+    'buff_brick', 'closeboard_brown', 'closeboard_grey_painted', 'ledged_braced_grey', 'stock_brick_grey',
+    'stock_brick_yellow', 'red_brick', 'white_masonry_paint', 'render_sandstone', 'plinth_black',
+    'slate', 'fibre_cement_slate', 'flat_felt', 'roof_underside')
 
 # wall / ceiling paint colours by room (neutral-light estimates): paint(PAINT['living_pink'])
 PAINT = {

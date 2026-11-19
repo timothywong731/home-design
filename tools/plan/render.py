@@ -1,15 +1,17 @@
-"""Render plan.json with matplotlib - the vector PDF sheet and PNG proofs come from the JSON alone.
+"""Render plan.json with matplotlib - the vector PDF pages and PNG proofs come from the JSON alone.
 
-    python tools/plan/render.py [--json docs/assets/plan.json] [--out build/plan] [--bounds x0,y0,x1,y1] [--zoom 2] [--tag crop]
+    python tools/plan/render.py [--json docs/assets/plan.json] [--out build/plan] [--sheet G] [--bounds x0,y0,x1,y1] [--zoom 2] [--tag crop]
 
-writes <out>/plan_dark[_tag].png and <out>/plan_paper[_tag].png.  Doubles as the reference for how a viewer
-should interpret every plan.json entity type (dim layout, hatch, text height = cap height, line styles).
+writes <out>/<sheet>_plan_dark[_tag].png and <out>/<sheet>_plan_paper[_tag].png for every sheet (or --sheet). Doubles
+as the reference for how a viewer should interpret every plan.json entity type (dim layout, hatch, text height = cap
+height, line styles). plan.json schema 2 keeps linestyles / hatch / dimstyle per sheet; schema 1 is read as one sheet.
 """
 import argparse, json, math
 from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Arc, Circle, Polygon as MPoly
 from shapely.geometry import Polygon, LineString
@@ -19,6 +21,13 @@ BG = {"dark": "#0b0d10", "paper": "#ffffff"}
 PT = 72 / 25.4                                   # points per mm
 plt.rcParams.update({"lines.scale_dashes": False, "pdf.fonttype": 42, "lines.solid_capstyle": "butt",
                      "lines.dash_capstyle": "butt", "lines.solid_joinstyle": "miter"})
+
+
+def sheets(plan):
+    """Sheet dicts of a plan.json: schema 2 as is; schema 1 as its single ground-floor sheet."""
+    if plan.get("schema") == 2:
+        return plan["sheets"]
+    return [{**plan, **plan["sheet"], "id": "G"}]
 
 
 def dim_geometry(e, st):
@@ -67,22 +76,22 @@ def hatch_lines(pts, spacing):
     return out
 
 
-def render(plan, out, theme="paper", bounds=None, zoom=1.0, dpi=200):
-    """Draw every entity. At zoom 1 one model metre is 1000/scale paper mm, so a PDF is true to scale."""
-    mm = int(plan["sheet"]["scale"].split(":")[1]) / 1000.0          # model metres per paper mm
-    b = bounds or plan["sheetBounds"]
+def figure(sh, layers, theme="paper", bounds=None, zoom=1.0):
+    """Draw every entity of one sheet. At zoom 1 one model metre is 1000/scale paper mm, so a page is true to scale."""
+    mm = int(sh["scale"].split(":")[1]) / 1000.0                       # model metres per paper mm
+    b = bounds or sh["sheetBounds"]
     k = zoom / mm                                                     # paper mm per model metre
     fig = plt.figure(figsize=((b["maxX"] - b["minX"]) * k / 25.4, (b["maxY"] - b["minY"]) * k / 25.4), facecolor=BG[theme])
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_xlim(b["minX"], b["maxX"]); ax.set_ylim(b["minY"], b["maxY"]); ax.axis("off")
-    lay = {l["name"]: l for l in plan["layers"]}
+    lay = {l["name"]: l for l in layers}
     key = "color" if theme == "dark" else "paper"
-    for z, e in enumerate(plan["entities"]):
+    for z, e in enumerate(sh["entities"]):
         l = lay[e["layer"]]
         col, lw = l[key], max(l["lineweight"] * zoom * PT, 0.12)
         ls = "-"
         if e.get("ls"):
-            ls = (0, [v * k * PT for v in plan["linestyles"][e["ls"]]])
+            ls = (0, [v * k * PT for v in sh["linestyles"][e["ls"]]])
         kw = dict(color=col, lw=lw, ls=ls, zorder=z)
         t = e["type"]
         if t == "line":
@@ -98,20 +107,35 @@ def render(plan, out, theme="paper", bounds=None, zoom=1.0, dpi=200):
             if e["pattern"] == "SOLID":
                 ax.add_patch(MPoly(e["pts"], closed=True, fc=col, ec="none", zorder=z))
             else:
-                ax.add_collection(LineCollection(hatch_lines(e["pts"], plan["hatch"]["spacing"]), colors=col, linewidths=lw, zorder=z))
+                ax.add_collection(LineCollection(hatch_lines(e["pts"], sh["hatch"]["spacing"]), colors=col, linewidths=lw, zorder=z))
         elif t == "text":
             draw_text(ax, e["p"], e["h"], e["text"], col, k, e.get("align", "left"), e.get("rot", 0), z)
         elif t == "dim":
-            segs, tp, rot = dim_geometry(e, plan["dimstyle"])
+            segs, tp, rot = dim_geometry(e, sh["dimstyle"])
             ax.add_collection(LineCollection(segs, colors=col, linewidths=lw, zorder=z))
             if e["text"]:                                              # "" = value drawn by a separate text entity at tp
-                draw_text(ax, tp, e.get("h", plan["dimstyle"]["h"]), e["text"], col, k, "center", rot, z)
+                draw_text(ax, tp, e.get("h", sh["dimstyle"]["h"]), e["text"], col, k, "center", rot, z)
         else:
             raise ValueError(f"unknown entity type {t}")
-    meta = {"Title": plan["sheet"]["title"], "Subject": f"Scale {plan['sheet']['scale']} on {plan['sheet']['paper']}",
-            "Creator": "tools/plan/draft.py", "CreationDate": None} if str(out).endswith(".pdf") else None
-    fig.savefig(out, dpi=dpi, facecolor=BG[theme], metadata=meta)
+    return fig
+
+
+def render(plan, out, theme="paper", bounds=None, zoom=1.0, dpi=200, sheet=None):
+    """One sheet (id `sheet`, default the first) to a raster or single-page file."""
+    sh = next(s for s in sheets(plan) if sheet in (None, s["id"]))
+    fig = figure(sh, plan["layers"], theme, bounds, zoom)
+    fig.savefig(out, dpi=dpi, facecolor=BG[theme])
     plt.close(fig)
+
+
+def render_pdf(plan, out):
+    """Every sheet as one vector page of a PDF, paper theme, true to scale on its paper size."""
+    with PdfPages(out, metadata={"Title": "House plans", "Subject": ", ".join(f"{s['title']} {s['scale']}" for s in sheets(plan)),
+                                 "Creator": "tools/plan/draft.py", "CreationDate": None}) as pdf:
+        for sh in sheets(plan):
+            fig = figure(sh, plan["layers"], "paper")
+            pdf.savefig(fig, facecolor=BG["paper"])
+            plt.close(fig)
 
 
 if __name__ == "__main__":
@@ -119,6 +143,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", default=str(root / "docs/assets/plan.json"))
     ap.add_argument("--out", default=str(root / "build/plan"))
+    ap.add_argument("--sheet", help="sheet id (default: every sheet)")
     ap.add_argument("--bounds")
     ap.add_argument("--zoom", type=float, default=1.0)
     ap.add_argument("--dpi", type=int, default=150)
@@ -127,7 +152,10 @@ if __name__ == "__main__":
     plan = json.loads(Path(a.json).read_text(encoding="utf-8"))
     bounds = dict(zip(("minX", "minY", "maxX", "maxY"), map(float, a.bounds.split(",")))) if a.bounds else None
     Path(a.out).mkdir(parents=True, exist_ok=True)
-    for theme in ("dark", "paper"):
-        f = Path(a.out) / f"plan_{theme}{'_' + a.tag if a.tag else ''}.png"
-        render(plan, f, theme, bounds, a.zoom, a.dpi)
-        print("wrote", f)
+    for sh in sheets(plan):
+        if a.sheet not in (None, sh["id"]):
+            continue
+        for theme in ("dark", "paper"):
+            f = Path(a.out) / f"{sh['id']}_plan_{theme}{'_' + a.tag if a.tag else ''}.png"
+            render(plan, f, theme, bounds, a.zoom, a.dpi, sh["id"])
+            print("wrote", f)

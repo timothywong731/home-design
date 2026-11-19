@@ -1,17 +1,26 @@
 // End-to-end check of the viewer in Chromium. Serves docs/ under /home-design/ (like GitHub Pages), drives the page,
 // writes screenshots + console log to build/e2e/, exits non-zero on console errors or failed checks.
 // Setup once:  npm install --prefix build/e2e playwright@1.65.1   (npx playwright install chromium if no browser yet)
-// Run:         node docs/test/e2e.mjs [--headed] [--only desktop,ref,realtime,phone,ix] [--assets <dir>]
+// Run:         node docs/test/e2e.mjs [--headed] [--only desktop,ref,realtime,phone,ix,levels] [--assets <dir>]
 //   --assets serves assets/ from another folder (e.g. a fresh export under build/, before it is copied into docs/)
+// Two runs (blender/MULTILEVEL.md 12.g): schema-1 assets (docs/assets today) run the phase-1 blocks; schema-2 assets run
+// only `levels` (tabs, sheets, marker on every sheet, sheet follows the stairs, layers, routes, dollhouse cut per level,
+// interactions per level). The fixture: node docs/test/make_fixture.mjs && node docs/test/e2e.mjs --assets build/e2e/assets2
+// (its screenshots go to build/e2e/levels/, so the phase-1 ones are kept).
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('../', import.meta.url)), OUT = fileURLToPath(new URL('../../build/e2e/', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
-const ASSETS = arg('--assets') && resolve(arg('--assets')), ONLY = arg('--only')?.split(','), run = (b) => !ONLY || ONLY.includes(b);
+const ASSETS = arg('--assets') && resolve(arg('--assets'));
+const MANIFEST = JSON.parse(await readFile(join(ASSETS || join(ROOT, 'assets'), 'manifest.json')).catch(() => readFile(join(ROOT, 'assets/manifest.json'))));
+const SCHEMA = MANIFEST.schema === 2 ? 2 : 1, FIXTURE = !!MANIFEST.fixture;   // the fixture pairs the phase-1 GLB with the new house
+const OUT = fileURLToPath(new URL(SCHEMA === 2 ? '../../build/e2e/levels/' : '../../build/e2e/', import.meta.url));
+// schema 1: the phase-1 blocks; the schema-2 fixture: `levels` only; a real schema-2 export: everything
+const ONLY = arg('--only')?.split(','), run = (b) => (!ONLY || ONLY.includes(b)) && (b === 'levels' ? SCHEMA === 2 : SCHEMA === 1 || !FIXTURE);
 const { chromium } = createRequire(OUT)('playwright');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.glb': 'model/gltf-binary', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.ktx2': 'image/ktx2', '.dxf': 'image/vnd.dxf', '.pdf': 'application/pdf' };
@@ -79,7 +88,7 @@ if (run('desktop')) {
     const lit = all.filter((a) => a.o.userData.baked);
     return { listed: m.lightmaps.reduce((n, l) => n + l.objects.length, 0), probes: m.probes.length, standin: !!m.standin,
       noEnv: all.filter((a) => !a.mat.envMap).length, noUv1: lit.filter((a) => !a.o.geometry.attributes.uv1).length,
-      badLm: lit.filter(({ mat }) => !(mat.lightMap?.channel === 1 && mat.lightMap.flipY === false && mat.lightMap.colorSpace === 'srgb' && mat.lightMapIntensity > 3)).length };
+      badLm: lit.filter(({ mat }) => !(mat.lightMap?.channel === 1 && mat.lightMap.flipY === false && mat.lightMap.colorSpace === 'srgb' && mat.lightMapIntensity > 0)).length };
   });
   check(!bake.standin && bake.listed > 50 && bake.probes >= 7, `real export manifest (${bake.listed} lightmapped objects, ${bake.probes} probes)`);
   check(bake.noUv1 === 0 && bake.badLm === 0, 'lightmaps on uv1, flipY off, sRGB, intensity x PI');
@@ -92,7 +101,7 @@ if (run('desktop')) {
   await page.keyboard.down('KeyW'); await page.waitForTimeout(1000); await page.keyboard.up('KeyW');
   const j = await info(page);
   check(j.y > i.y + 0.5 && Math.abs(j.x - i.x) < 0.05, `W walks into the house (y ${i.y.toFixed(2)} -> ${j.y.toFixed(2)})`);
-  check(await page.evaluate(() => { const v = window.viewer; return !v.walk || v.G.isFree(v.walk, v.S.x, v.S.y); }), 'position is inside the walkable area');
+  check(await page.evaluate(() => { const v = window.viewer; return !v.walk || v.G.isFree(v.walk, v.S.layer, v.S.x, v.S.y); }), 'position is inside the walkable area');
   // walking into a wall is blocked: face east (-90deg) in the front hall and push for 2 s
   await page.evaluate(() => { const S = window.viewer.S; S.x = 0; S.y = 3; S.yaw = -Math.PI / 2; });
   await page.keyboard.down('KeyW'); await page.waitForTimeout(2000); await page.keyboard.up('KeyW');
@@ -125,7 +134,8 @@ if (run('desktop')) {
   // and the plan marker must be drawn on that spot.
   const doors = await page.evaluate(async () => {
     const house = await (await fetch('assets/house.json')).json();       // a pocket door's leaf stands ~0.09 m out of its pocket
-    return window.viewer.walk.portals.map((q) => ({ id: q.id, c: q.center, n: q.normal, w: q.width, pocket: house.openings.find((o) => o.id === q.id).slideToward ? 0.1 : 0 }));
+    return window.viewer.walk.portals.filter((q) => q.open !== false && q.layers.every((l) => l === 'G') && house.openings.some((o) => o.id === q.id && o.level !== 'X'))
+      .map((q) => ({ id: q.id, c: q.center, n: q.normal, w: q.width, pocket: house.openings.find((o) => o.id === q.id).slideToward ? 0.1 : 0 }));
   });
   for (const d of doors) {
     const r = await page.evaluate(async (d) => {
@@ -138,7 +148,7 @@ if (run('desktop')) {
         ray.set(new THREE.Vector3(cx, 1.0, -cy), new THREE.Vector3(s * ux, 0, -s * uy));
         return ray.intersectObject(scene, true)[0]?.distance ?? 9;
       });
-      const hatch = p.plan.entities.filter((e) => e.type === 'hatch' && e.layer === 'A-WALL-PATT');
+      const hatch = p.entities.filter((e) => e.type === 'hatch' && e.layer === 'A-WALL-PATT');
       const solid = (x, y) => hatch.some((e) => G.pointInPoly(x, y, e.pts));
       const [X, Y] = p.toScreen(S.x, S.y), px = p.c.getContext('2d').getImageData(Math.round(X), Math.round(Y), 1, 1).data;
       return { jambs, open: !solid(cx, cy), ends: [1, -1].map((s) => solid(cx + s * ux * (h + 0.04), cy + s * uy * (h + 0.04))),
@@ -198,7 +208,8 @@ if (run('desktop')) {
   await page.click('#plan-max'); await page.waitForTimeout(400); await shot(page, 'plan_max.png');
   await page.click('#plan-theme'); await page.waitForTimeout(300); await shot(page, 'plan_max_paper.png'); await page.click('#plan-theme');
   // downloads: the buttons hand over the real files
-  for (const [sel, name, magic] of [['#dl-dxf', 'ground-floor-plan.dxf', 'SECTION'], ['#dl-pdf', 'ground-floor-plan.pdf', '%PDF']]) {
+  const stem = SCHEMA === 2 ? 'house-plans' : 'ground-floor-plan';           // schema 1 ships the single ground-floor drawing
+  for (const [sel, name, magic] of [['#dl-dxf', `${stem}.dxf`, 'SECTION'], ['#dl-pdf', `${stem}.pdf`, '%PDF']]) {
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click(sel)]);
     const body = await readFile(await dl.path());
     check(dl.suggestedFilename() === name && body.length > 10000 && body.toString('latin1', 0, 24).includes(magic), `${name} downloads (${body.length} bytes)`);
@@ -236,6 +247,8 @@ if (run('realtime')) {
 if (run('phone')) {
   const { ctx, page } = await open({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   check(await page.evaluate(() => document.body.classList.contains('touch')), 'touch UI on a phone');
+  const lmMax = await page.evaluate(() => { let m = 0; window.viewer.scene.traverse((o) => { if (o.isMesh) for (const x of [].concat(o.material)) if (x.lightMap?.image) m = Math.max(m, x.lightMap.image.width, x.lightMap.image.height); }); return m; });
+  check(lmMax > 0 && lmMax <= 2048, `phone: lightmap atlases over 2048 px are drawn down on load (largest ${lmMax} px)`);
   await shot(page, 'phone.png');
   // move pad: hold the knob forward for 1 s
   const i0 = await info(page), pad = await page.locator('#pad').boundingBox();
@@ -285,7 +298,7 @@ const approach = (page, id) => page.evaluate((id) => {
   const { THREE, G, S, walk, ix, castRay } = window.viewer, pts = window.__surf(id).slice(0, 50), [tx, ty] = G.threeToPlan(ix.box(id).getCenter(new THREE.Vector3()));
   for (const R of [1.1, 0.8, 1.4, 1.8, 2.4]) for (let k = 0; k < 36; k++) {
     const a = (k / 36) * 2 * Math.PI, x = tx + R * Math.cos(a), y = ty + R * Math.sin(a), eye = new THREE.Vector3(x, 1.6, -y);
-    if (!G.isFree(walk, x, y)) continue;
+    if (!G.isFree(walk, S.layer, x, y)) continue;
     for (const p of pts) {
       const dir = p.clone().sub(eye), hit = castRay(eye, dir.clone().normalize(), dir.length() + 0.3);
       if (!hit || ix.groupOf(hit.object) !== id) continue;
@@ -320,11 +333,11 @@ const meanLum = (page) => page.evaluate(() => {
 });
 // first pixel down column X whose ray hits bare floor (not a step or a skirting); to = where a double-click should end
 const floorAim = (page, X, Ys) => page.evaluate(([X, Ys]) => {
-  const { castAt, G, walk, renderer } = window.viewer;
+  const { castAt, G, walk, renderer, S } = window.viewer;
   for (const Y of Ys) {
     const hit = document.elementFromPoint(X, Y) === renderer.domElement && castAt(X, Y);
     const n = hit?.face?.normal.clone().transformDirection(hit.object.matrixWorld);
-    if (n && n.y > 0.7 && hit.point.y < 0.3) { const p = G.threeToPlan(hit.point); return { X, Y, to: G.nearestFree(walk, p[0], p[1], 1.5) }; }
+    if (n && n.y > 0.7 && hit.point.y < 0.3) { const p = G.threeToPlan(hit.point); return { X, Y, to: G.nearestFree(walk, S.layer, p[0], p[1], 1.5) }; }
   }
   return { X, Y: Ys[0], to: null };
 }, [X, Ys]);
@@ -360,7 +373,7 @@ if (run('ix')) {
   if (!door) skip('door: no leaf blocks a walkable doorway');
   else {
     const pid = door.blocks.find((b) => portalIds.includes(b));
-    const doorway = () => page.evaluate((id) => { const { walk, G } = window.viewer, p = walk.portals.find((q) => q.id === id); return { open: p.open !== false, free: G.isFree(walk, ...p.center) }; }, pid);
+    const doorway = () => page.evaluate((id) => { const { walk, G } = window.viewer, p = walk.portals.find((q) => q.id === id); return { open: p.open !== false, free: G.isFree(walk, p.layers[0], ...p.center) }; }, pid);
     check(!!(await approach(page, door.id)), `stands in sight of ${door.id}`); await settle(page, 100);
     const d0 = await doorway(), c0 = await centreOf(page, door.id), px = await pixelOf(page, door.id);
     check(d0.open === door.open && d0.free === d0.open, `doorway ${pid} starts ${d0.open ? 'passable' : 'shut'}, like its leaf`);
@@ -384,12 +397,12 @@ if (run('ix')) {
     if (!(await openOf(door.id))) { await toggle(door.id); await idle(page); }
     const inDoor = await page.evaluate((id) => { const { S, walk } = window.viewer, p = walk.portals.find((q) => q.id === id); Object.assign(S, { anim: null, glide: null, x: p.center[0], y: p.center[1] }); return p.center; }, pid);
     await toggle(door.id); await idle(page, 300);
-    const out = await page.evaluate((c) => { const { S, G, walk } = window.viewer; return { free: G.isFree(walk, S.x, S.y), d: Math.hypot(S.x - c[0], S.y - c[1]) }; }, inDoor);
+    const out = await page.evaluate((c) => { const { S, G, walk } = window.viewer; return { free: G.isFree(walk, S.layer, S.x, S.y), d: Math.hypot(S.x - c[0], S.y - c[1]) }; }, inDoor);
     check(out.free && out.d > 0.1, `closing the door on the walker moves them out of the doorway (${Math.round(out.d * 1000)} mm)`);
     if (pid === 'd_kitchen') {
-      const shut = await page.evaluate(() => window.viewer.G.route(window.viewer.walk, [0, 3], [2.8, 7.0]));
+      const shut = await page.evaluate(() => window.viewer.G.route(window.viewer.walk, { x: 0, y: 3, layer: 'G' }, { x: 2.8, y: 7.0, layer: 'G' }));
       await toggle(door.id); await idle(page);
-      const open = await page.evaluate(() => window.viewer.G.route(window.viewer.walk, [0, 3], [2.8, 7.0]));
+      const open = await page.evaluate(() => window.viewer.G.route(window.viewer.walk, { x: 0, y: 3, layer: 'G' }, { x: 2.8, y: 7.0, layer: 'G' }));
       check(shut === null && !!open, 'no route into the kitchen while its door is shut, one once it is open');
     } else { await toggle(door.id); await idle(page); }
   }
@@ -626,6 +639,227 @@ if (run('ix')) {
     const f1 = await pinch(40, 8), f2 = await pinch(104, -8);
     check(f1 < 40 && f2 > 65 && (await groups(page)).map((g) => g.state).join() === states, `pinch zooms in and out (fov ${f1.toFixed(0)} -> ${f2.toFixed(0)}) and operates nothing`);
     await shot(page, 'ix_phone_hint.png');
+    await ctx.close();
+  }
+}
+
+// ---- schema 2: levels, layers, sheets, routes, dollhouse cut (MULTILEVEL.md 11.2, 11.3) ----
+if (run('levels')) {
+  let i;
+  const { ctx, page } = await open({ viewport: { width: 1440, height: 900 } });
+  await page.evaluate(() => window.viewer.streaming);
+  const st = await page.evaluate(() => { const v = window.viewer; return { order: v.ORDER, loaded: [...v.levelScenes.keys()], ix: v.ixLevels, models: v.ix.models(),
+    groups: v.ix.groups().length, root: v.scene.getObjectByName('house')?.children.map((c) => c.name), glbs: v.LEVELS.filter((l) => l.glb).map((l) => l.id) }; });
+  console.log('levels', JSON.stringify(st));
+  const want = st.order.filter((id) => st.glbs.includes(id));
+  check(st.order.join() === 'G,X,1,2,B' && st.loaded.join() === want.join() && st.root.join() === want.map((l) => `level_${l}`).join() && want.length > 1,
+    `levels load in loadOrder under one root (${st.root}); levels without a GLB are skipped`);
+  check(st.ix.join() === st.loaded.join() && st.models === st.loaded.length && st.groups > 50, `each level is handed to the interaction engine as it arrives (${st.ix}; ${st.groups} groups)`);
+  check(await page.evaluate(() => document.querySelector('#chip').hidden), 'the streaming chip is gone once every level has arrived');
+  // a switch of one level (X, loaded 2nd) controls a lamp of a level that arrived after it (1, loaded 3rd)
+  if (FIXTURE && st.loaded.includes('X') && st.loaded.includes('1')) {
+    const lamp = () => page.evaluate(() => { let v = null; window.viewer.scene.traverse((o) => { if (o.isMesh && o.userData.name === 'landing1_rear.lamp_test') v = [].concat(o.material)[0].emissiveIntensity; }); return v; });
+    const l0 = await lamp();
+    await page.evaluate(() => window.viewer.ix.toggle('garden.switch_test')); await idle(page);
+    const l1 = await lamp(), hint = await page.evaluate(() => window.viewer.ix.groups().find((g) => g.id === 'garden.switch_test').hint);
+    await page.evaluate(() => window.viewer.ix.toggle('garden.switch_test')); await idle(page);
+    const l2 = await lamp();
+    check(l0 > 0.5 && l1 < 1e-3 && Math.abs(l2 - l0) < 1e-6 && hint === 'Turn landing lights on', `cross-level switch: X switch turns the level-1 lamp off and on (${l0} -> ${l1} -> ${l2}; "${hint}")`);
+    const door = () => page.evaluate(() => window.viewer.walk.portals.find((p) => p.id === 'd_ensuite').open);
+    const d0 = await door(); await page.evaluate(() => window.viewer.ix.toggle('blue_ensuite.door_test')); await idle(page);
+    const d1 = await door(); await page.evaluate(() => window.viewer.ix.toggle('blue_ensuite.door_test')); await idle(page);
+    check(d0 === false && d1 === true && (await door()) === false, 'a door leaf of a later level opens and shuts its doorway (d_ensuite)');
+    // probes: own room's probe, else the nearest of the same exterior-ness (the neighbour block is nearer the dining probe)
+    const env = await page.evaluate(() => { const o = {}; window.viewer.scene.traverse((m) => { if (m.isMesh && /test_/.test(m.userData.name)) o[m.userData.name] = [].concat(m.material)[0].envMap?.source?.data?.src?.split('/assets/')[1] ?? null; }); return o; });
+    check(env['garden.test_deck'] === 'probes/garden.jpg' && env['neighbours.test_block'] === 'probes/garden.jpg' && env['landing1_rear.test_floor'] && env['landing1_rear.test_floor'] !== 'probes/garden.jpg',
+      `probe choice by room, then by exterior-ness (${JSON.stringify(env)})`);
+  }
+  await page.waitForFunction(() => window.viewer.scene.background?.isTexture, null, { timeout: 5000 }).catch(() => {});
+  const bg = await page.evaluate(() => { const { scene, THREE } = window.viewer, b = scene.background; return { tex: !!b?.isTexture, eq: b?.mapping === THREE.EquirectangularReflectionMapping, cs: b?.colorSpace }; });
+  check(bg.tex && bg.eq && bg.cs === 'srgb', 'manifest.sky.image is the walk-mode background (equirect, sRGB)');
+  i = await info(page);
+  check(i.layer === 'G' && i.level === 'G' && i.room === 'hallway' && Math.abs(i.z) < 1e-6 && Math.abs(i.eye - 1.6) < 0.01 && i.sheet === 'G',
+    `spawn: layer ${i.layer}, level ${i.level}, ${i.room}, z ${i.z}, eye ${i.eye.toFixed(2)}, sheet ${i.sheet}`);
+  check(!(await page.evaluate(() => performance.getEntriesByType('resource').some((r) => /lightmaps_off|probes_off/.test(r.name)))), 'no lights-off image is fetched at load');
+  await shot(page, 'spawn.png');
+
+  // room buttons grouped by level; digits jump within the floor you are on
+  const grp = await page.$$eval('#rooms .grp', (gs) => gs.map((g) => [g.dataset.level, g.querySelectorAll('button').length, g.classList.contains('cur')]));
+  check(grp.map((g) => g[0]).join() === 'B,G,1,2,X' && grp.find((g) => g[0] === 'G')[2] && grp.reduce((n, g) => n + g[1], 0) >= 25, `room buttons grouped by level (${grp.map((g) => `${g[0]}:${g[1]}`)})`);
+
+  // plan tabs; marker on every sheet (full on the visitor's floor, hollow on SITE while indoors, none on other floors)
+  const tabs = await page.$$eval('#plan-tabs button', (bs) => bs.map((b) => [b.textContent, b.getAttribute('aria-pressed')]));
+  check(tabs.map((t) => t[0]).join() === 'B,G,1,2,SITE' && tabs.find((t) => t[0] === 'G')[1] === 'true', `plan tabs ${tabs.map((t) => t[0])}, G pressed`);
+  const place = (L, x, y) => page.evaluate(([L, x, y]) => { const { S, G, walk } = window.viewer; Object.assign(S, { anim: null, glide: null, x, y, layer: L, z: G.zAt(walk, L, x, y), pitch: 0 }); }, [L, x, y]);
+  // the marker on the plan canvas at the visitor: full = a solid dot (3x3 core in the marker colour), hollow = a ring
+  // (core clear, ring pixels 3..7 px out on the four sides), none = neither
+  const marker = () => page.evaluate(() => {
+    const { planView: p, S } = window.viewer; p.fit();
+    const [X, Y] = p.toScreen(S.x, S.y).map(Math.round), g = p.c.getContext('2d', { willReadFrequently: true }), d = p.dpr;
+    const at = (dx, dy) => { const c = g.getImageData(X + dx, Y + dy, 1, 1).data; return c[0] > 200 && c[1] < 140 && c[2] < 110 ? 1 : 0; };
+    let core = 0, ring = 0;
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) core += at(dx, dy);
+    for (let r = Math.round(3 * d); r <= Math.round(7 * d); r++) ring += at(r, 0) + at(-r, 0) + at(0, r) + at(0, -r);
+    return { sheet: p.sheetId, full: core >= 7, hollow: core <= 2 && ring >= 2, none: core === 0 && ring === 0 };
+  });
+  const frames = (n = 3) => page.evaluate((n) => new Promise((f) => { const k = () => (--n ? requestAnimationFrame(k) : f()); requestAnimationFrame(k); }), n);
+  for (const [sheet, L, x, y] of [['B', 'B', 2.5, 7.0], ['G', 'G', 0, 3], ['1', '1', -0.2, 10.0], ['2', '2', -0.2, 10.0], ['X', 'G', 1.9, -3.0]]) {
+    await place(L, x, y); await frames(4);
+    const m = await marker(); i = await info(page);
+    check(i.level === sheet && m.sheet === sheet && m.full, `on level ${sheet}: the plan follows to sheet ${m.sheet}, marker drawn (${i.room})`);
+    await shot(page, `plan_${sheet}.png`, '#plan');
+    if (sheet !== 'X') {
+      await page.click('#plan-tabs button:last-child'); await frames(3);
+      const h = await marker();
+      if (sheet === 'G') await shot(page, 'plan_site_indoors.png', '#plan');
+      await page.click(`#plan-tabs button[data-sheet="${sheet === 'B' ? 'G' : 'B'}"]`); await frames(3);
+      const o = await marker();
+      check(h.sheet === "X" && h.hollow && o.none, `tab click overrides: SITE shows a hollow marker indoors, another floor none (${JSON.stringify([h, o])})`);
+    }
+  }
+
+  // the sheet follows the stairs: walk from the hall up the main flight to the quarter landing
+  await place('G', 0.4, 4.4); await page.evaluate(() => { const { S } = window.viewer; S.yaw = 0; }); await frames(3);
+  const climb = await page.evaluate(async () => {
+    const v = window.viewer, seen = [];
+    if (!v.walkTo(0.57, 8.42, '1')) return null;
+    await new Promise((f) => { const k = () => { const s = `${v.S.layer}/${v.S.level}/${v.planView.sheetId}`; if (seen[seen.length - 1] !== s) seen.push(s); v.S.glide ? requestAnimationFrame(k) : f(); }; k(); });
+    await new Promise((f) => setTimeout(f, 600));
+    return { seen, ...v.info() };
+  });
+  check(climb && climb.layer === '1' && climb.sheet === '1' && Math.abs(climb.z - 2.85) < 0.02 && climb.seen.includes('stair_main/G/G') && climb.seen.includes('stair_main/1/1'),
+    `walks up the main flight: ${climb?.seen.join(' > ')}; z ${climb?.z.toFixed(2)}`);
+  await shot(page, 'stairs_landing.png');
+
+  // routes across layers: to the loft office (two flights, two step sets, the loft door) and to the basement
+  const go = (x, y, L, ms = 40000) => page.evaluate(async ([x, y, L, ms]) => {
+    const v = window.viewer, t0 = performance.now();
+    if (!v.walkTo(x, y, L)) return null;
+    let zmax = -9, zmin = 9, eyeMin = 9;
+    await new Promise((f) => { const k = () => { zmax = Math.max(zmax, v.S.z); zmin = Math.min(zmin, v.S.z); eyeMin = Math.min(eyeMin, v.camera.position.y - v.S.z); v.S.glide && performance.now() - t0 < ms ? requestAnimationFrame(k) : f(); }; k(); });
+    await new Promise((f) => setTimeout(f, 600));
+    return { ...v.info(), zmax, zmin, eyeMin };
+  }, [x, y, L, ms]);
+  i = await go(2.0, 3.2, '2');
+  check(i && i.layer === '2' && i.room === 'loft_office' && Math.abs(i.z - 6.49) < 0.02 && i.eye < 1.6 && i.eye > 1.0,
+    `double-click route climbs to the loft office (${i?.room}, z ${i?.z.toFixed(2)}, eye ${i?.eye.toFixed(2)} under the slope)`);
+  await page.evaluate(() => { window.viewer.S.yaw = Math.PI; }); await frames(3); await shot(page, 'loft.png');
+  await page.evaluate(() => {   // open the basement door: its leaf (a shut leaf is solid), else (the fixture GLB has none) the doorway
+    const { ix, walk } = window.viewer, g = ix.groups().find((q) => q.blocks.includes('d_basement'));
+    if (g) { if (!g.open) ix.toggle(g.id); return; }
+    walk.portals.find((p) => p.id === 'd_basement').open = true;
+  });
+  await idle(page, 300);
+  i = await go(2.5, 7.0, 'B');
+  check(i && i.layer === 'B' && i.room === 'basement' && Math.abs(i.z + 2.31) < 0.02 && i.level === 'B' && i.sheet === 'B',
+    `route from the loft down three flights to the basement (${i?.room}, z ${i?.z.toFixed(2)}, sheet ${i?.sheet})`);
+  // a plan click lands on the layer of the sheet shown: sheet 1 while standing in the basement
+  await page.click('#plan-tabs button[data-sheet="1"]'); await frames(3);
+  const pt = await page.evaluate(() => { const p = window.viewer.planView; p.fit(); const r = p.c.getBoundingClientRect(), [X, Y] = p.toScreen(1.2, 14.5); return [r.left + (X * r.width) / p.c.width, r.top + (Y * r.height) / p.c.height]; });
+  await page.mouse.click(...pt); await idle(page, 300); i = await info(page);
+  check(i.layer === '1' && i.room === 'blue_bedroom' && i.sheet === '1' && Math.abs(i.z - 3.04) < 1e-6, `plan click on sheet 1 from the basement lands on that floor (${i.layer}, ${i.room}, z ${i.z})`);
+  // the double-click layer choice: a floor hit at a height picks the layer whose floor is there
+  const tl = await page.evaluate(() => {
+    const { targetOf, THREE } = window.viewer, hit = (x, y, h) => ({ point: new THREE.Vector3(x, h, -y), face: { normal: new THREE.Vector3(0, 1, 0) }, object: new THREE.Object3D() });
+    return [[0.57, 7.0, 1.85], [0.57, 7.0, -0.7], [0, 3, 0], [-0.2, 10, 3.04], [2.0, 4.0, 6.49]].map(([x, y, h]) => targetOf(hit(x, y, h))?.layer);
+  });
+  check(tl.join() === 'stair_main,stair_basement,G,1,2', `double-click target layer by hit height (${tl})`);
+
+  // room jumps to another layer cut through black instead of flying through floors
+  const jmp = await page.evaluate(() => { const v = window.viewer; v.jump('loft_office'); return !!v.S.anim?.cut; });
+  await idle(page, 300); i = await info(page);
+  check(jmp && i.layer === '2' && i.room === 'loft_office' && Math.abs(i.z - 6.49) < 1e-6, `room jump to another floor is a fade cut (${i.room}, z ${i.z})`);
+  await page.evaluate(() => window.viewer.jump('garden')); await idle(page, 300); i = await info(page);
+  check(i.layer === 'G' && i.level === 'X' && i.room === 'garden' && i.sheet === 'X', `jump to the garden: layer G, level X, SITE sheet (${i.room}, z ${i.z.toFixed(2)})`);
+  await shot(page, 'garden.png');
+  await page.keyboard.press('Digit1'); await idle(page, 200); i = await info(page);
+  check(i.level === 'X' && i.room === 'front', `key 1 outside -> first room of the Outside group (${i.room})`);
+
+  // the route traces of blender/MULTILEVEL.md section 16 on a REAL export: every shut door leaf of the GLBs is opened
+  // through its own `blocks` tag, then the walker goes there on foot (stairs, steps, thresholds, the side passage)
+  if (!FIXTURE) {
+    const opened = await page.evaluate(() => {
+      const ix = window.viewer.ix, ids = ix.groups().filter((g) => g.blocks.length && !g.open).map((g) => g.id);
+      ids.forEach((id) => ix.toggle(id)); return ids;
+    });
+    await idle(page, 1500);
+    const shut = await page.evaluate(() => window.viewer.walk.portals.filter((p) => p.open === false).map((p) => p.id));
+    check(shut.every((id) => id === 'side_gate' || /^d_wc|^d_pocket/.test(id)) || shut.length < 3, `door leaves open their portals (still shut: ${shut.join(' ') || 'none'})`);
+    for (const [name, from, to, room, z] of [
+      ['1 front door to basement', ['G', 0, 0.9], [2.5, 7.0, 'B'], 'basement', -2.31],
+      ['2 front door to balcony', ['G', 0, 0.9], [1.15, 17.9, '1'], 'balcony', 3.0],
+      ['3 front door to loft office', ['G', 0, 0.9], [2.0, 3.2, '2'], 'loft_office', 6.49],
+      ['4 kitchen to side passage, garden, shed', ['G', 3.0, 7.0], [2.0, 27.0, 'G'], 'shed', -0.32],
+      ['5 dining French doors to deck', ['G', 1.2, 16.6], [1.2, 19.0, 'G'], 'garden', -0.05],
+      ['6 street doors to forecourt', ['G', 0, 0.9], [1.9, -3.0, 'G'], 'front', null]]) {
+      await place(...from); await frames(3);
+      i = await go(...to, 90000);
+      check(i && i.room === room && (z === null || Math.abs(i.z - z) < 0.02), `route ${name} walked on the real model (${i?.room}, z ${i?.z?.toFixed(2)})`);
+      await shot(page, `route_${name[0]}.png`);
+    }
+    // door leaves are solid where they stand: no free spot within 0.10 m of an open leaf's mesh (eye height band)
+    const near = await page.evaluate(() => {
+      const { ix, G, walk, THREE, scene } = window.viewer, out = [], v = new THREE.Vector3();
+      for (const g of ix.groups().filter((q) => q.blocks.length && q.open && q.types.includes('hinge'))) {
+        const pts = [];
+        scene.traverse((o) => { if (!o.isMesh || ix.groupOf(o) !== g.id) return; const a = o.geometry.attributes.position; for (let k = 0; k < a.count; k += Math.max(1, a.count >> 8)) pts.push(v.fromBufferAttribute(a, k).applyMatrix4(o.matrixWorld).clone()); });
+        const b = ix.box(g.id);
+        for (let x = b.min.x - 0.3; x <= b.max.x + 0.3 && out[out.length - 1]?.[0] !== g.id; x += 0.05) for (let z = b.min.z - 0.3; z <= b.max.z + 0.3; z += 0.05) {
+          const L = walk.layers.find((l) => G.isFree(walk, l, x, -z) && Math.abs(G.zAt(walk, l, x, -z) + 1 - (b.min.y + b.max.y) / 2) < 1.2);
+          const d = L ? Math.min(...pts.map((q) => Math.hypot(q.x - x, q.z - z))) : Infinity;
+          if (d < 0.1) { out.push([g.id, +x.toFixed(2), +(-z).toFixed(2), +d.toFixed(3)]); break; }
+        }
+      }
+      return out;
+    });
+    check(!near.length, `no free spot within 0.10 m of an open door leaf (${JSON.stringify(near)})`);
+    await page.evaluate((ids) => ids.forEach((id) => window.viewer.ix.toggle(id)), opened); await idle(page, 1500);
+    // a double door with one leaf open: its shut leaf keeps its half of the doorway shut, the open half is a route
+    const half = await page.evaluate(() => {
+      const { ix, G, walk } = window.viewer, st = (id) => ix.groups().find((g) => g.id === id)?.open;
+      if (st('hallway.d_inner.leaf.1') === undefined) return null;
+      if (!st('hallway.d_inner.leaf.1')) ix.toggle('hallway.d_inner.leaf.1');
+      if (st('hallway.d_inner.leaf.0')) ix.toggle('hallway.d_inner.leaf.0');
+      const b = ix.box('hallway.d_inner.leaf.0'), x = (b.min.x + b.max.x) / 2, y = -(b.min.z + b.max.z) / 2;
+      const r = G.route(walk, { x, y: y - 0.5, layer: 'G' }, { x, y: y + 0.8, layer: 'G' });
+      return { shut: !G.isFree(walk, 'G', x, y), route: !!r && r.every((p, i) => !i || [0.25, 0.5, 0.75].every((f) => { const q = r[i - 1], px = q.x + (p.x - q.x) * f, py = q.y + (p.y - q.y) * f; return Math.abs(px - x) > (b.max.x - b.min.x) / 2 || Math.abs(py - y) > 0.2; })) };
+    });
+    check(!half || (half.shut && half.route), `d_inner with one leaf open: the shut leaf's half is solid, the route goes round it (${JSON.stringify(half)})`);
+  }
+
+  // lights: a switch fetches the lights-off bake on first use and still dims the room
+  await page.evaluate(() => window.viewer.jump('kitchen')); await idle(page, 300);
+  const before = await meanLum(page);
+  await page.evaluate(() => window.viewer.ix.toggle('kitchen.switch')); await idle(page);
+  const after = await meanLum(page), offs = await page.evaluate(() => performance.getEntriesByType('resource').filter((r) => /lightmaps_off|probes_off/.test(r.name)).map((r) => r.name.split('/assets/')[1]));
+  check(after < before * 0.75 && offs.some((n) => n.startsWith('lightmaps_off/kitchen')), `kitchen switch: lights-off loaded on first use (${offs}) and the view darkens (${before.toFixed(0)} -> ${after.toFixed(0)})`);
+  await page.evaluate(() => window.viewer.ix.toggle('kitchen.switch')); await idle(page);
+
+  // dollhouse: one cut plane per level at its cutZ, orbit target on its datumZ; B also hides the outside; All clips nothing
+  await page.evaluate(() => window.viewer.jump('hallway')); await idle(page, 200);
+  await page.click('#mode-orbit'); await page.waitForTimeout(600);
+  const levels = await page.evaluate(() => window.viewer.LEVELS.filter((l) => l.id !== 'X').map((l) => [l.id, l.cutZ, l.datumZ]));
+  check(await page.isVisible('#dh-levels') && (await page.$$eval('#dh-levels button', (bs) => bs.map((b) => b.textContent))).join() === 'B,G,1,2,All', 'dollhouse level buttons B G 1 2 All');
+  for (const [id, cut, datum] of [...levels, ['all', null, null]]) {
+    await page.click(`#dh-levels button[data-level="${id}"]`); await page.waitForTimeout(700);
+    const d = await page.evaluate(() => { const { renderer, orbit, levelScenes } = window.viewer; return { planes: renderer.clippingPlanes.map((p) => p.constant), ty: orbit.target.y, out: levelScenes.get('X')?.visible ?? null }; });
+    const ok = id === 'all' ? d.planes.length === 0 : d.planes.length === 1 && Math.abs(d.planes[0] - cut) < 1e-6 && Math.abs(d.ty - datum) < 1e-6;
+    check(ok && (d.out === null || d.out === (id !== 'B')), `dollhouse ${id}: cut ${d.planes} (want ${cut ?? 'none'}), target y ${d.ty.toFixed(2)}, outside shown ${d.out}`);
+    await shot(page, `dollhouse_${id}.png`);
+  }
+  await page.click('#dh-levels button[data-level="1"]'); await page.waitForTimeout(300);
+  await page.click('#mode-walk'); await page.waitForTimeout(500); i = await info(page);
+  check(i.mode === 'walk' && i.layer === '1' && await page.evaluate(() => window.viewer.renderer.clippingPlanes.length === 0), `back to walk on the dollhouse level (${i.layer}, ${i.room})`);
+  await ctx.close();
+
+  // phone: tabs, grouped room buttons and the dollhouse level control fit the screen
+  {
+    const { ctx, page } = await open({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await shot(page, 'phone.png');
+    await page.tap('#mode-orbit'); await page.waitForTimeout(600);
+    const fit = await page.evaluate(() => [...document.querySelectorAll('#dh-levels, #plan-tabs')].map((e) => { const r = e.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }));
+    check(fit.every(Boolean), 'phone: plan tabs and dollhouse levels fit the screen');
+    await shot(page, 'phone_dollhouse.png');
     await ctx.close();
   }
 }

@@ -1,6 +1,7 @@
 """Mouldings: mesh builder, profile library, mitred sweeps, enriched cornices, ceiling roses,
 corbels, arch helpers and per-room trim (skirting / dado / cornice) fitted from spec/house.json.
-Owner: joinery agent. Public API is documented in blender/lib/README.md (section "mouldings")."""
+Owner: joinery agent. Public API: blender/lib/README.md (section "mouldings"); world-Z outlines, chamfers and the
+per-room TRIM table of all levels: blender/lib/README.md. Test: blender/test_joinery.py."""
 import math
 
 import bpy
@@ -17,7 +18,7 @@ MATS = {
     'shutter_white': 'white_satin', 'brass': 'brass', 'chrome': 'chrome', 'black': 'black_matt',
     'red_plastic': ('#B02020', 0.4), 'flap_smoked': ('#6F7678', 0.15),      # cat-flap door: translucent smoked plastic
     'glass': 'glass_clear', 'glass_frosted': 'glass_frosted', 'glass_obscure': 'glass_obscure',
-    'glass_smoked': 'glass_dark',
+    'glass_smoked': 'glass_dark', 'oxblood': 'paint_oxblood',
 }
 
 
@@ -455,6 +456,25 @@ def _build_profiles():
                      + _q((0.045, 0.050), (0.060, 0.068), 'hv') + [(0.060, 0.090), (0, 0.090)])
     P['bead_bolection'] = [(0.016, -0.008), (0.012, -0.002), (0.007, 0.003), (0.002, 0.003), (-0.003, 0.0)]
     P['bead_ovolo'] = [(0.012, -0.008), (0.009, -0.003), (0.004, 0.0), (0.0, 0.0)]
+    # ---- upper floors (phase 2): plain plaster coves by size, the two enriched bedroom cornices (their bead band is
+    #      BEADS below), the landing dado rail (65 x 28), the 150 mm loft skirting, slimmer upstairs architraves
+    for key, drop, proj in (('cove_60', 0.06, 0.06), ('cove_70', 0.07, 0.07), ('cove_80', 0.08, 0.08),
+                            ('cove_100', 0.10, 0.10), ('cove_120', 0.12, 0.12)):
+        f = 0.1 * drop
+        P[key] = ([(0, -drop), (f, -drop), (f, -drop + 1.5 * f)] + _q((f, -drop + 1.5 * f), (proj - 2.5 * f, -2.2 * f), 'vh', 6)
+                  + [(proj - 2.5 * f, -f), (proj, -f), (proj, 0)])
+    P['cornice_green'] = ([(0, -0.100), (0.006, -0.100), (0.006, -0.072), (0.014, -0.072), (0.014, -0.064)]
+                          + _q((0.014, -0.064), (0.092, -0.020), 'vh', 6) + [(0.092, -0.008), (0.120, -0.008), (0.120, 0)])
+    P['cornice_blue'] = ([(0, -0.130), (0.008, -0.130)] + _half((0.008, -0.130), (0.008, -0.118), 3)
+                         + [(0.012, -0.118)] + _q((0.012, -0.118), (0.070, -0.062), 'vh', 6)
+                         + [(0.074, -0.062), (0.074, -0.036)] + _s((0.074, -0.036), (0.118, -0.008), 5, 'h')
+                         + [(0.130, -0.008), (0.130, 0)])
+    P['dado_landing'] = _scale(P['dado_hall'], 0.028 / 0.022, 0.065 / 0.070)
+    P['sk_loft'] = _scale(P['sk_hall'], 1.0, 0.150 / 0.170)
+    P['arch_upper'] = _scale(P['arch_kitchen'], 1.0, 1.0)                        # 80 mm ogee (landing1.md 2)
+    P['arch_70'] = _scale(P['arch_hall'], 1.0, 1.0)                              # 70 mm (blue bedroom, loft, basement)
+    P['arch_100'] = P['arch_living']                                             # 100 mm under the green doorcases
+    P['arch_hatch'] = _scale(P['arch_hall'], 60 / 70, 0.8)                       # 60 mm picture-frame round the eaves hatches
     for a, b in (('skirting_vestibule', 'sk_vest'), ('skirting_hall', 'sk_hall'), ('skirting_living', 'sk_living'),
                  ('skirting_kitchen', 'sk_kitchen'), ('skirting_utility', 'sk_utility'), ('skirting_dining', 'sk_dining'),
                  ('coving_kitchen', 'cornice_kitchen'), ('coving_utility', 'cornice_utility')):
@@ -466,6 +486,10 @@ PROFILES = _build_profiles()
 # cornice enrichment data: where the modillion band / acanthus face sits in the profile
 HALL_BAND = dict(d=0.040, top=-0.095, w=0.055, h=0.070, proj=0.060, pitch=0.13)
 DINING_FACE = dict(p0=(0.032, -0.105), p1=(0.087, -0.050), repeat=0.075)
+# ponytail: the "small enriched band" of the two bedroom cornices (leaf / egg ornament ~25 mm) is a row of beads on a
+# fascia of the profile: (d, h) of the bead centre on that face, radius, pitch. Model leaves if a close-up ever needs them.
+BEADS = {'cornice_green': dict(d=0.006, h=-0.086, r=0.009, pitch=0.030),
+         'cornice_blue': dict(d=0.074, h=-0.049, r=0.009, pitch=0.032)}
 
 
 def profile_size(key):
@@ -710,6 +734,13 @@ def cornice(mb, key, path, closed=False, mat='plaster_white'):
             mb.leaf(fl * 0.94, step * 0.74, 0.008, mat, 5, serrate=0.2, curl=0.5, base=0.45, round_=0.45, skew=1.3)
             mb.at(F @ Matrix.Translation((step / 2, 0.003, 0)))
             mb.leaf(fl * 0.80, step * 0.22, 0.004, mat, 3, base=0.7, round_=1.0)
+    elif key in BEADS:
+        B = BEADS[key]
+        for p, t, _ in stations(path, closed, B['pitch'], B['d']):
+            s = Z.cross(t)
+            o = p + s * B['d'] + Z * B['h']
+            mb.at(M0 @ Matrix(((t.x, 0, s.x, o.x), (t.y, 0, s.y, o.y), (0, 1, 0, o.z), (0, 0, 0, 1))))
+            mb.dome(B['r'] * 1.25, B['r'], B['r'] * 0.7, mat, 6, 2)
     mb.at(M0)
 
 
@@ -814,8 +845,15 @@ def brass_rail(points, name='rail', r=0.0095, off=0.045, spacing=0.9):
 # --------------------------------------------------------------------------- room outline
 SOLID_TYPES = {'pier', 'pilaster', 'chimney_breast', 'boxing', 'nib'}
 ARCH_BY_ROOM = {'hallway': 'arch_hall', 'stairs': 'arch_hall', 'living': 'arch_living', 'kitchen': 'arch_kitchen',
-                'utility': 'arch_utility', 'wc': 'arch_utility', 'vestibule': 'arch_vest_window', 'dining': 'arch_dark'}
+                'utility': 'arch_utility', 'wc': 'arch_utility', 'vestibule': 'arch_vest_window', 'dining': 'arch_dark',
+                'landing1_front': 'arch_upper', 'landing1_rear': 'arch_upper', 'landing1_ql': 'arch_upper',
+                'yellow_room': 'arch_upper', 'green_bathroom': 'arch_upper', 'landing2_head': 'arch_upper',
+                'landing2_platform': 'arch_upper', 'purple_room': 'arch_upper', 'study': 'arch_upper',
+                'blue_ensuite': 'arch_70', 'bathroom2': 'arch_70', 'loft_office': 'arch_70', 'basement_stair': 'arch_70'}
 ARCH_OVERRIDE = {('d_dining', 'hallway'): 'arch_hall_dining'}
+# architrave width under each doorcase (the skirting / dado stop there)
+DOORCASE_ARCH = {'pediment': 0.109, 'cornice_hood_on_consoles': 0.08, 'pediment_scrolled': 0.10,
+                 'pediment_tall_plain': 0.10, 'pediment_triangular': 0.07}
 
 
 def architrave_key(oid, room):
@@ -823,13 +861,29 @@ def architrave_key(oid, room):
     return ARCH_OVERRIDE.get((oid, room)) or ARCH_BY_ROOM.get(room, 'arch_hall')
 
 
+def surround_of(o, room):
+    """Surround key of opening json `o` on the `room` side. An internal timber door with no entry for one of its
+    rooms still has a plain architrave there (the level-2 doors of the spec carry `surround: {}`)."""
+    sur = (o.get('surround') or {}).get(room)
+    if sur is None and room in o.get('connects', ()) and o.get('style') in ('oak_4panel', 'oak_glazed', 'pocket_oak'):
+        return 'plain_architrave'
+    return sur
+
+
+def doorcase_arch(sur, room):
+    """Architrave width of a doorcase surround; the landing face of the blue door has a 90 mm one (landing1.md 2)."""
+    return 0.09 if sur == 'pediment_triangular' and room.startswith('landing') else DOORCASE_ARCH[sur]
+
+
 def surround_reach(oid, sur, room):
     """(how far the surround covers the wall beyond the hole edge, True if it runs to the floor
     even under a window). Skirting / dado stop there."""
     if sur == 'plain_architrave':
         return profile_size(architrave_key(oid, room))[0], False
-    return {'pediment': (0.109, False), 'dark_architrave': (0.11, True), 'dark_aedicule': (0.10, True),
-            'mahogany_frame': (9.0, True), 'white_upvc_frame': (9.0, True),
+    if sur in DOORCASE_ARCH:
+        return doorcase_arch(sur, room), False
+    return {'dark_architrave': (0.11, True), 'dark_aedicule': (0.10, True), 'dark_recess': (0.10, True),
+            'dark_screen': (0.10, True), 'mahogany_frame': (9.0, True), 'white_upvc_frame': (9.0, True),
             'white_architrave_two_lights': (0.10, False)}.get(sur, (0.0, False))
 
 
@@ -860,13 +914,37 @@ def _sub(ivs, a, b):
     return out
 
 
-def room_loops(ctx, rooms, z, solids=()):
-    """Outline(s) of the clear space of `rooms` (ids, unioned) at height z: room polygons minus
-    walls, piers, pilasters, breasts, boxings, low soffits, plus `solids` [(x0, y0, x1, y1)...].
-    -> list of loops [(x, y)...], interior on the LEFT (outer boundary counter-clockwise)."""
-    rooms = tuple(rooms)
-    polys = [[tuple(p) for p in ctx.rooms[r]['polygon']] for r in rooms]
-    sol, voids = list(solids), []
+def _is_rect(s):
+    return len(s) == 4 and not isinstance(s[0], (list, tuple))
+
+
+def _in_mass(x, y, s):
+    """Point in a mass given as a box (x0, y0, x1, y1) or as a polygon [(x, y)...]."""
+    if _is_rect(s):
+        return s[0] - 1e-6 < x < s[2] + 1e-6 and s[1] - 1e-6 < y < s[3] + 1e-6
+    return _pip(x, y, s)
+
+
+def _wall_at(w, z):
+    """A wall exists at world height z (walls of other storeys never cut an outline)."""
+    b = w.get('baseZ', 0.0)
+    return b - 0.01 <= z <= b + w.get('height', 99.0)
+
+
+def _level(ctx, room):
+    return ctx.rooms[room].get('level', 'G')
+
+
+def _poly(ctx, room, rect=False):
+    return [tuple(p) for p in (ctx.room_poly(room, rect=True) if rect else ctx.rooms[room]['polygon'])]
+
+
+def _masses(ctx, rooms, z, extra=()):
+    """What is solid at world height z in and around `rooms` -> (solids, voids, zones). solids / voids are boxes or
+    polygons; zones = [(ceiling z, polygon)] of the rooms' ceilingZones that lie BELOW z (solid for an outline at z:
+    the ceiling there is lower), kept apart because a shallow ceiling step is not a wall for a cornice."""
+    sol, voids, zones = list(extra), [], []
+    lvl = _level(ctx, rooms[0])
     for f in ctx.features:
         if f.get('room') not in rooms or 'polygon' not in f:
             continue
@@ -877,29 +955,72 @@ def room_loops(ctx, rooms, z, solids=()):
             (voids if zz[0] <= z <= zz[1] else sol).append(rc)
         elif t == 'soffit' and isinstance(zz, (int, float)) and z > zz:
             sol.append(rc)
-    for w in ctx.walls.values():
-        if w.get('virtual') or w['thickness'] <= 0:
+    for r in rooms:
+        zones += [(float(c['z']), [tuple(p) for p in c['polygon']]) for c in ctx.rooms[r].get('ceilingZones', [])
+                  if c['z'] < z - 1e-6]
+    inner_only = getattr(ctx, 'schema', 1) == 2     # schema 2: room polygons are the clear space, so only a wall INSIDE
+    for w in ctx.walls.values():                    # one room (both sides the same room: the arch walls) is a mass in it
+        if w.get('virtual') or w['thickness'] <= 0 or w.get('level', 'G') != lvl or not _wall_at(w, z):
+            continue
+        if inner_only and w['rooms'][0] != w['rooms'][1]:
             continue
         (ax, ay), (bx, by), h = w['a'], w['b'], w['thickness'] / 2
         hor = abs(ay - by) < 1e-6
         ivs = [tuple(sorted((ax, bx)) if hor else sorted((ay, by)))]
         for o in ctx.openings.values():
-            if o['wall'] == w['id'] and o['type'] in ('arch', 'opening') and z < o.get('springing', o['sill'] + o['height']):
+            if (o['wall'] == w['id'] and o['type'] in ('arch', 'opening')
+                    and z < o.get('floorZ', 0.0) + o.get('springing', o['sill'] + o['height'])):
                 c = o['center'][0 if hor else 1]
                 ivs = _sub(ivs, c - o['width'] / 2, c + o['width'] / 2)
         sol += [(s, ay - h, e, ay + h) if hor else (ax - h, s, ax + h, e) for s, e in ivs]
+    return sol, voids, zones
+
+
+def _chamfer_loops(ctx, rooms, z, loops):
+    """Algorithm C (MULTILEVEL section 3): the rectilinear outline passes through each chamfer's vertex v; at a
+    height inside the chamfer's z that vertex becomes the pair p, q (polygon-edge chamfers and bay arris splays)."""
+    seen = set()
+    near = lambda a, b: abs(a[0] - b[0]) < 1e-4 and abs(a[1] - b[1]) < 1e-4
+    for r in rooms:
+        for ch in (ctx.chamfers(r) if hasattr(ctx, 'chamfers') else ()):
+            if ch['id'] in seen or not (ch['z'][0] - 1e-6 <= z <= ch['z'][1] + 1e-6):
+                continue
+            seen.add(ch['id'])
+            v = ch['v']
+            for loop in loops:
+                k = next((i for i, q in enumerate(loop) if near(q, v)), None)
+                if k is None:
+                    continue
+                a, b = loop[k - 1], loop[(k + 1) % len(loop)]
+                on_av = abs((ch['p'][0] - a[0]) * (v[1] - a[1]) - (ch['p'][1] - a[1]) * (v[0] - a[0])) < 1e-6
+                first, second = (ch['p'], ch['q']) if on_av else (ch['q'], ch['p'])
+                loop[k:k + 1] = [tuple(q) for q, e in ((first, a), (second, b)) if not near(q, e)]
+    return loops
+
+
+def room_loops(ctx, rooms, z, solids=(), clip=None):
+    """Outline(s) of the clear space of `rooms` (ids of ONE level, unioned) at WORLD height z: room polygons minus
+    the walls that exist at z, piers, pilasters, breasts, boxings, low soffits and lower ceiling zones, plus `solids`
+    (boxes (x0, y0, x1, y1) or polygons). Chamfers (45-degree walls, bay arris splays) are followed inside their z
+    range, so edges may be diagonal. clip = polygons: only the part of the rooms inside them (one ceiling zone).
+    -> list of loops [(x, y)...], interior on the LEFT (outer boundary counter-clockwise)."""
+    rooms = tuple(rooms)
+    polys = [_poly(ctx, r, rect=True) for r in rooms]
+    sol, voids, zones = _masses(ctx, rooms, z, solids)
+    sol = sol + [zp for _, zp in zones]
     R = lambda v: round(v, 4)
-    xs = sorted({R(p[0]) for pl in polys for p in pl} | {R(v) for r in sol + voids for v in (r[0], r[2])})
-    ys = sorted({R(p[1]) for pl in polys for p in pl} | {R(v) for r in sol + voids for v in (r[1], r[3])})
-    inr = lambda x, y, r: r[0] - 1e-6 < x < r[2] + 1e-6 and r[1] - 1e-6 < y < r[3] + 1e-6
+    pts = [p for pl in polys + list(clip or ()) for p in pl]
+    for m in sol + voids:
+        pts += [(m[0], m[1]), (m[2], m[3])] if _is_rect(m) else list(m)
+    xs, ys = sorted({R(p[0]) for p in pts}), sorted({R(p[1]) for p in pts})
 
     def inside(i, j):
         if not (0 <= i < len(xs) - 1 and 0 <= j < len(ys) - 1):
             return False
         x, y = (xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2
-        if not any(_pip(x, y, pl) for pl in polys):
+        if not any(_pip(x, y, pl) for pl in polys) or (clip and not any(_pip(x, y, c) for c in clip)):
             return False
-        return any(inr(x, y, r) for r in voids) or not any(inr(x, y, r) for r in sol)
+        return any(_in_mass(x, y, r) for r in voids) or not any(_in_mass(x, y, r) for r in sol)
 
     cells = {(i, j) for i in range(len(xs) - 1) for j in range(len(ys) - 1) if inside(i, j)}
     edges = {}
@@ -926,28 +1047,39 @@ def room_loops(ctx, rooms, z, solids=()):
                 out.append(q)
         if len(out) >= 4:
             loops.append(out)
-    return loops
+    return _chamfer_loops(ctx, rooms, z, loops)
+
+
+DOORS = ('door', 'double_door', 'french_door')
 
 
 def _edge_keeps(ctx, rooms, A, B, z, cfg):
-    """Parts [(t0, t1)...] (metres from A) of outline edge A->B that carry trim at height z."""
+    """Parts [(t0, t1)...] (metres from A) of outline edge A->B that carry trim at WORLD height z. Dropped: door /
+    window surrounds, reveals, the cfg 'skip' / 'only' boxes, and every OPEN part: on a virtual wall, or with clear
+    room space of the same level beyond it (another room, or the rest of this room beyond a `clip` boundary)."""
+    L = math.hypot(B[0] - A[0], B[1] - A[1])
+    if abs(A[0] - B[0]) > 1e-6 and abs(A[1] - B[1]) > 1e-6:
+        return [(0.0, L)], L                                # chamfer faces carry no openings
     hor = abs(A[1] - B[1]) < 1e-6
     ax = 0 if hor else 1                                    # axis the edge runs along
     perp = A[1 - ax]
     lo, hi = sorted((A[ax], B[ax]))
     keep = [(lo, hi)]
+    lvl = _level(ctx, rooms[0])
     for o in ctx.openings.values():                         # doors / windows + their surrounds
         w = ctx.walls[o['wall']]
-        if w.get('virtual') or o['type'] in ('arch', 'opening'):
+        if w.get('virtual') or o['type'] in ('arch', 'opening') or o.get('level', 'G') != lvl:
             continue
         whor = abs(w['a'][1] - w['b'][1]) < 1e-6
         if whor != hor or abs(perp - w['a'][1 - ax]) > w['thickness'] / 2 + 0.03:
             continue
-        sur = next((o['surround'][r] for r in rooms if r in (o.get('surround') or {})), None)
-        room = next((r for r in rooms if r in (o.get('surround') or {})), rooms[0])
+        room = next((r for r in rooms if surround_of(o, r)), rooms[0])
+        sur = surround_of(o, room)
         reach, to_floor = surround_reach(o['id'], sur, room)
-        top = max(o['sill'] + o['height'], (o.get('transom') or {}).get('height', 0.0))
-        if not ((o['sill'] - 0.02 < z < top + 0.02) or (to_floor and z < top)):
+        fz = o.get('floorZ', 0.0)
+        top = fz + max(o['sill'] + o['height'], (o.get('transom') or {}).get('height', 0.0))
+        bot = fz if o['type'] in DOORS else fz + o['sill']  # a raised door (d_loft) stands on a riser: no trim under it
+        if not ((bot - 0.02 < z < top + 0.02) or (to_floor and fz - 0.02 < z < top)):
             continue
         c = o['center'][ax]
         keep = _sub(keep, c - o['width'] / 2 - reach, c + o['width'] / 2 + reach)
@@ -958,6 +1090,22 @@ def _edge_keeps(ctx, rooms, A, B, z, cfg):
         r = _bounds(f['polygon'])
         if r[1 - ax] - 0.02 <= perp <= r[3 - ax] + 0.02:
             keep = _sub(keep, r[ax], r[2 + ax])
+    for w in ctx.walls.values():                            # virtual walls: balustrades, step lines, well edges
+        if (w.get('virtual') and w.get('level', 'G') == lvl and abs(w['a'][1 - ax] - perp) < 1e-6
+                and abs(w['b'][1 - ax] - perp) < 1e-6):
+            keep = _sub(keep, *sorted((w['a'][ax], w['b'][ax])))
+    sol, voids, zones = _masses(ctx, rooms, z, cfg.get('solids', ()))
+    sol = sol + [zp for zz, zp in zones if zz <= cfg.get('open_above', 1e9)]
+    level_polys = [_poly(ctx, r) for r in ctx.rooms if _level(ctx, r) == lvl]
+    cuts = sorted({lo, hi} | {p[ax] for pl in level_polys + list(cfg.get('clip') or ()) for p in pl
+                              if abs(p[1 - ax] - perp) < 1e-6 and lo < p[ax] < hi})
+    out_sign = (1 if B[ax] > A[ax] else -1) * (-1 if hor else 1)       # outward = right of travel
+    for s, e in zip(cuts, cuts[1:]):
+        q = [0.0, 0.0]
+        q[ax], q[1 - ax] = (s + e) / 2, perp + 0.02 * out_sign
+        if (any(_pip(q[0], q[1], pl) for pl in level_polys)
+                and (any(_in_mass(q[0], q[1], m) for m in voids) or not any(_in_mass(q[0], q[1], m) for m in sol))):
+            keep = _sub(keep, s, e)
     for bx in cfg.get('skip', ()):
         if bx[1 - ax] <= perp <= bx[3 - ax] and min(hi, bx[2 + ax]) - max(lo, bx[ax]) > 0.02:
             keep = _sub(keep, bx[ax], bx[2 + ax])
@@ -967,18 +1115,20 @@ def _edge_keeps(ctx, rooms, A, B, z, cfg):
             if bx[1 - ax] <= perp <= bx[3 - ax]:
                 only += [(max(s, bx[ax]), min(e, bx[2 + ax])) for s, e in keep if min(e, bx[2 + ax]) - max(s, bx[ax]) > 0.012]
         keep = sorted(only)
-    L = hi - lo
     fwd = B[ax] > A[ax]
     out = [((s - lo) if fwd else (hi - e), (e - lo) if fwd else (hi - s)) for s, e in keep if e - s > 0.012]
     return sorted(out), L
 
 
 def trim_runs(ctx, rooms, z, cfg=None):
-    """Mitre-ready runs of trim at height z round `rooms`: the room outline minus door / window
-    surrounds, reveals and the cfg 'skip' / 'only' boxes. -> [([(x, y)...], closed)...]"""
+    """Mitre-ready runs of trim at WORLD height z round `rooms` (one level): the room outline (room_loops, with
+    its diagonal chamfer faces) minus door / window surrounds, reveals, open edges and the cfg 'skip' / 'only'
+    boxes. cfg keys: solids, skip, only, clip (polygons), open_above (ceiling zones above this z are open, not
+    walls). -> [([(x, y)...], closed)...]"""
     cfg = cfg or {}
+    rooms = tuple(rooms)
     runs = []
-    for loop in room_loops(ctx, rooms, z, cfg.get('solids', ())):
+    for loop in room_loops(ctx, rooms, z, cfg.get('solids', ()), cfg.get('clip')):
         n = len(loop)
         cur, first_from_vertex, loop_runs, at_vertex = None, False, [], False
         for i in range(n):
@@ -1009,22 +1159,24 @@ def trim_runs(ctx, rooms, z, cfg=None):
 
 
 # --------------------------------------------------------------------------- per-room trim
-# kind -> dict(profile, [top] (dado: top of rail above floor), [mat], [solids], [skip], [only]).
-# solids / skip / only are world-plan boxes (x0, y0, x1, y1): `solids` are extra masses for that
-# kind's outline; trim is dropped where an edge runs through a `skip` box and, when `only` is
-# given, kept only inside those boxes.
+# room -> kind -> dict (or list of dicts) with: profile, [top] (dado: top of rail above the room's floor), [mat],
+# [rooms] (outline of several rooms of one level), [zone] (cornice of one ceilingZone, at that zone's z),
+# [solids], [skip], [only]. solids / skip / only are world-plan boxes (x0, y0, x1, y1): `solids` are extra masses for
+# that kind's outline; trim is dropped where an edge runs through a `skip` box and, when `only` is given, kept only
+# inside those boxes. Open edges (virtual walls, room-to-room boundaries) never carry trim, so they need no box.
+# Heights are above the room's own floorZ. Raking trim beside flights and steps belongs to the room modules.
+_UP = dict(profile='sk_hall')                               # 170 mm torus / ogee skirting of the upper floors
+_DADO1, _DADO2 = dict(profile='dado_landing', top=0.975), dict(profile='dado_landing', top=0.99)
 TRIM = {
     'vestibule': dict(skirting=dict(profile='sk_vest'), dado=dict(profile='dado_hall', top=0.965)),
     'hallway': dict(
-        rooms=('hallway', 'stairs'),
-        skirting=dict(profile='sk_hall', solids=[(0.15, 5.33, 0.99, 7.58), (0.10, 7.58, 0.20, 7.68)],
-                      skip=[(0.98, 4.84, 1.00, 5.34), (0.14, 5.32, 1.00, 5.34)]),
-        dado=dict(profile='dado_hall', top=0.965, solids=[(0.15, 5.33, 0.99, 7.58), (0.10, 7.58, 0.20, 7.68)],
-                  skip=[(0.98, 4.84, 1.00, 5.34), (0.14, 5.32, 1.00, 5.34), (0.09, 5.32, 0.16, 7.69),
-                        (0.09, 7.67, 1.00, 7.69)]),
-        cornice=dict(profile='cornice_hall', solids=[(0.15, 7.58, 0.99, 8.73), (0.10, 7.58, 0.20, 7.68)],
-                     skip=[(0.98, 4.84, 1.00, 7.59), (0.09, 7.57, 1.00, 7.59), (-0.70, 8.72, 1.00, 8.74),
-                           (-0.70, 9.02, 1.00, 9.04), (-0.70, 1.82, 0.70, 1.84)])),
+        skirting=dict(profile='sk_hall', skip=[(0.14, 7.57, 0.16, 7.69)]),      # end of the understairs wall
+        dado=dict(profile='dado_hall', top=0.965, skip=[(0.14, 7.57, 0.16, 7.69)]),
+        cornice=[                                           # front hall + the diagonal; not along the stair flank
+            dict(profile='cornice_hall', rooms=('hallway', 'stairs'),
+                 skip=[(0.98, 5.38, 1.00, 7.59), (0.14, 7.57, 1.00, 7.59), (-0.70, 1.82, 0.70, 1.84)]),
+            dict(profile='cornice_hall', zone='rear_hall',   # lobby west + rear corridor (ceiling 2.84), not on the arch wall
+                 skip=[(-0.70, 8.72, 1.00, 8.74), (-0.70, 9.02, 1.00, 9.04)])]),
     'living': dict(skirting=dict(profile='sk_living'), cornice=dict(profile='cornice_living')),
     'kitchen': dict(skirting=dict(profile='sk_kitchen', only=[(4.29, 7.82, 4.31, 8.74), (1.24, 8.72, 3.25, 8.74),
                                                                (1.24, 7.54, 1.26, 7.76)]),
@@ -1034,6 +1186,23 @@ TRIM = {
     'wc': dict(cornice=dict(profile='cornice_wc')),
     'dining': dict(skirting=dict(profile='sk_dining', mat='dark_stain'), dado=dict(profile='dado_dining', top=1.05),
                    cornice=dict(profile='cornice_dining', solids=[(-0.65, 16.74, 3.10, 16.86)])),
+    # ---- first floor (spec/rooms/landing1.md 3.5, green_bedroom.md 3.1, blue_bedroom.md 3, ...)
+    'landing1_front': dict(skirting=_UP, dado=_DADO1, cornice=dict(profile='cove_70')),
+    'landing1_rear': dict(skirting=_UP, dado=_DADO1, cornice=dict(profile='cove_70')),
+    # the rail runs level with the rear corridor's (floor 3.04): 0.975 + 0.19 above the quarter landing
+    'landing1_ql': dict(skirting=_UP, dado=dict(profile='dado_landing', top=1.165), cornice=dict(profile='cove_70')),
+    'green_bedroom': dict(skirting=_UP, cornice=dict(profile='cornice_green')),
+    'green_bathroom': dict(cornice=dict(profile='cove_100')),
+    'blue_bedroom': dict(skirting=_UP, cornice=dict(profile='cornice_blue')),
+    'blue_ensuite': dict(cornice=dict(profile='cove_60')),
+    'yellow_room': dict(skirting=_UP, cornice=dict(profile='cove_70')),
+    # ---- second floor (landing2.md 3, purple_room.md 3, study.md 3, bathroom2.md 3, loft_office.md 3)
+    'landing2_head': dict(skirting=_UP, dado=_DADO2, cornice=dict(profile='cove_100')),
+    'landing2_platform': dict(skirting=_UP, dado=_DADO2, cornice=dict(profile='cove_100')),
+    'purple_room': dict(skirting=_UP, cornice=dict(profile='cove_120')),
+    'study': dict(skirting=_UP, cornice=dict(profile='cove_120')),
+    'bathroom2': dict(cornice=dict(profile='cove_80')),
+    'loft_office': dict(skirting=dict(profile='sk_loft')),   # sloped ceilings: no cornice
 }
 ROSE_AT = {'living': (2.55, 2.86), 'dining': (1.225, 14.61)}       # world xy of the rose centres
 
@@ -1114,35 +1283,43 @@ EXTRAS = {'vestibule': _extras_vestibule, 'hallway': _extras_hallway, 'living': 
 
 
 def install_room_trim(ctx, room_id):
-    """Fit skirting, dado rail and cornice round a room (TRIM table) plus the room's fixed plaster
-    ornaments (EXTRAS: vestibule imposts + archivolt, hall arch corbels, living rose + brass
+    """Fit skirting, dado rail and cornice round a room (TRIM table, heights above the room's own floorZ) plus the
+    room's fixed plaster ornaments (EXTRAS: vestibule imposts + archivolt, hall arch corbels, living rose + brass
     picture rail, dining rose + pelmet). Objects are tagged kind='trim'. -> [objects]"""
     cfg = TRIM.get(room_id)
     obs = []
-    if cfg:
-        rooms = cfg.get('rooms', (room_id,))
-        fz, cz = ctx.floor_z(room_id), ctx.ceil_z(room_id)
+    if cfg and room_id in ctx.rooms:
+        fz, top = ctx.floor_z(room_id), ctx.ceil_z(room_id)
         for kind in ('skirting', 'dado', 'cornice'):
-            c = cfg.get(kind)
-            if not c:
-                continue
-            if kind == 'skirting':
-                zb, zq, m = fz, fz + 0.05, 'joinery_white'
-            elif kind == 'dado':
-                zb = fz + c['top'] - profile_size(c['profile'])[1]
-                zq, m = zb + 0.02, 'joinery_white'
-            else:
-                zb, zq, m = cz, cz - 0.03, 'plaster_white'
-            m = c.get('mat', m)
+            entries = cfg.get(kind) or []
             mb = MB()
-            for run, closed in trim_runs(ctx, rooms, zq, c):
-                path = [(x, y, zb) for x, y in run]
-                if kind == 'cornice':
-                    cornice(mb, c['profile'], path, closed, m)
+            for c in ([entries] if isinstance(entries, dict) else entries):
+                rooms, c = c.get('rooms', cfg.get('rooms', (room_id,))), dict(c)
+                if kind == 'skirting':
+                    zb, zq, m = fz, fz + 0.05, 'joinery_white'
+                elif kind == 'dado':
+                    zb = fz + c['top'] - profile_size(c['profile'])[1]
+                    zq, m = zb + 0.02, 'joinery_white'
                 else:
-                    mb.sweep(PROFILES[c['profile']], path, m, closed)
+                    zb = top
+                    if c.get('zone'):
+                        zone = next((zn for zn in ctx.rooms[room_id].get('ceilingZones', []) if zn.get('id') == c['zone']), None)
+                        if zone is None:                    # the schema-1 house has no ceiling zones
+                            continue
+                        zb, c['clip'] = float(zone['z']), [[tuple(p) for p in zone['polygon']]]
+                    zq, m = zb - 0.03, 'plaster_white'
+                    c['open_above'] = zb - profile_size(c['profile'])[1]    # a shallower ceiling step is no wall
+                m = c.get('mat', m)
+                for run, closed in trim_runs(ctx, rooms, zq, c):
+                    path = [(x, y, zb) for x, y in run]
+                    if kind == 'cornice':
+                        cornice(mb, c['profile'], path, closed, m)
+                    else:
+                        mb.sweep(PROFILES[c['profile']], path, m, closed)
             if mb.bm.faces:
                 obs.append(ctx.add(mb.finish(f'{room_id}.{kind}'), room_id, 'trim'))
-    if room_id in EXTRAS:
+            else:
+                mb.bm.free()
+    if room_id in EXTRAS and room_id in ctx.rooms:
         obs += EXTRAS[room_id](ctx)
     return obs

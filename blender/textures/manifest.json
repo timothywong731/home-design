@@ -30,6 +30,21 @@
    1.0
   ]
  },
+ "_render": {
+  "metal": 0.0,
+  "note": "smooth masonry paint over render: fine sand texture",
+  "nrm": "render_nrm.jpg",
+  "nrm_strength": 1.0,
+  "rough": 0.9,
+  "seam": [
+   0.9,
+   0.93
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ]
+ },
  "_stipple": {
   "metal": 0.0,
   "note": "obscure glass relief",
@@ -44,6 +59,93 @@
    0.15,
    0.15
   ]
+ },
+ "asphalt": {
+  "base": "asphalt_col.jpg",
+  "mean": "#55565A",
+  "metal": 0.0,
+  "nrm": "asphalt_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.95,
+  "seam": [
+   0.98,
+   0.94
+  ],
+  "size_m": [
+   2.0,
+   2.0
+  ],
+  "target": "#55565A"
+ },
+ "buff_brick": {
+  "base": "buff_brick_col.jpg",
+  "mean": "#CAB893",
+  "metal": 0.0,
+  "note": "215x65 mm units, joint #CFC6B0",
+  "nrm": "buff_brick_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.45,
+   0.37
+  ],
+  "size_m": [
+   1.8,
+   1.2
+  ],
+  "target": "#C9B58C"
+ },
+ "carpet_grey": {
+  "base": "carpet_grey_col.jpg",
+  "mean": "#CFC9BC",
+  "metal": 0.0,
+  "nrm": "carpet_mink_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.91,
+   0.95
+  ],
+  "sheen": 0.3,
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#CFC9BC"
+ },
+ "carpet_grey_twist": {
+  "base": "carpet_grey_twist_col.jpg",
+  "mean": "#B8B4AB",
+  "metal": 0.0,
+  "nrm": "carpet_mink_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.98,
+   0.92
+  ],
+  "sheen": 0.3,
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#B9B4AB"
  },
  "carpet_mink": {
   "base": "carpet_mink_col.jpg",
@@ -67,6 +169,50 @@
   ],
   "target": "#9C958A"
  },
+ "carpet_pale": {
+  "base": "carpet_pale_col.jpg",
+  "mean": "#CFCAC4",
+  "metal": 0.0,
+  "nrm": "carpet_mink_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.9,
+   0.93
+  ],
+  "sheen": 0.3,
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#CFCAC3"
+ },
+ "carpet_silver_beige": {
+  "base": "carpet_silver_beige_col.jpg",
+  "mean": "#C9C2B3",
+  "metal": 0.0,
+  "nrm": "carpet_mink_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.93,
+   0.94
+  ],
+  "sheen": 0.3,
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#C9C2B3"
+ },
  "check_grey": {
   "base": "check_grey_col.jpg",
   "mean": "#B3AD9E",
@@ -87,6 +233,138 @@
    0.2,
    0.2
   ]
+ },
+ "clay_block_paving_red_herringbone": {
+  "base": "clay_block_paving_red_herringbone_col.jpg",
+  "mean": "#A4604F",
+  "metal": 0.0,
+  "note": "200x100 pavers, 90-degree herringbone",
+  "nrm": "clay_block_paving_red_herringbone_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.15,
+   0.14
+  ],
+  "size_m": [
+   0.8,
+   0.8
+  ],
+  "target": "#A8604E"
+ },
+ "closeboard_brown": {
+  "base": "closeboard_brown_col.jpg",
+  "mean": "#917D69",
+  "metal": 0.0,
+  "note": "100 mm boards along V",
+  "nrm": "closeboard_brown_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.95,
+  "seam": [
+   0.59,
+   0.91
+  ],
+  "size_m": [
+   1.2,
+   1.6
+  ],
+  "target": "#8A735C"
+ },
+ "closeboard_grey_painted": {
+  "base": "closeboard_grey_painted_col.jpg",
+  "mean": "#BCB9B2",
+  "metal": 0.0,
+  "note": "100 mm boards along V",
+  "nrm": "closeboard_brown_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.76,
+   0.84
+  ],
+  "size_m": [
+   1.2,
+   1.6
+  ],
+  "target": "#BDB9B3"
+ },
+ "composite_deck_dark_brown": {
+  "base": "composite_deck_dark_brown_col.jpg",
+  "mean": "#695544",
+  "metal": 0.0,
+  "note": "140 mm boards along V",
+  "nrm": "composite_deck_dark_brown_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.55,
+  "seam": [
+   1.01,
+   0.94
+  ],
+  "size_m": [
+   1.168,
+   1.6
+  ],
+  "target": "#6B5645"
+ },
+ "concrete_flags": {
+  "base": "concrete_flags_col.jpg",
+  "mean": "#A4A096",
+  "metal": 0.0,
+  "note": "900x600 footway flags",
+  "nrm": "concrete_flags_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   683
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.11,
+   0.07
+  ],
+  "size_m": [
+   1.816,
+   1.216
+  ],
+  "target": "#A9A59B"
+ },
+ "concrete_setts_grey_buff": {
+  "base": "concrete_setts_grey_buff_col.jpg",
+  "mean": "#A49A8D",
+  "metal": 0.0,
+  "note": "tumbled 160 mm setts, three tones",
+  "nrm": "concrete_setts_grey_buff_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.1,
+   0.05
+  ],
+  "size_m": [
+   1.968,
+   1.968
+  ],
+  "target": "#B3AE9F"
  },
  "dark_joinery": {
   "base": "dark_joinery_col.jpg",
@@ -129,6 +407,71 @@
    1.2
   ],
   "target": "#3A2A1E"
+ },
+ "fibre_cement_slate": {
+  "base": "fibre_cement_slate_col.jpg",
+  "mean": "#4B4E57",
+  "metal": 0.0,
+  "note": "courses along U; V must run up the slope",
+  "nrm": "slate_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.7,
+  "seam": [
+   0.42,
+   1.1
+  ],
+  "size_m": [
+   2.4,
+   2.0
+  ],
+  "target": "#4B4E57"
+ },
+ "flat_felt": {
+  "base": "flat_felt_col.jpg",
+  "mean": "#6D7174",
+  "metal": 0.0,
+  "nrm": "flat_felt_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   512,
+   512
+  ],
+  "rough": 0.95,
+  "seam": [
+   0.91,
+   0.91
+  ],
+  "size_m": [
+   1.0,
+   1.0
+  ],
+  "target": "#6E7174"
+ },
+ "grass": {
+  "base": "grass_col.jpg",
+  "mean": "#6E8B50",
+  "metal": 0.0,
+  "note": "long rough lawn",
+  "nrm": "grass_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.89,
+   0.93
+  ],
+  "size_m": [
+   2.0,
+   2.0
+  ],
+  "target": "#6E8B4F"
  },
  "grey_cabinet": {
   "base": "grey_cabinet_col.jpg",
@@ -191,6 +534,28 @@
    1.2
   ],
   "target": "#E2DCCF"
+ },
+ "ledged_braced_grey": {
+  "base": "ledged_braced_grey_col.jpg",
+  "mean": "#BFBBB8",
+  "metal": 0.0,
+  "note": "95 mm boards along V",
+  "nrm": "ledged_braced_grey_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   512,
+   512
+  ],
+  "rough": 0.85,
+  "seam": [
+   1.03,
+   0.85
+  ],
+  "size_m": [
+   0.76,
+   0.76
+  ],
+  "target": "#BEBAB7"
  },
  "linen_cream": {
   "base": "linen_cream_col.jpg",
@@ -318,6 +683,29 @@
    1.2
   ],
   "target": "#F2F1EE"
+ },
+ "metro_carrara_100x400": {
+  "base": "metro_carrara_100x400_col.jpg",
+  "mean": "#EEEEE9",
+  "metal": 0.0,
+  "note": "400x100 mm half-bond, grout #DDDBD6",
+  "nrm": "metro_carrara_100x400_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "metro_carrara_100x400_orm.jpg",
+  "px": [
+   1024,
+   768
+  ],
+  "rough": 0.12,
+  "seam": [
+   0.35,
+   0.26
+  ],
+  "size_m": [
+   0.804,
+   0.612
+  ],
+  "target": "#F0EFEC"
  },
  "metro_grey": {
   "base": "metro_grey_col.jpg",
@@ -490,6 +878,134 @@
   ],
   "target": "#B38E58"
  },
+ "porcelain_calacatta_slab": {
+  "base": "porcelain_calacatta_slab_col.jpg",
+  "mean": "#EDEAE1",
+  "metal": 0.0,
+  "note": "1.2 m slabs, veins #8E8A82 / #B79A55",
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.06,
+  "seam": [
+   0.0,
+   0.0
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#F1EEE6"
+ },
+ "porcelain_grey": {
+  "base": "porcelain_grey_col.jpg",
+  "mean": "#C8C9CC",
+  "metal": 0.0,
+  "note": "300x600 matt porcelain, long side along U, third bond",
+  "nrm": "porcelain_grey_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   2048,
+   1024
+  ],
+  "rough": 0.5,
+  "seam": [
+   0.28,
+   0.21
+  ],
+  "size_m": [
+   1.809,
+   0.909
+  ],
+  "target": "#C9CACB"
+ },
+ "porcelain_pale": {
+  "base": "porcelain_pale_col.jpg",
+  "mean": "#CFCBC2",
+  "metal": 0.0,
+  "note": "400x800 matt porcelain, long side along V, third bond",
+  "nrm": "porcelain_pale_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   2048
+  ],
+  "rough": 0.5,
+  "seam": [
+   0.19,
+   0.64
+  ],
+  "size_m": [
+   1.209,
+   2.409
+  ],
+  "target": "#CFCBC2"
+ },
+ "red_brick": {
+  "base": "red_brick_col.jpg",
+  "mean": "#AE765A",
+  "metal": 0.0,
+  "note": "215x65 mm units, joint #C9BA8E",
+  "nrm": "buff_brick_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.15,
+   0.13
+  ],
+  "size_m": [
+   1.8,
+   1.2
+  ],
+  "target": "#A8624A"
+ },
+ "roof_underside": {
+  "base": "roof_underside_col.jpg",
+  "mean": "#514739",
+  "metal": 0.0,
+  "note": "rafters along V at 0.4 m centres",
+  "px": [
+   512,
+   512
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.02,
+   0.88
+  ],
+  "size_m": [
+   1.2,
+   1.2
+  ],
+  "target": "#2E2D2C"
+ },
+ "sandstone_flags_grey": {
+  "base": "sandstone_flags_grey_col.jpg",
+  "mean": "#98999C",
+  "metal": 0.0,
+  "note": "riven Indian sandstone, 600x450",
+  "nrm": "sandstone_flags_grey_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.42,
+   0.29
+  ],
+  "size_m": [
+   1.836,
+   1.848
+  ],
+  "target": "#9A9CA0"
+ },
  "shade_ivory": {
   "base": "shade_ivory_col.jpg",
   "mean": "#F0E5CF",
@@ -510,6 +1026,115 @@
    0.271
   ],
   "target": "#F0E6CF"
+ },
+ "slate": {
+  "base": "slate_col.jpg",
+  "mean": "#474A53",
+  "metal": 0.0,
+  "note": "courses along U; V must run up the slope",
+  "nrm": "slate_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.7,
+  "seam": [
+   0.24,
+   1.22
+  ],
+  "size_m": [
+   2.4,
+   2.0
+  ],
+  "target": "#474A52"
+ },
+ "soil_lavender": {
+  "base": "soil_lavender_col.jpg",
+  "mean": "#4A4035",
+  "metal": 0.0,
+  "nrm": "soil_lavender_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 1.0,
+  "seam": [
+   0.88,
+   0.87
+  ],
+  "size_m": [
+   1.5,
+   1.5
+  ],
+  "target": "#4A4034"
+ },
+ "steel_chequer_plate": {
+  "base": "steel_chequer_plate_col.jpg",
+  "mean": "#303135",
+  "metal": 0.0,
+  "note": "five-bar tread plate, painted black",
+  "nrm": "steel_chequer_plate_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.42,
+  "seam": [
+   0.66,
+   0.63
+  ],
+  "size_m": [
+   0.4,
+   0.4
+  ],
+  "target": "#2E3033"
+ },
+ "stock_brick_grey": {
+  "base": "stock_brick_grey_col.jpg",
+  "mean": "#9C8D6E",
+  "metal": 0.0,
+  "note": "215x65 mm units, joint #8E866F",
+  "nrm": "buff_brick_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.48,
+   0.38
+  ],
+  "size_m": [
+   1.8,
+   1.2
+  ],
+  "target": "#A99873"
+ },
+ "stock_brick_yellow": {
+  "base": "stock_brick_yellow_col.jpg",
+  "mean": "#C5B390",
+  "metal": 0.0,
+  "note": "215x65 mm units, joint #D8CFBD",
+  "nrm": "buff_brick_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   1024,
+   1024
+  ],
+  "rough": 0.9,
+  "seam": [
+   0.26,
+   0.22
+  ],
+  "size_m": [
+   1.8,
+   1.2
+  ],
+  "target": "#C2AE85"
  },
  "sunflower_tile": {
   "base": "sunflower_tile_col.jpg",
@@ -573,6 +1198,28 @@
    0.2,
    0.2
   ]
+ },
+ "timber_box_dark": {
+  "base": "timber_box_dark_col.jpg",
+  "mean": "#4A3F39",
+  "metal": 0.0,
+  "note": "120 mm boards along V",
+  "nrm": "timber_box_dark_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   512,
+   512
+  ],
+  "rough": 0.8,
+  "seam": [
+   0.8,
+   0.89
+  ],
+  "size_m": [
+   0.96,
+   1.6
+  ],
+  "target": "#4A3F38"
  },
  "velvet_champagne": {
   "base": "velvet_champagne_col.jpg",
@@ -662,6 +1309,27 @@
    0.33
   ]
  },
+ "vinyl_grey_sheet": {
+  "base": "vinyl_grey_sheet_col.jpg",
+  "mean": "#8B8A85",
+  "metal": 0.0,
+  "nrm": "vinyl_grey_sheet_nrm.jpg",
+  "nrm_strength": 1.0,
+  "px": [
+   512,
+   512
+  ],
+  "rough": 0.6,
+  "seam": [
+   0.87,
+   0.95
+  ],
+  "size_m": [
+   1.5,
+   1.5
+  ],
+  "target": "#8C8A85"
+ },
  "wallcovering_aubergine": {
   "base": "wallcovering_aubergine_col.jpg",
   "mean": "#44333B",
@@ -705,5 +1373,28 @@
    3.6105
   ],
   "target": "#807A62"
+ },
+ "wood_tile_floor_dark": {
+  "base": "wood_tile_floor_dark_col.jpg",
+  "mean": "#7B6F5C",
+  "metal": 0.0,
+  "note": "planks 200x1200 along V",
+  "nrm": "wood_tile_floor_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "wood_tile_floor_orm.jpg",
+  "px": [
+   1024,
+   2048
+  ],
+  "rough": 0.5,
+  "seam": [
+   0.15,
+   0.19
+  ],
+  "size_m": [
+   1.221,
+   3.6105
+  ],
+  "target": "#7B6F5C"
  }
 }

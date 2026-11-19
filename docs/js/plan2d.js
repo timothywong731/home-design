@@ -1,6 +1,7 @@
 // CAD-style 2D plan on a <canvas>: draws assets/plan.json (world metres, +X right, +Y = rear, drawn UP the sheet)
 // with layer colours, lineweights, linetypes, hatches, text and dimensions; pan/zoom/pinch; live viewer marker
 // with view cone; current-room highlight; click/tap = pick (teleport). No three.js dependency.
+// plan.json schema 2 holds several sheets (B G 1 2 X) in one world frame: setSheet(id) switches; schema 1 = one sheet G.
 
 const LT = { dashed: [0.12, 0.06], hidden: [0.06, 0.04], center: [0.3, 0.06, 0.06, 0.06] };   // metres
 const THEME = {
@@ -10,17 +11,31 @@ const THEME = {
 export const CAD_FONT = '"ISOCPEUR","osifont","Consolas","Menlo","DejaVu Sans Mono",monospace';
 
 export class PlanView {
-  constructor(canvas, plan, { onPick, onHover } = {}) {
+  constructor(canvas, plan, { onPick, onHover, sheet } = {}) {
     Object.assign(this, { c: canvas, ctx: canvas.getContext('2d'), plan, onPick, onHover });
     this.layers = new Map((plan.layers || []).map((l) => [l.name, l]));
-    this.lt = { ...LT, ...(plan.linestyles || {}) };                       // plan.json may carry its own styles
-    this.ds = { tick: 0.065, extGap: 0.06, extBeyond: 0.08, ...(plan.dimstyle || {}) };
-    this.hsp = plan.hatch?.spacing || 0.09;
+    this.sheets = plan.sheets?.length ? plan.sheets : [{ ...plan, id: 'G', level: 'G' }];
     this.theme = 'cad'; this.cache = document.createElement('canvas');
     this.v = { cx: 0, cy: 0, s: 1 }; this.dpr = 1; this.fitted = false; this.dirty = true;
     this.viewer = null; this.room = null; this.key = ''; this.ptr = new Map(); this.pinched = false;
+    this.setSheet(this.sheets.some((s) => s.id === sheet) ? sheet : (this.sheets.find((s) => s.id === 'G') || this.sheets[0]).id);
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.bind();
+  }
+  // switch sheet: its entities, rooms, bounds and the style tables that are model metres at its scale. The view stays
+  // where it is between floor sheets (one world frame); to or from the site sheet it refits. -> true if it changed
+  setSheet(id) {
+    const s = this.sheets.find((q) => q.id === id), was = this.sheet;
+    if (!s || s === was) return false;
+    Object.assign(this, { sheet: s, sheetId: s.id, entities: s.entities || [], rooms: s.rooms || [], bounds: s.bounds });
+    this.lt = { ...LT, ...(s.linestyles || {}) };                          // plan.json may carry its own styles
+    this.ds = { tick: 0.065, extGap: 0.06, extBeyond: 0.08, ...(s.dimstyle || {}) };
+    this.hsp = s.hatch?.spacing || 0.09;
+    this.key = '';
+    if (was && (was.id === 'X') !== (s.id === 'X')) this.fitted = false;
+    if (!this.sized) return true;                            // the first resize() fits
+    if (!this.fitted) this.fit(); else { this.dirty = true; this.draw(); }
+    return true;
   }
 
   // ---- view ----
@@ -28,20 +43,20 @@ export class PlanView {
     const r = this.c.getBoundingClientRect(); if (!r.width || !r.height) return;
     this.dpr = Math.min(devicePixelRatio || 1, 3);
     const w = Math.round(r.width * this.dpr), h = Math.round(r.height * this.dpr);
-    if (w === this.c.width && h === this.c.height) return;
+    if (w === this.c.width && h === this.c.height && this.sized) return;
     const keep = this.fitted && this.c.width ? this.toWorld(this.c.width / 2, this.c.height / 2) : null;
-    this.c.width = this.cache.width = w; this.c.height = this.cache.height = h;
+    this.c.width = this.cache.width = w; this.c.height = this.cache.height = h; this.sized = true;
     if (!this.fitted) this.fit(); else { [this.v.cx, this.v.cy] = keep; this.dirty = true; this.draw(); }
   }
   fit() {
-    const b = this.plan.bounds, W = this.c.width, H = this.c.height, pad = 14 * this.dpr;
+    const b = this.bounds, W = this.c.width, H = this.c.height, pad = 14 * this.dpr;
     if (!W || !H) return;
     this.v.s = Math.min((W - 2 * pad) / (b.maxX - b.minX), (H - 2 * pad) / (b.maxY - b.minY));
     this.v.cx = (b.minX + b.maxX) / 2; this.v.cy = (b.minY + b.maxY) / 2;
     this.fitted = true; this.dirty = true; this.draw();
   }
   zoomAt(X, Y, f) {
-    const [wx, wy] = this.toWorld(X, Y), b = this.plan.bounds;
+    const [wx, wy] = this.toWorld(X, Y), b = this.bounds;
     const fitS = Math.min(this.c.width / (b.maxX - b.minX), this.c.height / (b.maxY - b.minY));
     this.v.s = Math.min(Math.max(this.v.s * f, fitS * 0.3), fitS * 40);
     const [X2, Y2] = this.toScreen(wx, wy); this.v.cx += (X2 - X) / this.v.s; this.v.cy -= (Y2 - Y) / this.v.s;
@@ -50,9 +65,10 @@ export class PlanView {
   toScreen(x, y) { return [(x - this.v.cx) * this.v.s + this.c.width / 2, this.c.height / 2 - (y - this.v.cy) * this.v.s]; }
   toWorld(X, Y) { return [(X - this.c.width / 2) / this.v.s + this.v.cx, this.v.cy - (Y - this.c.height / 2) / this.v.s]; }
   setTheme(t) { this.theme = t; this.dirty = true; this.draw(); }
-  // viewer = { x, y, dir:[dx,dy] (plan frame), hfov (rad) }; room = room object or null
+  // viewer = { x, y, dir:[dx,dy] (plan frame), hfov (rad), mark: 'full' (default) | 'hollow' | null (not drawn) };
+  // room = room object or null (highlighted with this sheet's polygon for it; a plan without rooms uses room.polygon)
   setViewer(viewer, room) {
-    const k = `${viewer.x.toFixed(3)},${viewer.y.toFixed(3)},${viewer.dir[0].toFixed(3)},${viewer.dir[1].toFixed(3)},${viewer.hfov.toFixed(3)},${room?.id}`;
+    const k = `${viewer.x.toFixed(3)},${viewer.y.toFixed(3)},${viewer.dir[0].toFixed(3)},${viewer.dir[1].toFixed(3)},${viewer.hfov.toFixed(3)},${room?.id},${viewer.mark}`;
     this.viewer = viewer; this.room = room;
     if (k !== this.key) { this.key = k; this.draw(); }
   }
@@ -64,19 +80,23 @@ export class PlanView {
     if (this.dirty) { this.renderStatic(); this.dirty = false; }
     const g = this.ctx, T = THEME[this.theme], s = this.v.s;
     g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(this.cache, 0, 0);
-    if (this.room) {
-      this.worldTx(g); g.beginPath(); this.room.polygon.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath();
+    const poly = this.room && (this.rooms.length ? this.rooms.find((r) => r.id === this.room.id)?.polygon : this.room.polygon);
+    if (poly) {
+      this.worldTx(g); g.beginPath(); poly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath();
       g.fillStyle = T.hl; g.fill(); g.strokeStyle = T.hlEdge; g.lineWidth = (1.5 * this.dpr) / s; g.setLineDash([]); g.stroke();
     }
-    const vw = this.viewer; if (!vw) return;
+    const vw = this.viewer; if (!vw || vw.mark === null) return;
+    const hollow = vw.mark === 'hollow';                     // the site sheet while indoors: outline marker
     g.setTransform(1, 0, 0, 1, 0, 0);
     const [X, Y] = this.toScreen(vw.x, vw.y), a = Math.atan2(-vw.dir[1], vw.dir[0]), h = vw.hfov / 2;
     const R = Math.max(3 * s, 46 * this.dpr), grad = g.createRadialGradient(X, Y, 0, X, Y, R);
-    grad.addColorStop(0, T.mark + 'aa'); grad.addColorStop(1, T.mark + '00');
+    grad.addColorStop(0, T.mark + (hollow ? '44' : 'aa')); grad.addColorStop(1, T.mark + '00');
     g.beginPath(); g.moveTo(X, Y); g.arc(X, Y, R, a - h, a + h); g.closePath(); g.fillStyle = grad; g.fill();
     g.strokeStyle = T.mark; g.lineWidth = this.dpr; g.beginPath();
     g.moveTo(X + Math.cos(a - h) * R, Y + Math.sin(a - h) * R); g.lineTo(X, Y); g.lineTo(X + Math.cos(a + h) * R, Y + Math.sin(a + h) * R); g.stroke();
-    g.beginPath(); g.arc(X, Y, 5 * this.dpr, 0, Math.PI * 2); g.fillStyle = T.mark; g.fill();
+    g.beginPath(); g.arc(X, Y, 5 * this.dpr, 0, Math.PI * 2);
+    if (hollow) { g.lineWidth = 2 * this.dpr; g.strokeStyle = T.mark; g.stroke(); return; }
+    g.fillStyle = T.mark; g.fill();
     g.lineWidth = 1.5 * this.dpr; g.strokeStyle = T.bg; g.stroke();
   }
 
@@ -85,7 +105,7 @@ export class PlanView {
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = T.bg; g.fillRect(0, 0, this.cache.width, this.cache.height);
     g.lineCap = 'round'; g.lineJoin = 'round';
     const texts = [];
-    for (const e of this.plan.entities || []) {
+    for (const e of this.entities) {
       const L = this.layers.get(e.layer) || {}, col = (this.theme === 'paper' ? L.paper : L.color) || T.ink;
       if (e.type === 'text') { texts.push([e, col]); continue; }
       this.worldTx(g);

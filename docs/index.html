@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ground Floor Walkthrough</title>
-<meta name="description" content="Interactive 3D walkthrough of a Victorian terrace ground floor with a linked CAD floor plan.">
+<title>House Walkthrough</title>
+<meta name="description" content="Interactive 3D walkthrough of a Victorian terrace house and garden with linked CAD floor plans.">
 <meta name="theme-color" content="#121417">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 7.5L8 2l6 5.5V14H2z' fill='none' stroke='%23d2a86a' stroke-width='1.5'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
@@ -17,11 +17,11 @@
 <script type="module" src="js/main.js"></script>
 </head>
 <body>
-<canvas id="scene" tabindex="0" aria-label="3D view of the ground floor. W A S D or arrow keys move, drag to look around, double-click to walk somewhere, click or Space to open doors and switch things."></canvas>
+<canvas id="scene" tabindex="0" aria-label="3D view of the house. W A S D or arrow keys move, drag to look around, double-click to walk somewhere, click or Space to open doors and switch things."></canvas>
 
 <div id="loader" role="status" aria-live="polite">
   <div class="loader-card">
-    <div class="loader-kicker">Ground floor</div>
+    <div class="loader-kicker">House and garden</div>
     <div class="loader-title">3D walkthrough</div>
     <div class="bar" aria-hidden="true"><span id="bar"></span></div>
     <div id="loader-msg">Loading…</div>
@@ -29,7 +29,7 @@
 </div>
 
 <header id="topbar">
-  <div class="brand"><b>Ground floor</b><span>3D walkthrough</span></div>
+  <div class="brand"><b>House</b><span>3D walkthrough</span></div>
   <nav id="rooms" aria-label="Go to room"></nav>
   <div class="tools">
     <div class="seg" role="group" aria-label="View mode">
@@ -63,6 +63,7 @@
       </button>
     </div>
   </div>
+  <div id="plan-tabs" class="plan-tabs" role="group" aria-label="Plan sheet" hidden></div>
   <div id="plan-body" class="plan-body">
     <canvas id="plan-canvas" tabindex="0" aria-label="Floor plan. Click or tap to move there. Drag to pan, wheel or pinch to zoom, + - 0 keys."></canvas>
     <div class="plan-empty" hidden>Floor plan not available yet.</div>
@@ -71,12 +72,15 @@
     <span id="plan-title">GROUND FLOOR PLAN</span>
     <span id="plan-xy"></span>
     <span class="dl">
-      <a id="dl-dxf" href="assets/ground-floor-plan.dxf" download title="AutoCAD DXF, millimetres, true scale">DXF</a>
-      <a id="dl-pdf" href="assets/ground-floor-plan.pdf" download title="Vector PDF drawing sheet">PDF</a>
+      <a id="dl-dxf" href="assets/house-plans.dxf" download title="AutoCAD DXF, millimetres, true scale">DXF</a>
+      <a id="dl-pdf" href="assets/house-plans.pdf" download title="Vector PDF drawing sheets">PDF</a>
     </span>
   </div>
 </section>
 
+<div id="dh-levels" class="seg" role="group" aria-label="Dollhouse level" hidden></div>
+<div id="chip" role="status" aria-live="polite" hidden></div>
+<div id="fade" aria-hidden="true"></div>
 <div id="pad" aria-hidden="true"><div id="pad-knob"></div></div>
 <div id="hint" aria-hidden="true"></div>
 <div id="ix-tip" role="status" aria-live="polite" hidden></div>
@@ -109,19 +113,20 @@
     </dl></section>
     <section><h3>View</h3><dl>
       <dt><kbd>O</kbd></dt><dd>Walk / dollhouse</dd>
-      <dt><kbd>1</kbd>&hellip;<kbd>9</kbd></dt><dd>Go to room</dd>
+      <dt><kbd>1</kbd>&hellip;<kbd>9</kbd></dt><dd>Go to a room on this floor</dd>
       <dt><kbd>P</kbd></dt><dd>Show / hide plan</dd>
       <dt><kbd>?</kbd></dt><dd>This help</dd>
-      <dt>Dollhouse</dt><dd>Drag to orbit, right-drag to pan, wheel to zoom</dd>
+      <dt>Dollhouse</dt><dd>Drag to orbit, right-drag to pan, wheel to zoom; B G 1 2 cut the house above that floor</dd>
     </dl></section>
     <section><h3>Plan</h3><dl>
-      <dt>Click / tap</dt><dd>Move there</dd>
+      <dt>Tabs</dt><dd>Basement, floors, site; the plan follows you</dd>
+      <dt>Click / tap</dt><dd>Move there (on that sheet's floor)</dd>
       <dt>Drag, wheel, pinch</dt><dd>Pan and zoom</dd>
       <dt><kbd>+</kbd><kbd>-</kbd><kbd>0</kbd></dt><dd>Zoom, fit</dd>
       <dt>DXF / PDF</dt><dd>Download the drawing</dd>
     </dl></section>
   </div>
-  <p class="note">Drawn from a video walkthrough; dimensions are estimates. The plan shows doors as they stand; a closed door cannot be walked through until you open it.</p>
+  <p class="note">Drawn from video walkthroughs; dimensions are estimates. The plan shows doors as they stand; a closed door cannot be walked through until you open it. Double-click on another floor walks you there by the stairs.</p>
 </dialog>
 
 <dialog id="gallery" aria-labelledby="gallery-title">

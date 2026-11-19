@@ -4,6 +4,7 @@
 // visitor's local time; light / lamp switch room lighting between the lights-on and lights-off bakes (main.js wires
 // the roomLight registry into the materials). Points in tags are Blender world metres -> three (x, z, -y).
 import * as THREE from 'three';
+import { hull, setObstacle, layerOfLevel } from './geom.js';
 
 const B2T = (a) => new THREE.Vector3(a[0], a[2], -a[1]);
 const ease = (t) => t * t * (3 - 2 * t);
@@ -16,77 +17,105 @@ const cloneMat = (m) => Object.assign(m.clone(), { onBeforeCompile: m.onBeforeCo
 const mapMat = (mesh, f) => { mesh.material = Array.isArray(mesh.material) ? mesh.material.map(f) : f(mesh.material); };
 const matsOf = (o) => { const out = []; o.traverse((m) => m.isMesh && out.push(...[].concat(m.material))); return out; };
 
-// model: the glTF scene; walk: geom.js walk (portal.open is switched here); roomLight(id) -> registry entry
-// { on: {value}, target, ratio, pratio?, mats: [{m, k}], lamps: [{light, k}], ems: [] }; castRay(origin, dir, far) -> hit;
-// onClone(material, clone): a tagged object got its own copy of a material; onPortals(): a doorway changed state.
+// walk: geom.js walk (portal.open is switched here); roomLight(id) -> registry entry
+// { on: {value}, target, ratio, pratio?, wait?, mats: [{m, k}], lamps: [{light, k}], ems: [] }; castRay(origin, dir, far) -> hit;
+// onClone(material, clone): a tagged object got its own copy of a material; onPortals(): a doorway changed state;
+// onLights(rooms): a switch is about to change these rooms (main.js loads their lights-off bake, holding the fade with
+// `wait` meanwhile); feetY(): the walker's floor height in three Y (reach is measured from the body above it).
 // emissiveToView(color): the shader's emissive white balance, inverted, so the hover tint shows as HL (main.js).
+// lmProbe(object, material, side): for a baked door leaf, the scale of its probe light once it has faded from its
+// lightmap (main.js matches the brightness the bake gave its face on `side`, the way it swings).
+// Door leaves (hinge / slide groups with `blocks`) are walk obstacles at their resting pose on the layers of their
+// doorway (else of their level): see syncPortals.
+// Incremental: `add(model)` takes one more glTF scene (one per level as it arrives, `model` is the first); each node is
+// processed once, and switches reach rooms of any level - lamps of a room that arrives later are registered then.
 // ponytail: axes and pivots are set in the parent's frame, which is the world frame because the export flattens the
-// hierarchy (INTERACT.md); transform them by the parent's inverse if tagged nodes ever get a moved parent.
-export function initInteract({ model, walk, roomLight, castRay, onClone = () => {}, onPortals = () => {}, emissiveToView = (c) => c }) {
+// hierarchy (INTERACT.md) and level scenes sit at the origin; transform them by the parent's inverse if that changes.
+export function initInteract({ model, walk, roomLight, castRay, onClone = () => {}, onPortals = () => {}, onLights = () => {}, emissiveToView = (c) => c, feetY = () => 0, lmProbe = () => 1 }) {
   const groups = new Map(), clocks = [], tagged = new Map(), fx = [], v = new THREE.Vector3(), q = new THREE.Vector3(), hl = new THREE.Color();
   const tint = emissiveToView(HL.clone());
   const own = (m) => { const c = cloneMat(m); onClone(m, c); return c; };
-  model.updateMatrixWorld(true);
+  const roots = [], rooms = new Map(), lightRooms = [], emClone = new Map(), registered = new WeakSet();
   const pivot = (o, at) => {          // re-parent o under a pivot at `at` (world), keeping its world transform
     const pv = new THREE.Object3D(), par = o.parent;
     par.add(pv); pv.position.copy(par.worldToLocal(at.clone())); pv.updateMatrixWorld(true); pv.attach(o);
     return pv;
   };
-  const list = [];
-  model.traverse((o) => typeof o.userData.ix === 'string' && list.push(o));
-  for (const o of list) {
-    let d;
-    try { d = JSON.parse(o.userData.ix); } catch { console.warn('ix: bad tag on', o.name); continue; }
-    o.traverse((m) => m.isMesh && mapMat(m, own));                // own materials: highlight / fades stay per object
-    const it = { o, d, mats: matsOf(o).map((m) => ({ m, e0: m.emissive?.clone(), k: m.emissiveIntensity ?? 1, op: m.opacity, tr: m.transparent })) };
-    tagged.set(o, it);
-    if (d.t === 'clock') { it.pv = pivot(o, B2T(d.p)); it.axis = B2T(d.a).normalize(); clocks.push(it); continue; }
-    const id = d.g || o.userData.name || o.name;      // GLTFLoader strips dots from o.name; userData.name is the Blender name
-    const g = groups.get(id) || groups.set(id, { id, items: [], state: 0, p: 0, dur: 0, hold: 0, on: false, label: '', reach: 1.6, blocks: new Set(), excl: new Set(), rooms: [] }).get(id);
-    it.g = g; g.items.push(it);
-    g.dur = Math.max(g.dur, d.dur ?? DUR[d.t] ?? 0);
-    g.on ||= !!d.on; g.label ||= d.label || ''; if (d.reach) g.reach = d.reach;
-    g.home ??= o.userData.room;
-    if (d.blocks) g.blocks.add(d.blocks);
-    for (const x of d.excl || []) g.excl.add(x);
-    for (const r of d.rooms || []) if (!g.rooms.includes(r)) g.rooms.push(r);
-    if (d.t === 'hinge') { it.pv = pivot(o, B2T(d.p)); it.axis = B2T(d.a || [0, 0, 1]).normalize(); it.rad = (d.deg * Math.PI) / 180; }
-    else if (d.t === 'slide') { it.pv = pivot(o, o.getWorldPosition(v)); it.base = it.pv.position.clone(); it.dv = B2T(d.d); }
-    else if (d.t === 'show') setupShow(it);
-    if (it.pv && d.t !== 'show') for (const x of it.mats) if (x.m.lightMap) {     // baked mover: own lmMix (main.js shader)
-      const ob = x.m.onBeforeCompile, u = (it.lmMix ||= { value: 1 });
-      x.m.onBeforeCompile = function (sh, r) { ob.call(this, sh, r); sh.uniforms.lmMix = u; };
+  function add(model) {
+    if (roots.includes(model)) return;
+    roots.push(model); model.updateMatrixWorld(true);
+    const list = [], touched = new Set();
+    model.traverse((o) => typeof o.userData.ix === 'string' && !tagged.has(o) && list.push(o));
+    for (const o of list) {
+      let d;
+      try { d = JSON.parse(o.userData.ix); } catch { console.warn('ix: bad tag on', o.name); continue; }
+      o.traverse((m) => m.isMesh && mapMat(m, own));                // own materials: highlight / fades stay per object
+      const it = { o, d, mats: matsOf(o).map((m) => ({ m, e0: m.emissive?.clone(), k: m.emissiveIntensity ?? 1, op: m.opacity, tr: m.transparent })) };
+      tagged.set(o, it);
+      if (d.t === 'clock') { it.pv = pivot(o, B2T(d.p)); it.axis = B2T(d.a).normalize(); clocks.push(it); continue; }
+      const id = d.g || o.userData.name || o.name;      // GLTFLoader strips dots from o.name; userData.name is the Blender name
+      const g = groups.get(id) || groups.set(id, { id, items: [], state: 0, p: 0, dur: 0, hold: 0, on: false, label: '', reach: 1.6, blocks: new Set(), excl: new Set(), rooms: [] }).get(id);
+      it.g = g; g.items.push(it); touched.add(g);
+      g.dur = Math.max(g.dur, d.dur ?? DUR[d.t] ?? 0);
+      g.on ||= !!d.on; g.label ||= d.label || ''; if (d.reach) g.reach = d.reach;
+      g.home ??= o.userData.room; g.level ??= model.userData.level ?? 'G';
+      if (d.blocks) g.blocks.add(d.blocks);
+      for (const x of d.excl || []) g.excl.add(x);
+      for (const r of d.rooms || []) if (!g.rooms.includes(r)) g.rooms.push(r);
+      if (d.t === 'hinge') { it.pv = pivot(o, B2T(d.p)); it.axis = B2T(d.a || [0, 0, 1]).normalize(); it.rad = (d.deg * Math.PI) / 180; }
+      else if (d.t === 'slide') { it.pv = pivot(o, o.getWorldPosition(v)); it.base = it.pv.position.clone(); it.dv = B2T(d.d); }
+      else if (d.t === 'show') setupShow(it);
+      if (it.pv && d.t !== 'show') for (const x of it.mats) if (x.m.lightMap) {     // baked mover: own lmMix (main.js shader)
+        const ob = x.m.onBeforeCompile, u = (it.lmMix ||= { value: 1 }), k = (it.lmProbe ||= { value: lmProbe(o, x.m, swingSide(it)) });
+        x.m.onBeforeCompile = function (sh, r) { ob.call(this, sh, r); sh.uniforms.lmMix = u; sh.uniforms.lmProbe = k; };
+      }
+      if (d.blocks && (d.t === 'slide' || (d.t === 'hinge' && Math.abs(it.axis.y) > 0.9))) {   // a door leaf: its plan outline
+        const pts = [];
+        o.traverse((m) => { if (!m.isMesh) return; const a = m.geometry.attributes.position, st = Math.max(1, Math.floor(a.count / 4000));
+          for (let k = 0; k < a.count; k += st) { v.fromBufferAttribute(a, k).applyMatrix4(m.matrixWorld); pts.push([v.x, v.z]); } });
+        it.foot = hull(pts).map(([x, z]) => new THREE.Vector3(x, 0, z));            // three x, z at the modelled pose
+      }
     }
-  }
-  for (const g of groups.values()) {
-    const ts = new Set(g.items.map((it) => it.d.t)), fxs = new Set(g.items.filter((it) => it.d.t === 'show').map((it) => it.d.fx || 'none'));
-    g.kind = ts.has('light') ? 'light' : ts.has('lamp') ? 'lamp' : fxs.has('tv') ? 'tv' : fxs.has('water') ? 'water' : fxs.has('flame') ? 'flame'
-      : ts.has('hinge') || ts.has('slide') ? 'move' : fxs.has('none') ? 'curtain' : fxs.has('glow') ? 'glow' : 'move';
-    if (g.kind === 'light' && !g.rooms.length) g.kind = 'lamp';
-    const name = g.id.toLowerCase();
-    g.label ||= { light: 'lights', lamp: 'lamp', tv: 'TV', water: 'tap', flame: 'burner', curtain: 'curtains', glow: 'light' }[g.kind]
-      || NOUN.find(([re]) => re.test(name))?.[1] || 'door';
-    g.label = g.label.replace(/\b[A-Z][a-z]+\b/g, (w) => w.toLowerCase());     // "Front door" -> "front door", keeps "WC", "TV"
-    if (g.kind === 'lamp' || g.kind === 'light') for (const it of g.items) it.glow = it.mats.filter((x) => x.m.emissive && WARM(x.m.emissive) && x.k > 0);
-    apply(g);
-  }
-
-  // ---- lights: rooms with a switch get their warm emissive meshes (lamps, LED strips, lit shades) registered ----
-  const lit = new Set([...groups.values()].flatMap((g) => g.rooms));
-  const rooms = new Map([...lit].map((r) => [r, roomLight(r)])), emClone = new Map();
-  model.traverse((m) => {
-    if (!m.isMesh || itemOf(m)) return;
-    const r = m.userData.room ?? m.parent?.userData.room;
-    if (!rooms.has(r)) return;
-    mapMat(m, (mat) => {
-      if (!mat.emissive || !WARM(mat.emissive) || !(mat.emissiveIntensity > 0)) return mat;
-      const k = mat.uuid + r;
-      if (!emClone.has(k)) { const c = own(mat); emClone.set(k, c); rooms.get(r).ems.push({ m: c, k: c.emissiveIntensity }); }
-      return emClone.get(k);
+    for (const g of touched) {
+      const ts = new Set(g.items.map((it) => it.d.t)), fxs = new Set(g.items.filter((it) => it.d.t === 'show').map((it) => it.d.fx || 'none'));
+      g.kind = ts.has('light') ? 'light' : ts.has('lamp') ? 'lamp' : fxs.has('tv') ? 'tv' : fxs.has('water') ? 'water' : fxs.has('flame') ? 'flame'
+        : ts.has('hinge') || ts.has('slide') ? 'move' : fxs.has('none') ? 'curtain' : fxs.has('glow') ? 'glow' : 'move';
+      if (g.kind === 'light' && !g.rooms.length) g.kind = 'lamp';
+      const name = g.id.toLowerCase();
+      g.label ||= { light: 'lights', lamp: 'lamp', tv: 'TV', water: 'tap', flame: 'burner', curtain: 'curtains', glow: 'light' }[g.kind]
+        || NOUN.find(([re]) => re.test(name))?.[1] || 'door';
+      g.label = g.label.replace(/\b[A-Z][a-z]+\b/g, (w) => w.toLowerCase());     // "Front door" -> "front door", keeps "WC", "TV"
+      if (g.kind === 'lamp' || g.kind === 'light') for (const it of g.items) it.glow = it.mats.filter((x) => x.m.emissive && WARM(x.m.emissive) && x.k > 0);
+    }
+    // ---- lights: rooms with a switch (on any level so far) get their warm emissive meshes registered ----
+    for (const g of groups.values()) for (const r of g.rooms) if (!rooms.has(r)) { const L = roomLight(r); L.x ??= L.target; rooms.set(r, L); lightRooms.push(L); }
+    for (const root of roots) root.traverse((m) => {
+      if (!m.isMesh || registered.has(m) || itemOf(m)) return;
+      const r = m.userData.room ?? m.parent?.userData.room, L = rooms.get(r);
+      if (!L) return;                                   // no switch for its room (yet): looked at again on the next add
+      registered.add(m);
+      mapMat(m, (mat) => {
+        if (!mat.emissive || !WARM(mat.emissive) || !(mat.emissiveIntensity > 0)) return mat;
+        const k = mat.uuid + r;
+        if (!emClone.has(k)) { const c = own(mat); emClone.set(k, c); L.ems.push({ m: c, k: c.emissiveIntensity }); c.emissiveIntensity *= L.on.value; }
+        return emClone.get(k);
+      });
     });
-  });
-  syncLights(); syncPortals(false);
+    syncLights();
+    for (const g of touched) {          // a lamp on its own plug that arrives while its room is switched off starts off
+      if (g.kind === 'lamp' && !g.rooms.length && rooms.get(g.home)?.target < 0.5 && g.state === 0) g.state = g.p = 1;
+      apply(g);
+    }
+    syncPortals();
+  }
+  if (model) add(model);
 
+  function swingSide(it) {              // world direction a hinge / slide item moves toward, state 0 -> 1
+    if (it.d.t === 'slide') return it.dv.clone().normalize();
+    const c0 = new THREE.Box3().setFromObject(it.o).getCenter(new THREE.Vector3()), pv = B2T(it.d.p);
+    const c1 = c0.clone().sub(pv).applyAxisAngle(it.axis, it.rad).add(pv);
+    return c1.sub(c0).normalize();
+  }
   function setupShow(it) {
     const f = (it.fx = it.d.fx || 'none');
     it.phase = Math.random() * 100;
@@ -134,6 +163,9 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
   function syncLights() {               // a switch shows the state of the first room it controls
     for (const g of groups.values()) if (g.rooms.length) g.state = rooms.get(g.rooms[0]).target > 0.5 ? 0 : 1;
   }
+  // doorways: passable while any leaf blocking them is open; every leaf is a solid outline at the pose it is heading
+  // for (a double door's shut leaf keeps its half of the doorway shut, an open leaf is not walked through)
+  const piv = new THREE.Vector3(), rot = new THREE.Quaternion();
   function syncPortals(notify = true) {
     if (!walk) return;
     const ids = new Set([...groups.values()].flatMap((g) => [...g.blocks]));
@@ -141,11 +173,23 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
       const p = walk.portals.find((x) => x.id === id);
       if (p) p.open = [...groups.values()].some((g) => g.blocks.has(id) && isOpen(g));
     }
+    for (const g of groups.values()) {
+      const its = g.items.filter((it) => it.foot);
+      if (!its.length) continue;
+      const pts = its.flatMap((it) => {
+        if (it.d.t === 'slide') return it.foot.map((q) => [q.x + it.dv.x * g.state, -(q.z + it.dv.z * g.state)]);
+        piv.copy(B2T(it.d.p)); rot.setFromAxisAngle(it.axis, it.rad * g.state);
+        return it.foot.map((q) => { v.copy(q).setY(piv.y).sub(piv).applyQuaternion(rot).add(piv); return [v.x, -v.z]; });
+      });
+      const p = walk.portals.find((x) => g.blocks.has(x.id));
+      setObstacle(walk, g.id, p ? [...new Set(p.layers)] : [layerOfLevel(g.level)], hull(pts));
+    }
     if (notify && ids.size) onPortals();
   }
   function toggle(g) {
     if (g.rooms.length) {
       const on = rooms.get(g.rooms[0]).target < 0.5;
+      onLights(g.rooms);
       for (const r of g.rooms) rooms.get(r).target = on ? 1 : 0;
       syncLights();
       // a lamp on its own plug (no `rooms`) goes off with its room - the lights-off bake has no lamp in it - and back on
@@ -195,9 +239,10 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
     for (const it of g.items) if (visibleChain(it.o)) box.expandByObject(it.o);
     return box;
   }
-  // reach is measured from the body (a column from 0.2 m up to the eye), so a drawer at the knees is as near as one at the chest
+  // reach is measured from the body (a column from 0.2 m above the floor up to the eye), so a drawer at the knees is as
+  // near as one at the chest - on whatever floor the walker stands
   const w = new THREE.Vector3(), clampN = (x, a, b) => Math.min(b, Math.max(a, x));
-  const reachTo = (g, pos) => { const b = groupBox(g); return b.distanceToPoint(w.set(pos.x, clampN(clampN(pos.y, b.min.y, b.max.y), 0.2, pos.y), pos.z)); };
+  const reachTo = (g, pos) => { const b = groupBox(g); return b.distanceToPoint(w.set(pos.x, clampN(clampN(pos.y, b.min.y, b.max.y), Math.min(feetY() + 0.2, pos.y), pos.y), pos.z)); };
   // best group in front of the camera: within its reach, within 35 deg of the view direction, not behind a wall
   function best(camera) {
     const pos = camera.position, fwd = camera.getWorldDirection(new THREE.Vector3()), cands = [];
@@ -219,7 +264,6 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
   }
 
   // ---- per frame ----
-  const lightRooms = [...rooms.values()];
   function update(dt, now) {
     for (const g of groups.values()) {
       if (g.hold > 0) { g.hold -= dt; continue; }
@@ -227,7 +271,7 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
     }
     for (const L of lightRooms) {
       L.x ??= L.target;
-      if (L.x === L.target && L.on.value === ease(L.x)) continue;
+      if (L.wait || (L.x === L.target && L.on.value === ease(L.x))) continue;    // wait: its lights-off bake is loading
       L.x += Math.sign(L.target - L.x) * Math.min(Math.abs(L.target - L.x), dt / DUR.light);
       const e = (L.on.value = ease(L.x)), r = L.pratio ?? L.ratio, f = r + (1 - r) * e;
       for (const x of L.mats) x.m.envMapIntensity = x.k * f;
@@ -257,7 +301,8 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
     return ((-2 * Math.atan2(s, w)) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
   };
   return {
-    hover, best, update, verb, isOpen,
+    add, hover, best, update, verb, isOpen,
+    models: () => roots.length,
     tagged: (o) => !!itemOf(o),
     groupOf: (o) => itemOf(o)?.g?.id ?? null,
     box: (id) => (groups.has(id) ? groupBox(groups.get(id)).clone() : null),

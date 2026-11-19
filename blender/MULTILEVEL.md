@@ -1,5 +1,15 @@
 # Multi-level + exterior foundation — binding design contract
 
+> **Status (integration, 2026-11-19).** Step 0 and the seven owners have landed and were integrated on a real build.
+> `spec/house.json` IS the schema-2 spec (section 2 is history: the fixture, `adopt_house2.py`, `house.next.json` and
+> `validate_house_next.py` are gone; `spec/validate_house.py` is the schema-2 validator and draws `spec/plan_*.png`).
+> Changes made to this contract at integration are marked **[integration]**: the sky (section 9, question 17.1), the
+> plinth (section 7), lightmap encoding (section 10), incremental interactions (11.3, question 17.2).
+> **[review]** The first review added: feature type `ceiling_cove`, `floor_void.bottom`, `exterior.neighbours[].parts` /
+> `front` with `ctx.neighbour_top`, the plan symbol `pipe` (blocks), thresholds by level / opening, the bay gable at the
+> main gutter level (eave edge 6.50, apex 8.295, cheek-line roof 6.78 instead of the 6.18 of section 7) and the alley
+> falling from -0.08 (no step at its mouth; route 7 of section 16). Details: "Review fixes" in `blender/lib/README.md`.
+
 Read with `spec/BRIEF.md` (Phase 2), `blender/CONTRACT.md` and `blender/INTERACT.md`. Where this file differs from
 CONTRACT.md, this file wins; INTERACT.md is unchanged. After one short sequential step (**step 0**, section 2) seven
 agents implement it in parallel: **(a) core, (b) site, (c) envelope, (d) joinery / mouldings / materials, (e) export,
@@ -123,6 +133,14 @@ untouched until integration. **At integration the orchestrator** (not an agent) 
    `"surround": {}`, doors also `"openAngle": 0, "outsideZone": "shed_veranda"`.
 9. Optional per exterior opening: `"extReveal"` (metres from the outer wall face to the outside of the frame); the
    default rule is in section 3. The existing `w_ensuite.revealDepth` is read by that rule.
+
+**[integration] Further spec fixes applied at adoption** (requests of the site, envelope and joinery owners):
+`extReveal` 0.015 on `w_bay_front` / `w_bay_cheek_e` (the shutters need the rest of the 0.12 m wall) and 0.215 on
+`w_wc` (frame 25 mm behind the tiles); `forecourt_alley_mouth` extended over the paving beside the bay (x 4.15..4.53,
+y -0.12..0.74) and given the fall `{from [4.98,-0.12], to [4.98,-5.2], z [-0.08,-0.14]}`; `lavender_bed` starts at
+y 20.5 beside the deck step; `east_fence` ends at the shed corner (4.45, 23.4); new boundary `alley_neighbour_gate`
+(fence, (4.9, 9.88) -> (5.43, 9.6), room `neighbours`) closes the alley beside our gate; `eaves_rear` starts at
+x 1.35, the dormer cheek line (it reached 0.10 under the flat stair dormer).
 
 Derivations that need no new field: the facade of an opening = the `exterior.facades[]` entry listing its id; outer
 wall face = wall centreline + thickness / 2 on the side whose `rooms` entry is `outside`; zone surface Z = `fall` or
@@ -334,7 +352,9 @@ of the house rooms (grid, pieces, carcasses) <= 60 k; rooms `facade` + `roof` <=
   (sill..top)` at `center` for the openings of that facade.
   - **Base**: the lowest skinned storey of each block starts at `min(surface Z of the zones and step treads touching
     that edge) - 0.05` (below 0: forecourt -0.14, side alley -0.30, side passage -0.30, deck -0.05), so no slit is
-    left between the paving and the wall. The black plinth runs from there to Z 0.15. Door holes start at the
+    left between the paving and the wall. The black plinth runs from there to Z -0.08 (**[integration]**: was 0.15;
+    `rear_elevation.md` section 5 and the stills show the band ending below the door sills; `envelope.PLINTH_TOP`).
+    Door holes start at the
     opening's `floorZ`, so the plinth under each external door is its threshold riser.
   - **Roof steps**: the skin also covers every vertical step of the roof's upper envelope: along each plane-polygon
     edge where the surface on the other side is lower, a face from the lower surface up to the higher one, in the
@@ -413,17 +433,23 @@ probe at export as today. New constants:
 
 | constant | value |
 |---|---|
-| `SUN_ELEVATION` | 24 degrees |
+| `SUN_ELEVATION` | 24 degrees (the rear garden lies in the house's shadow and is sky-lit; a look decision with `SUN_AZIMUTH`) |
 | `SUN_AZIMUTH` | 28 degrees east of the street normal: unit plan vector **to** the sun (0.469, -0.883) |
 | `SUN_DIR` (light travels) | (-0.429, 0.807, -0.407) |
 | `SUN_STRENGTH`, `SUN_KELVIN`, angle | 2.5 W/m2, 3600 K, 1.0 degree (strength and colour as phase 1) |
 | world | `ShaderNodeTexSky`, `sky_type` = first available of `MULTIPLE_SCATTERING`, `SINGLE_SCATTERING`, `NISHITA` (read the enum), `sun_elevation` 24 degrees, sun disc **off**, altitude 0, air 1, aerosol / dust 1, ozone 1; its colour is multiplied by `SKY_TINT` before the Background node |
 | `SKY_TINT` | start (1.0, 0.86, 0.74) (the phase-1 dusk tint); calibrated once so that a horizontal white card in open shade (sun lamp hidden), **after the 3000 K balance**, has blue / red between 1.00 and 1.25 |
-| `SKY_STRENGTH` | Background strength; start 0.20, calibrated once so that the same card bakes to 0.30 +- 0.03 scene-linear luminance |
+| `SKY_STRENGTH` | Background strength, **[integration]** 0.6: the same card bakes to 0.72 +- 0.07 scene-linear luminance (the first target, 0.30, left the garden, the side passage and the shed near black beside the lamp-lit rooms) |
+| `SKY_SHOW`, `SKY_SHOW_TINT`, `GROUND_SHOW` | **[integration]** what the **camera** sees instead of the lamp-coloured sky: the same sky texture taken back through the inverse of the balance matrix (`WB_MATRIX`), x tint (1.0, 0.95, 0.85) x 0.12, and a grey-green (0.10, 0.11, 0.10) below the horizon |
 
 - A physical sky under a 3000 K balance renders saturated blue (the phase-1 finding recorded in `lighting.py`);
-  `SKY_TINT` is what keeps the one balance usable outdoors. Core calibrates the two sky constants on the bare site
-  and records the measured card values in `lighting.py`.
+  `SKY_TINT` is what keeps the one balance usable outdoors. Calibrated: `SKY_TINT = (1.0, 0.281, 0.073)`, card after
+  the balance (0.719, 0.718, 0.801), blue / red 1.11 (`blender/test_shell.py -- --sky` re-measures and asserts).
+- **[integration] Two skies in one world.** That tint is a lamp-coloured sky: seen directly it is salmon at the
+  horizon. It stays the LIGHT (every ray except camera rays), so open shade reads neutral under the one balance.
+  Camera rays (previews, stills, probes, `sky.jpg`) get the display sky of the table instead, mixed in the world
+  shader by `Light Path > Is Camera Ray` (`lighting.setup_sky(display=True)`). Nothing else changes: one balance, no
+  second exterior balance, no split of joinery into facade objects.
 - The sun lamp gives all direct light (the sky's disc is off); `sun_rotation` of the sky is set so the bright side
   faces the lamp and verified by a 64 px panorama (brightest sky direction within 15 degrees of -`SUN_DIR`).
 - **How windows see it**: glass stays as in phase 1 (alpha-blended, casts no shadow). A Cycles portal sits 30 mm
@@ -466,6 +492,10 @@ blender -b build/home.blend --python blender/export.py -- --out docs/assets [--l
 - **Probes**: one per kind `room` / `exterior` / `stairwell` room and per `front`, `side_passage`, `garden`, `shed`
   (polygon = the largest walkable zone / the workshop), at floor + 1.5.
 - **White balance**: the one matrix, as today, for every atlas and probe.
+- **[integration] Encoding**: `intensity` = the 99.5th percentile of the lit texels, capped at 6 x the median of the
+  texels brighter than 2 % of that percentile (faintly lit cabinet backs must not drag the median down: the kitchen
+  atlas clipped to white at intensity 0.10 before); exterior atlases (sun and shade 10x apart) are capped by the
+  percentile only.
 - `--levels` / `--rooms` re-bake a subset; untouched entries are kept from the previous manifest.
 - **Asserted budgets** (exit 1): every file < 50 MB; every GLB <= 40 MB; **`glb/G.glb` <= 21.5 MB**; first view =
   `glb/G.glb` + lightmaps and probes of the level-G rooms + manifest, house, plan and footprints json < 35 MB (the
@@ -503,6 +533,8 @@ on entries, `rooms[].level/kind`, `sky` object, `firstView`):
   `neighbours` appear **only** in `levels[X].rooms` (they have no polygon; the viewer takes the centroid of every
   `rooms[]` polygon).
 - `cutZ` = lowest `ceilingZ` of the level's kind-`room` rooms minus 0.07 (B -0.38, G 2.33, 1 5.28, 2 8.42); `X`: null.
+  `levels[]` lists every level; `glb` is null where nothing is built and `loadOrder` holds only levels with a GLB.
+  `datumZ` of `X` = the lowest floor of its `rooms[]` entries (-0.32, the shed workshop).
   `sunDir` is the unit vector **to** the sun in the house frame.
 
 **footprints.json** (array; `level` = the level of `room`, so balcony furniture is `1` and a car is `X`):
@@ -672,10 +704,11 @@ walls) are not obstacles: jambs intrude <= 0.10 m.
 - **Interactions**: `initInteract` walks one model once: it builds the groups, re-parents pivots, clones materials
   and registers lamp emissives only for meshes present at that moment, and it cannot run twice over the same nodes.
   Switches control rooms on other levels (`landing1.md` 8.2: the ground-floor hall plate switches the level-1 landing
-  downlights, a level-1 plate the level-2 landing lights). Therefore **`main.js` calls `initInteract` exactly once,
-  on the root Group, after the last GLB of `loadOrder` has arrived (or failed)**. Until then clicks only walk and
-  Space does nothing; the progress chip says so. The one `interact.js` change (g, after the interaction workflow has
-  landed): `initInteract` takes `feetY: () => number` (the walker's floor height in three.js Y) and `reachTo` clamps
+  downlights, a level-1 plate the level-2 landing lights). **[integration, question 17.2 decided]** Interactions are
+  incremental: `initInteract({...})` returns an engine and `main.js` calls `engine.add(levelScene)` once per level as
+  its GLB arrives; each node is processed once, switch rooms are registered as they appear and lamps of rooms that
+  arrive later are attached then. The export fails if one `ix` group has members in two level GLBs. `interact.js`
+  belongs to the viewer owner. `initInteract` also takes `feetY: () => number` (the walker's floor height in three.js Y) and `reachTo` clamps
   the body column to `[feetY() + 0.2, pos.y]` instead of the absolute `[0.2, pos.y]`, which collapses in the basement
   and reaches down through the floors upstairs.
 - **Walk mode**: every loaded level is drawn (upper floors are seen through the stair wells, the site through the
@@ -811,6 +844,9 @@ python spec/validate_house.py
 python tools/plan/draft.py && python tools/plan/check.py                                     # PLAN OK / CHECK OK
 node docs/test/geom.test.mjs && node docs/test/e2e.mjs
 ```
+**[integration]** Before publishing, the whole chain runs against a scratch export: `export.py --out build/export_int
+--tmp build/export_int_tmp --bake-res 1024 --samples 128`, `draft.py --footprints build/export_int/footprints.json
+--out build/export_int`, `check.py --assets build/export_int`, `e2e.mjs --assets build/export_int`.
 Spec or `blender/lib` changed -> everything. One room module -> build, `export --rooms <room>` (plus `--levels <its
 level>` for the GLB), plan, tests. `tools/plan` -> plan, tests. `docs/js` -> tests.
 
@@ -889,13 +925,17 @@ in the model and opened first.
 7. Extra: side_passage > side gate (open) > side_alley [-0.30 rising to -0.20] > forecourt_alley_mouth [-0.08]; it
    only works with gap 4.
 
-## 17. Open questions for the orchestrator
+## 17. Open questions for the orchestrator (both decided at integration)
 
 1. **One 3000 K balance outdoors.** The contract follows decision 5 and keeps the exterior from turning blue with a
    warm `SKY_TINT` on the physical sky, which makes the sky paler and warmer than a real late afternoon. If the first
    `elev:front` and garden previews are not acceptable, the only other route is a second, cooler balance for exterior
    rooms; that needs joinery to split the outer faces of every exterior frame, leaf and cill into `facade` objects.
    Decide after core's calibration previews.
+   **Decided:** one balance stays. The calibrated lamp-coloured sky lights the scene at `SKY_STRENGTH` 0.6 and the
+   camera sees a display sky (section 9). The sun position is unchanged; whether the garden should get direct sun
+   is a look decision for the owner (`SUN_AZIMUTH`, `SUN_ELEVATION`).
 2. **Interactions wait for the last level.** With one `initInteract` call, doors and switches do not respond until all
    five GLBs have arrived (first view < 35 MB, whole property possibly 100 MB+). Accept this, or commission an
    incremental `initInteract` (a larger change to a file the interaction workflow owns)?
+   **Decided:** incremental (11.3).

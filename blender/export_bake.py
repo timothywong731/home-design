@@ -1,5 +1,5 @@
 """Lightmap UVs, Cycles lightmap bake, room probes and image encoding for blender/export.py.
-Documented in blender/lib/README.md (section "export"). Everything is driven by the custom props
+Documented in blender/lib/README.md. Everything is driven by the custom props
 obj['lm'] / obj['room'] / obj['no_export'] / obj['ix'] (blender/INTERACT.md), never by object names."""
 import json
 import math
@@ -13,14 +13,14 @@ from mathutils import Vector
 from mathutils.geometry import box_fit_2d, convex_hull_2d
 
 UV = 'Lightmap'        # second UV layer -> TEXCOORD_1 in the GLB
-DENSITY = 160.0        # target lightmap texels per metre inside rooms (--density)
-OUTSIDE_SCALE = 1 / 3  # objects whose obj['room'] is not a house.json room (exterior shell) get this share of it
+DENSITY = 160.0        # target lightmap texels per metre inside house rooms (--density); export.atlas_rule scales it
 MIN_AREA = 0.05        # m2 of surface: smaller lm='static' objects are demoted to 'dynamic' (probe-lit)
 MARGIN = 1 / 512       # gap between lightmap islands as a fraction of the atlas (4 px at 2048); a constant
                        # fraction keeps the layout independent of the bake resolution
 SOLID = 0.4            # islands filling less of their best-fit rectangle than this are cut up (rings, frames)
 PERCENTILE = 99.5      # of the lit texels: the value that maps to 255 (brighter texels clip) ...
 HEADROOM = 6.0         # ... but never more than this many times the median: 8 bits must not be spent on hot spots
+FLOOR = 0.02           # ... the median of the texels brighter than this fraction of the PERCENTILE value (see encode)
 EYE = 1.5              # probe height above the floor
 MOVING = {'hinge', 'slide', 'clock'}   # ix types that move in the viewer: probe-lit, except door leaves
 # Lights-off set (lights_off, bake_off): the dusk sky alone leaves windowless rooms black (median 0.0003, lit: 0.9)
@@ -151,7 +151,7 @@ def _no_diffuse(mat):
 
 
 def classify(objs):
-    """-> {room: [objects that get a baked lightmap]}. Decisions (README "export"):
+    """-> {room: [objects that get a baked lightmap]}; every object carries obj['room'] (export.retag). Decisions:
     - tagged objects that move (MOVING) or exist only in state 1 become lm='dynamic'; door leaves (obj['door'], or
       a tag with 'blocks') may keep the lightmap of the pose they are modelled in;
     - lm='static' objects under MIN_AREA, or made only of metal/glass, become lm='dynamic' (keeps their instancing);
@@ -171,7 +171,7 @@ def classify(objs):
         if o.data.users > 1:
             o.data = o.data.copy()
             unlinked += 1
-        rooms.setdefault(o.get('room') or 'shell', []).append(o)
+        rooms.setdefault(o['room'], []).append(o)
     return rooms, demoted, unlinked
 
 
@@ -385,37 +385,24 @@ def wb_matrix():
     return out.reshape(3, 4)[:, :3].T.astype(np.float64) @ np.linalg.inv(P.T)
 
 
-def display_hex(rgb):
-    """Scene-linear colour -> '#rrggbb' as the scene's view settings show it (AgX, look, exposure, white balance)."""
-    sc = bpy.context.scene
-    fmt = sc.render.image_settings
-    src = bpy.data.images.new('display_probe', 1, 1, alpha=False, float_buffer=True)
-    src.pixels.foreach_set([*rgb, 1.0])
-    keep = (fmt.file_format, fmt.color_mode, fmt.color_depth)
-    path = str(Path(bpy.app.tempdir) / 'display_probe.png')
-    try:
-        fmt.file_format, fmt.color_mode, fmt.color_depth = 'PNG', 'RGB', '8'
-        src.save_render(path, scene=sc)
-    finally:
-        fmt.file_format, fmt.color_mode, fmt.color_depth = keep
-    back = bpy.data.images.load(path)
-    back.colorspace_settings.name = 'Non-Color'              # read the stored display bytes as they are
-    px = [round(v * 255) for v in back.pixels[:3]]
-    bpy.data.images.remove(src)
-    bpy.data.images.remove(back)
-    return '#%02x%02x%02x' % tuple(px)
-
-
 def encode(px, w, h, path, M, quality=93, cap=None):
     """Scene-linear float pixels (n, 3+) -> 8-bit sRGB JPEG with the white balance M applied.
     Returns the intensity k of the encoding:  linear = srgb_decode(pixel / 255) * k.
-    k is the PERCENTILE of the lit texels, at most cap (default: HEADROOM x their median), so hot spots next to lamps clip
+    k is the PERCENTILE of the lit texels, at most cap (default: HEADROOM x the median of the really lit ones), so hot spots next to lamps clip
     instead of costing everything else its precision (one 8-bit step is ~2 % at the median); +-1 LSB triangular
     dither before quantising hides the banding on smooth ceilings."""
     rgb = np.maximum(px[:, :3].astype(np.float64) @ M.T, 0)
     peak = rgb.max(axis=1)
     lit = peak[peak > 0]
-    k = max(min(float(np.percentile(lit, PERCENTILE)), cap or HEADROOM * float(np.median(lit))), 1e-3) if lit.size else 1.0
+    if lit.size:
+        top = float(np.percentile(lit, PERCENTILE))
+        # the median is taken over the texels that are really lit (above FLOOR x top): cabinet backs and the wall behind
+        # furniture that stands a few cm off it are faintly lit, fill half a kitchen atlas and would otherwise drag the
+        # median down until every visible surface clips (integration: kitchen k 0.10 instead of ~2.5)
+        body = lit[lit > FLOOR * top]
+        k = max(min(top, cap or HEADROOM * float(np.median(body if body.size else lit))), 1e-3)
+    else:
+        k = 1.0
     v = np.clip(rgb / k, 0, 1)
     v = np.where(v <= 0.0031308, v * 12.92, 1.055 * v ** (1 / 2.4) - 0.055)
     rng = np.random.default_rng(0)
@@ -439,6 +426,7 @@ def probe_point(poly, z):
     sc, dg = bpy.context.scene, bpy.context.evaluated_depsgraph_get()
     dirs = [Vector((math.cos(a), math.sin(a), 0)) for a in np.arange(16) * math.pi / 8] + [Vector((0, 0, 1)), Vector((0, 0, -1))]
     xs, ys = [p[0] for p in poly], [p[1] for p in poly]
+    mid = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)     # tie-break: open ground scores 4 m everywhere
     best = None
     for x in np.arange(min(xs) + 0.2, max(xs), 0.2):
         for y in np.arange(min(ys) + 0.2, max(ys), 0.2):
@@ -448,8 +436,9 @@ def probe_point(poly, z):
             for v in dirs:
                 hit, loc, *_ = sc.ray_cast(dg, o, v, distance=4.0)
                 d.append((loc - o).length if hit else 4.0)
-            if min(d) >= 0.2 and (best is None or sum(d[:-1]) > best[0]):       # the floor below does not count as open
-                best = (sum(d[:-1]), (round(float(x), 3), round(float(y), 3), round(z, 3)))
+            score = sum(d[:-1]) - 0.01 * math.hypot(x - mid[0], y - mid[1])     # the floor below does not count as open
+            if min(d) >= 0.2 and (best is None or score > best[0]):
+                best = (score, (round(float(x), 3), round(float(y), 3), round(z, 3)))
     return best and best[1]
 
 
@@ -504,10 +493,10 @@ def denoise(px, res, tmp):
         bpy.data.images.remove(img)
 
 
-def render_probe(pos, res, samples, tmp):
-    """Equirectangular Cycles panorama at pos -> float pixels (res * res/2, 4), scene linear. The camera faces +X
-    with Z up, so the image centre is +X and the image runs towards -Y to the right: three.js equirect layout
-    after the (x, z, -y) axis swap, no rotation needed in the viewer."""
+@contextmanager
+def _pano(pos, samples):
+    """Equirectangular scene camera at pos facing +X with Z up: the image centre is +X and the image runs towards
+    -Y to the right, the three.js equirect layout after the (x, z, -y) axis swap (no rotation in the viewer)."""
     sc = bpy.context.scene
     cam = bpy.data.cameras.new('probe')
     cam.type, cam.panorama_type, cam.clip_start = 'PANO', 'EQUIRECTANGULAR', 0.02
@@ -517,8 +506,46 @@ def render_probe(pos, res, samples, tmp):
     keep = (sc.camera, sc.cycles.samples)
     try:
         sc.camera, sc.cycles.samples = ob, samples
-        return _render_exr(res, res // 2, Path(tmp) / 'probe.exr')
+        yield
     finally:
         sc.camera, sc.cycles.samples = keep
         bpy.data.objects.remove(ob)
         bpy.data.cameras.remove(cam)
+
+
+def render_probe(pos, res, samples, tmp):
+    """Equirectangular Cycles panorama at pos -> float pixels (res * res/2, 4), scene linear."""
+    with _pano(pos, samples):
+        return _render_exr(res, res // 2, Path(tmp) / 'probe.exr')
+
+
+def render_sky(path, w=2048, samples=16):
+    """The world alone (every object hidden from the render) as an equirect panorama in the probes' orientation,
+    saved as the DISPLAYED 8-bit image: the scene's view transform, look, exposure and white balance are in the
+    pixels, because three.js does not tone-map an sRGB scene.background. -> '#rrggbb', the mean displayed colour of
+    the upper half (the sky proper; below the horizon the viewer sees it only past the edge of the site)."""
+    sc = bpy.context.scene
+    r, fmt = sc.render, sc.render.image_settings
+    hidden = [(o, o.hide_render) for o in sc.objects]
+    keep = (r.resolution_x, r.resolution_y, r.resolution_percentage, r.filepath, r.film_transparent,
+            fmt.file_format, fmt.color_mode, fmt.quality)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    try:
+        for o, _ in hidden:
+            o.hide_render = True
+        r.resolution_x, r.resolution_y, r.resolution_percentage, r.filepath, r.film_transparent = w, w // 2, 100, str(path), False
+        fmt.file_format, fmt.color_mode, fmt.quality = 'JPEG', 'RGB', 92
+        with _pano((0, 0, 1.5), samples):
+            bpy.ops.render.render(write_still=True)
+    finally:
+        for o, v in hidden:
+            o.hide_render = v
+        r.resolution_x, r.resolution_y, r.resolution_percentage, r.filepath, r.film_transparent = keep[:5]
+        fmt.file_format, fmt.color_mode, fmt.quality = keep[5:]
+    img = bpy.data.images.load(str(path))
+    img.colorspace_settings.name = 'Non-Color'               # the stored display bytes as they are
+    px = np.empty(w * (w // 2) * 4, np.float32)
+    img.pixels.foreach_get(px)
+    bpy.data.images.remove(img)
+    top = px.reshape(w // 2, w, 4)[w // 4:, :, :3]           # rows run bottom-up
+    return '#%02x%02x%02x' % tuple(int(round(v * 255)) for v in top.reshape(-1, 3).mean(0))
