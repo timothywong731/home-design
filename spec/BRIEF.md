@@ -194,7 +194,7 @@ positions, which switch controls which light).
   doors and drawers, windows the owner opens in the video, shower and sauna doors, Velux, eaves
   storage doors, shed doors; curtains and shutters; taps run; toilets lift; lights switch from
   the switch the owner shows for them (including which gang controls spotlights / wall lights /
-  chandelier / LED strips); the teddy lamp turns on and off.
+  chandelier / LED strips); the dining-room TV ("telly") turns on and off.
 - Named pieces to keep: star-shaped chandelier, pineapple bedside lights, Queen Anne nightstand
   with marble top, bureaus, big mirror, bathtub, shower controls (same in every bathroom), sauna
   (one seat, heater with rocks, timer, gauge, bucket, tinted glass door), skylight, Velux, cat
