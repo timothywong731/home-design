@@ -183,8 +183,9 @@ patch in the named still; "true" = estimate dry, under neutral light.
 ## 6. Furniture / movable objects
 
 ### 6.1 The two cars (generic, **no number plates, no badges, no stickers**)
-Both are parked **nose-out** (bonnet toward the street, tailgate toward the house), side by side, slightly
-skewed with their noses turned a few degrees toward the brick wall.
+Both are parked **nose-out** (bonnet toward the street, tailgate toward the house), side by side and
+**square to the street: yaw 0, long axis exactly along Y** (owner correction 2026-11-19; the 5-6 degree skew in
+the footage is not to be modelled - ignore the yaw row and the skewed corner figures below).
 
 | | grey car (nearer the door) | white car (nearer the bins) |
 |---|---|---|
