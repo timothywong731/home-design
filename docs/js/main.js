@@ -9,9 +9,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as G from './geom.js';
 import { PlanView } from './plan2d.js';
+import { initInteract } from './interact.js';
 
 const LIBS = 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/libs/';
-const EYE = 1.6, BODY = 0.2, WALK = 1.4, RUN = 2.8, TURN = 1.9, FOV = 70, CUT = 2.2;
+const EYE = 1.6, WALK = 1.4, RUN = 2.8, TURN = 1.9, FOV = 70, CUT = 2.2;
+const GLIDE = 2.5, FOV_MIN = 22, FOV_MAX = 90, POINT_RANGE = 4;    // double-click walk speed, wheel zoom, pointing reach
 const qs = new URLSearchParams(location.search);
 const $ = (s) => document.querySelector(s);
 const getJSON = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
@@ -65,8 +67,8 @@ if (!realtime && manifest?.whiteBalance) {
   THREE.ShaderChunk.emissivemap_fragment += `\ntotalEmissiveRadiance = max( mat3( ${col(0)}, ${col(1)}, ${col(2)} ) * totalEmissiveRadiance, vec3( 0.0 ) );\n`;
 }
 const rooms = (manifest?.rooms || planJson?.rooms || house?.rooms || [])
-  .map((r) => ({ id: r.id, name: r.name || r.id, polygon: r.polygon, ceilZ: r.ceilZ ?? r.ceilingZ ?? 2.9 }));
-const walk = house ? G.buildWalk(house, { radius: BODY, obstacles: G.obstaclesFrom(foot) }) : null;
+  .map((r) => ({ id: r.id, name: r.name || r.id, polygon: r.polygon, ceilZ: r.ceilZ ?? r.ceilingZ ?? 2.9, floorZ: r.floorZ ?? 0 }));
+const walk = house ? G.buildWalk(house, { obstacles: G.obstaclesFrom(foot), soft: G.obstaclesFrom(foot, true) }) : null;
 const spawn = { pos: (manifest?.spawn?.pos || house?.spawn || G.centroid(rooms[0]?.polygon || [[0, 1]])).slice(0, 2),
   yaw: ((manifest?.spawn?.yaw ?? 0) * Math.PI) / 180 };          // manifest yaw: degrees, 0 = facing +Y, CCW positive
 const vps = walk ? G.viewpoints(walk, spawn.pos)
@@ -122,17 +124,46 @@ const findNode = (n) => byName.get(n) || byName.get(THREE.PropertyBinding.saniti
 //    lightMap is irradiance (divided by PI in the BRDF) -> * PI. Second UV set, flipY false.
 //  - room probe (equirect, centre = +X) as envMap on EVERY mesh: all the light of meshes without a lightmap, but
 //    reflections only on lightmapped ones (their diffuse light is already in the lightmap -> IBL irradiance removed).
-const IBL_DIFFUSE = 'iblIrradiance += getIBLIrradiance( geometryNormal );';
-const SPEC_ONLY_CHUNK = THREE.ShaderChunk.lights_fragment_maps.replace(IBL_DIFFUSE, '');
-if (SPEC_ONLY_CHUNK === THREE.ShaderChunk.lights_fragment_maps) console.warn('three.js shader changed: lightmapped surfaces are lit twice');
-const specOnly = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_maps>', SPEC_ONLY_CHUNK); };
+//  - light switches: each lightmapped material mixes its room's lights-on map with the lights-off map (manifest
+//    lightmapsOff, same atlases; missing -> the on-map at 12 %) by the room's lmOn uniform (eased by interact.js).
+//  - lmMix (1 = bake): a baked door leaf / front that moves away from its modelled pose fades from its lightmap to the
+//    probe's diffuse light (interact.js), since the bake only fits the pose it was baked in.
+const IBL_DIFFUSE = 'iblIrradiance += getIBLIrradiance( geometryNormal );', LM_LINE = 'vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;';
+const SPEC_ONLY_CHUNK = THREE.ShaderChunk.lights_fragment_maps.replace(IBL_DIFFUSE, 'iblIrradiance += ( 1.0 - lmMix ) * getIBLIrradiance( geometryNormal );')
+  .replace(LM_LINE, 'vec3 lightMapIrradiance = lmMix * mix( texture2D( lightMapOff, vLightMapUv ).rgb * lightMapOffIntensity, lightMapTexel.rgb * lightMapIntensity, lmOn );');
+if (SPEC_ONLY_CHUNK.includes(IBL_DIFFUSE)) console.warn('three.js shader changed: lightmapped surfaces are lit twice');
+if (!SPEC_ONLY_CHUNK.includes('lmOn')) console.warn('three.js shader changed: light switches cannot dim the bake');
+const specOnly = (sh) => {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_maps>', SPEC_ONLY_CHUNK)
+    .replace('#include <lightmap_pars_fragment>', '#include <lightmap_pars_fragment>\nuniform sampler2D lightMapOff;\nuniform float lightMapOffIntensity;\nuniform float lmOn;\nuniform float lmMix;');
+};
+// Per-room light state shared by the bake materials (lmOn), probe reflections, realtime lamps and lamp emissives;
+// interact.js eases `on` toward `target`. ratio = brightness of the lights-off bake relative to the lights-on one.
+const roomLights = new Map();
+const roomLight = (id) => roomLights.get(id) || roomLights.set(id, { on: { value: 1 }, target: 1, ratio: 0.12, mats: [], lamps: [], ems: [] }).get(id);
+function meanLinear(img) {             // mean linear value of an 8-bit sRGB image, from a 32x32 thumbnail
+  const c = Object.assign(document.createElement('canvas'), { width: 32, height: 32 }), g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, 32, 32);
+  const d = g.getImageData(0, 0, 32, 32).data; let s = 0;
+  for (let i = 0; i < d.length; i += 4) for (let j = 0; j < 3; j++) { const v = d[i + j] / 255; s += v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }
+  return s / (d.length * 0.75);
+}
 
 async function applyBake() {
   const load = (u) => texLoader.loadAsync('assets/' + u).catch(() => (console.warn('baked image missing:', u), null));
+  const offs = new Map((await Promise.all((manifest.lightmapsOff || []).map(async (lm) => {
+    const tex = await load(lm.image);
+    if (!tex) return null;
+    Object.assign(tex, { channel: 1, flipY: false, colorSpace: THREE.SRGBColorSpace, anisotropy: maxAniso });
+    return [lm.room, { tex, k: Math.PI * (lm.intensity ?? 1) }];
+  }))).filter(Boolean));
   const probes = (await Promise.all((manifest.probes || []).map(async (p) => {
     const room = rooms.find((r) => r.id === p.room), tex = await load(p.image);
     if (!tex || !room) return null;
     Object.assign(tex, { mapping: THREE.EquirectangularReflectionMapping, colorSpace: THREE.SRGBColorSpace });
+    // lights off: probe-lit materials scale their probe by the brightness of the lights-off probe (manifest probesOff)
+    const off = (manifest.probesOff || []).find((q) => q.room === p.room), offTex = off && await load(off.image);
+    if (offTex) roomLight(p.room).pratio = Math.min(1, Math.max(0.01, (meanLinear(offTex.image) * (off.intensity ?? 1)) / Math.max(1e-6, meanLinear(tex.image) * (p.intensity ?? 1))));
     return { room, tex, c: G.centroid(room.polygon), k: p.intensity ?? 1 };
   }))).filter(Boolean);
   const lmOf = new Map(); let missing = 0, nouv = 0;          // mesh -> { tex, k }
@@ -140,12 +171,14 @@ async function applyBake() {
     const tex = await load(lm.image);
     if (!tex) return;
     Object.assign(tex, { channel: 1, flipY: false, colorSpace: THREE.SRGBColorSpace, anisotropy: maxAniso });
+    const k = Math.PI * (lm.intensity ?? 1), off = offs.get(lm.room) || { tex, k: k * 0.12 }, L = roomLight(lm.room);
+    if (off.tex !== tex) L.ratio = Math.min(1, Math.max(0.01, (meanLinear(off.tex.image) * off.k) / Math.max(1e-6, meanLinear(tex.image) * k)));
     for (const n of lm.objects || []) {
       const node = findNode(n);
       if (!node) { missing++; continue; }
       node.traverse((o) => {
         if (!o.isMesh) return;
-        if (o.geometry.attributes.uv1) lmOf.set(o, { tex, k: Math.PI * (lm.intensity ?? 1) }); else nouv++;
+        if (o.geometry.attributes.uv1) lmOf.set(o, { tex, k, off, L }); else nouv++;
       });
     }
   }));
@@ -166,7 +199,11 @@ async function applyBake() {
       const key = m.uuid + env.uuid + (lm ? lm.tex.uuid : '');
       if (!cache.has(key)) {
         const c = Object.assign(m.clone(), { envMap: env, envMapIntensity: pr ? pr.k : 0.6 });
-        if (lm) Object.assign(c, { lightMap: lm.tex, lightMapIntensity: lm.k, onBeforeCompile: specOnly });
+        if (lm) {
+          const u = { lightMapOff: { value: lm.off.tex }, lightMapOffIntensity: { value: lm.off.k }, lmOn: lm.L.on, lmMix: { value: 1 } };
+          Object.assign(c, { lightMap: lm.tex, lightMapIntensity: lm.k, onBeforeCompile: (sh) => { specOnly(sh); Object.assign(sh.uniforms, u); } });
+        }
+        if (pr) roomLight(pr.room.id).mats.push({ m: c, k: pr.k });
         cache.set(key, c);
       }
       return cache.get(key);
@@ -194,20 +231,106 @@ function realtimeRig() {
     const ext = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
     const lamp = new THREE.PointLight(0xffd3a3, 3 + 1.4 * Math.abs(G.polyArea(r.polygon)), ext * 0.75 + 1, 2);
     lamp.position.set(x, Math.min(r.ceilZ, 3) - 0.35, -y);
-    scene.add(lamp);
+    scene.add(lamp); roomLight(r.id).lamps.push({ light: lamp, k: lamp.intensity });
   }
 }
 
 if (realtime) realtimeRig();
 else await applyBake();
 
+// ---------- raycasting (pointing, double-click targets, line of sight) ----------
+// Nearest-first: meshes sorted by where the ray enters their bounding sphere, stopping once a hit is nearer than the
+// next sphere - only a handful of the 700k triangles are ever tested. Hidden objects, untagged glass and (in the
+// dollhouse) everything above the cut plane are looked through.
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), sph = new THREE.Sphere(), hitAt = new THREE.Vector3(), hits = [];
+const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+let ix = null;
+function castRay(origin, dir, far = 60) {
+  ray.set(origin, dir); ray.far = far;
+  const cand = [];
+  for (const o of meshes) {
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+    sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+    const d = sph.containsPoint(origin) ? 0 : ray.ray.intersectSphere(sph, hitAt) ? origin.distanceTo(hitAt) : Infinity;
+    if (d <= far) cand.push([d, o]);
+  }
+  cand.sort((a, b) => a[0] - b[0]);
+  let best = null;
+  for (const [d, o] of cand) {
+    if (best && d > best.distance) break;
+    if (!shown(o) || (o.userData.glass && !ix?.tagged(o))) continue;
+    hits.length = 0; o.raycast(ray, hits);
+    for (const h of hits) if (h.distance <= far && (!best || h.distance < best.distance) && !(S.mode === 'orbit' && h.point.y > CUT)) best = h;
+  }
+  return best;
+}
+function castAt(cx, cy, far) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return castRay(ray.ray.origin.clone(), ray.ray.direction.clone(), far);
+}
+
 // ---------- walk state ----------
-const S = { mode: 'walk', x: spawn.pos[0], y: spawn.pos[1], yaw: spawn.yaw, pitch: 0, room: null, keys: new Set(), pad: [0, 0], anim: null };
+const S = { mode: 'walk', x: spawn.pos[0], y: spawn.pos[1], yaw: spawn.yaw, pitch: 0, room: null, keys: new Set(), pad: [0, 0], anim: null, glide: null, fovT: FOV };
 if (walk) [S.x, S.y] = G.nearestFree(walk, S.x, S.y) || [S.x, S.y];
 
 function goTo(x, y, yaw = S.yaw) {        // short eased glide (teleport / room jump)
+  S.glide = null;
   S.anim = { x0: S.x, y0: S.y, a0: S.yaw, p0: S.pitch, x1: x, y1: y, a1: S.yaw + wrap(yaw - S.yaw), t: 0 };
 }
+// Street-View walk: route through open doorways and round furniture, glide along it at GLIDE m/s with eased start /
+// stop, the view turning gently toward the way ahead. Any key or drag cancels.
+function walkTo(x, y) {
+  if (!walk) { goTo(x, y); return true; }
+  const p = G.nearestFree(walk, x, y, 1.5), path = p && G.route(walk, [S.x, S.y], p);
+  if (!path || G.pathLength(path) < 0.05) return false;
+  S.anim = null; S.glide = { path, L: G.pathLength(path), s: 0, v: 0 }; hideHint();
+  return true;
+}
+function along(pts, s) {
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = pts[i - 1], [bx, by] = pts[i], l = Math.hypot(bx - ax, by - ay);
+    if (s <= l || i === pts.length - 1) { const t = l ? Math.min(1, s / l) : 1; return [ax + (bx - ax) * t, ay + (by - ay) * t]; }
+    s -= l;
+  }
+  return pts[0];
+}
+function glide(dt) {
+  const gl = S.glide;
+  gl.v = Math.min(GLIDE, gl.v + 4 * dt, Math.sqrt(6 * (gl.L - gl.s)) + 0.05);     // 4 m/s2 up, 3 m/s2 down
+  gl.s = Math.min(gl.L, gl.s + gl.v * dt);
+  const [x, y] = along(gl.path, gl.s), [ax, ay] = along(gl.path, Math.min(gl.L, gl.s + 1));
+  const [mx, my] = G.move(walk, S.x, S.y, x, y);
+  if (Math.hypot(mx - x, my - y) > 0.2) { S.glide = null; return; }               // a door was shut across the route
+  S.x = mx; S.y = my;
+  if (Math.hypot(ax - x, ay - y) > 0.3) S.yaw += wrap(G.dirYaw(ax - x, ay - y) - S.yaw) * Math.min(1, dt * 2.2);
+  S.pitch -= S.pitch * Math.min(1, dt * 1.5);
+  if (gl.s >= gl.L) S.glide = null;
+}
+// floor point a double-click on this hit walks to: the floor itself, or the floor in front of a wall / object
+function targetOf(hit) {
+  if (!hit || !walk) return null;
+  const n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : null;
+  let [x, y] = G.threeToPlan(hit.point);
+  const floor = n && n.y > 0.7 && hit.point.y < 0.3;
+  if (!floor) {
+    const dx = camera.position.x - hit.point.x, dz = camera.position.z - hit.point.z, l = Math.hypot(dx, dz) || 1;
+    x += (dx / l) * 0.45; y -= (dz / l) * 0.45;
+  }
+  const p = G.nearestFree(walk, x, y, 1.5);
+  return p && { p, y: floor && Math.hypot(p[0] - x, p[1] - y) < 0.05 ? hit.point.y : null };
+}
+
+// The interaction engine (GLB node extras `ix`, blender/INTERACT.md). Emissives are white-balanced in the shader (above),
+// so the hover tint goes in through the inverse matrix.
+const wbInv = !realtime && manifest?.whiteBalance && new THREE.Matrix3().set(...manifest.whiteBalance.flat()).invert();
+ix = initInteract({ model, walk, roomLight, castRay, emissiveToView: (c) => (wbInv ? c.applyMatrix3(wbInv) : c),
+  onClone: (m, c) => { for (const L of roomLights.values()) for (const x of L.mats) if (x.m === m) { L.mats.push({ m: c, k: x.k }); return; } },
+  onPortals: () => {                    // a door shut on the walker standing in its doorway: step out of it
+    if (!walk || G.isFree(walk, S.x, S.y)) return;
+    const p = G.nearestFree(walk, S.x, S.y, 1.5); if (p) goTo(p[0], p[1]);
+  } });
 function tween(dt) {
   const a = S.anim; a.t = Math.min(1, a.t + dt / 0.6); const e = a.t * a.t * (3 - 2 * a.t);
   S.x = lerp(a.x0, a.x1, e); S.y = lerp(a.y0, a.y1, e); S.yaw = lerp(a.a0, a.a1, e); S.pitch = lerp(a.p0, 0, e);
@@ -215,27 +338,35 @@ function tween(dt) {
 }
 const on = (...codes) => (codes.some((c) => S.keys.has(c)) ? 1 : 0);
 function stepWalk(dt) {
-  S.yaw += (on('ArrowLeft', 'KeyQ') - on('ArrowRight', 'KeyE')) * TURN * dt;
+  S.yaw += (on('ArrowLeft') - on('ArrowRight')) * TURN * dt;
   let f = on('KeyW', 'ArrowUp') - on('KeyS', 'ArrowDown') + S.pad[1], s = on('KeyD') - on('KeyA') + S.pad[0];
   const l = Math.hypot(f, s);
   if (l > 1) { f /= l; s /= l; }
   if (l > 0.02) {
-    S.anim = null; hideHint();
-    const sp = (on('ShiftLeft', 'ShiftRight') ? RUN : WALK) * dt, [fx, fy] = G.yawDir(S.yaw);   // right = (fy, -fx)
+    S.anim = S.glide = null; hideHint();
+    const slow = walk && G.isSoft(walk, S.x, S.y) ? 0.6 : 1;                  // wading past a chair or a bin
+    const sp = (on('ShiftLeft', 'ShiftRight') ? RUN : WALK) * slow * dt, [fx, fy] = G.yawDir(S.yaw);   // right = (fy, -fx)
     const nx = S.x + (fx * f + fy * s) * sp, ny = S.y + (fy * f - fx * s) * sp;
     [S.x, S.y] = walk ? G.move(walk, S.x, S.y, nx, ny) : [nx, ny];
   }
+  if (S.glide) glide(dt);
   if (S.anim) tween(dt);
+  if (Math.abs(camera.fov - S.fovT) > 0.01) { camera.fov += (S.fovT - camera.fov) * Math.min(1, dt * 9); camera.updateProjectionMatrix(); }
   camera.position.set(S.x, EYE, -S.y);
   camera.rotation.set(S.pitch, S.yaw, 0);
 }
 
-// ---------- input: keys, drag-look, pointer lock, touch pad ----------
-const MOVE = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+// ---------- input: keys ----------
+const MOVE = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+const locked = () => document.pointerLockElement === canvas;
+const toggleLock = () => (locked() ? document.exitPointerLock() : S.mode === 'walk' && canvas.requestPointerLock?.()?.catch?.(() => {}));
 addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('dialog[open]')) return;
   const k = e.code;
-  if (k === 'KeyO') setMode(S.mode === 'walk' ? 'orbit' : 'walk');
+  S.glide = null;
+  if ((k === 'Space' || k === 'KeyE') && !/^(BUTTON|A|INPUT)$/.test(document.activeElement?.tagName)) { e.preventDefault(); if (!e.repeat) ix.use(camera); }
+  else if (k === 'KeyL') toggleLock();
+  else if (k === 'KeyO') setMode(S.mode === 'walk' ? 'orbit' : 'walk');
   else if (k === 'KeyP') togglePlan();
   else if (e.key === '?' || k === 'KeyH') toggleHelp();
   else if (k === 'Escape' && planEl.classList.contains('max')) $('#plan-max').click();
@@ -245,24 +376,112 @@ addEventListener('keydown', (e) => {
     S.keys.add(k); if (MOVE.has(k)) e.preventDefault();
   }
 });
+// a pointer click leaves no focus on a toolbar button, so the next Space uses the thing in front instead of pressing it again
+addEventListener('click', (e) => { const b = e.detail > 0 && e.target.closest?.('button'); if (b && !b.closest('dialog')) b.blur(); });
 addEventListener('keyup', (e) => S.keys.delete(e.code));
 addEventListener('blur', () => S.keys.clear());
 
-let drag = null;
-function look(dx, dy, k) { S.yaw += dx * k; S.pitch = clamp(S.pitch + dy * k, -1.3, 1.3); S.anim = null; hideHint(); }
+// ---------- input: pointer ----------
+// drag = look (grab the scene); click / tap (< 5 px, < 600 ms) = operate what is under it; a second click / tap
+// within DBL ms = walk there; two fingers = pinch zoom; wheel = zoom (walk mode changes the field of view).
+const ptrs = new Map();
+let pinch = null, lastTap = null, hoverXY = null, hoverDirty = true;
+function look(dx, dy, k) { k *= camera.fov / FOV; S.yaw += dx * k; S.pitch = clamp(S.pitch + dy * k, -1.3, 1.3); S.anim = S.glide = null; hideHint(); }
 canvas.addEventListener('pointerdown', (e) => {
-  if (S.mode !== 'walk' || (e.pointerType === 'mouse' && e.button !== 0)) return;
-  drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, pinched: false });
+  if (S.mode !== 'walk') return;
+  try { canvas.setPointerCapture(e.pointerId); } catch {}       // the pointer may already be gone (fast touch)
+  if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()]; a.pinched = b.pinched = true;
+    pinch = { d: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), fov: S.fovT };
+  }
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (document.pointerLockElement === canvas) return look(-e.movementX, -e.movementY, 0.0022);   // mouse-look: move right = look right
-  if (!drag || e.pointerId !== drag.id) return;
-  look(e.clientX - drag.x, e.clientY - drag.y, e.pointerType === 'touch' ? 0.0065 : 0.0045);    // drag = grab the scene
-  drag.x = e.clientX; drag.y = e.clientY;
+  hoverDirty = true;
+  if (locked()) {                                                   // mouse-look: move right = look right
+    for (const p of ptrs.values()) if (Math.abs(e.movementX) + Math.abs(e.movementY) > 2) p.moved = true;   // a look, not a click
+    return look(-e.movementX, -e.movementY, 0.0022);
+  }
+  const p = ptrs.get(e.pointerId);
+  if (e.pointerType === 'mouse') hoverXY = [e.clientX, e.clientY];
+  if (!p) return;
+  if (Math.hypot(e.clientX - p.x0, e.clientY - p.y0) > 5) p.moved = true;
+  if (S.mode === 'walk') {
+    if (pinch && ptrs.size === 2) {
+      p.x = e.clientX; p.y = e.clientY; const [a, b] = [...ptrs.values()];
+      S.fovT = clamp((pinch.fov * pinch.d) / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), FOV_MIN, FOV_MAX);
+      return;
+    }
+    if (p.moved && !p.pinched) look(e.clientX - p.x, e.clientY - p.y, e.pointerType === 'touch' ? 0.0065 : 0.0045);
+  }
+  p.x = e.clientX; p.y = e.clientY;
 });
-const endDrag = (e) => { if (drag?.id === e.pointerId) drag = null; };
-canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
-canvas.addEventListener('dblclick', () => { if (S.mode === 'walk' && !touch) canvas.requestPointerLock?.()?.catch?.(() => {}); });
+const endPtr = (e) => {
+  const p = ptrs.get(e.pointerId);
+  ptrs.delete(e.pointerId);
+  if (ptrs.size < 2) pinch = null;
+  if (p && e.type === 'pointerup' && !p.moved && !p.pinched && performance.now() - p.t0 < 600) tap(e.clientX, e.clientY);
+};
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !locked()) { hoverXY = null; hoverDirty = true; } });
+canvas.addEventListener('wheel', (e) => {
+  if (S.mode !== 'walk') return;                   // the dollhouse keeps its orbit zoom
+  e.preventDefault(); S.fovT = clamp(S.fovT * Math.exp(e.deltaY * 0.0012), FOV_MIN, FOV_MAX);
+}, { passive: false });
+// In walk mode a click on something operable waits out the double-click window, so a double-click on a door walks
+// up to it instead of also opening it. The dollhouse has no double-click: it operates at once.
+const DBL = 350;
+let pending = null;
+function tap(x, y) {
+  if (locked()) [x, y] = [innerWidth / 2, innerHeight / 2];          // mouse-look: the crosshair
+  const now = performance.now(), walking = S.mode === 'walk', range = walking ? POINT_RANGE : Infinity;
+  const dbl = walking && lastTap && now - lastTap.t < DBL && Math.hypot(x - lastTap.x, y - lastTap.y) < 16;
+  lastTap = dbl ? null : { t: now, x, y };
+  clearTimeout(pending);
+  const hit = castAt(x, y);
+  if (dbl) { const t = targetOf(hit); if (t) walkTo(...t.p); }
+  else if (ix.hover(hit, range)) pending = setTimeout(() => { ix.click(hit, range); hoverDirty = true; }, walking ? DBL : 0);
+  hoverDirty = true;
+}
+$('#btn-look').onclick = toggleLock;
+document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('locked', locked()); $('#btn-look').setAttribute('aria-pressed', locked()); hoverDirty = true; });
+
+// ---------- pointing feedback: hover highlight + hint label, Space candidate, floor ring ----------
+const tip = $('#ix-tip');
+const ring = (() => {
+  const c = Object.assign(document.createElement('canvas'), { width: 128, height: 128 }), g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 26, 64, 64, 62);
+  for (const [s, a] of [[0, 0], [0.45, 0.15], [0.62, 0.95], [0.76, 0.95], [1, 0]]) gr.addColorStop(s, `rgba(255,255,255,${a})`);
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.46).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.75, depthWrite: false, toneMapped: false }));
+  m.renderOrder = 3; m.visible = false; scene.add(m);
+  return m;
+})();
+let nextBest = 0;
+function showTip(text, x, y, key) {
+  tip.hidden = !text;
+  if (!text) return;
+  tip.classList.toggle('key', !!key);
+  tip.replaceChildren(...(key ? [Object.assign(document.createElement('kbd'), { textContent: 'Space' })] : []), text);   // labels are data: text only
+  tip.style.left = key ? '' : `${x + 16}px`; tip.style.top = key ? '' : `${y + 18}px`;
+}
+function updatePointer(now) {
+  const xy = locked() ? [innerWidth / 2, innerHeight / 2] : hoverXY;
+  let g = ix.hovered();
+  if (hoverDirty || S.glide || S.anim || S.keys.size) {           // re-cast only when something moved
+    hoverDirty = false;
+    const hit = xy && !ptrs.size ? castAt(...xy) : null;
+    g = ix.hover(hit, S.mode === 'orbit' ? Infinity : POINT_RANGE);
+    canvas.style.cursor = g ? 'pointer' : '';
+    const t = !g && S.mode === 'walk' && !S.glide ? targetOf(hit) : null;
+    ring.visible = !!t;
+    if (t) ring.position.set(t.p[0], (t.y ?? G.roomAt(rooms, ...t.p)?.floorZ ?? 0) + 0.012, -t.p[1]);
+  }
+  if (g) return showTip(ix.verb(g), ...(xy || [0, 0]));
+  if (touch || S.mode !== 'walk') return showTip('');
+  if (now > nextBest) { nextBest = now + 200; const b = ix.best(camera); showTip(b && ix.verb(b), 0, 0, true); }
+}
 
 const pad = $('#pad'), knob = $('#pad-knob'); let padId = null;
 function padMove(e) {
@@ -286,7 +505,8 @@ const tmp = new THREE.Vector3();
 const capMat = new THREE.MeshBasicMaterial({ color: 0x8f8a83, side: THREE.BackSide });
 function setMode(m) {
   if (m === S.mode) return;
-  S.mode = m; drag = null; S.anim = null; document.exitPointerLock?.();
+  S.mode = m; ptrs.clear(); pinch = null; S.anim = S.glide = null; document.exitPointerLock?.(); ring.visible = false; hoverDirty = true;
+  camera.fov = FOV; camera.updateProjectionMatrix();     // the dollhouse zooms by distance; walk eases back to its own zoom
   document.body.classList.toggle('orbit', m === 'orbit');
   $('#mode-walk').setAttribute('aria-pressed', m === 'walk'); $('#mode-orbit').setAttribute('aria-pressed', m === 'orbit');
   scene.background = m === 'orbit' ? DARK : SKY;
@@ -397,8 +617,8 @@ if (items.length) {
 }
 
 const hint = $('#hint');
-hint.textContent = touch ? 'Drag to look · pad to move'
-  : 'Drag to look · WASD / arrows to move · click the plan to jump · ? for help';
+hint.textContent = touch ? 'Drag to look · pad to move · tap to use · double-tap to go · pinch to zoom'
+  : 'Drag to look · WASD to move · double-click to go · click or Space to open · wheel to zoom · ? for help';
 function hideHint() { hint.classList.add('gone'); }
 setTimeout(hideHint, 10000);
 
@@ -416,6 +636,7 @@ function frame(now) {
     tmp.subVectors(orbit.target, camera.position); const l = Math.hypot(tmp.x, tmp.z) || 1; dir = [tmp.x / l, -tmp.z / l];
   }
   updateRoom(px, py);
+  ix.update(dt, now); updatePointer(now);
   planView?.setViewer({ x: px, y: py, dir, hfov: G.hfov(camera.fov, camera.aspect) }, S.room);
   if (S.mode === 'orbit') {
     scene.overrideMaterial = capMat; renderer.render(scene, camera); scene.overrideMaterial = null;
@@ -429,6 +650,7 @@ renderer.setAnimationLoop(frame);
 requestAnimationFrame(() => $('#loader').classList.add('done'));
 
 // debug / test handle
-window.viewer = { THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump,
+window.viewer = { THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump, ix, walkTo, castAt, castRay, ring, roomLights,
+  FOV, FOV_MIN, FOV_MAX,
   info: () => ({ mode: S.mode, x: S.x, y: S.y, yaw: S.yaw, room: S.room?.id ?? null, realtime, meshes: meshes.length,
     lightmapped: meshes.filter((m) => m.userData.baked).length, probed: meshes.filter((m) => !realtime && !m.userData.baked).length, glass: meshes.filter((m) => m.userData.glass).length }) };

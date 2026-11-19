@@ -60,6 +60,7 @@ CONST = {
     'glass_green':      dict(hex='#DFE6E0', rough=0.06, alpha=0.90),                        # kitchen memo board
     'glass_dark':       dict(hex='#101214', rough=0.03, alpha=0.85),                        # washer / dryer door bowls
     'whisky':           dict(hex='#8A4A12', rough=0.05, alpha=0.85),                        # decanter contents
+    'water':            dict(hex='#DCEBF2', rough=0.05, alpha=0.45),                        # running tap stream (props.water_stream)
     'mirror':           dict(hex='#F2F2F2', rough=0.0, metal=1),
     # misc
     'pot_jade':         dict(hex='#5F8F7A', rough=0.12),

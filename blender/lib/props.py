@@ -79,12 +79,16 @@ def two_sided(m):
     return c
 
 
+def _emit(name, base, emit, strength, rough=.5):
+    m = _ML.solid(name, base, rough)
+    p = _principled(m)
+    p.inputs['Emission Color'].default_value = (*_lin(emit), 1); p.inputs['Emission Strength'].default_value = strength
+    return m
+
+
 def emissive(hx='#FFE2B0', strength=8.0):
     """Principled material with constant emission (glTF-safe), cached by colour + strength."""
-    m = _ML.solid('emit_%s_%g' % (hx.lstrip('#').lower(), strength), hx, .5)
-    p = _principled(m)
-    p.inputs['Emission Color'].default_value = (*_lin(hx), 1); p.inputs['Emission Strength'].default_value = strength
-    return m
+    return _emit('emit_%s_%g' % (hx.lstrip('#').lower(), strength), hx, hx, strength)
 
 
 def image_mat(path, rough=.6):
@@ -631,7 +635,9 @@ def panel_door(b, w, h, t=.02, stile=.085, rail=None, recess=.006, bead=.012, ma
 def cabinet_carcass(b, w, d, h, mat='navy_cabinet', plinth=.15, plinth_recess=.04, open_front=False, shelves=0,
                     panel=.018, inner=None):
     """Cabinet box.  Origin: floor centre on the wall plane; body spans y 0..-d, z plinth..h (plinth=0 for
-    wall units).  open_front=True builds real panels (+ `shelves` evenly spaced) lined with `inner`."""
+    wall units).  open_front=True builds real 18 mm panels, a back and `shelves` evenly spaced shelves; every face
+    seen through the open front (sides, top, bottom, back, shelves) takes `inner` (default = mat), the outside
+    and the front edges stay `mat` - the carcass behind a door that opens."""
     m, x = mat, w / 2
     if plinth:
         b.add(_box((-x, -d + plinth_recess, 0), (x, -.002, plinth)), m)
@@ -639,10 +645,13 @@ def cabinet_carcass(b, w, d, h, mat='navy_cabinet', plinth=.15, plinth_recess=.0
         b.add(_box((-x, -d, plinth), (x, 0, h), .0015), m, closed=True)
         return
     p, im = panel, inner or mat
+
+    def lined(face):                             # bevelled _box faces come -x +x -y +y -z +z, then 20 chamfers
+        return [im if k == face else m for k in range(26)]
     for sx in (-1, 1):
-        b.add(_box((sx * x, -d, plinth), (sx * (x - p), 0, h), .001), m, closed=True)
-    b.add(_box((-x + p, -d, plinth), (x - p, 0, plinth + p), .001), m, closed=True)
-    b.add(_box((-x + p, -d, h - p), (x - p, 0, h), .001), m, closed=True)
+        b.add(_box((sx * x, -d, plinth), (sx * (x - p), 0, h), .001), lined(0 if sx > 0 else 1), closed=True)
+    b.add(_box((-x + p, -d, plinth), (x - p, 0, plinth + p), .001), lined(5), closed=True)
+    b.add(_box((-x + p, -d, h - p), (x - p, 0, h), .001), lined(4), closed=True)
     b.add(_box((-x + p, -.006, plinth + p), (x - p, 0, h - p)), im)
     for i in range(shelves):
         z = plinth + p + (h - plinth - 2 * p) * (i + 1) / (shelves + 1)
@@ -1003,6 +1012,15 @@ def tv_panel(b, w=1.89, h=1.08, depth=.03, standoff=.04, bezel=.005):
 
 
 @_prop
+def tv_screen(b, w=1.88, h=1.07):
+    """The lit picture of a TV, for the viewer's `show when=1 fx='tv'`: one quad with 0..1 UVs (U to the viewer's
+    right, V up), black base + pale emission (glTF emissive, so the viewer can swap in its animated picture).
+    Origin: centre; lies in the plane y = 0, faces -Y.  Put it 1 mm in front of the black glass."""
+    b.add(G([(-w / 2, 0, -h / 2), (w / 2, 0, -h / 2), (w / 2, 0, h / 2), (-w / 2, 0, h / 2)], [(0, 1, 2, 3)],
+            vuv=[(0, 0), (1, 0), (1, 1), (0, 1)]), _emit('tv_screen', '#050506', '#AFC6F2', 1.5, .2))
+
+
+@_prop
 def speaker_box(b, w=.21, h=.33, d=.27, mat='black_matt', drivers=2):
     """Bookshelf loudspeaker: cabinet + woofer (+ tweeter when drivers=2).  Origin: bottom centre, front -Y."""
     b.add(_box((-w / 2, -d, 0), (w / 2, 0, h), .004), mat, closed=True)
@@ -1030,7 +1048,7 @@ def _sm(k):
     k = max(0.0, min(1.0, k)); return k * k * (3 - 2 * k)
 
 
-def _curtain(b, W, H, m, folds, depth, side, tie, gather, seed, res, tie_mat, tassel_mat, tassel_len):
+def _curtain(b, W, H, m, folds, depth, side, tie, gather, seed, res, tie_mat, tassel_mat, tassel_len, hardware=True):
     """Pleated cloth W wide hanging from z=0 to -H in front of y=0.  side = -1/0/+1: tied back toward -X / not / +X."""
     rnd = random.Random(seed); p0, p1, p2 = (rnd.uniform(0, tau) for _ in range(3))
     n = folds or max(2, round(W / .11)); vt = tie / H if side else 2.0; g0 = gather * .8
@@ -1054,7 +1072,7 @@ def _curtain(b, W, H, m, folds, depth, side, tie, gather, seed, res, tie_mat, ta
             z += .07 * ((1 - u) if side > 0 else u) * ((v - vt) / (1 - vt)) ** 2
         return (x, y, z)
     b.add(_grid(fn, n * res, max(10, round(H / .09)), lambda u, v: (u * W * 2, -v * H), flip=True), two_sided(m), True)
-    if side:
+    if side and hardware:
         f = wf(vt); a = amp(vt) * 1.22; cx = side * (W / 2) * (1 - f); hw = W * f / 2; zt = -tie
         loop = [(cx + (hw + .012) * cos(t), -.012 - a / 2 + (a / 2 + .014) * sin(t), zt + .03 * side * cos(t))
                 for t in (tau * i / 16 for i in range(16))]
@@ -1069,14 +1087,17 @@ def _curtain(b, W, H, m, folds, depth, side, tie, gather, seed, res, tie_mat, ta
 
 @_prop
 def curtain_panel(b, width=.5, height=2.4, mat='tartan_red', folds=None, depth=.06, tieback=None, tie_from_top=1.4,
-                  gather=.6, tassel=.30, seed=1, fold_res=6, tie_mat='rope_cream', tassel_mat='tassel_gold'):
+                  gather=.6, tassel=.30, seed=1, fold_res=6, tie_mat='rope_cream', tassel_mat='tassel_gold',
+                  hardware=True):
     """One pleated curtain drop (single-sided cloth - the material must be double-sided).  width = hanging
     (stack) width, folds = number of pleats (default width / 0.11), depth = fold depth.
     tieback: None | 'left' | 'right' (side the bunch is pulled to, seen from the room); tie_from_top = distance
     of the tie below the heading; gather = bunch width / width; tassel = tassel length (0 = none).
+    hardware=False = cloth only: no tie rope, wall hook or tassel (a tieback=None drop never has any - that is the
+    closed curtain to hang on an existing pole).
     UVs: 1 unit = 1 m of cloth (fullness 2).  Origin: wall plane, top centre of the heading."""
     _curtain(b, width, height, mat, folds, depth, {'left': -1, 'right': 1}.get(tieback, 0), tie_from_top, gather, seed,
-             fold_res, tie_mat, tassel_mat, tassel)
+             fold_res, tie_mat, tassel_mat, tassel, hardware)
 
 
 _FINIALS = {
@@ -1127,18 +1148,24 @@ def pelmet_box(b, length=2.0, height=.2, depth=.14, mat='white_gloss'):
 @_prop
 def curtain_pair(b, width=1.8, height=2.4, mat='tartan_red', stack=.5, tieback=True, tie_from_top=1.4, gather=.6,
                  hang='pole', depth=.06, tassel=.30, seed=1, fold_res=6, hang_mat=None, finial='ball',
-                 tie_mat='rope_cream', tassel_mat='tassel_gold'):
+                 tie_mat='rope_cream', tassel_mat='tassel_gold', hardware=True, cloth=True, closed=False):
     """Two drops (each `stack` wide) at the ends of a `width` span, tied back outward when tieback=True.
     hang: 'pole' (pole + rings + finials, overhanging 0.15 each end) | 'pelmet' (boxed pelmet 0.2 high) |
-    'track' (slim white track) | None.  Origin: wall plane, top centre of the curtain heading."""
+    'track' (slim white track) | None.  Origin: wall plane, top centre of the curtain heading.
+    Openable curtains = the same call three times: cloth=False (pole / pelmet / track only, always there),
+    hardware=False (the tied-back drops with their ties, nothing to hang from: show when=0) and hardware=False,
+    closed=True (the two drops drawn straight across the span, no ties: show when=1)."""
     off = .035 if hang else 0.0
-    for sg in (-1, 1):
-        with b.at(Tr(sg * (width - stack) / 2, -off, 0)):
-            _curtain(b, stack, height, mat, None, depth, sg if tieback else 0, tie_from_top, gather, seed + (sg > 0),
+    cw, tb = (width / 2 + .01, False) if closed else (stack, tieback)    # closed: the halves lap 20 mm in the middle
+    for sg in (-1, 1) if cloth else ():
+        with b.at(Tr(sg * (width - cw) / 2, -off, 0)):
+            _curtain(b, cw, height, mat, None, depth, sg if tb else 0, tie_from_top, gather, seed + (sg > 0),
                      fold_res, tie_mat, tassel_mat, tassel)
     yc = -off - .012 - depth * .6
+    if not hardware:
+        return
     if hang == 'pole':
-        k = max(3, round(stack / .1))
+        k = max(3, round(stack / .1))                                    # ponytail: rings stay bunched over the open stacks
         xs = [sg * (width / 2 - stack * (i + .5) / k) for sg in (-1, 1) for i in range(k)]
         _pole(b, width + .3, .028, finial, xs, hang_mat or 'brass', yc, .04)
     elif hang == 'pelmet':
@@ -1603,7 +1630,7 @@ def glassware_set(b, tumblers=6, with_decanter=True, tray=(.5, .35), tray_mat='s
         b.kid(lambda: tumbler(glass_h), Tr(x0 + (a * .85 - x0) * ((i // 2) + .5) / cols * (1 if cols > 1 else .5), (-.5 + (i % 2)) * c * .8, .006))
 
 
-def _dial(b, r, face, hands='plastic_dark', bezel='brass', T=None):
+def _dial(b, r, face, hands='plastic_dark', bezel='brass', T=None, show_hands=True):
     """Clock dial in the local XY plane facing +Z."""
     with b.at(T if T is not None else Matrix.Identity(4)):
         b.add(_lathe([(r, 0), (0, 0)], 16), face)
@@ -1611,15 +1638,16 @@ def _dial(b, r, face, hands='plastic_dark', bezel='brass', T=None):
             b.add(_lathe([(r * .98, 0), (r * 1.1, 0), (r * 1.12, .004), (r * 1.02, .008), (r * .98, .003), (r * .98, 0)], 16), bezel, True, closed=True)
         for k in range(12):
             b.add(_box((-.006 * r / .05, r * .72, .0003), (.006 * r / .05, r * .9, .001)), hands, T=Rot('Z', 30 * k))
-        for ang, L, wd in ((60, .5, .05), (-60, .78, .035)):
+        for ang, L, wd in ((60, .5, .05), (-60, .78, .035)) if show_hands else ():
             b.add(_box((-r * wd, -r * .1, .0012), (r * wd, r * L, .002)), hands, T=Rot('Z', ang))
 
 
 @_prop
-def mantel_clock(b, w=.32, d=.16, h=.37, style='slate', mat=None, dial_dia=None):
+def mantel_clock(b, w=.32, d=.16, h=.37, style='slate', mat=None, dial_dia=None, hands=True):
     """Mantel clock.  style 'slate' (black architectural case: stepped plinth, green colonnettes, stepped
     top with low dome, cream dial in a brass bezel) | 'bracket' (wooden bracket clock: stepped top, brass
-    carrying handle, square brass dial with silvered chapter ring).  Origin: bottom centre, front -Y."""
+    carrying handle, square brass dial with silvered chapter ring).  Origin: bottom centre, front -Y.
+    hands=False leaves the dial bare for live `clock_hands` (centre + radius: `mantel_clock_dial`)."""
     def bx(ww, dd, z0, z1, m, bev=.003):
         b.add(_box((-ww / 2, -dd / 2, z0 * h), (ww / 2, dd / 2, z1 * h), bev), m, closed=True)
     if style == 'slate':
@@ -1630,7 +1658,7 @@ def mantel_clock(b, w=.32, d=.16, h=.37, style='slate', mat=None, dial_dia=None)
                 b.add(_lathe(turned_profile('column', .6 * h, .1 * w, .12 * h), 8), 'marble_green', True, T=Tr(sx * w * .405, sy * d * .37, 0))
         bx(w * .92, d * .92, .72, .79, m); bx(w * .74, d * .74, .79, .86, m); bx(w * .5, d * .52, .86, .91, m)
         b.add(_sphere(1, 12, 4, 1), m, True, closed=True, T=Tr(0, 0, .91 * h) @ Sc(w * .2, d * .2, .09 * h))
-        _dial(b, r, 'dial_cream', T=Tr(0, -d * .37 - .0005, .44 * h) @ Rot('X', 90))
+        _dial(b, r, 'dial_cream', T=Tr(0, -d * .37 - .0005, .44 * h) @ Rot('X', 90), show_hands=hands)
     else:
         m = mat or 'mahogany'; s = min(w * .62, h * .5)
         bx(w, d, 0, .08, m); bx(w * .88, d * .86, .08, .76, m); bx(w * .96, d * .94, .76, .81, m)
@@ -1638,7 +1666,15 @@ def mantel_clock(b, w=.32, d=.16, h=.37, style='slate', mat=None, dial_dia=None)
         b.add(_tube([(-w * .14 * cos(pi * i / 8), 0, h * .93 + .06 * h * sin(pi * i / 8)) for i in range(9)], .004, 5), 'brass', True, closed=True)
         with b.at(Tr(0, -d * .43 - .0005, .43 * h) @ Rot('X', 90)):
             b.add(_box((-s / 2, -s / 2, 0), (s / 2, s / 2, .002)), 'brass')
-            _dial(b, s * .43, 'silver', bezel=None, T=Tr(0, 0, .0022))
+            _dial(b, s * .43, 'silver', bezel=None, T=Tr(0, 0, .0022), show_hands=hands)
+
+
+def mantel_clock_dial(w=.32, d=.16, h=.37, style='slate', dial_dia=None):
+    """-> (centre, radius) of the dial of `mantel_clock(w, d, h, style, dial_dia=dial_dia)`: centre = Vector on
+    the dial face in the clock's local frame (the dial looks along local -Y)."""
+    if style == 'slate':
+        return Vector((0, -d * .37 - .0005, .44 * h)), (dial_dia or .34 * w) / 2
+    return Vector((0, -d * .43 - .0027, .43 * h)), min(w * .62, h * .5) * .43
 
 
 _VASES = {   # (r / (dia/2), z / height) outer profile, bottom -> mouth
@@ -1686,6 +1722,83 @@ def human_ref(b, height=1.7, mat='skin_ref'):
             b.add(_box((sx * .1 - .05, -.17, 0), (sx * .1 + .05, .08, .07), .02), mat, closed=True)
             b.add(_tube([(sx * .22, 0, 1.41), (sx * .25, 0, 1.12), (sx * .26, -.03, .84)], [.048, .04, .034], 8), mat, True, closed=True)
 
+# ----------------------------------------------------------------------------- interaction parts (blender/INTERACT.md)
+@_prop
+def water_stream(b, height, dia=.012, splash=.06):
+    """Running water for `show when=1 fx='water'`: a thin round stream from the origin (the spout outlet) straight
+    down to z = -height, necking to 60 % of `dia` over the first 0.15 m, plus a flat splash disc `splash` across
+    0.5 mm above the foot (0 = none).  Material 'water' (alpha-blended, double-sided).
+    UVs: U once round the stream; V runs along the fall, 0 at the foot and +1 per 0.1 m up to the outlet (the
+    viewer scrolls V downward); the disc carries on from V = 0 at its centre to negative V at its rim."""
+    r0, n, k = dia / 2, 8, max(3, min(12, round(height / .04)))
+
+    def fn(u, v):
+        r = r0 * (1 - .4 * _sm(v * height / .15)); a = tau * u
+        return (r * cos(a), r * sin(a), -v * height)
+    b.add(_grid(fn, n, k, lambda u, v: (u, (1 - v) * height / .1), flip=True), 'water', 100)
+    if splash:
+        R, z, m = splash / 2, -height + .0005, 12
+        vs = [(0, 0, z)] + [(R * cos(tau * i / m), R * sin(tau * i / m), z) for i in range(m)]
+        fs = [(0, 1 + i, 1 + (i + 1) % m) for i in range(m)]
+        b.add(G(vs, fs, fuv=[[((i + .5) / m, 0), (i / m, -R / .1), ((i + 1) / m, -R / .1)] for i in range(m)]), 'water')
+
+
+@_prop
+def flame_ring(b, dia=.07, n=24, h=.014):
+    """Gas-burner flames for `show when=1 fx='flame'`: a crown of `n` small pointed flames on a circle `dia`
+    across, `h` high, leaning outward.  Origin: centre of the burner at the foot of the flames (set it just
+    above the burner cap), +Z up.  Material 'flame_blue': emissive blue, double-sided.
+    UVs per flame: V = 0 at the foot, 1 at the tip.  4 triangles per flame."""
+    m = _emit('flame_blue', '#0A1433', '#3D6BFF', 6.0); m.use_backface_culling = False
+    R, w = dia / 2, min(.8 * pi * dia / n, h) / 2
+    vs, fs, fuv = [], [], []
+    for i in range(n):
+        a = tau * i / n; c, s_ = cos(a), sin(a); o = len(vs)
+        vs += [((R - .6 * w) * c, (R - .6 * w) * s_, 0), (R * c - w * s_, R * s_ + w * c, 0),
+               ((R + .6 * w) * c, (R + .6 * w) * s_, 0), (R * c + w * s_, R * s_ - w * c, 0),
+               ((R + .35 * h) * c, (R + .35 * h) * s_, h)]
+        for j in range(4):
+            fs.append((o + j, o + (j + 1) % 4, o + 4)); fuv.append([(0, 0), (1, 0), (.5, 1)])
+    b.add(G(vs, fs, fuv=fuv), m)
+
+
+_HANDS = {   # outline (x, z) in units of the dial radius, counter-clockwise seen from the front, pointing at 12
+    ('baton', 'h'): [(-.05, -.10), (.05, -.10), (.035, .50), (-.035, .50)],
+    ('baton', 'm'): [(-.035, -.12), (.035, -.12), (.022, .80), (-.022, .80)],
+    ('spade', 'h'): [(-.035, -.10), (.035, -.10), (.028, .26), (.085, .36), (.05, .44), (0, .52), (-.05, .44), (-.085, .36),
+                     (-.028, .26)],
+    ('spade', 'm'): [(-.028, -.12), (.028, -.12), (.022, .52), (.05, .60), (0, .80), (-.05, .60), (-.022, .52)],
+    's': [(-.012, -.22), (.012, -.22), (.006, .85), (-.006, .85)],
+}
+_HAND_Y = {'h': (-.0025, -.0015, .075), 'm': (-.004, -.003, .06), 's': (-.005, -.0045, .045)}   # front y, back y, hub radius
+
+
+@_prop
+def _clock_hand(b, radius, style, which, mat):
+    y0, y1, hub = _HAND_Y[which]
+    b.add(_prism([(x * radius, z * radius) for x, z in _HANDS.get((style, which)) or _HANDS[which]], y0, y1), mat, closed=True)
+    b.add(_lathe([(0, 0), (hub * radius, 0), (hub * radius, y1 - y0), (0, y1 - y0)], 10), mat, T=Tr(0, y1, 0) @ Rot('X', 90))
+
+
+def clock_hands(radius=.1, style='baton', mat='plastic_dark', second=None, name=None):
+    """Live clock hands -> (hour, minute) or (hour, minute, second): separate objects for the viewer's `clock`
+    tag.  Each is modelled pointing at 12 (+Z) for a dial that faces -Y, with its origin at the dial centre ON
+    the dial face (hour 1.5-2.5 mm, minute 3-4 mm, second 4.5-5 mm in front of it): give all of them the
+    location of the dial centre and the rotation of the clock, e.g. P.place(hand, centre, facing=(nx, ny)).
+    radius = dial radius (hour hand 0.50, minute 0.80, second 0.85 of it).  style: 'baton' plain tapered bars |
+    'spade' antique spade hour hand + lance minute hand | 'sweep' batons + a red second hand.
+    second=True / False overrides whether a second hand is made (default: only 'sweep')."""
+    kind = 'baton' if style == 'sweep' else style
+    if (kind, 'h') not in _HANDS:
+        raise KeyError('clock_hands style %r: expected baton, spade or sweep' % style)
+    nm = name or 'clock'
+    out = [_clock_hand(radius, kind, w, mat, name='%s.hand_%s' % (nm, w)) for w in 'hm']
+    if style == 'sweep' if second is None else second:
+        out.append(_clock_hand(radius, kind, 's', _ML.solid('hand_red', '#B3261E', .5) if style == 'sweep' else mat,
+                               name=nm + '.hand_s'))
+    return tuple(out)
+
+
 # ----------------------------------------------------------------------------- contact sheet (self-test)
 def _test_image(path):
     """Orientation test card: red block top-left, green top-right, dark border, checker field."""
@@ -1716,7 +1829,7 @@ def contact_sheet(out_dir, res=(1600, 900), samples=64, only=None):
             table.append((label, o))
         return o
     put(box(40, 14, .1, '#B9B2A6'), 9, -3, -.1)
-    BX = dict(A=0, B=6, C=12, D=18)
+    BX = dict(A=0, B=6, C=12, D=18, E=24)
     for bx in BX.values():
         put(box(5.2, .1, 2.8, '#D9D4CA'), bx, .05, 0)
         put(human_ref(), bx + 2.35, -.5, 0, label='human_ref' if bx == 0 else None)
@@ -1843,6 +1956,39 @@ def contact_sheet(out_dir, res=(1600, 900), samples=64, only=None):
     put(plant_potted('citrus', pot_dia=.33, pot_h=.3, pot_mat='#6F7A45', stand=.08), x + 1.9, -2.2, 0, label='plant_potted citrus')
     put(plant_potted('eucalyptus', pot_dia=.16, pot_h=.15, pot_mat='brass'), x + .4, -2.1, 0, label='plant_potted eucalyptus')
 
+    # ---- bay E: interaction parts (INTERACT.md): left of each pair = state 0, right = state 1
+    x = BX['E']
+    ck = dict(width=1.2, height=2.0, mat='tartan_red', stack=.4, tie_from_top=1.2)
+    for dx, closed in ((-1.8, False), (-.3, True)):
+        put(curtain_pair(cloth=False, **ck), x + dx, 0, 2.3, label=None if closed else 'curtain_pair cloth=False (pole only)')
+        put(curtain_pair(hardware=False, closed=closed, **ck), x + dx, 0, 2.3,
+            label='curtain_pair hardware=False' + (', closed=True' if closed else ''))
+    for i, st in enumerate(('baton', 'spade', 'sweep')):
+        cx, cz, r = x + .85 + i * .35, 2.35, .13
+        put(lathe([(0, 0), (r * 1.08, 0), (r * 1.08, .01), (0, .01)], 24, 'dial_cream'), cx, 0, cz, rx=90)
+        hs = clock_hands(r, st, name='sheet.clock%d' % i)
+        assert len(hs) == (3 if st == 'sweep' else 2) and clock_hands(r, st)[0].data is hs[0].data
+        for o, deg in zip(hs, (305, 60, 210)):                # 10:10:35 - turn clockwise about the dial axis
+            put(o, cx, -.01, cz, label='clock_hands %s' % st if o is hs[0] else None).rotation_euler = (0, radians(deg), 0)
+    put(tv_panel(1.1, .63), x + 1.5, 0, 1.6)
+    put(tv_screen(1.09, .62), x + 1.5, -.0716, 1.6, label='tv_screen (on)')
+    put(bevel_box(1.7, .6, .86, 'grey_cabinet', .004), x + 1.2, -1.2, 0)
+    put(box(.6, .5, .02, 'black_gloss'), x + 1.6, -1.2, .86)
+    for k, (bx_, by, dia) in enumerate(((-.15, -.12, .07), (.15, -.12, .10), (-.15, .12, .10), (.15, .12, .07))):
+        put(lathe([(0, 0), (dia * .42, 0), (dia * .42, .012), (0, .014)], 16, 'cast_iron'), x + 1.6 + bx_, -1.2 + by, .88)
+        fl = put(flame_ring(dia), x + 1.6 + bx_, -1.2 + by, .894, label='flame_ring %g' % dia if k < 2 else None)
+        assert len(fl.data.polygons) == 96
+    put(vase(.09, .34, 'bowl', 'ceramic_white'), x + .75, -1.2, .86)
+    put(lathe([(0, 0), (.018, 0), (.014, .26), (0, .26)], 12, 'chrome'), x + .75, -1.0, .86)
+    put(lathe([(0, 0), (.011, 0), (.011, .2), (0, .2)], 10, 'chrome'), x + .75, -1.0, 1.1, rx=90)
+    ws = put(water_stream(.16), x + .75, -1.19, 1.1, label='water_stream .16')
+    assert abs(max(l.uv.y for l in ws.data.uv_layers[0].data) - 1.6) < 1e-5, 'water V = fall in 0.1 m'
+    for dx, inner in ((-1.6, '#F4F2EC'), (-.8, None)):
+        cc = put(cabinet_carcass(.6, .56, .87, 'navy_cabinet', open_front=True, shelves=1, inner=inner), x + dx, -2.2, 0,
+                 label='cabinet_carcass open, inner=%s' % inner)
+        assert len(cc.data.materials) == (2 if inner else 1)
+        put(panel_door(.597, .717), x + dx - .3 + .2985 * cos(radians(-100)), -2.76 + .2985 * sin(radians(-100)), .15, rz=-100)
+
     # ---- sanity + triangle table
     bp = bulb_points(ch2)
     assert len(bp) == 12 and all(2.0 < q.z < 2.6 and abs(q.x - BX['D'] - 1.1) < .5 for q in bp), bp
@@ -1867,7 +2013,9 @@ def contact_sheet(out_dir, res=(1600, 900), samples=64, only=None):
             'B': [((0, -4.6, 1.5), (0, 0, 1.35), 24), ((-.9, -2.3, 1.7), (-1.2, 0, 1.7), 35), ((1.2, -2.5, 1.5), (.9, 0, 1.5), 35), ((-1.2, -2.2, .8), (-1.2, 0, .6), 35)],
             'C': [((0, -5.2, 1.6), (0, 0, 1.2), 24), ((-1.25, -3.0, 1.5), (-1.25, 0, 1.45), 30), ((.9, -3.6, 1.5), (.9, -1.8, .4), 35), ((1.2, -2.6, 1.6), (1.4, 0, 1.6), 30)],
             'D': [((0, -5.0, 1.5), (0, -.5, 1.35), 24), ((-1.2, -3.0, 1.9), (-1.2, -1.3, 2.25), 40), ((1.1, -3.1, 1.7), (1.1, -1.3, 2.1), 40), ((0, -2.7, 1.3), (0, -1.0, .9), 35),
-                  ((-1.5, -3.6, 1.0), (-1.6, -2.0, .45), 35), ((1.6, -4.2, 1.3), (1.9, -2.2, .9), 35)]}
+                  ((-1.5, -3.6, 1.0), (-1.6, -2.0, .45), 35), ((1.6, -4.2, 1.3), (1.9, -2.2, .9), 35)],
+            'E': [((0, -5.0, 1.6), (0, -.5, 1.2), 24), ((1.2, -2.3, 1.45), (1.2, -1.2, .92), 40), ((1.25, -2.6, 1.9), (1.25, 0, 1.95), 35),
+                  ((-1.2, -3.9, 1.1), (-1.2, -2.3, .45), 40), ((-1.05, -4.3, 1.4), (-1.05, 0, 1.3), 28)]}
     sc.render.engine = 'CYCLES'; sc.cycles.samples = samples; sc.cycles.use_denoising = True
     sc.cycles.sample_clamp_indirect = 10; sc.cycles.max_bounces = 8
     sc.render.resolution_x, sc.render.resolution_y = res; sc.render.image_settings.file_format = 'JPEG'

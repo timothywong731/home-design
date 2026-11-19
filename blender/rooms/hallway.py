@@ -10,9 +10,9 @@ import os
 from math import atan2, cos, sin, pi, tau, hypot, radians
 
 import bpy
-from mathutils import Matrix
+from mathutils import Matrix, Vector
 
-from lib import lighting, materials as M, mouldings as mo, props as P
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P
 
 ROOM = 'hallway'
 ART = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'textures', 'art', ROOM)
@@ -26,6 +26,8 @@ CAMERAS = [
     dict(name='w3', pos=(0.9, 8.2, 1.6), look=(-0.65, 8.1, 1.35), fov_deg=100, ref='f_0770'),
     dict(name='arch', pos=(0.0, 8.13, 1.6), look=(0.0, 10.0, 2.7), fov_deg=100, ref='f_0283'),
     dict(name='rear', pos=(-0.1, 12.6, 1.6), look=(-0.1, 6.0, 1.4), fov_deg=100, ref='f_0745'),
+    dict(name='clock', pos=(-0.06, 10.4, 1.7), look=(-0.056, 12.23, 2.42), fov_deg=14),        # live hands
+    dict(name='cupboard', pos=(-0.5, 9.0, 1.6), look=(0.5, 8.14, 2.42), fov_deg=60),            # --pose 1: flap up
 ]
 
 RX = Matrix.Rotation(pi / 2, 4, 'X')            # local +Z -> -Y: lathes / leaves that face out of a wall
@@ -240,7 +242,8 @@ def clock(name):
     """Inlaid mosaic wall clock, dia 0.21 over the scallops (F_0561: 137 px against the 1.008 m architrave),
     28 mm deep and dished like a plate (rim 18 mm proud of the centre), dark overall: finely scalloped
     near-black walnut rim with pearl dots, twelve small gold-pearl hour marks on the sloping ring, a small
-    red-brown and cream 12-point star on the flat centre, small gold hands. Wall prop, origin = centre of the back."""
+    red-brown and cream 12-point star on the flat centre. Wall prop, origin = centre of the back. The small gold
+    hands are separate (build(): P.clock_hands on CLOCK_HUB, the viewer sets them to the time)."""
     wal = M.solid('clock_walnut', '#2A1E18', 0.25)           # satin: at 0.10 the flat ground mirrored the wall grey
     pearl = M.solid('clock_pearl', '#D9CFB4', 0.25)
     gold = M.solid('clock_goldpearl', '#C2AE7A', 0.3, 0.5)
@@ -281,11 +284,12 @@ def clock(name):
     for k in range(12):                                                   # hour marks lying on the slope
         mb.at(K @ RZ(tau * k / 12) @ T(0, .09, f(.09)) @ tilt)
         mb.box((-.0035, -.009, -.0012), (.0035, .009, .0018), gold)
-    for a, ln in ((radians(55), .04), (radians(-62), .056)):               # ten past ten
-        mb.at(K @ RZ(a))
-        mb.box((-.0016, 0, Z0 + .0055), (.0016, ln, Z0 + .0065), 'brass')
     mb.at()
     return mb.finish(name)
+
+
+CLOCK_HUB = (0, -.0122, 0)      # top of the centre boss in the clock's frame: the hands turn 1.5 / 3 mm above it
+CLOCK_R = .0495                 # minute hand 0.8 x this = 40 mm, inside the gold ring
 
 
 # ----------------------------------------------------------------------------- small fittings
@@ -443,11 +447,17 @@ def build(ctx):
         put(pic, (x, y, z), nrm, 'decor')
 
     # --- round clock over the dining door
-    put(clock('hallway.clock'), (-0.056, 12.23, 2.42), NORTH, 'decor')
+    ck = put(clock('hallway.clock'), (-0.056, 12.23, 2.42), NORTH, 'decor')
+    centre, out = ck.matrix_basis @ Vector(CLOCK_HUB), ck.matrix_basis.to_3x3() @ Vector((0, -1, 0))
+    for hand, w in zip(P.clock_hands(CLOCK_R, mat='brass', name='hallway.clock'), 'hm'):
+        hand.location, hand.rotation_euler = centre, ck.rotation_euler
+        IX.tag(hand, 'clock', hand=w, p=centre, a=out)
+        ctx.add(hand, ROOM, 'decor', lm='dynamic')
 
     # --- electrics and sensors
-    put(P.switch_plate(3, name='hallway.switch.front'), (0.65, 3.29, 1.27), EAST)
-    put(P.switch_plate(1, name='hallway.switch.rear'), (0.45, 11.30, 1.25), EAST)
+    for sw in (put(P.switch_plate(3, name='hallway.switch.front'), (0.65, 3.29, 1.27), EAST, lm='dynamic'),
+               put(P.switch_plate(1, name='hallway.switch.rear'), (0.45, 11.30, 1.25), EAST, lm='dynamic')):
+        IX.tag(sw, 'light', rooms=['hallway', 'stairs'])
     put(P.socket(2, name='hallway.socket.front'), (xw, 3.715, 0.36), WEST)    # behind the console, between its two south legs (F_0236, F_0795)
     put(P.socket(2, name='hallway.socket.lobby'), (xw, 8.36, 0.34), WEST)
     put(P.socket(2, name='hallway.socket.rear'), (xp, 9.53, 0.34), WEST)
@@ -464,14 +474,29 @@ def build(ctx):
     for i, (x, nrm) in enumerate(((xw + 0.02, WEST), (0.65 - 0.02, EAST))):
         put(door_stop(f'hallway.door_stop.{i}'), (x, 2.43, 0.06), nrm, lm='dynamic')
 
-    # --- overhead cupboard door over the under-stairs door (carcass is shell), brass D handle
+    # --- overhead cupboard over the under-stairs door (the box is shell): top-hung flap with a brass D handle.
+    #     It lifts about its top front edge and stops at 75 deg, handle 30 mm under the 2.60 landing soffit.
     mb = mo.MB()
     mb.box((0.206, 8.13, 2.327), (0.944, 8.148, 2.594), 'white_gloss', bev=.004)
+    door = ctx.add(mb.finish('hallway.cupboard_door'), ROOM, 'fit', lm='dynamic')
+    pull = put(P.handle_d(.13, finish='brass', name='hallway.cupboard_handle'), (0.575, 8.148, 2.36), (0, 1),
+               lm='dynamic')
+    IX.tag_many([door, pull], 'hinge', g='hallway.cupboard', label='Cupboard', p=(0.575, 8.148, 2.594),
+                a=(1, 0, 0), deg=75)
     # 25 mm bullnose under the door: flush with the door face, rounding back under the carcass (F_0753)
+    mb = mo.MB()
     nose = [(-.007 + .025 * cos(radians(a)), -.025 * sin(radians(a))) for a in (73.7, 60, 45, 30, 15, 0)] + [(0, 0)]
     mb.sweep(nose, [(0.206, 8.13, 2.325), (0.944, 8.13, 2.325)], 'white_gloss')
-    ctx.add(mb.finish('hallway.cupboard_door'), ROOM, 'fit')
-    put(P.handle_d(.13, finish='brass', name='hallway.cupboard_handle'), (0.575, 8.148, 2.36), (0, 1))
+    ctx.add(mb.finish('hallway.cupboard_nose'), ROOM, 'fit')
+    # plain white lined box behind the flap, 0.21 deep (the top risers of the flight pass behind and above it).
+    # It sits in the box lib/shell.py carves out of the solid 'lobby_overhead_cupboard' fill
+    put(P.cabinet_carcass(.73, .21, .26, 'white_gloss', plinth=0, open_front=True, name='hallway.cupboard_carcass'),
+        (0.577, 7.9205, 2.327), (0, 1), lm='dynamic')
+    # west cheek packed out 20 mm: the bulkhead string of steps 13-15 (stairs.wall_string, x 0.21..0.244) rises
+    # through the back top corner of the box and would show as a dark wedge 10 mm inside the side panel
+    mb = mo.MB()
+    mb.box((0.229, 7.925, 2.344), (0.250, 8.1305, 2.570), 'white_gloss')
+    ctx.add(mb.finish('hallway.cupboard_liner'), ROOM, 'fit', lm='dynamic')
 
     # --- recessed downlights, one row down the middle of each zone
     spots = [(0.0, 2.95), (0.0, 4.10), (-0.25, 5.38), (-0.25, 6.33), (-0.25, 7.28), (-0.10, 8.32),

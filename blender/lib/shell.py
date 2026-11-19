@@ -248,6 +248,7 @@ def _stairwell(ctx, fill, carve):
     fill((x0, x1, yw, yw + 0.02), 2.07, cz0, 'feat:stair_boarding')              # T&G boarding above the door
     fill((x0 + wt, x1, yw, y14), cz0, tread(13) - 0.07, 'feat:lobby_overhead_cupboard')   # stays under the treads
     fill((x0 + wt, x1, y14, yl0), cz0, min(cz1, tread(14) - 0.07), 'feat:lobby_overhead_cupboard')
+    carve((0.212, 0.942, 7.92, 8.13), 2.327, 2.587, 'hallway')      # box behind the lobby cupboard flap (rooms/hallway.py carcass)
 
 
 def _add_ceilings(g, ctx):

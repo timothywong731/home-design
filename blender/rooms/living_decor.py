@@ -511,11 +511,15 @@ def flowers(name='living.flowers', seed=5):
     return root
 
 
+CLOCK_DIAL, CLOCK_R = (0.0, -0.062, 0.133), 0.072      # clock(): dial centre on the dial plate (local), chapter-ring radius
+
+
 def clock(name='living.clock'):
     """Antique bracket clock 0.26 x 0.15 x 0.30: brown walnut case on a moulded plinth, stepped top with a
     brass carrying handle, glazed door frame, square brass dial plate with a silvered chapter ring carrying
-    thin black hour batons, matted centre, four gilt corner spandrels and slender hands. Origin bottom
-    centre, front -Y."""
+    thin black hour batons, matted centre and four gilt corner spandrels. No hands: rooms/living.py adds live
+    ones (P.clock_hands at CLOCK_DIAL, radius CLOCK_R) under the brass centre boss. Origin bottom centre,
+    front -Y."""
     mb = mo.MB()
     W, B, S, K, Gd = 'mahogany_dark', M.mat('brass'), M.mat('silver_satin'), M.mat('black_matt'), M.mat('brass')
     mb.box((-0.13, -0.075, 0), (0.13, 0.075, 0.022), W, bev=0.004, grain=0)                         # plinth
@@ -538,9 +542,6 @@ def clock(name='living.clock'):
         mb.at(D @ Rz(30 * h))
         w = 0.0042 if h % 3 == 0 else 0.0026                                                        # bold hour marks, no text
         mb.box((-w, 0.050, 0.0012), (w, 0.069, 0.002), K)
-    for ang, ln, w in ((305, 0.036, 0.0022), (55, 0.058, 0.0015)):                                  # hands
-        mb.at(D @ Rz(-ang))
-        mb.box((-w, -0.006, 0.0022), (w, ln, 0.003), K)
     mb.at(D)
     mb.lathe([(0, 0.002), (0.005, 0.002), (0.005, 0.0045), (0, 0.0045)], B, 10)
     for sx in (-1, 1):

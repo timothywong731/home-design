@@ -18,6 +18,7 @@ room modules never edit lib files — if something is missing, say so in your re
 | [props](#props-libpropspy) | furniture parts, hardware, pictures, curtains, lamps, plants |
 | [mouldings](#mouldings-libmouldingspy) | `MB` mesh builder, profiles, sweeps, room trim |
 | [joinery](#joinery-libjoinerypy) | doors, windows, surrounds (already installed by the shell) |
+| [interact](#interact-libinteractpy) | operable things: `IX.tag`, door groups, water / flame / clock / TV / curtain / cupboard helpers, `--pose 1` |
 | [export](#export-blenderexportpy-export_bakepy-export_checkpy) | lightmaps, probes, GLB, manifest, footprints, hero stills |
 
 ## Quick start
@@ -81,8 +82,11 @@ cover it with `shell.box` (splashbacks, nook lining, black soffit) or with your 
 
 ```
 "$B" -b --factory-startup --python blender/build.py -- [--only shell,living,...] [--save build/home.blend]
-     [--preview <room>[,<room>]|all|plan] [--res 960x540] [--samples 64] [--cam <name>] [--tag <suffix>]
+     [--preview <room>[,<room>]|all|plan] [--res 960x540] [--samples 64] [--cam <name>] [--tag <suffix>] [--pose 0|1]
 ```
+- `--pose 1`: previews with every interaction-tagged object in state 1 (doors swung, drawers out, taps
+  running, curtains closed — see [interact](#interact-libinteractpy)). Default 0 = as modelled, with
+  the `show when=1` objects hidden. Only the previews are posed: `--save` always writes state 0.
 - `--only a,b`: stages to build — `shell` (all architecture, joinery, trim) and/or room ids.
   Default: everything. `--only living` alone builds the module with **no** architecture (fast
   geometry check); use `shell,living` for a real preview.
@@ -374,7 +378,8 @@ the mesh and its material slots are final (it works on the base mesh, not on mod
 `black_gloss` `screen_black` `cast_iron` `anthracite` `slate_black`; whites `white_gloss`
 (joinery) `white_satin` (shutters) `plaster_white` `upvc_white` `plastic_white` `ceramic_white`;
 `pot_jade` `pot_olive` `alabaster` `cork`; `mirror`; glass `glass_clear` `glass_frosted`
-`glass_obscure` (stipple nrm, 0.15 m) `glass_green` `glass_dark` `whisky` (decanter contents).
+`glass_obscure` (stipple nrm, 0.15 m) `glass_green` `glass_dark` `whisky` (decanter contents)
+`water` (running tap stream, alpha 0.45).
 `mat()` raises `KeyError` for an unknown key and `FileNotFoundError` for a missing texture — nothing
 falls back silently.
 
@@ -488,7 +493,10 @@ P.handle_drop(width=.07, drop=.035, finish='black')                 # bail on tw
   the back face**, front at y = -t. 44 tris.
 - `cabinet_carcass`: origin floor centre on the wall plane; box spans y 0..-d, z plinth..h, recessed
   plinth below (`plinth=0` for wall units — then set the object's z). `open_front=True` = real
-  18 mm panels, back and `shelves` (bookcase, wine rack, plate rack), lined with `inner`.
+  18 mm panels, back and `shelves` (bookcase, wine rack, plate rack, the carcass behind a door that
+  opens): every face seen through the front (sides, top, bottom, back, shelves) takes `inner`
+  (default = `mat`), the outside and the front edges stay `mat`. Clear inside: w − 36 mm wide,
+  d − 6 mm deep, from z = plinth + 18 mm to h − 18 mm.
 - Handles: origin on the door face, centred. A base unit is three calls:
 ```python
 c = P.cabinet_carcass(.6, .58, .87)                       # at (x, y_wall, 0)
@@ -519,6 +527,7 @@ P.rug(image=None, w=1.4, d=2.0, thickness=.008, fringe=0.0, corner_r=0.0, color=
 P.wall_plaque_shield(w=.15, h=.18, shape='heater', variant=0, board=None, colors=None, image=None,
                      thickness=.02, scroll=True)
 P.tv_panel(w=1.89, h=1.08, depth=.03, standoff=.04, bezel=.005)
+P.tv_screen(w=1.88, h=1.07)                                          # the lit picture, see interact
 P.speaker_box(w=.21, h=.33, d=.27, mat='black_matt', drivers=2)
 ```
 - `framed_picture`: `w, h` = **outer** frame size. `image` = file path (absolute, or as
@@ -549,10 +558,11 @@ P.speaker_box(w=.21, h=.33, d=.27, mat='black_matt', drivers=2)
 ### Curtains, poles, shutters
 ```python
 P.curtain_panel(width=.5, height=2.4, mat='tartan_red', folds=None, depth=.06, tieback=None, tie_from_top=1.4,
-                gather=.6, tassel=.30, seed=1, fold_res=6, tie_mat='rope_cream', tassel_mat='tassel_gold')
+                gather=.6, tassel=.30, seed=1, fold_res=6, tie_mat='rope_cream', tassel_mat='tassel_gold',
+                hardware=True)
 P.curtain_pair(width=1.8, height=2.4, mat='tartan_red', stack=.5, tieback=True, tie_from_top=1.4, gather=.6,
                hang='pole', depth=.06, tassel=.30, seed=1, fold_res=6, hang_mat=None, finial='ball',
-               tie_mat='rope_cream', tassel_mat='tassel_gold')
+               tie_mat='rope_cream', tassel_mat='tassel_gold', hardware=True, cloth=True, closed=False)
 P.curtain_pole(length=2.0, dia=.028, finial='ball', rings=12, mat='brass', standoff=.075)   # finial 'ball' | 'urn'
 P.pelmet_box(length=2.0, height=.2, depth=.14, mat='white_gloss')
 P.tassel(length=.30, head_dia=.06, mat='tassel_gold')                # origin = hanging point
@@ -572,6 +582,12 @@ P.plantation_shutter_panel(w=.4, h=1.5, stile=.05, rail=.09, louvre=.063, thickn
 - `curtain_pair`: two drops, each `stack` wide, at the ends of a `width` span, tied outward.
   `hang='pole'` (brass pole + rings + finials, 0.15 overhang, axis 40 mm above the heading) |
   `'pelmet'` (boxed pelmet 0.2 high) | `'track'` | `None`. Same origin as `curtain_panel`.
+- Curtains that open and close (see [interact](#interact-libinteractpy)): `curtain_panel(...,
+  hardware=False)` = cloth only (no tie rope, hook or tassel; a `tieback=None` drop never has any) to
+  hang on a pole that is already there; `curtain_pair(cloth=False)` = pole / pelmet / track only,
+  `curtain_pair(hardware=False)` = the two drops with their ties but nothing to hang from,
+  `curtain_pair(hardware=False, closed=True)` = the two drops drawn straight across the span, lapping
+  20 mm in the middle, no ties. All three share the origin, so they go at the same place.
 - `curtain_pole`: origin wall plane at pole-axis height. `pelmet_box`: origin wall, top centre.
 - `plantation_shutter_panel`: one leaf, origin **bottom centre, mid-plane on y = 0**; `mid_rail` =
   z of an optional mid rail; ~800 tris per 1.5 m leaf.
@@ -654,7 +670,8 @@ P.tumbler(height=.09, dia=.075, sides=10, mat='glass_clear')
 P.wine_glass(height=.2, bowl_dia=.085, mat='glass_clear')            # rotation_euler.x = pi to hang it bowl-down
 P.decanter(height=.3, kind='square', mat='glass_clear', liquid='whisky', level=.55)   # kind 'square' | 'round'
 P.glassware_set(tumblers=6, with_decanter=True, tray=(.5, .35), tray_mat='silver', glass_h=.09)   # [H]
-P.mantel_clock(w=.32, d=.16, h=.37, style='slate', mat=None, dial_dia=None)
+P.mantel_clock(w=.32, d=.16, h=.37, style='slate', mat=None, dial_dia=None, hands=True)
+P.mantel_clock_dial(w=.32, d=.16, h=.37, style='slate', dial_dia=None) -> (centre Vector, radius)   # local frame
 P.vase(height=.3, dia=.16, kind='baluster', mat='ceramic_white', flowers=0,
        flower_colors=('#D9482B', '#E88A2E', '#E06A8A'), seed=0)
 P.plate(dia=.27, mat='ceramic_white', height=.022)
@@ -664,6 +681,8 @@ P.human_ref(height=1.7, mat='skin_ref')                              # preview-o
   top with low dome, cream dial in a brass bezel — dining mantel); `'bracket'` = wooden bracket
   clock (stepped top, brass carrying handle, square brass dial, silvered chapter ring — living
   bookcase: `mantel_clock(.26, .15, .30, 'bracket')`). Origin bottom centre, front -Y.
+  `hands=False` leaves the dial bare for live `P.clock_hands`; `mantel_clock_dial` (same size
+  arguments) gives where they go.
 - `vase` kinds: `baluster urn bottle bowl cylinder planter`; `flowers=n` adds simple blooms.
 - `plate`: lies flat, origin centre of the base; `rotation_euler = (pi/2, 0, pi/2)` stands it on
   edge across a rack (lift it by dia/2).
@@ -671,11 +690,12 @@ P.human_ref(height=1.7, mat='skin_ref')                              # preview-o
 
 ### Test
 `blender -b --factory-startup --python blender/lib/props.py -- --out build/props [--res 1600x900]
-[--samples 64] [--only A,B2,D]` builds every prop in four bays with a 1.7 m mannequin, renders
+[--samples 64] [--only A,B2,D]` builds every prop in five bays with a 1.7 m mannequin, renders
 `build/props/props_<bay><n>.jpg` (A turnings / cabinetry / hardware, B wall-hung, C soft
-furnishings, D lighting / ornaments / plants; `--only none` skips rendering), writes
-`build/props/tris.txt` (per-prop triangle table) and ends with `PROPS SHEET OK` (asserts: scale 1,
-UVs, finite coords, mesh sharing, `bulb_points`). Whole sheet: 93 k tris.
+furnishings, D lighting / ornaments / plants, E interaction parts; `--only none` skips rendering),
+writes `build/props/tris.txt` (per-prop triangle table) and ends with `PROPS SHEET OK` (asserts:
+scale 1, UVs, finite coords, mesh sharing, `bulb_points`, water V range, flame count, hand count).
+Whole sheet: 104 k tris.
 
 ## mouldings (`lib/mouldings.py`)
 
@@ -784,6 +804,8 @@ Objects: kind `joinery`, named `<room>.<opening id>.<part>`: `lining` / `frame`,
   take per-leaf angles from `joinery.LEAF_ANGLE` (`d_inner`: west leaf 85, east shut). The pocket
   door stands `joinery.POCKET_PROJECT` (0.09 m, as filmed in f_0499) out of its pocket (0.61 =
   shut); props `slide`, `projects`.
+- **Every leaf is interaction-tagged** (group = the leaf's object name, `blocks` = opening id) — see
+  [interact](#interact-libinteractpy). Room modules do not tag doors.
 - **Styles:** `oak_4panel` (raised-and-fielded panels, bolection beads, brass lever on backplate,
   3 brass butts), `oak_glazed` (two frosted lights over two panels), `mahogany_glazed_double`
   (frame wall to wall, clear fanlight, 2x5 bevelled panes, arched top rail, long backplates,
@@ -812,6 +834,149 @@ Objects: kind `joinery`, named `<room>.<opening id>.<part>`: `lining` / `frame`,
   doorcase,bay,...|all` renders close-ups to `build/joinery_test/out/` and checks every hinge axis
   against `hingeAt`.
 
+## interact (`lib/interact.py`)
+
+The contract is `blender/INTERACT.md` (types, params, what each kind of thing needs) — read it first.
+Blender only **tags**; the viewer animates. This section is the lib side of it.
+
+```python
+from lib import interact as IX
+IX.tag(obj, t, **kw) -> obj            # validates, writes obj['ix'] = '<json>'; g defaults to obj.name
+IX.tag_many([objs], t, g=..., **kw)    # the same tag on everything that moves together (g required)
+IX.pose(objs, state=1)                 # check renders: hinge / slide move in state 1, `show` objects follow `state`
+```
+- `t` and its required keys: `hinge` (`p`, `deg`; `a` default +Z), `slide` (`d`), `show` (`when`;
+  `fx` `none water flame tv glow`), `trigger`, `clock` (`hand`, `p`, `a`), `light` (`rooms`), `lamp`.
+  Optional on any: `g label on reach blocks dur`. A wrong / missing key raises `ValueError`.
+- Points and vectors are **world** metres of the object as modelled. A prop is unlinked when you tag
+  it, so take them from `obj.matrix_basis` (always current), not `matrix_world`:
+  `p = obj.matrix_basis @ Vector(local_point)`, `a = obj.matrix_basis.to_3x3() @ Vector(local_axis)`.
+- `deg` follows the right-hand rule about `a`. With `a = (0, 0, 1)` and a front that opens toward
+  you: **hinge on your left → negative, hinge on your right → positive** (whatever way the unit
+  faces). About the unit's local +X (`a = M3 @ (1, 0, 0)`): a top-hung flap lifts with `deg = -100`,
+  a bottom-hung oven door drops with `deg = +85`.
+- Tagged objects are their own objects, added with `ctx.add(..., lm='dynamic')`; tag before or after
+  `ctx.add`, in any order.
+
+**Check both states.** `build.py ... --preview <room> --pose 1 --tag me1` renders the previews with
+every tagged object of the scene in state 1 (default `--pose 0`: as modelled, `show when=1` objects
+hidden). Parents are cleared first, as the export does, so a child you forgot to tag stays behind
+exactly as it will in the viewer. In a scratch script: `bpy.context.view_layer.update();
+IX.pose([o for o in bpy.data.objects if 'ix' in o.keys()], 1)`.
+
+### Doors (done by joinery — do not tag them again)
+`joinery.install_openings` tags every leaf; the group id is the leaf's object name:
+
+| group `g` | type | state 0 → 1 | label |
+|---|---|---|---|
+| `vestibule.d_street.leaf.0` / `.1` | hinge ∓90 | shut → open into the vestibule | Front door |
+| `hallway.d_inner.leaf.0` (east) | hinge −90 | shut → open into the hall | Door |
+| `hallway.d_inner.leaf.1` (west) | hinge −85, `on` | open → shut | Door |
+| `living.d_living.leaf` | hinge −95, `on` | open → shut | Door |
+| `hallway.d_understairs.leaf` | hinge −90 | shut → open into the hall | Cupboard door |
+| `hallway.d_kitchen.leaf`, `utility.d_utility.leaf`, `dining.d_dining.leaf` | hinge ±90, `on` | open → shut | Door |
+| `kitchen.d_back.leaf` | hinge +90 | shut → open into the kitchen | Back door |
+| `dining.d_french.leaf.0` / `.1` | hinge ∓90 | shut → open outward | Garden door |
+| `utility.d_wc.leaf` | slide (0.511, 0, 0), `on` | in its pocket → shut across the opening | Door |
+
+- Members of a group: the leaf (`<g>`, with its handles, letter plate, hinges and cat flap in the
+  same mesh) and `<g>.glass` where the leaf is glazed. `p` = the hinge axis at floor level (the
+  leaf's origin), `a` = +Z, `blocks` = the opening id. Double doors: one group per leaf, both with
+  the same `blocks`.
+- A leaf modelled open (`openAngle` / `joinery.LEAF_ANGLE`) gets `on=True` and the `deg` that shuts
+  it; a leaf modelled shut opens the way its `hinge` / swing says, by `joinery.OPEN_DEG.get(id, 90)`
+  degrees — lower it there if furniture ends up in the swing. Labels: `joinery.LABEL`.
+- Anything a room module fixes **to a leaf** (a hook, a sign) must join the leaf's group with the
+  leaf's own parameters: `IX.tag(hook, **json.loads(leaf['ix']))`. Keep furniture out of
+  the swept quarter-circles of both states (checked with the furnished house: nothing is hit now).
+
+### Helpers in props
+```python
+P.cabinet_carcass(w, d, h, mat, open_front=True, shelves=n, inner='#F4F2EC')   # lined interior, see props
+P.water_stream(height, dia=.012, splash=.06)
+P.flame_ring(dia=.07, n=24, h=.014)
+P.clock_hands(radius=.1, style='baton', mat='plastic_dark', second=None, name=None) -> (hour, minute[, second])
+P.tv_screen(w=1.88, h=1.07)
+P.curtain_panel(..., hardware=False)
+P.curtain_pair(..., hardware=True, cloth=True, closed=False)
+P.mantel_clock(..., hands=False);  P.mantel_clock_dial(w, d, h, style, dial_dia) -> (centre, radius)
+```
+- `water_stream`: thin round stream from the **origin (the spout outlet) straight down** to
+  z = −`height`, necking to 60 % of `dia` over the first 0.15 m, plus a flat splash disc `splash`
+  across just above the foot (`splash=0`: none). Material `water` (library key: alpha 0.45, blended,
+  double-sided). UVs: U once round, **V along the fall** — 0 at the foot, +1 per 0.1 m up to the
+  outlet; the disc carries on to negative V at its rim. 76 tris for 0.16 m.
+- `flame_ring`: crown of `n` pointed flames on a circle `dia` across, `h` high, leaning outward.
+  Origin: centre of the burner at the foot of the flames, +Z up — put it 1–2 mm above the burner
+  cap; `dia` ≈ the cap diameter. Material `flame_blue` (dark blue base, emission `#3D6BFF` x 6,
+  double-sided). UVs per flame: V 0 at the foot, 1 at the tip. 4 tris per flame.
+- `clock_hands`: separate objects modelled **pointing at 12 (+Z) for a dial facing −Y**, origin at
+  the dial centre **on the dial face** (hour 1.5–2.5 mm, minute 3–4 mm, second 4.5–5 mm in front of
+  it). `radius` = dial radius: hour hand reaches 0.50, minute 0.80, second 0.85 of it. `style`:
+  `'baton'` tapered bars | `'spade'` antique spade hour + lance minute hand | `'sweep'` batons + a
+  red second hand; `second=True/False` overrides whether there is a second hand. Objects are named
+  `<name>.hand_h|m|s`. 52–72 tris the set.
+- `tv_screen`: one quad, 0..1 UVs (U to the viewer's right, V up), material `tv_screen` (black base,
+  pale blue emission the viewer replaces with its animated picture). Origin centre, in the plane
+  y = 0, facing −Y. For `tv_panel(w, h, depth, standoff, bezel)` make it `w − 2·bezel` x
+  `h − 2·bezel` and put it at local y = −(`standoff` + `depth` + 0.0016), 1 mm proud of the glass.
+- Curtains and `mantel_clock(hands=False)`: see the props section.
+
+**Examples** (all run and rendered in both states by `build/lib_ix/readme_examples.py`):
+```python
+from mathutils import Vector
+from lib import interact as IX, props as P
+
+# cupboard on a wall whose room side is -Y, at (x, yw): lined carcass, door hinged on the left, handle on the right
+c = P.place(P.cabinet_carcass(.6, .56, .87, 'navy_cabinet', open_front=True, shelves=1, inner='#F4F2EC',
+                              name='kitchen.base.b1'), (x, yw, 0), facing=(0, -1))
+d = P.place(P.panel_door(.597, .717, name='kitchen.base.b1.door'), (x, yw - .56, .15), facing=(0, -1))
+h = P.place(P.handle_bar(vertical=True, name='kitchen.base.b1.pull'), (x + .245, yw - .58, .70), facing=(0, -1))
+IX.tag_many([d, h], 'hinge', g='kitchen.base.b1', label='Cupboard', p=(x - .2985, yw - .56, 0), deg=-100)
+ctx.add(c, 'kitchen', 'fit'); ctx.add(d, 'kitchen', 'fit', lm='dynamic'); ctx.add(h, 'kitchen', 'fit', lm='dynamic')
+
+# tap: your own lever + spout; one stream from the spout outlet (sx, sy, sz) to the bowl 0.21 m below
+ws = P.place(P.water_stream(.21, name='utility.tap.water'), (sx, sy, sz))
+IX.tag(ws, 'show', g='utility.tap', when=1, fx='water')
+IX.tag(lever, 'trigger', g='utility.tap', label='Tap')            # or 'hinge' with p / a / deg=20
+ctx.add(ws, 'utility', 'fit', lm='dynamic')
+
+# hob burner k: cap top at (bx, by, zc), cap 70 mm across
+fl = P.place(P.flame_ring(.07, name='kitchen.hob.flame.%d' % k), (bx, by, zc + .002))
+IX.tag(fl, 'show', g='kitchen.hob.%d' % k, when=1, fx='flame')
+IX.tag(knob, 'trigger', g='kitchen.hob.%d' % k, label='Hob')
+ctx.add(fl, 'kitchen', 'fit', lm='dynamic')
+
+# mantel clock with live hands (any rotation of the clock)
+ck = P.place(P.mantel_clock(hands=False, name='dining.clock'), (x, y, z), facing=(0, -1))
+c0, r = P.mantel_clock_dial()                                     # same size arguments as mantel_clock
+centre, out = ck.matrix_basis @ c0, ck.matrix_basis.to_3x3() @ Vector((0, -1, 0))
+for hand, w in zip(P.clock_hands(r, 'spade', name='dining.clock'), 'hms'):
+    hand.location, hand.rotation_euler = centre, ck.rotation_euler
+    IX.tag(hand, 'clock', hand=w, p=centre, a=out)
+    ctx.add(hand, 'dining', 'decor', lm='dynamic')
+ctx.add(ck, 'dining', 'decor')
+
+# TV on the wall x = 0.80 (room side +X): the set is the trigger, the picture shows in state 1
+tv = P.place(P.tv_panel(1.45, .83, name='living.tv'), (0.80, 2.6, 1.35), facing=(1, 0))
+pic = P.tv_screen(1.44, .82, name='living.tv.picture')
+pic.location, pic.rotation_euler = tv.matrix_basis @ Vector((0, -.0716, 0)), tv.rotation_euler
+IX.tag(tv, 'trigger', g='living.tv', label='TV'); IX.tag(pic, 'show', g='living.tv', when=1, fx='tv')
+ctx.add(tv, 'living', 'fit', plan_sym='tv'); ctx.add(pic, 'living', 'fit', lm='dynamic')
+
+# curtains: the pole stays, the tied-back pair is state 0, the closed pair state 1
+kw = dict(width=1.9, height=2.45, mat='tartan_red', tie_from_top=1.35)
+pole = P.curtain_pair(cloth=False, name='living.curtain.pole', **kw)
+tied = P.curtain_pair(hardware=False, name='living.curtain.open', **kw)
+shut = P.curtain_pair(hardware=False, closed=True, name='living.curtain.closed', **kw)
+for o in (pole, tied, shut):
+    ctx.add(P.place(o, (x, yw, 2.50), facing=(0, -1)), 'living', 'decor', lm='dynamic')
+IX.tag(pole, 'trigger', g='living.curtain', label='Curtains')
+IX.tag(tied, 'show', g='living.curtain', when=0, fx='none'); IX.tag(shut, 'show', g='living.curtain', when=1, fx='none')
+```
+A single extra drop on a pole that already exists: `P.curtain_panel(.9, 2.45, 'check_grey',
+hardware=False)` (straight, cloth only).
+
 ## export (`blender/export.py`, `export_bake.py`, `export_check.py`)
 
 Turns a saved build into everything the viewer loads. Driven only by the custom props `obj['lm']`,
@@ -820,7 +985,8 @@ Turns a saved build into everything the viewer loads. Driven only by the custom 
 ```
 B="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
 "$B" -b --factory-startup build/home.blend --python blender/export.py -- --out docs/assets
-     [--bake-res 2048] [--samples 256] [--density 160] [--probe-res 1024] [--rooms a,b] [--skip-bake] [--renders]
+     [--bake-res 2048] [--samples 256] [--density 160] [--probe-res 1024] [--rooms a,b] [--skip-bake] [--skip-off]
+     [--tmp build/export] [--renders] [--stills-only] [--still-res 1920x1080]
 ```
 | flag | meaning |
 |---|---|
@@ -829,7 +995,10 @@ B="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
 | `--density` | lightmap texels per metre aimed for (default 160); each atlas is the power of two nearest to it, capped by `--bake-res` |
 | `--rooms a,b` | bake / render only these rooms (`shell` = the exterior atlas); the others keep their images from the existing `manifest.json`. Only valid while the other rooms' geometry is unchanged |
 | `--skip-bake` | no lightmaps or probes (old manifest entries are kept): GLB + manifest + footprints in ~15 s |
+| `--skip-off` | no lights-off lightmaps / probes; rooms rebaked in that run lose their off entries, the others keep theirs |
+| `--tmp` | scratch directory (raw GLB, EXRs), default `build/export`: one per concurrent run |
 | `--renders` | hero stills into `<out>/../renders` |
+| `--stills-only` | only the hero stills (no bake, GLB or manifest); `--still-res 960x540` for framing tests |
 
 Ends with `EXPORT OK` (exit 1 + traceback otherwise). Needs `npx` (Node) for glTF-Transform 4.5.1.
 - **Iterating:** the defaults. Shell only (102 k triangles), 2 x RTX 4090: 66 s in all (2048 px / 256 spp
@@ -838,6 +1007,10 @@ Ends with `EXPORT OK` (exit 1 + traceback otherwise). Needs `npx` (Node) for glT
 - **Publishing:** `--bake-res 4096 --samples 1024 --renders`. 4 min 17 s without the stills (4096 px
   atlas 41-55 s), + 4.5 s per still. Living, dining and hallway get 4096 px atlases (200-220 px/m), the
   others 1024-2048; lightmaps 8.1 MB instead of 3.5 MB. This is what is in `docs/assets` now.
+  Furnished house with the lights-off set (824 meshes, 742 k triangles, 244 tagged): 16 min in all:
+  on lightmaps 5 min 17 s (4096 px atlas 42-71 s), probes 72 s, off lightmaps 56 s (2048 px 9 s each),
+  off probes 26 s, GLB + checks 11 s, 19 stills 8 min (25 s each). Lightmaps 11.2 MB, off lightmaps
+  2.9 MB, probes 0.7 + 0.1 MB, `home.glb` 20.2 MB.
 
 **Output** (`<out>` = `docs/assets`)
 | file | content |
@@ -845,7 +1018,8 @@ Ends with `EXPORT OK` (exit 1 + traceback otherwise). Needs `npx` (Node) for glT
 | `home.glb` | all meshes except `no_export`; +Y up; node `extras` = the custom props; `TEXCOORD_0` tiling UVs, `TEXCOORD_1` lightmap UVs on lightmapped objects; no lights / cameras; meshopt + `KHR_mesh_quantization`, colour textures WebP, normal / ORM maps JPEG |
 | `lightmaps/<room>.jpg` | one atlas per `obj['room']` (`shell` = exterior faces and wall tops at a third of the density) |
 | `probes/<room>.jpg` | equirect panorama per house.json room |
-| `manifest.json` | `lightmaps [{room, image, objects[], intensity, size, pxPerM}]`, `probes [{room, image, pos [x, y, z], intensity}]`, `rooms [{id, name, polygon, ceilZ, floorZ}]`, `spawn {pos, yaw}`, `toneMapping`, `exposure` (2^EV of the scene view settings), `encoding` (text), `glb` (counts, size) |
+| `lightmaps_off/<room>.jpg`, `probes_off/<room>.jpg` | the same with every lamp and emissive off (the viewer's light switches): same `TEXCOORD_1`, atlas at half the size, same probe positions |
+| `manifest.json` | `lightmaps [{room, image, objects[], intensity, size, pxPerM}]`, `probes [{room, image, pos [x, y, z], intensity}]`, `lightmapsOff` / `probesOff` (same shapes, same `objects`), `rooms [{id, name, polygon, ceilZ, floorZ}]`, `spawn {pos, yaw}`, `toneMapping`, `exposure` (2^EV of the scene view settings), `whiteBalance`, `sky`, `viewpoints` (room-jump cameras), `encoding` (text), `glb` (counts, size, `interactive` = tagged nodes) |
 | `house.json` | `spec/house.json` without the `notes` fields |
 | `footprints.json` | `[{name, room, plan_sym, obb [[x, y] x4], zmin, zmax, height}]` for every `plan_sym` object: minimum-area rectangle of its and its children's vertices in world XY (axis-aligned unless a turned one is smaller) |
 | `../renders/<room>_<cam>.jpg`, `index.json` | 1920 x 1080 Cycles stills `[{file, room, title}]` from the room module's `CAMERAS`, else `preview.DEFAULT_CAMERAS`; field of view capped at 90 deg (the cameras are ultrawide portrait matches) |
@@ -872,6 +1046,22 @@ manifest and no extra colour correction.
   the sharing is lost. Linked duplicates that are dynamic stay shared (one glTF mesh, many nodes).
 - All modifiers are applied first; objects sharing a mesh and an identical modifier stack share
   the applied mesh.
+- **Interaction tags** (`obj['ix']`, see [interact](#interact-libinteractpy)): tagged `hinge` / `slide` /
+  `clock` objects and `show when=1` objects become `lm = 'dynamic'`, unless the object has `obj['door']`
+  or its tag has `blocks` (door leaves keep the lightmap of the pose they are modelled in; the viewer
+  fades a moved leaf to probe light). `show when=1` objects are hidden from every bake, probe and
+  hero still, exported visible (the viewer hides them at load) and never get a plan footprint.
+  A tagged object must be a mesh and not `no_export`. `check_glb` fails the export unless every
+  tagged object is still a named childless root node with the identical `ix` string and its
+  geometry in place (local bounding box corners within 1 mm).
+
+**Lights-off set** (`export_bake.lights_off`, `bake_off`): all non-sun, non-portal lights hidden and
+every unlinked emission strength zeroed, then restored. Each off lightmap is the DIFFUSE bake plus
+an AO bake (distance 1 m) times a cool ambient term, radiance 0.09 x (0.62, 0.8, 1.0) on an open wall
+as encoded (`AMBIENT_OFF`, `AMBIENT_TINT`): the dusk sky alone leaves windowless rooms black. Same
+encoding as the on set, `intensity` capped at `PEAK_OFF` = 1.08. Off probes are the panorama render
+with the ambient radiance added uniformly. `export_check.py --off` re-lights the raw GLB from
+`lightmapsOff` and writes `<room>_<cam>_off.jpg`.
 
 **Lightmap UVs** (`export_bake.unwrap`): layer `Lightmap`, always the second one (a mesh without
 UVs gets an empty `UVMap` first; extra layers beyond the first are dropped). Smart-project at

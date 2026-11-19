@@ -49,6 +49,9 @@ export function edgeDist(x, y, poly) {
 export const roomAt = (rooms, x, y) => rooms.find((r) => pointInPoly(x, y, r.polygon)) || null;
 
 // ---- walkable area: rooms inset by the body radius, joined by portals through open doorways ----
+// Body radius: small enough for the 0.61 m WC door and the gaps round the dining table, still > the distance from the
+// eye to the near-plane corners at 90 deg fov on a 2.4:1 screen (0.14 m), so the camera never clips into a wall.
+export const BODY = 0.15;
 const PASSABLE = new Set(['door', 'double_door', 'french_door', 'arch', 'opening']);
 
 // rect around a wall opening: along = clear width minus the body, across = wall thickness + body + overlap
@@ -59,26 +62,36 @@ function portalFor(o, wall, r) {
   const [cx, cy] = o.center;
   const p = (s, t) => [cx + ux * s + nx * t, cy + uy * s + ny * t];
   return { id: o.id, rooms: o.connects, center: [cx, cy], normal: [nx, ny], depth: (wall.thickness || 0) / 2,
-    width: o.width, poly: [p(-ha, -hc), p(ha, -hc), p(ha, hc), p(-ha, hc)] };
+    width: o.width, poly: [p(-ha, -hc), p(ha, -hc), p(ha, hc), p(-ha, hc)], open: o.openAngle !== 0 };
 }
+const bbox = (poly) => { const xs = poly.map((p) => p[0]), ys = poly.map((p) => p[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; };
 
-// house = spec/house.json shape. obstacles = [[x,y],...] polygons (furniture footprints).
-export function buildWalk(house, { radius = 0.2, exclude = ['stairs'], obstacles = [] } = {}) {
+// house = spec/house.json shape. obstacles = [[x,y],...] polygons (furniture footprints) that block; soft = small
+// furniture the walker may pass through (slowed). Every door between two walkable rooms gets a portal; portal.open
+// starts as the door stands (openAngle 0 = shut) and is switched by the viewer when a leaf is opened or closed.
+// Openings to anything that is not a walkable room (outside, the stairs) never get one.
+export function buildWalk(house, { radius = BODY, exclude = ['stairs'], obstacles = [], soft = [] } = {}) {
   const rooms = house.rooms.filter((r) => !exclude.includes(r.id));
   const ids = new Set(rooms.map((r) => r.id)), walls = new Map((house.walls || []).map((w) => [w.id, w]));
   const portals = (house.openings || [])
-    .filter((o) => PASSABLE.has(o.type) && o.openAngle !== 0 && (o.connects || []).every((c) => ids.has(c)) && walls.has(o.wall))
+    .filter((o) => PASSABLE.has(o.type) && (o.connects || []).every((c) => ids.has(c)) && walls.has(o.wall))
     .map((o) => portalFor(o, walls.get(o.wall), radius));
-  return { rooms, portals, radius, obstacles };
+  return { rooms, portals, radius, obstacles, soft, boxes: obstacles.map(bbox) };
 }
 
 export function isFree(walk, x, y) {
-  const r = walk.radius;
-  for (const ob of walk.obstacles) if (pointInPoly(x, y, ob) || edgeDist(x, y, ob) < r) return false;
-  for (const p of walk.portals) if (pointInPoly(x, y, p.poly)) return true;
+  const r = walk.radius, bx = walk.boxes || (walk.boxes = walk.obstacles.map(bbox));
+  for (let i = 0; i < walk.obstacles.length; i++) {
+    const b = bx[i], ob = walk.obstacles[i];
+    if (x < b[0] - r || y < b[1] - r || x > b[2] + r || y > b[3] + r) continue;
+    if (pointInPoly(x, y, ob) || edgeDist(x, y, ob) < r) return false;
+  }
+  for (const p of walk.portals) if (p.open !== false && pointInPoly(x, y, p.poly)) return true;
   for (const rm of walk.rooms) if (pointInPoly(x, y, rm.polygon) && edgeDist(x, y, rm.polygon) >= r) return true;
   return false;
 }
+// inside a soft obstacle (chair, stool, bin, small plant): walkable, but the walker slows down
+export const isSoft = (walk, x, y) => (walk.soft || []).some((ob) => pointInPoly(x, y, ob));
 
 // Move with wall sliding; sub-stepped so a fast step cannot tunnel through a thin wall.
 export function move(walk, x0, y0, x1, y1) {
@@ -108,6 +121,69 @@ export function nearestFree(walk, x, y, maxR = 3) {
   return null;
 }
 
+// Route from a to b ([x, y]) through free space: A* on an h-metre grid (8-neighbour, soft obstacles cost 3x), then
+// string-pulled to a few straight legs. Closed doors are not free, so they are never routes. Returns the polyline
+// [a, ..., b] or null. ponytail: grid A* with lazy isFree, ~10k cells across the house; a navmesh if it ever lags.
+export function route(walk, a, b, h = 0.05) {
+  const K = 8192, key = (i, j) => (i + K / 2) * K + (j + K / 2), memo = new Map();   // cell -> 0 blocked, 1 free, 3 soft
+  const cost = (i, j) => {
+    const k = key(i, j); let v = memo.get(k);
+    if (v === undefined) memo.set(k, (v = isFree(walk, i * h, j * h) ? (isSoft(walk, i * h, j * h) ? 3 : 1) : 0));
+    return v;
+  };
+  const ok = (i, j) => cost(i, j) > 0;
+  const snap = ([x, y]) => {           // nearest free grid node within 3 cells
+    let best = null, bd = Infinity;
+    for (let di = -3; di <= 3; di++) for (let dj = -3; dj <= 3; dj++) {
+      const i = Math.round(x / h) + di, j = Math.round(y / h) + dj, d = Math.hypot(i * h - x, j * h - y);
+      if (d < bd && ok(i, j)) { bd = d; best = [i, j]; }
+    }
+    return best;
+  };
+  const s = snap(a), t = snap(b);
+  if (!s || !t) return null;
+  const gs = new Map([[key(...s), 0]]), from = new Map(), heap = [[Math.hypot(t[0] - s[0], t[1] - s[1]), s[0], s[1]]];
+  const push = (n) => { heap.push(n); for (let c = heap.length - 1, p; c && heap[(p = (c - 1) >> 1)][0] > heap[c][0]; c = p) [heap[c], heap[p]] = [heap[p], heap[c]]; };
+  const pop = () => {
+    const top = heap[0], last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      for (let c = 0; ;) {
+        const l = 2 * c + 1, r = l + 1; let m = c;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === c) break; [heap[c], heap[m]] = [heap[m], heap[c]]; c = m;
+      }
+    }
+    return top;
+  };
+  let found = false;
+  for (let n = 0; heap.length && n < 200000; n++) {
+    const [, i, j] = pop(), k = key(i, j), g = gs.get(k);
+    if (i === t[0] && j === t[1]) { found = true; break; }
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const a2 = i + di, b2 = j + dj;
+      if (!ok(a2, b2) || (di && dj && (!ok(i + di, j) || !ok(i, j + dj)))) continue;   // no corner cutting
+      const k2 = key(a2, b2), g2 = g + Math.hypot(di, dj) * cost(a2, b2);
+      if (g2 < (gs.get(k2) ?? Infinity)) { gs.set(k2, g2); from.set(k2, k); push([g2 + 1.5 * Math.hypot(t[0] - a2, t[1] - b2), a2, b2]); }
+    }
+  }
+  if (!found) return null;
+  const cells = [];
+  for (let k = key(...t); k !== undefined; k = from.get(k)) cells.push([(Math.floor(k / K) - K / 2) * h, ((k % K) - K / 2) * h]);
+  cells.reverse(); cells[0] = a.slice(); cells.push(b.slice());
+  const clear = (p, q) => {            // straight leg stays in free space (it may cut through a chair: slowed, not blocked)
+    const n = Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / (h / 2));
+    for (let i = 1; i < n; i++) { const x = p[0] + ((q[0] - p[0]) * i) / n, y = p[1] + ((q[1] - p[1]) * i) / n; if (!isFree(walk, x, y)) return false; }
+    return true;
+  };
+  const out = [cells[0]];
+  for (let i = 0, j = 1; j < cells.length; j++) if (!clear(cells[i], cells[j])) { i = j - 1; out.push(cells[i]); }
+  out.push(cells[cells.length - 1]);
+  return out;
+}
+export const pathLength = (pts) => pts.reduce((s, p, i) => (i ? s + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0);
+
 // One "standing in the doorway, looking in" viewpoint per walkable room. spawn = [x, y] for the room holding it.
 export function viewpoints(walk, spawn) {
   const out = {};
@@ -116,7 +192,7 @@ export function viewpoints(walk, spawn) {
     let pos = null;
     if (spawn && pointInPoly(spawn[0], spawn[1], rm.polygon)) pos = spawn.slice();
     else {
-      const p = walk.portals.filter((q) => q.rooms.includes(rm.id) && q.rooms[0] !== q.rooms[1]).sort((a, b) => b.width - a.width)[0];
+      const p = walk.portals.filter((q) => q.open !== false && q.rooms.includes(rm.id) && q.rooms[0] !== q.rooms[1]).sort((a, b) => b.width - a.width)[0];
       if (p) {
         for (const s of [1, -1]) {
           const t = p.depth + 0.45, q = [p.center[0] + s * p.normal[0] * t, p.center[1] + s * p.normal[1] * t];
@@ -140,13 +216,15 @@ export function viewpoints(walk, spawn) {
 
 // footprints.json -> obstacle polygons. Accepts {items|footprints|objects:[...]} or a bare array; each entry
 // gives a polygon ("poly"|"pts"|"corners"|"obb") or center+size+rot(deg). Non-blocking symbols are skipped.
-const SOFT = new Set(['rug', 'mirror', 'tv', 'wall_unit', 'airer', 'shelf', 'towel_rail', 'radiator', 'stair']);
-export function obstaclesFrom(fp) {
+// soft = true returns the small furniture instead (chairs, stools, bins, plants under 1.3 m): walkable, slowed.
+const NONBLOCKING = new Set(['rug', 'mirror', 'tv', 'wall_unit', 'airer', 'shelf', 'towel_rail', 'radiator', 'stair']);
+const SMALL = new Set(['chair', 'armchair', 'stool', 'bin', 'plant']);
+export function obstaclesFrom(fp, soft = false) {
   const list = Array.isArray(fp) ? fp : (fp && (fp.items || fp.footprints || fp.objects)) || [];
   const out = [];
   for (const f of list) {
     const sym = f.sym || f.plan_sym || f.key || f.type;
-    if (SOFT.has(sym)) continue;
+    if (NONBLOCKING.has(sym) || soft !== (SMALL.has(sym) && !(f.height > 1.3))) continue;
     let poly = f.poly || f.pts || f.corners || f.obb || f.polygon;
     if (!poly && f.center && f.size) {
       const a = ((f.rot ?? f.angle ?? 0) * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);

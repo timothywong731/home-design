@@ -250,8 +250,9 @@ def candlestick(name):
 
 
 def clock_face(r=.0544):
-    """Round brass bezel, cream dial, thin Roman-style hour strokes and hands, laid over the library clock's
-    octagonal dial. Wall prop: dial in the local XZ plane, facing -Y, origin = dial centre."""
+    """Round brass bezel, cream dial and thin Roman-style hour strokes, laid over the library clock's octagonal
+    dial; the hands are separate live objects (rooms/dining.py), the brass centre pin stands through their hubs.
+    Wall prop: dial in the local XZ plane, facing -Y, origin = dial centre (dial face at y = -0.0025)."""
     blk = 'black_matt'
     mb = mo.MB()
     mb.at(WALL)
@@ -274,11 +275,7 @@ def clock_face(r=.0544):
                 stroke(x + .001, x + .0065)
                 stroke(x + .0065, x + .001)
             x += .0034 if c == 'I' else .0075
-    for ang, L, wd in ((60, .5, .05), (-60, .78, .032)):                            # hands at ten past ten
-        mb.at(WALL @ R('Z', ang))
-        mb.prism([(-r * wd, -r * .1, .0036), (r * wd, -r * .1, .0036), (r * wd * .3, r * L, .0036), (-r * wd * .3, r * L, .0036)],
-                 (0, 0, .0008), blk)
     mb.at(WALL)
-    mb.dome(.004, .004, .0052, 'brass', 10, 2)
+    mb.dome(.004, .004, .0075, 'brass', 10, 2)                                      # centre pin, 1 mm proud of the minute hand
     mb.at()
     return fin(mb, 'dining.mantel_clock.face')

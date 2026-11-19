@@ -15,7 +15,7 @@ import random
 import bpy
 from mathutils import Matrix, Vector
 
-from lib import lighting, materials as M, mouldings as mo, props as P, shell
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
 
 ROOM = 'wc'
 ART = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'textures', 'art', ROOM)
@@ -34,6 +34,9 @@ CAMERAS = [
     dict(name='basin_low', pos=(1.55, 9.80, 1.5), look=(0.75, 9.72, 0.6), fov_deg=100, ref='f_0518'),
     dict(name='door', pos=(2.2, 9.66, 1.5), look=(1.35, 10.5, 1.2), fov_deg=100, ref='f_0528'),
     dict(name='rad', pos=(1.80, 11.1, 1.5), look=(1.80, 9.36, 1.0), fov_deg=100, ref='f_0499'),
+    # interaction checks (--pose 1): into the bowl with seat and lid up, the basin tap running
+    dict(name='ix_pan', pos=(2.05, 9.60, 1.25), look=(2.75, 9.76, 0.45), fov_deg=100, ref='f_0507'),
+    dict(name='ix_tap', pos=(1.25, 9.95, 1.25), look=(0.72, 9.74, 0.85), fov_deg=100, ref='f_0518'),
 ]
 
 Z = Vector((0, 0, 1))
@@ -94,13 +97,26 @@ def _d_ring(z, w, length, xw=XD, yc=YC, n=20):
 
 def _pan():
     """White wall-hung pan 0.36 x 0.53, seat top 0.42: D-shaped bowl, soft-close seat + lid (closed) standing on a
-    4 mm shadow gap and overhanging the bowl by 5 mm, two hinge caps on the deck against the wall (f_0507 / f_0508)."""
+    4 mm shadow gap and overhanging the bowl by 5 mm, two hinge caps on the deck against the wall (f_0507 / f_0508).
+    -> (body, seat, lid, bowl): the seat ring and the lid are separate objects that lift about the hinge line PAN_HINGE;
+    under them the rim, the bowl and its water are 'wc.pan.bowl'. All are parented to the body."""
     body = _loft('wc.pan', [_d_ring(z, w, l) for z, w, l in (
         (0.085, 0.15, 0.22), (0.095, 0.21, 0.31), (0.130, 0.275, 0.41), (0.190, 0.320, 0.480),
-        (0.270, 0.348, 0.515), (0.350, 0.360, 0.530), (0.379, 0.360, 0.530), (0.383, 0.352, 0.522))], 'ceramic_white')
+        (0.270, 0.348, 0.515), (0.350, 0.360, 0.530), (0.379, 0.360, 0.530), (0.383, 0.352, 0.522))], 'ceramic_white',
+        cap_last=False)
+    xb = XD - 0.10                                          # back of the bowl opening: the deck behind it carries the hinges
+    bowl = _loft('wc.pan.bowl', [_d_ring(0.383, 0.352, 0.522)] + [_d_ring(z, w, l, xw=xb) for z, w, l in (
+        (0.383, 0.272, 0.382), (0.376, 0.256, 0.368), (0.320, 0.228, 0.335), (0.250, 0.170, 0.255),
+        (0.200, 0.120, 0.170))], 'ceramic_white', cap_first=False)
+    bowl.data.materials.append(M.solid('wc_pan_water', '#C3CDCE', 0.03))
+    bowl.data.polygons[-1].material_index = 1               # the cap of the last ring = the water surface
     xs = XD - 0.042                                         # the seat stops short of the wall, behind it the hinges
-    seat = _loft('wc.pan.seat', [_d_ring(z, w, l - 0.042, xw=xs) for z, w, l in (
-        (0.387, 0.350, 0.520), (0.3875, 0.370, 0.535), (0.4005, 0.370, 0.535), (0.4015, 0.360, 0.530),
+    outer = lambda z, w, l: _d_ring(z, w, l - 0.042, xw=xs)
+    hole = lambda z: _d_ring(z, 0.232, 0.365, xw=xs - 0.070)
+    seat = _loft('wc.pan.seat', [hole(0.3875), outer(0.387, 0.350, 0.520), outer(0.3875, 0.370, 0.535),
+                                 outer(0.4005, 0.370, 0.535), outer(0.4015, 0.360, 0.530), hole(0.4015), hole(0.3875)],
+                 'ceramic_white', cap_first=False, cap_last=False)
+    lid = _loft('wc.pan.lid', [outer(z, w, l) for z, w, l in (
         (0.4040, 0.360, 0.530), (0.4050, 0.370, 0.535), (0.417, 0.370, 0.535), (0.421, 0.362, 0.531),
         (0.423, 0.336, 0.512))], 'ceramic_white')
     mb = mo.MB()
@@ -108,8 +124,11 @@ def _pan():
         mb.box((xs - 0.004, YC + sy * 0.085 - 0.022, 0.383), (XD - 0.004, YC + sy * 0.085 + 0.022, 0.409),
                'ceramic_white', bev=0.006)
     caps = mb.finish('wc.pan.hinges', sharp_deg=50)
-    seat.parent = caps.parent = body
-    return body
+    bowl.parent = seat.parent = lid.parent = caps.parent = body
+    return body, seat, lid, bowl
+
+
+PAN_HINGE = (XD - 0.032, YC, 0.400)     # seat / lid axis (along y) through the hinge caps; 90 deg stands them 9 mm off the duct
 
 
 def _basin_outline(xa, xb, ya, yb, z, inset=0.0, r=0.012, n=4):
@@ -128,7 +147,8 @@ def _basin():
     """Wall-hung rectangular basin 0.60 x 0.45 x 0.16, rim 0.86 (f_0518 / f_0520): a crisp box - vertical sides,
     R 12 corners, flat underside with a 5 mm arris, thin rim, bowl with rounded corners - and its fittings: tap
     ledge, round monobloc mixer with a curved spout and a thin loop lever, click-clack waste, overflow ring,
-    bottle trap. Returns the ceramic body with the fittings parented to it."""
+    bottle trap. -> (body, tap, lever): the fittings, the mixer (body + spout) and its lever are separate objects
+    parented to the ceramic body; the lever lifts about the y axis through TAP_PIVOT, the spout ends at TAP_OUTLET."""
     xa, xb, ya, yb, z0, zt = X0, X0 + 0.45, YC - 0.30, YC + 0.30, 0.70, 0.86
     body = _loft('wc.basin', [_basin_outline(xa, xb, ya, yb, z, i, r) for i, z, r in (
         (0.005, z0, 0.008), (0.0, z0 + 0.005, 0.012), (0.0, zt - 0.004, 0.012), (0.0012, zt - 0.0012, 0.011),
@@ -140,23 +160,32 @@ def _basin():
     mb.box((xa + 0.004, ya + 0.008, z0 + 0.02), (xl, yb - 0.008, zt - 0.002), c, bev=0.002)       # tap ledge
     _lathe(mb, (xa + 0.275, YC, z0 + 0.054), Z, [(0.024, 0), (0.024, 0.003), (0.018, 0.003), (0.012, 0.001), (0, 0.001)], ch, 20)
     _lathe(mb, (xl, YC, zt - 0.045), (1, 0, 0), [(0.011, 0), (0.011, 0.002), (0.007, 0.002), (0.007, 0)], ch, 16)
-    # mixer: round body dia 45 with a domed cap, spout curving out and down, thin loop lever rising toward the room
-    tx, tz = xa + 0.055, zt - 0.002
-    _lathe(mb, (tx, YC, tz), Z, [(0, 0), (0.027, 0), (0.027, 0.004), (0.0225, 0.008), (0.0225, 0.104), (0.0205, 0.116),
-                                 (0.013, 0.125), (0, 0.128)], ch, 24)
-    _pipe(mb, [(tx + 0.010, YC, tz + 0.062), (tx + 0.060, YC, tz + 0.076), (tx + 0.098, YC, tz + 0.070),
-               (tx + 0.118, YC, tz + 0.050)], 0.012, ch, (0, 1, 0), n=12)
-    mb.at(Matrix.Translation((tx, YC, tz + 0.122)) @ Matrix.Rotation(math.radians(-16), 4, 'Y'))
-    _pipe(mb, [(-0.012, -0.013, 0), (0.105, -0.011, 0), (0.122, -0.005, 0), (0.122, 0.005, 0), (0.105, 0.011, 0),
-               (-0.012, 0.013, 0)], 0.0035, ch, (0, 0, 1), n=8, closed=True)
-    mb.at()
     # bottle trap under the bowl centre and the waste pipe back to the wall
     px = xa + 0.275
     _lathe(mb, (px, YC, 0.60), Z, [(0.016, 0), (0.016, 0.101)], ch, 16)
     _lathe(mb, (px, YC, 0.50), Z, [(0, 0), (0.024, 0), (0.028, 0.006), (0.028, 0.094), (0.022, 0.10), (0.016, 0.10)], ch, 16)
     _lathe(mb, (xa, YC, 0.565), (1, 0, 0), [(0.030, 0), (0.030, 0.004), (0.016, 0.005), (0.016, 0.25)], ch, 16)
-    mb.finish('wc.basin.fittings', sharp_deg=50).parent = body
-    return body
+    fittings = mb.finish('wc.basin.fittings', sharp_deg=50)
+    # mixer: round body dia 45 with a domed cap, spout curving out and down, thin loop lever rising toward the room
+    tx, tz = xa + 0.055, zt - 0.002
+    mb = mo.MB()
+    _lathe(mb, (tx, YC, tz), Z, [(0, 0), (0.027, 0), (0.027, 0.004), (0.0225, 0.008), (0.0225, 0.104), (0.0205, 0.116),
+                                 (0.013, 0.125), (0, 0.128)], ch, 24)
+    _pipe(mb, [(tx + 0.010, YC, tz + 0.062), (tx + 0.060, YC, tz + 0.076), (tx + 0.098, YC, tz + 0.070),
+               (tx + 0.118, YC, tz + 0.050)], 0.012, ch, (0, 1, 0), n=12)
+    tap = mb.finish('wc.basin.tap', sharp_deg=50)
+    mb = mo.MB()
+    mb.at(Matrix.Translation(TAP_PIVOT) @ Matrix.Rotation(math.radians(-16), 4, 'Y'))
+    _pipe(mb, [(-0.012, -0.013, 0), (0.105, -0.011, 0), (0.122, -0.005, 0), (0.122, 0.005, 0), (0.105, 0.011, 0),
+               (-0.012, 0.013, 0)], 0.0035, ch, (0, 0, 1), n=8, closed=True)
+    mb.at()
+    lever = mb.finish('wc.basin.lever', sharp_deg=50)
+    fittings.parent = tap.parent = lever.parent = body
+    return body, tap, lever
+
+
+TAP_PIVOT = (X0 + 0.055, YC, 0.858 + 0.122)         # top of the mixer body, where the loop lever is hinged
+TAP_OUTLET = (X0 + 0.055 + 0.121, YC, 0.858 + 0.046)   # end of the spout; the bowl floor is at 0.754
 
 
 def _soap_dish(x, y, z):
@@ -366,10 +395,31 @@ def build(ctx):
     cz = ctx.ceil_z(ROOM)
     art = lambda f: os.path.join(ART, f)
 
-    # ---- sanitaryware
-    ctx.add(_pan(), ROOM, 'fit', plan_sym='wc')
+    # ---- sanitaryware. Interaction (blender/INTERACT.md): lid and seat ring lift 90 deg (the duct front stops
+    #      them at vertical), the basin lever lifts and runs a stream from the spout to the bowl floor.
+    #      The room's light switch is on the utility side of the pocket door (rooms/utility.py).
+    #      Seat and lid are one group: as two independent groups the seat lifts through the shut lid and the lid
+    #      shuts through the raised seat. They become "lid, then seat" (spec W2) only once the tag schema and the
+    #      viewer know a dependency key - 'needs': opening a group opens the group it needs, closing a group closes
+    #      those that need it. Until lib.interact accepts that key they lift together.
+    pan, seat, lid, bowl = _pan()
+    hinge = dict(p=PAN_HINGE, a=(0, 1, 0), deg=90)
+    if 'needs' in IX.OPTIONAL:
+        IX.tag(lid, 'hinge', label='Toilet lid', **hinge)
+        IX.tag(seat, 'hinge', label='Toilet seat', needs='wc.pan.lid', **hinge)
+    else:
+        IX.tag_many([lid, seat], 'hinge', g='wc.pan.seat', label='Toilet seat', **hinge)
+    ctx.add(pan, ROOM, 'fit', plan_sym='wc')
     ctx.add(_flush_plate(), ROOM, 'fit')
-    ctx.add(_basin(), ROOM, 'fit', plan_sym='basin')
+    basin, tap, lever = _basin()
+    water = P.place(P.water_stream(TAP_OUTLET[2] - 0.754, splash=0.05, name='wc.basin.water'), TAP_OUTLET)
+    IX.tag(tap, 'trigger', g='wc.basin.tap', label='Tap')
+    IX.tag(lever, 'hinge', g='wc.basin.tap', label='Tap', p=TAP_PIVOT, a=(0, 1, 0), deg=-20)
+    IX.tag(water, 'show', g='wc.basin.tap', label='Tap', when=1, fx='water')
+    ctx.add(basin, ROOM, 'fit', plan_sym='basin')
+    ctx.add(water, ROOM, 'fit', lm='dynamic')
+    for o in (seat, lid, bowl, lever):           # after the roots' ctx.add, which resets its children
+        o['lm'] = 'dynamic'
     ctx.add(_soap_dish(X0, 9.53, 1.02), ROOM, 'fit', lm='dynamic')
     ctx.add(_roll_holder(), ROOM, 'fit', lm='dynamic')
     ctx.add(_brush(2.82, 9.48), ROOM, 'fit', lm='dynamic')

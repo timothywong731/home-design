@@ -12,7 +12,9 @@ dining_fire.py, dining_decor.py (panels, mirror, sword, plaques, curtains), dini
 import math
 import os
 
-from lib import lighting, mouldings as mo, props as P
+from mathutils import Vector
+
+from lib import interact as IX, lighting, mouldings as mo, props as P
 from rooms import (dining_chairs as C, dining_decor as D, dining_fire as F, dining_furniture as U, dining_light as L,
                    dining_plants as G)
 
@@ -33,6 +35,9 @@ CAMERAS = [
     dict(name='tv', pos=(2.04, 14.56, 1.45), look=(1.2, 12.36, 1.9), fov_deg=100, ref='f_0613'),
     dict(name='chand', pos=(1.94, 14.36, 1.30), look=(1.05, 14.72, 2.75), fov_deg=100, ref='f_0714'),
     dict(name='fire', pos=(1.93, 13.56, 1.45), look=(2.95, 14.55, 0.65), fov_deg=100, ref='f_0643'),
+    # interaction checks (render with --pose 0 and --pose 1): live clock hands; closed curtains past the citrus
+    dict(name='clock', pos=(2.20, 14.45, 1.42), look=(2.80, 14.61, 1.355), fov_deg=35, ref='f_0643'),
+    dict(name='curtain', pos=(1.45, 16.25, 1.50), look=(3.0, 16.84, 1.15), fov_deg=85, ref='f_0681'),
 ]
 
 # crest plaques: generic heraldry (the real ones carry lettering). Muted enamels; a few light-blue / red ones.
@@ -68,11 +73,17 @@ def build(ctx):
     # ------------------------------------------------------------------ fireplace (E wall, on the breast)
     east = lambda xl, out, z: (BX - out, FY - xl, z)      # fireplace-local (x across, depth out, z) -> world
     add(P.place(F.fireplace(), (BX, FY, 0), facing=(-1, 0)), 'fit', plan_sym='fireplace', lm='dynamic')
-    clock = P.mantel_clock(name='dining.mantel_clock')
+    clock = P.mantel_clock(hands=False, name='dining.mantel_clock')
     face = F.clock_face()                                         # round bezel + Roman strokes over the prop's dial
     face.parent = clock
     face.location = (0, -.0605, .1628)
     add(P.place(clock, east(0, .115, 1.19), facing=(-1, 0)), 'decor')
+    # live hands (modelled at 12, the viewer turns them): origin on the cream dial of F.clock_face, 2.5 mm proud of it
+    centre, out = clock.matrix_basis @ Vector((0, -.063, .1628)), clock.matrix_basis.to_3x3() @ Vector((0, -1, 0))
+    for hand, w in zip(P.clock_hands(.0544, 'baton', 'black_matt', name='dining.mantel_clock'), 'hm'):
+        hand.location, hand.rotation_euler = centre, clock.rotation_euler
+        IX.tag(hand, 'clock', hand=w, p=centre, a=out)
+        add(hand, 'decor', lm='dynamic')
     for i, s in enumerate((-1, 1)):
         add(P.place(F.candelabrum(f'dining.candelabrum.{i}'), east(s * .48, .125, 1.19), facing=(-1, 0)), 'decor')
         add(P.place(F.candlestick(f'dining.candlestick.{i}'), east(s * .68, .12, 1.19)), 'decor')
@@ -85,8 +96,13 @@ def build(ctx):
     add(P.place(pic, (BX, FY, 1.96), facing=(-1, 0)), 'decor')
 
     # ------------------------------------------------------------------ S wall: TV, switch, sword, plaques
-    add(P.place(P.tv_panel(1.89, 1.08, name='dining.tv'), (1.805, Y0, 1.69), facing=(0, 1)), 'fit', plan_sym='tv')
-    add(P.place(P.switch_plate(3, 'toggle', name='dining.switch'), (0.67, Y0, 1.37), facing=(0, 1)), 'fit')
+    tv = add(P.place(P.tv_panel(1.89, 1.08, name='dining.tv'), (1.805, Y0, 1.69), facing=(0, 1)), 'fit', plan_sym='tv')
+    pic = P.tv_screen(1.88, 1.07, name='dining.tv.picture')       # state 1 only, 1 mm proud of the black glass
+    pic.location, pic.rotation_euler = tv.matrix_basis @ Vector((0, -.0716, 0)), tv.rotation_euler
+    IX.tag(tv, 'trigger', g='dining.tv', label='TV')
+    add(IX.tag(pic, 'show', g='dining.tv', when=1, fx='tv'), 'fit', lm='dynamic')
+    sw = add(P.place(P.switch_plate(3, 'toggle', name='dining.switch'), (0.67, Y0, 1.37), facing=(0, 1)), 'fit')
+    IX.tag(sw, 'light', rooms=[ROOM], label='Lights')
     add(P.place(D.sword_board(), (1.64, Y0, 2.43), facing=(0, 1)), 'decor')
     n = 0
     for x in (-0.43, -0.15, 0.13, 0.41, 0.69):                    # five over the door
@@ -131,8 +147,16 @@ def build(ctx):
         add(P.place(P.socket(g, name=f'dining.socket.{i}'), loc, facing=f), 'fit')
 
     # ------------------------------------------------------------------ N wall: check curtains, tied round the middle
+    # One group: state 0 = the tied drops as filmed, state 1 = two straight drops drawn across the whole screen
+    # (side windows + French doors), meeting on the doors' centre line x = 1.225 and stopping 45 mm off the walls.
     for i, x in enumerate((0.3675, 2.0875)):
-        add(P.place(D.curtain(f'dining.curtain.{i}'), (x, Y1 - .05, 2.50), facing=(0, -1)), 'decor')
+        tied = add(P.place(D.curtain(f'dining.curtain.{i}'), (x, Y1 - .05, 2.50), facing=(0, -1)), 'decor')
+        # shallow folds 15 mm off the screen: the citrus head reaches y 16.80, where the tied drops' plane would cut it
+        shut = P.curtain_panel(1.83, 2.489, U.check_mat(), depth=.022, hardware=False, fold_res=4, seed=i,
+                               name=f'dining.curtain.{i}.closed')
+        add(P.place(shut, (1.225 + (2 * i - 1) * .915, Y1 - .015, 2.499), facing=(0, -1)), 'decor', lm='dynamic')
+        IX.tag(tied, 'show', g='dining.curtain', when=0, fx='none', label='Curtains')
+        IX.tag(shut, 'show', g='dining.curtain', when=1, fx='none', label='Curtains')
 
     # ------------------------------------------------------------------ plants
     for i, y in enumerate((13.02, 16.20)):                        # monstera in each E-window reveal, leaning into the room
@@ -144,6 +168,9 @@ def build(ctx):
     rx, ry = mo.ROSE_AT[ROOM]
     chand = L.chandelier()
     add(P.place(chand, (rx, ry, cz - .035)), 'light')             # ceiling cup under the centre of the rose
+    # clickable like the switch; short reach so Space beside the table does not pick the fitting overhead
+    IX.tag_many([chand] + list(chand.children_recursive), 'lamp', g='dining.chandelier', label='Chandelier',
+                rooms=[ROOM], reach=.5)
     for i, p in enumerate(P.bulb_points(chand)):
         lighting.bulb(ctx, ROOM, p, watts=BULB_W, name=f'dining.chandelier.bulb.{i}')     # 25 mm sphere round the 11 mm lamp
     # The cloth shades are opaque geometry: their lamps only shine out of the top and bottom openings. One large
@@ -155,6 +182,8 @@ def build(ctx):
     for i, y in enumerate((13.59, 15.63)):                        # twin-arm brass wall lights in the alcoves
         sc = L.sconce(f'dining.sconce.{i}')
         add(P.place(sc, (X1, y, 1.80), facing=(-1, 0)), 'light')
+        # with rooms: the bake only has the whole room on / off, so a wall light switches the room like the plate
+        IX.tag_many([sc] + list(sc.children_recursive), 'lamp', g=sc.name, label='Wall light', rooms=[ROOM])
         for j, p in enumerate(P.bulb_points(sc)):
             lighting.bulb(ctx, ROOM, p, watts=14, name=f'dining.sconce.{i}.bulb.{j}')
     i = 0

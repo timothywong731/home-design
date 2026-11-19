@@ -17,7 +17,7 @@ from math import sin, cos, pi, radians, sqrt, tau
 import bpy
 import bmesh
 from mathutils import Vector
-from lib import lighting, materials as M, mouldings as mo, props as P, shell
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:                       # build.py loads this file by path: make the helpers importable
@@ -40,6 +40,11 @@ CAMERAS = [
     dict(name='baycorner', pos=(2.35, 1.15, 1.5), look=(1.15, 0.45, 1.9), fov_deg=90, ref='f_0127'),
     dict(name='bayside', pos=(2.05, 2.5, 1.5), look=(2.7, 0.3, 1.0), fov_deg=100, ref='f_0115'),
     dict(name='table', pos=(2.10, 1.89, 1.5), look=(3.6, 3.6, 0.3), fov_deg=100, ref='f_0139'),
+    # interaction checks (blender/INTERACT.md): render with --pose 0 and --pose 1
+    dict(name='ix_tvunit', pos=(2.45, 2.75, 1.05), look=(0.9, 2.2, 0.45), fov_deg=80, ref='f_0205'),
+    dict(name='ix_bookcase', pos=(2.55, 2.95, 1.45), look=(2.95, 4.5, 0.75), fov_deg=80, ref='f_0185'),
+    dict(name='ix_clock', pos=(3.02, 3.95, 1.42), look=(3.085, 4.5, 1.35), fov_deg=35, ref='f_0785'),
+    dict(name='ix_lamp', pos=(2.25, 1.35, 1.25), look=(2.6, 0.1, 0.95), fov_deg=80, ref='f_0115'),
 ]
 
 # Gallery, hung from the brass rail. (id, position along the wall, top z, outer w, outer h, frame style, frame w, glazed)
@@ -228,14 +233,26 @@ def build(ctx):
     tv = P.tv_panel(1.89, 1.08, name='living.tv')
     P.place(tv, (X0, 2.325, 1.26), facing=(1, 0))
     _add(ctx, tv, 'fit', 'tv', lm='static')
-    unit = LC.tv_unit()
+    pic = P.tv_screen(1.88, 1.07, name='living.tv.picture')        # the lit picture, 1 mm proud of the black glass
+    pic.location, pic.rotation_euler = tv.matrix_basis @ Vector((0, -0.0716, 0)), tv.rotation_euler
+    _add(ctx, pic, 'fit', lm='dynamic')
+    IX.tag(tv, 'trigger', g='living.tv', label='TV')
+    IX.tag(pic, 'show', g='living.tv', when=1, fx='tv', label='TV')
+    unit, ux = LC.tv_unit()
     P.place(unit, (X0 + 0.235, 2.23, 0), facing=(1, 0))
     for i, sx in enumerate((-1, 1)):                      # speakers with their plain black cloth grilles on (f_0205)
         LP.kid(unit, LD.speaker(f'living.speaker.{i}'), (sx * 0.78, 0.02, 0.56), (0, 0, -sx * 8))
-    LP.kid(unit, LD.amplifier(), (-0.34, 0.03, 0.56))
+    LP.kid(unit, LD.amplifier(), (-0.34, -0.07, 0.56))
     LP.kid(unit, LD.xiangqi(), (0.28, -0.01, 0.56), (0, 0, 4))
     LP.kid(unit, LD.disc_player(), (0.0, 0.03, 0.282))
     _add(ctx, unit, 'furn', 'tv_unit', lm='static')
+    U = unit.matrix_basis                                 # cupboards hinge on the outer posts, the drawer slides out
+    for i, (objs, p, deg) in enumerate(ux['doors']):
+        IX.tag_many(objs, 'hinge', g=f'living.tv_unit.door.{i}', label='Cupboard', p=U @ Vector(p), deg=deg)
+    drawer, d = ux['drawer']
+    IX.tag_many(drawer, 'slide', g='living.tv_unit.drawer', label='Drawer', d=U.to_3x3() @ Vector(d))
+    for o in [o for objs, _, _ in ux['doors'] for o in objs] + drawer + ux['inner']:
+        o['lm'] = 'dynamic'                               # moving parts and what they reveal are not baked
     mb = mo.MB()
     Wp = M.mat('plastic_white')
     mb.box((X0, 2.36, 0.56), (X0 + 0.016, 2.40, 0.73), Wp, bev=0.002)                    # cable trunking
@@ -245,14 +262,16 @@ def build(ctx):
     _add(ctx, mb.finish('living.wall_controls'), 'fit')
     sw = P.switch_plate(3, 'dimmer', name='living.dimmer')
     _add(ctx, P.place(sw, (X0, 3.40, 1.21), facing=(1, 0)), 'fit')
+    IX.tag(sw, 'light', rooms=[ROOM], label='Lights')
     sock = P.socket(2, name='living.socket')
     _add(ctx, P.place(sock, (X1, 4.45, 0.33), facing=(-1, 0)), 'fit')
     sc0 = LD.sconce('living.sconce.0')
     P.place(sc0, (X0, 1.60, 2.38), facing=(1, 0))
     sc1 = LP.instance(sc0, 'living.sconce.1')
     P.place(sc1, (X0, 4.09, 2.38), facing=(1, 0))
-    for sc in (sc0, sc1):
+    for i, sc in enumerate((sc0, sc1)):                   # wired to the dimmer plate: clicking one switches the room
         _add(ctx, sc, 'light')
+        IX.tag_many(P.family(sc), 'lamp', g=f'living.sconce.{i}', label='Wall light', rooms=[ROOM])
     bpy.context.view_layer.update()
     for i, sc in enumerate((sc0, sc1)):
         for j, p in enumerate(P.bulb_points(sc)):
@@ -275,9 +294,12 @@ def build(ctx):
     _add(ctx, ped, 'furn', 'table_round')
 
     # ---- N wall: bookcase with its ornaments, bench, plant
-    bc, _glass = LC.bookcase()
+    bc, doors = LC.bookcase()
     P.place(bc, (2.875, 4.55, 0), facing=(0, -1))
+    for i, (objs, p, deg) in enumerate(doors):
+        IX.tag_many(objs, 'hinge', g=f'living.bookcase.door.{i}', label='Bookcase', p=bc.matrix_basis @ Vector(p), deg=deg)
     top = 1.2206
+    ck = LD.clock()
     XT = LD.CUT()                                         # cut crystal: decanter, footed vases
     for ob, x, y, rz in (
             (LD.glass_tray(), -0.60, -0.04, 0),                # front edge flush with the top: glasses clear of A2
@@ -285,7 +307,7 @@ def build(ctx):
             (LD.mercury(), -0.29, 0.07, 12),
             (P.vase(0.07, 0.15, 'bowl', M.solid('living_celadon', '#B4CCAE', 0.25), name='living.bowl'), -0.125, 0.07, 0),
             (P.decanter(0.30, 'round', mat=XT, name='living.decanter'), 0.008, 0.03, 0),
-            (LD.clock(), 0.21, 0.02, 0),
+            (ck, 0.21, 0.02, 0),
             (P.vase(0.20, 0.10, 'urn', XT, name='living.crystal_vase.0'), 0.31, -0.11, 0),
             (P.vase(0.12, 0.08, 'urn', XT, name='living.crystal_vase.1'), 0.43, -0.125, 0),
             (LD.flowers(), 0.405, -0.015, 0),                  # blooms clear of the tapestry and the wall
@@ -293,6 +315,12 @@ def build(ctx):
             (LD.tea_tray(), 0.712, 0.03, 0)):
         LP.kid(bc, ob, (x, y, top), (0, 0, rz))
     _add(ctx, bc, 'furn', 'bookcase')
+    Wc = P._world(ck)                                     # live hands on the bracket clock, modelled at 12
+    centre, out = Wc @ Vector(LD.CLOCK_DIAL), Wc.to_3x3() @ Vector((0, -1, 0))
+    for hand, w in zip(P.clock_hands(LD.CLOCK_R, 'baton', mat='black_matt', name='living.clock'), 'hm'):
+        hand.location, hand.rotation_euler = centre, Wc.to_euler()
+        IX.tag(hand, 'clock', hand=w, p=centre, a=out)
+        _add(ctx, hand, 'decor', lm='dynamic')
     bn = LP.bench()
     P.place(bn, (2.85, 3.95, 0))
     _add(ctx, bn, 'furn', 'stool')
@@ -326,6 +354,7 @@ def build(ctx):
     LP.kid(lt, LD.solitaire(), (-0.15, 0.06, 0.64))
     LP.kid(lt, LD.inlay_box(), (0.14, 0.09, 0.64), (0, 0, -25))
     _add(ctx, lt, 'furn', 'table_round')
+    IX.tag_many(P.family(lamp), 'lamp', g='living.table_lamp', label='Lamp')      # plugged in: its own switch
     lighting.bulb(ctx, ROOM, (2.55, 0.24, 0.64 + 0.60), watts=W_LAMP, kelvin=2900, radius=0.03, name='living.table_lamp.bulb')
     curtains(ctx)
     gallery(ctx)
@@ -458,9 +487,75 @@ def tieback(side, width, gather, depth=0.06, name='living.tieback'):
     return mb.finish(name)
 
 
+def drawn_curtains(cloth, top, hem, off, sett=0.16, name='living.curtain.closed'):
+    """The four drops untied and drawn right round the bay (interaction state 1), in world coordinates: one
+    pleated sheet along each cheek and one across the front, 3 mm in front of the track line `off` from the wall,
+    folds 40 mm deep. The lamp table stands against the sill with the lamp shade 7 mm off the window timber, so
+    behind them the cloth is pressed back: every column runs straight from the track to where the shade rim
+    pushes it (z 1.15), on to the table edge (z 0.645) and plumb below; the 0.17 m of cloth pinched behind the
+    table ends on the sill board instead of reaching the floor. Returns (cloth object, track infill object): the
+    white track pieces that join the four short tracks of the tied-back drops."""
+    LAMP, R_SHADE, TABLE, R_TABLE = (2.55, 0.24), 0.181, (2.55, 0.37), 0.317     # obstacle radii + 8 mm clearance
+    Z_SHADE, Z_TABLE, Z_SILL, Y_NOSE = 1.15, 0.645, 0.626, 0.064                 # sill board: top 0.62, nose y 0.06
+    zt = top - 0.003                                                             # heading just under the track
+    zs = [zt, 2.25, 1.70, Z_SHADE, 0.90, Z_TABLE, Z_SILL, 0.37, hem]
+    xw, xe, yf, ye = 1.10 + off + 0.003, 4.00 - off - 0.003, off + 0.003, 0.975
+    runs = [((xw, ye), (0, -1), ye - yf, (1, 0)),                    # west cheek
+            ((xw, yf), (1, 0), xe - xw, (0, 1)),                     # front: the folds die out at both ends, so the
+            ((xe, yf), (0, 1), ye - yf, (-1, 0))]                    # east cheek      three sheets meet in the corners
+    verts, uvs, faces = [], [], []
+    for (sx, sy), t, length, n in runs:
+        folds = round(length / 0.16)                                 # broad soft folds, as the tied drops
+        cols = folds * 10
+        base, u, prev, landed = len(verts), 0.0, None, []
+        for c in range(cols + 1):
+            s = length * c / cols
+            o = 0.04 * (0.5 - 0.5 * cos(tau * folds * c / cols))
+            p = Vector((sx + t[0] * s + n[0] * o, sy + t[1] * s + n[1] * o))
+            u += (p - prev).length if prev is not None else 0.0
+            prev = p
+            y1 = y2 = p.y
+            if n[1]:                                                 # front run: pressed back behind the lamp and the table
+                dx = p.x - LAMP[0]
+                if abs(dx) < R_SHADE:
+                    y1 = min(p.y, LAMP[1] - sqrt(R_SHADE ** 2 - dx ** 2))
+                y2 = min(y1, TABLE[1] - sqrt(R_TABLE ** 2 - dx ** 2)) if abs(dx) < R_TABLE else y1
+            landed.append(y2 < Y_NOSE)                               # no way past the sill nose: the cloth lies on the sill
+            for z in zs:
+                if z >= Z_SHADE:
+                    y = p.y + (y1 - p.y) * (zt - z) / (zt - Z_SHADE)
+                else:
+                    y = y1 + (y2 - y1) * min(1.0, (Z_SHADE - z) / (Z_SHADE - Z_TABLE))
+                verts.append((p.x, y, z))
+                uvs.append((u / sett, z / sett))
+        nz = len(zs)
+        for c in range(cols):
+            for r in range(nz - 1):
+                if zs[r + 1] < Z_SILL and (landed[c] or landed[c + 1]):
+                    continue
+                a, b = base + c * nz + r, base + (c + 1) * nz + r
+                faces.append((a, b, b + 1, a + 1))                   # rows run downward: this winding faces the room
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    uvl = me.uv_layers.new(name='UVMap')
+    for poly in me.polygons:
+        poly.use_smooth = True
+        for li, vi in zip(poly.loop_indices, poly.vertices):
+            uvl.data[li].uv = uvs[vi]
+    me.materials.append(cloth)
+    tr = mo.MB()
+    Wp = M.mat('plastic_white')
+    tr.box((1.61, off - 0.01, top - 0.002), (3.49, off + 0.03, top + 0.012), Wp)
+    for x0, x1 in ((1.10 + off - 0.01, 1.10 + off + 0.03), (4.00 - off - 0.03, 4.00 - off + 0.01)):
+        tr.box((x0, off + 0.03, top - 0.002), (x1, 0.495, top + 0.012), Wp)
+    return bpy.data.objects.new(name, me), tr.finish(name + '.track')
+
+
 def curtains(ctx):
     """Four tartan drops on a concealed white track under the bay cornice, each gathered and tied back at
-    z 1.15 with a swagged twisted rope and tassel (module-built: the prop's rigid hoop is stripped)."""
+    z 1.15 with a swagged twisted rope and tassel (module-built: the prop's rigid hoop is stripped).
+    Interaction group living.curtains: the tied drops and their tie-backs show in state 0, the cloth drawn
+    round the bay (drawn_curtains) in state 1."""
     top, hem, tie = 2.79, 0.12, 1.15
     W, GATHER, FOLDS, DEPTH = 0.48, 0.50, 3, 0.05     # three broad soft folds per drop: the 0.2 m checks stay whole (f_0211)
     off = 0.075                                  # clear of the dark timber and the sill board
@@ -488,9 +583,13 @@ def curtains(ctx):
         c.data = meshes[side]
         LP.kid(c, tb, (0, 0, tie - top))
         _add(ctx, P.place(c, loc, facing=n), 'decor')
+        IX.tag_many([c, tb], 'show', g='living.curtains', when=0, fx='none', label='Curtains')
         t = (-n[1], n[0])
         a = (loc[0] - t[0] * (W / 2) - n[0] * 0.01, loc[1] - t[1] * (W / 2) - n[1] * 0.01)
         b = (loc[0] + t[0] * (W / 2) + n[0] * 0.03, loc[1] + t[1] * (W / 2) + n[1] * 0.03)
         tr.box((min(a[0], b[0]), min(a[1], b[1]), top - 0.002), (max(a[0], b[0]), max(a[1], b[1]), top + 0.012),
                M.mat('plastic_white'))
     _add(ctx, tr.finish('living.curtain_track'), 'fit')
+    for ob in drawn_curtains(cloth, top, hem, off):
+        _add(ctx, ob, 'decor', lm='dynamic')
+        IX.tag(ob, 'show', g='living.curtains', when=1, fx='none', label='Curtains')

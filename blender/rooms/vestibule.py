@@ -8,9 +8,9 @@ import os
 from math import cos, sin, pi, tau, radians
 
 import bpy
-from mathutils import Matrix
+from mathutils import Matrix, Vector
 
-from lib import lighting, materials as M, mouldings as mo, props as P
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P
 
 ROOM = 'vestibule'
 ART = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'textures', 'art', ROOM)
@@ -22,6 +22,7 @@ CAMERAS = [
     dict(name='floor', pos=(-0.3, 0.45, 1.6), look=(0.0, 1.0, 0.0), fov_deg=100, ref='f_0026'),
     dict(name='keypad', pos=(-0.1, 1.15, 1.5), look=(0.65, 1.5, 1.15), fov_deg=100, ref='f_0033'),
     dict(name='inner', pos=(0.0, 3.33, 1.75), look=(0.0, 1.83, 1.7), fov_deg=100, ref='f_0057'),
+    dict(name='stool', pos=(-0.45, 0.95, 1.25), look=(0.15, 1.5, 0.3), fov_deg=75),     # drawers (--pose 1: out)
 ]
 
 RX = Matrix.Rotation(pi / 2, 4, 'X')            # local +Z -> -Y: lathes that face out of a wall
@@ -55,14 +56,28 @@ def keypad(name):
 
 
 def stool(name):
-    """Mahogany box stool 0.42 (X) x 0.36 (Y) x 0.50, drawers on the -X face, velvet lid. Origin floor centre."""
+    """Mahogany box stool 0.42 (X) x 0.36 (Y) x 0.50, drawers on the -X face, velvet lid. Origin floor centre.
+    The two drawers are their own children `<name>.drawer.<k>` (front + oak box) with their pulls
+    `<name>.drawer.<k>.pull`; build() tags them. [H]"""
     wood = 'mahogany_dark'
     mb = mo.MB()
-    mb.box((-.207, -.177, .26), (.207, .177, .44), wood, bev=.002, grain=0)
+    # case 0.414 x 0.354 x 0.18, hollow behind the drawers. Outside it is the plain box it always was: every
+    # joint between these boards is under a leg block or behind a drawer front
+    for sy in (-1, 1):
+        mb.box((-.207, sy * .140, .26), (.195, sy * .177, .44), wood, bev=.002, grain=0)      # sides
+    mb.box((.195, -.177, .26), (.207, .177, .44), wood, bev=.002, grain=0)                    # back
+    for z0, z1 in ((.26, .272), (.339, .359), (.426, .44)):                                   # bottom, dust board, top
+        mb.box((-.207, -.140, z0), (.195, .140, z1), wood, bev=.002, grain=0)
     mb.box((-.214, -.184, .437), (.214, .184, .446), wood, bev=.002, grain=0)                # lid board
-    for z0 in (.268, .355):                                                                   # two drawer fronts
-        mb.box((-.214, -.150, z0), (-.205, .150, z0 + .075), wood, bev=.003, grain=1)
     root = mb.finish(name)
+    for k, z0 in enumerate((.268, .355)):                                                     # two drawers
+        d = mo.MB()
+        d.box((-.214, -.150, z0), (-.205, .150, z0 + .075), wood, bev=.003, grain=1)          # front
+        for sy in (-1, 1):
+            d.box((-.205, sy * .127, z0 + .006), (.185, sy * .135, z0 + .066), 'oak_light', grain=0)
+        d.box((.177, -.127, z0 + .006), (.185, .127, z0 + .066), 'oak_light', grain=1)        # back
+        d.box((-.205, -.127, z0 + .006), (.177, .127, z0 + .012), 'oak_light', grain=0)       # bottom
+        d.finish(f'{name}.drawer.{k}').parent = root
     for sx in (-1, 1):
         for sy in (-1, 1):
             leg = P.turned_leg(.44, .035, 'taper', top_block=.185, mat=wood, taper=.63, name=f'{name}.leg')
@@ -78,9 +93,9 @@ def stool(name):
     seat = P.upholstered_seat(.43, .37, .030, mat=velvet, crown=.028, name=f'{name}.lid')   # top at z 0.504
     seat.parent = root
     seat.location = (0, 0, .446)
-    for z in (.3055, .3925):
+    for k, z in enumerate((.3055, .3925)):
         for y in (-.075, .075):
-            h = P.handle_drop(.05, .022, 'bronze', name=f'{name}.pull')
+            h = P.handle_drop(.05, .022, 'bronze', name=f'{name}.drawer.{k}.pull')
             h.parent = root
             P.place(h, (-.214, y, z + .008), facing=(-1, 0))
     return root
@@ -176,12 +191,17 @@ def build(ctx):
     kp = P.place(keypad('vestibule.keypad'), (0.65, 1.52, 1.48), facing=(-1, 0))
     ctx.add(kp, ROOM, 'fit', lm='dynamic')
     sw = P.place(P.switch_plate(1, name='vestibule.switch'), (0.65, 1.52, 1.22), facing=(-1, 0))
-    ctx.add(sw, ROOM, 'fit')
+    IX.tag(sw, 'light', rooms=['vestibule'])
+    ctx.add(sw, ROOM, 'fit', lm='dynamic')
 
     # --- box stool in the corner of the east wall and the inner screen (drawers face west)
     st = stool('vestibule.stool')
     st.location = (0.41, 1.51, 0)
     ctx.add(st, ROOM, 'furn', plan_sym='stool')
+    out = st.matrix_basis.to_3x3() @ Vector((-.28, 0, 0))                # drawers pull out 0.28 of their 0.39
+    for k in range(2):
+        IX.tag_many([o for o in P.family(st) if o.name.startswith(f'vestibule.stool.drawer.{k}')], 'slide',
+                    g=f'vestibule.stool.drawer.{k}', label='Drawer', d=out)
 
     # --- flat-woven door rug
     # ponytail: pattern drawn (reference/work/hall/r2/rug.py) with the layout, band widths and colours
@@ -196,6 +216,7 @@ def build(ctx):
     ch = lantern('vestibule.lantern')
     ch.location = (0.0, 1.48, cz)
     ctx.add(ch, ROOM, 'light')
+    IX.tag_many(P.family(ch), 'lamp', g='vestibule.lantern', label='Lantern', rooms=['vestibule'])
     for i, p in enumerate(P.bulb_points(ch)):
         lighting.bulb(ctx, ROOM, p, watts=10.5, kelvin=2800, radius=.012, name=f'vestibule.lantern.bulb.{i}')
 

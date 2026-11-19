@@ -17,7 +17,7 @@
 <script type="module" src="js/main.js"></script>
 </head>
 <body>
-<canvas id="scene" tabindex="0" aria-label="3D view of the ground floor. W A S D or arrow keys move, drag to look around."></canvas>
+<canvas id="scene" tabindex="0" aria-label="3D view of the ground floor. W A S D or arrow keys move, drag to look around, double-click to walk somewhere, click or Space to open doors and switch things."></canvas>
 
 <div id="loader" role="status" aria-live="polite">
   <div class="loader-card">
@@ -36,6 +36,9 @@
       <button id="mode-walk" type="button" aria-pressed="true" title="Walk (O toggles)">Walk</button>
       <button id="mode-orbit" type="button" aria-pressed="false" title="Dollhouse (O toggles)">Dollhouse</button>
     </div>
+    <button id="btn-look" type="button" class="icon" aria-pressed="false" aria-label="Mouse-look" title="Mouse-look (L, Esc releases)">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>
+    </button>
     <button id="btn-gallery" type="button" hidden>Renders</button>
     <button id="btn-help" type="button" class="icon" aria-label="Controls and help" title="Controls (?)">?</button>
   </div>
@@ -76,17 +79,33 @@
 
 <div id="pad" aria-hidden="true"><div id="pad-knob"></div></div>
 <div id="hint" aria-hidden="true"></div>
+<div id="ix-tip" role="status" aria-live="polite" hidden></div>
+<div id="crosshair" aria-hidden="true"></div>
 
 <dialog id="help" aria-labelledby="help-title">
   <form method="dialog" class="dlg-head"><h2 id="help-title">Controls</h2><button class="icon" aria-label="Close">&times;</button></form>
   <div class="help-grid">
     <section><h3>Walk</h3><dl>
       <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>&uarr;</kbd><kbd>&darr;</kbd></dt><dd>Move</dd>
-      <dt><kbd>&larr;</kbd><kbd>&rarr;</kbd> / <kbd>Q</kbd><kbd>E</kbd></dt><dd>Turn</dd>
+      <dt><kbd>&larr;</kbd><kbd>&rarr;</kbd></dt><dd>Turn</dd>
       <dt>Drag</dt><dd>Look around</dd>
-      <dt>Double-click</dt><dd>Mouse-look (Esc to release)</dd>
+      <dt>Double-click</dt><dd>Walk there (any key or drag stops)</dd>
+      <dt>Wheel</dt><dd>Zoom in / out</dd>
+      <dt><kbd>L</kbd> / eye button</dt><dd>Mouse-look (Esc to release)</dd>
       <dt><kbd>Shift</kbd></dt><dd>Walk faster</dd>
-      <dt>Touch</dt><dd>Drag to look, pad to move</dd>
+    </dl></section>
+    <section><h3>Use things</h3><dl>
+      <dt>Click</dt><dd>Open, close or switch what you point at</dd>
+      <dt><kbd>Space</kbd> / <kbd>E</kbd></dt><dd>Use what is in front of you</dd>
+      <dt>Wall switch</dt><dd>Room lights on / off</dd>
+      <dt>Dollhouse</dt><dd>Click works there too</dd>
+    </dl></section>
+    <section><h3>Touch</h3><dl>
+      <dt>Drag</dt><dd>Look around</dd>
+      <dt>Pad</dt><dd>Move</dd>
+      <dt>Tap</dt><dd>Open / close, switch</dd>
+      <dt>Double-tap</dt><dd>Walk there</dd>
+      <dt>Pinch</dt><dd>Zoom</dd>
     </dl></section>
     <section><h3>View</h3><dl>
       <dt><kbd>O</kbd></dt><dd>Walk / dollhouse</dd>
@@ -102,7 +121,7 @@
       <dt>DXF / PDF</dt><dd>Download the drawing</dd>
     </dl></section>
   </div>
-  <p class="note">Drawn from a video walkthrough; dimensions are estimates. Doors are shown as they stand.</p>
+  <p class="note">Drawn from a video walkthrough; dimensions are estimates. The plan shows doors as they stand; a closed door cannot be walked through until you open it.</p>
 </dialog>
 
 <dialog id="gallery" aria-labelledby="gallery-title">

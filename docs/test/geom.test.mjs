@@ -29,8 +29,9 @@ near(G.edgeDist(1, 0.5, sq), 0.5);
 // walkable area on the real spec
 const house = JSON.parse(readFileSync(new URL('../../spec/house.json', import.meta.url)));
 const W = G.buildWalk(house, { radius: 0.2 });
-const ids = W.portals.map((p) => p.id);
+const ids = W.portals.filter((p) => p.open).map((p) => p.id);
 for (const d of ['d_inner', 'd_living', 'd_kitchen', 'd_utility', 'd_wc', 'd_dining']) assert.ok(ids.includes(d), `portal ${d}`);
+// shut doors and openings to unmodelled space (outside, the stairs) are never open portals
 for (const d of ['d_street', 'd_back', 'd_french', 'd_understairs', 'o_stair_foot']) assert.ok(!ids.includes(d), `no portal ${d}`);
 assert.ok(G.isFree(W, ...house.spawn), 'spawn free');
 assert.ok(!G.isFree(W, 0.725, 3.0), 'inside the hall/living wall');
@@ -64,15 +65,36 @@ const obs = G.obstaclesFrom({ items: [{ sym: 'table', center: [1.2, 14.6], size:
 assert.equal(obs.length, 1);
 const W2 = G.buildWalk(house, { obstacles: obs });
 assert.ok(!G.isFree(W2, 1.2, 14.6) && G.isFree(W, 1.2, 14.6));
-// the furnished export: with the real furniture footprints as obstacles every room viewpoint can still be walked to
-// from the spawn (flood fill on a 5 cm grid at the viewer's body radius), and the dining table really blocks
+// small furniture is soft: walkable (slowed), never an obstacle; tall plants still block
+const soft = G.obstaclesFrom([{ plan_sym: 'chair', obb: [[0, 0], [0.5, 0], [0.5, 0.5], [0, 0.5]], height: 0.98 },
+  { plan_sym: 'plant', obb: [[1, 0], [1.5, 0], [1.5, 0.5], [1, 0.5]], height: 1.8 }], true);
+assert.equal(soft.length, 1);
+assert.equal(G.obstaclesFrom([{ plan_sym: 'plant', obb: [[1, 0], [1.5, 0], [1.5, 0.5], [1, 0.5]], height: 1.8 }]).length, 1);
+
+// the furnished export at the viewer's body radius: the dining table blocks, chairs do not, and A* routes from the
+// spawn reach every room viewpoint and the tight places (both long sides of the dining table, between the chairs and
+// the wall / fireplace, past the kitchen bins, into the WC). Every leg of a route is free space.
 const foot = JSON.parse(readFileSync(new URL('../assets/footprints.json', import.meta.url)));
-const WF = G.buildWalk(house, { radius: 0.2, obstacles: G.obstaclesFrom(foot) });
-assert.ok(WF.obstacles.length > 30 && !G.isFree(WF, 1.14, 14.61), 'furniture footprints loaded, dining table solid');
-const h = 0.05, cell = (x, y) => Math.round(x / h) + ',' + Math.round(y / h), seen = new Set([cell(...house.spawn)]);
-for (const stack = [house.spawn.map((v) => Math.round(v / h))]; stack.length;) {
-  const [i, j] = stack.pop();
-  for (const [a, b] of [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]) if (!seen.has(a + ',' + b) && G.isFree(WF, a * h, b * h)) { seen.add(a + ',' + b); stack.push([a, b]); }
-}
-for (const [id, v] of Object.entries(G.viewpoints(WF, house.spawn))) assert.ok(seen.has(cell(...v.pos)), `no walkable route from the spawn into ${id}`);
-console.log('geom ok:', W.portals.length, 'portals,', W.rooms.length, 'walkable rooms,', WF.obstacles.length, 'furniture obstacles,', (seen.size * h * h).toFixed(1), 'm2 reachable');
+const WF = G.buildWalk(house, { obstacles: G.obstaclesFrom(foot), soft: G.obstaclesFrom(foot, true) });
+assert.equal(WF.radius, G.BODY);
+assert.ok(WF.obstacles.length > 25 && !G.isFree(WF, 1.14, 14.61), 'furniture footprints loaded, dining table solid');
+const box = (name) => { const o = foot.find((f) => f.name === name).obb; return G.centroid(o).concat([Math.min(...o.map((p) => p[0])), Math.max(...o.map((p) => p[0]))]); };
+const chair = box('dining.chair.3');
+assert.ok(G.isFree(WF, chair[0], chair[1]) && G.isSoft(WF, chair[0], chair[1]), 'dining armchair is soft');
+const legsFree = (pts) => pts.every((p, i) => !i || [0.25, 0.5, 0.75, 1].every((t) => G.isFree(WF, pts[i - 1][0] + (p[0] - pts[i - 1][0]) * t, pts[i - 1][1] + (p[1] - pts[i - 1][1]) * t)));
+const reach = (to, what) => {
+  const t0 = performance.now(), p = G.route(WF, house.spawn, to);
+  assert.ok(p && legsFree(p), `no walkable route from the spawn to ${what}`);
+  return { what, m: G.pathLength(p).toFixed(1), ms: Math.round(performance.now() - t0) };
+};
+const [tx, ty, tx0, tx1] = box('dining.table'), [fx0] = box('dining.fireplace').slice(2);
+const runs = Object.entries(G.viewpoints(WF, house.spawn)).map(([id, v]) => reach(v.pos, `the ${id} viewpoint`));
+runs.push(reach([tx0 - 0.25, ty], 'the west long side of the dining table'), reach([tx1 + 0.25, ty], 'the east long side of the dining table'),
+  reach([-0.35, ty], 'between the west dining chairs and the wall'), reach([fx0 - 0.2, ty], 'between the east dining chairs and the fireplace'),
+  reach([2.88, 8.5], 'the black kitchen bin'), reach([1.75, 9.75], 'the middle of the WC'));
+// closed doors are not routes: shut the kitchen door and the kitchen (no other way in) becomes unreachable
+const dk = WF.portals.find((p) => p.id === 'd_kitchen');
+dk.open = false; assert.equal(G.route(WF, house.spawn, [2.8, 7.0]), null, 'route through a closed door'); dk.open = true;
+assert.ok(G.route(WF, house.spawn, [2.8, 7.0]), 'route through the reopened door');
+console.log('geom ok:', W.portals.length, 'portals,', W.rooms.length, 'walkable rooms,', WF.obstacles.length, 'obstacles,', WF.soft.length, 'soft;',
+  'routes', runs.map((r) => `${r.what.replace(/^the /, '')} ${r.m} m/${r.ms} ms`).join('; '));

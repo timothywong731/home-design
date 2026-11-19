@@ -13,7 +13,7 @@ TYPES = {
     'light': {'rooms'},
     'lamp': set(),
 }
-OPTIONAL = {'g', 'label', 'on', 'reach', 'blocks', 'a', 'dur', 'fx', 'rooms'}
+OPTIONAL = {'g', 'label', 'on', 'reach', 'blocks', 'a', 'dur', 'fx', 'rooms', 'excl'}
 FX = {'none', 'water', 'flame', 'tv', 'glow'}
 
 

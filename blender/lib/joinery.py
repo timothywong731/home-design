@@ -12,7 +12,7 @@ import math
 
 from mathutils import Matrix, Vector
 
-from . import mouldings as mo
+from . import interact as IX, mouldings as mo
 
 MB, PROFILES = mo.MB, mo.PROFILES
 SKIN = 0.004            # lining skin fixed on the faces of the hole the shell cut (hole = spec width)
@@ -21,6 +21,9 @@ FLOOR_GAP = 0.006
 POCKET_PROJECT = 0.09   # how much of the WC pocket door stands out of its pocket, as filmed in f_0499 (0.61 = shut)
 # open angle per leaf of double doors: f(hinge world xy) -> degrees (house.json has no per-leaf state)
 LEAF_ANGLE = {'d_inner': lambda p: 85.0 if p.x < 0 else 0.0}
+# interaction tags (blender/INTERACT.md): tooltip noun per opening, and the angle a leaf modelled shut opens to
+LABEL = {'d_street': 'Front door', 'd_french': 'Garden door', 'd_back': 'Back door', 'd_understairs': 'Cupboard door'}
+OPEN_DEG = {}           # opening id -> degrees (default 90); lower it where the open leaf would hit something
 T = Matrix.Translation
 
 
@@ -404,7 +407,13 @@ def hang_leaf(ctx, name, room, MA, px, t, hinge_x, angle, build, yA=-0.002, zb=F
     butt_hinges(mb, h, upvc)
     Mo = MA @ T((px, py, 0)) @ RZ(-hinge_x * math.radians(angle))
     ob = _finish(ctx, mb, name, room, Mo, open_deg=float(angle), hinge_side=int(hinge_x), **props)
-    _finish(ctx, gb, name + '.glass', room, Mo)
+    gl = _finish(ctx, gb, name + '.glass', room, Mo)
+    oid = props.get('door')
+    if oid:                                         # one group per leaf (leaf + its glass), g = the leaf's name
+        shut = abs(angle) < 0.5                     # modelled shut: state 1 swings it open; modelled open: state 1 shuts it
+        deg = -hinge_x * OPEN_DEG.get(oid, 90.0) if shut else hinge_x * angle
+        IX.tag_many([o for o in (ob, gl) if o], 'hinge', g=name, label=LABEL.get(oid, 'Door'), p=Mo.translation,
+                    a=(0, 0, 1), deg=round(deg, 2), blocks=oid, **({} if shut else {'on': True}))
     return ob
 
 
@@ -617,7 +626,9 @@ def _door_pocket(ctx, oid, fr):
     flush_pull(mb, 0.055, 0.95 - FLOOR_GAP, t)
     x_lead = sx * (hw - SKIN - 0.001) - sx * POCKET_PROJECT                       # leading edge of the leaf
     Mo = M @ T((x_lead, ym, FLOOR_GAP)) @ (RZ(math.pi) if sx < 0 else Matrix.Identity(4))
-    _finish(ctx, mb, f'{A}.{oid}.leaf', A, Mo, door=oid, slide=1, projects=POCKET_PROJECT)
+    ob = _finish(ctx, mb, f'{A}.{oid}.leaf', A, Mo, door=oid, slide=1, projects=POCKET_PROJECT)
+    shut = 2 * (hw - SKIN) - 0.001 - POCKET_PROJECT                              # travel until the leading edge meets the far jamb
+    IX.tag(ob, 'slide', label=LABEL.get(oid, 'Door'), d=M.to_3x3() @ Vector((-sx * shut, 0, 0)), blocks=oid, on=True)
 
 
 # --------------------------------------------------------------------------- windows

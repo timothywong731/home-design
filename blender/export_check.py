@@ -4,7 +4,9 @@ at all, and render the preview cameras. If UV2, the manifest object lists or the
 out scrambled, black or mis-exposed. Read the JPEGs next to build/preview/<room>_<cam>.jpg.
 
 blender -b --factory-startup --python blender/export_check.py -- [--assets docs/assets] [--glb build/export/home_raw.glb]
-        [--out build/export/check] [--cams living:bay,hallway:front,...]
+        [--out build/export/check] [--cams living:bay,hallway:front,...] [--off]
+
+--off re-lights from the lights-off set (manifest lightmapsOff) and writes <room>_<cam>_off.jpg: dim but readable.
 
 --glb defaults to the uncompressed export: Blender's importer cannot read EXT_meshopt_compression, so the
 compressed home.glb is checked structurally by export.py (check_glb) and visually in the web viewer."""
@@ -48,6 +50,7 @@ def main():
     ap.add_argument('--glb', default='build/export/home_raw.glb')
     ap.add_argument('--out', default='build/export/check')
     ap.add_argument('--cams', default='hallway:front,living:bay,living:tvwall,kitchen:entry,dining:entry,wc:pan')
+    ap.add_argument('--off', action='store_true', help='check the lights-off lightmaps instead')
     a = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
     from lib import lighting, preview
     assets = (ROOT / a.assets).resolve()
@@ -57,7 +60,7 @@ def main():
     bpy.ops.import_scene.gltf(filepath=str((ROOT / a.glb).resolve()))
     objs = {o.name: o for o in bpy.data.objects}
     cache, done, missing = {}, 0, []
-    for e in manifest['lightmaps']:
+    for e in manifest['lightmapsOff' if a.off else 'lightmaps']:
         img = bpy.data.images.load(str(assets / e['image']))
         for name in e['objects']:
             o = objs.get(name)
@@ -69,6 +72,9 @@ def main():
             done += 1
     assert not missing, f'manifest objects missing from the GLB or without a second UV set: {missing[:10]}'
     assert all(o.get('kind') for o in objs.values() if o.type == 'MESH'), 'extras (custom props) did not survive'
+    ix = {o: json.loads(o['ix']) for o in objs.values() if 'ix' in o.keys()}      # still the JSON of INTERACT.md
+    for o, d in ix.items():
+        o.hide_render = d['t'] == 'show' and d['when'] == 1                       # state 0, as baked
 
     sc = bpy.context.scene
     lighting.setup_cycles(16)                                 # emission only: no light paths to converge
@@ -80,8 +86,8 @@ def main():
     for spec in a.cams.split(','):
         room, cam = spec.split(':')
         c = next(c for c in preview.DEFAULT_CAMERAS[room] if c['name'] == cam)
-        preview.render(preview.camera(f'{room}.{cam}', c['pos'], c['look'], c['fov_deg']), out / f'{room}_{cam}.jpg', (540, 960), 16)
-    print(f'CHECK OK: {done} lightmapped objects re-lit from {len(manifest["lightmaps"])} atlases')
+        preview.render(preview.camera(f'{room}.{cam}', c['pos'], c['look'], c['fov_deg']), out / f'{room}_{cam}{"_off" if a.off else ""}.jpg', (540, 960), 16)
+    print(f'CHECK OK: {done} lightmapped objects re-lit from the atlases, {len(ix)} interaction-tagged objects')
 
 
 if __name__ == '__main__':

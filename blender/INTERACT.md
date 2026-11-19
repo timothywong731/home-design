@@ -41,7 +41,8 @@ object *as modelled*; the viewer converts with (x, z, -y).
 Common optional keys: `g` group id (default: the object name), `label` short tooltip noun
 ("Fridge", "Hot tap", "Oven"), `on` True when state 0 is the open/on state, `reach` metres within
 which Space / E operates it (default 1.6), `blocks` opening id of house.json for door leaves: the
-doorway is passable only while the leaf is open.
+doorway is passable only while the leaf is open, `excl` list of group ids whose swings cross this
+one: the viewer shuts them before this group opens (tag both sides; `IX.pose` ignores it).
 
 ## What each kind of thing needs
 - **Doors** (joinery, automatic): every hinged leaf = `hinge` about its hinge axis with `blocks`;

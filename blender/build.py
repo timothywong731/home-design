@@ -1,7 +1,7 @@
 """Build the house. See blender/CONTRACT.md and blender/lib/README.md.
 
 blender -b --factory-startup --python blender/build.py -- [--only shell,living,...] [--save build/home.blend]
-        [--preview <room>[,<room>]|all|plan] [--res 960x540] [--samples 64] [--cam <name>] [--tag <suffix>]
+        [--preview <room>[,<room>]|all|plan] [--res 960x540] [--samples 64] [--cam <name>] [--tag <suffix>] [--pose 0|1]
 """
 import argparse
 import importlib.util
@@ -25,6 +25,7 @@ def parse():
     ap.add_argument('--samples', type=int, default=64)
     ap.add_argument('--cam', default='')
     ap.add_argument('--tag', default='')
+    ap.add_argument('--pose', type=int, default=0, choices=(0, 1))
     a = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
     a.res = tuple(int(v) for v in a.res.lower().split('x'))
     return a
@@ -39,6 +40,22 @@ def load_room(rid):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def pose_scene(state):
+    """Previews only (after --save): put every interaction-tagged object (blender/INTERACT.md) in `state`.
+    State 0 = as modelled, only `show when=1` objects (water, flames, closed curtains, TV pictures) are hidden.
+    State 1 = doors / lids swung, drawers slid, `show` objects swapped. Parents are cleared first, as the
+    export does, so an untagged child stays behind exactly like in the viewer."""
+    from lib import interact as IX
+    bpy.context.view_layer.update()                 # matrix_world is stale until now
+    if state:
+        for o, W in [(o, o.matrix_world.copy()) for o in bpy.data.objects if o.parent]:
+            o.parent = None
+            o.matrix_world = W
+    tagged = [o for o in bpy.data.objects if 'ix' in o.keys()]
+    IX.pose(tagged, state)
+    print(f'[build] pose {state}: {len(tagged)} tagged objects')
 
 
 BUDGET = {'room_living': 300_000, 'room_dining': 300_000, 'room_kitchen': 300_000}     # CONTRACT: others 150 k
@@ -103,6 +120,7 @@ def main():
         bpy.ops.wm.save_as_mainfile(filepath=str(path))
         print(f'[build] saved {path}')
 
+    pose_scene(args.pose)
     out = ROOT / 'build' / 'preview'
     for rid in want:
         if rid == 'plan':
