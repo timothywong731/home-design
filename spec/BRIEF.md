@@ -146,3 +146,58 @@ The plan panel has download buttons:
   generated at build time to `docs/assets/ground-floor-plan.pdf` or produced client-side from the
   plan SVG — it must be vector, not a screenshot.
 Neither file may contain the address, owner name or anything from the privacy list.
+
+# Phase 2 — whole house, garden, front, and interactions
+
+The owner asked (1) for things to be operable in the viewer — see `blender/INTERACT.md` — and
+(2) to "complete whole house modelling including garden and front parking (street side)", and
+supplied six more videos, filmed in daylight. Everything above still applies.
+
+## Phase-2 reference material (PRIVATE, git-ignored)
+`reference/v2 … v7/` each hold `frames/f_NNNN.jpg` (1 fps, 720x1280, frame N at t = N-1 s),
+`sheets/s_NN.jpg` (32 thumbnails, **label L = frame f_(2L-1)**) and `transcript.txt` (narration
+with frame numbers — authoritative). The original night video stays in `reference/frames`
+(call it v1). Full-res still: `ffmpeg -v error -ss <seconds> -i "C:/Users/Timothy Wong/Downloads/<file>.mp4" -frames:v 1 -q:v 2 out.jpg`
+
+| id | file | length | content (frame ranges approximate — check the transcript) |
+|---|---|---|---|
+| v2 | PXL_20261119_102350651 | 1016 s | daylight re-walk of the ground floor with corrections: dining 1-146 (switches, fireplace, deep windows, pelmets, cat door); French doors → patio, garden, fire pit, planting, shed / workshop interior, rear elevation, side passage 146-366; kitchen (everything opens: dishwasher, ovens, fridge, freezer, bins, pull-outs) 366-477; hallway arch, storage cabinet, steps 477-530; utility 530-600; WC 600-640; hallway 45-degree wall segments, picture rod, living room (bay splay, curtains, shutters, light controls, centring) 640-880; vestibule, front doors, front parking with two cars, brick walls, flag, pediment, switch mapping 880-1011 |
+| v3 | PXL_20261119_104053938 | 703 s | stairs up 1-70; first floor: landing, middle yellow room (unoccupied) 70-150; rear blue bedroom, its wardrobe, bureau, balcony, en-suite with bath and shower 150-490; two steps up to the front green bedroom (double doors, wardrobes, bed, nightstands, bureau, TV, armchair) 490-703 |
+| v4 | PXL_20261119_105304855 | 570 s | green bedroom with curtains open, bay windows and the view of the front parking 1-95; sliding door to its bathroom (double basin, shower) 95-180; first-floor landing, cat paintings, stairs to the second floor 180-355; second floor: skylight, arch, unused purple room 355-450; rear study / office 450-570 |
+| v5 | PXL_20261119_110238920 | 346 s | second floor: bathroom with shower and free-standing sauna 1-135; hallway 135-170; front loft office (sloped ceiling, Velux, deep cabinet, desk) 170-260; triangular eaves storage either side 260-346 |
+| v6 | PXL_20261119_111552021 | 306 s | walk down from second floor to ground 1-50; kitchen 50-95; door to the basement, narrow stair, basement (boiler, hot-water tank, racks, electrical box, network cabinet, gas meter) 95-298 |
+| v7 | PXL_20261119_112257990 | 48 s | kitchen socket positions |
+
+## Phase-2 scope
+All levels: basement (-1), ground (0, exists), first (1), second / converted loft (2); the rear
+garden (patio, fire pit, planting, shed with its workshop interior, side passage, balcony), the
+front (parking area with two cars, brick walls, flag, front elevation), the rear elevation and a
+roof. Upper floors stack on the ground-floor footprint (`spec/house.json` bounds; party walls are
+continuous). Ground-floor corrections shown in v2/v6/v7 must be applied (notably wall segments at
+about 45 degrees in the hallway / vestibule / bay, window reveal depths, socket and switch
+positions, which switch controls which light).
+
+## Phase-2 privacy and declutter additions
+- Cars: two generic cars of the right type, size and colour, **no number plates, no badges**.
+- Neighbouring houses and the street: plain low-detail massing / backdrop only; never a house
+  number or street name; nothing that identifies neighbours.
+- Certificates, documents, screens, family photographs: blank / neutral / abstract. Painted
+  artwork (cat paintings, landscapes) may be rectified crops as before; no people.
+- Declutter as before: bedding stays neat, no clothes, bags, toiletries clutter, cables, boxes.
+  Wardrobes that open show a few plain hanging garments (generic), fridges generic food shapes.
+
+## Phase-2 owner priorities (from the narration)
+- "Make sure you get all the details right": corners, pediments, dado rails, arches, steps
+  between levels ("two steps up", "a massive step"), smooth 45-to-90-degree transitions, deep
+  window reveals, pelmets, radiators, sockets, switches.
+- Everything that opens in reality opens in the model: all doors, wardrobe / cabinet / bureau
+  doors and drawers, windows the owner opens in the video, shower and sauna doors, Velux, eaves
+  storage doors, shed doors; curtains and shutters; taps run; toilets lift; lights switch from
+  the switch the owner shows for them (including which gang controls spotlights / wall lights /
+  chandelier / LED strips); the teddy lamp turns on and off.
+- Named pieces to keep: star-shaped chandelier, pineapple bedside lights, Queen Anne nightstand
+  with marble top, bureaus, big mirror, bathtub, shower controls (same in every bathroom), sauna
+  (one seat, heater with rocks, timer, gauge, bucket, tinted glass door), skylight, Velux, cat
+  paintings, red chair, corner cabinet, computers (blank screens), boiler, hot-water tank, racks,
+  network cabinet, gas meter, fire extinguisher, shed/workshop with racks and window, fire pit,
+  planters, lavender, garden panel, metal balcony, flag.
