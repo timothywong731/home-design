@@ -1,0 +1,353 @@
+"""Second flight, first floor to second floor (spec/rooms/stairs2.md), and every balustrade round its well.
+
+    B="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
+    "$B" -b --factory-startup --python blender/build.py -- --levels 1,2 --only shell,stairs2,landing2_platform,landing2_head \
+        --preview stairs2 --res 540x960 --samples 64 --tag stairs2
+
+The shell's carcass (`stairs2.flight`: treads, risers, raked soffit) stays; this module dresses it: grey carpet with
+rolled nosings and the bullnose, cut string with timber tread ends, wall string with its sweep over the winders,
+raking dado and the greige band under it, both newels, handrail, spindles, the five cat studies.  Per
+blender/MULTILEVEL.md section 1 it also owns the guards on the well's virtual walls: the platform balustrade with
+its apron (tagged landing2_platform) and the level balustrade on the first-floor strip (v_strip_well).
+Spindle, handrail section, tread-end and wall-string profiles are those of the flight below (copied into
+rooms/stairs2_parts.py).  No light fitting, switch or socket on the stair itself (stairs2.md 5, 8).
+"""
+import math
+from pathlib import Path
+
+import bpy
+
+from lib import materials as M, mouldings as mo, props as P
+from rooms import stairs2_parts as SP
+
+ROOM = 'stairs2'
+ART = Path(__file__).resolve().parents[1] / 'textures' / 'art'
+
+CAMERAS = [
+    dict(name='foot', pos=(0.3, 5.6, 4.9), look=(0.5, 8.0, 6.3), fov_deg=100, ref='v4 f_0171'),
+    dict(name='count', pos=(0.55, 5.8, 4.9), look=(0.6, 8.7, 7.0), fov_deg=100, ref='v4 f_0192'),
+    dict(name='newel', pos=(-0.35, 6.75, 4.95), look=(0.25, 6.25, 4.2), fov_deg=100, ref='v4 f_0178'),
+    dict(name='bull', pos=(-0.25, 5.35, 4.7), look=(0.35, 6.05, 3.5), fov_deg=100, ref='v6 f_0024'),
+    dict(name='guard', pos=(-0.35, 6.85, 4.95), look=(0.2, 7.7, 4.0), fov_deg=100, ref='v4 f_0183'),
+    dict(name='archi', pos=(-0.05, 5.5, 4.95), look=(0.99, 6.15, 4.75), fov_deg=100, ref='v4 f_0196'),
+    dict(name='winders', pos=(0.7, 7.45, 6.25), look=(0.62, 8.6, 5.55), fov_deg=100, ref='v4 f_0320'),
+    dict(name='corner', pos=(-0.25, 8.25, 7.55), look=(0.5, 8.75, 6.9), fov_deg=100, ref='v4 f_0349'),
+    dict(name='top', pos=(0.55, 8.55, 7.5), look=(0.5, 7.2, 5.3), fov_deg=100, ref='v4 f_0355'),
+    dict(name='down', pos=(0.6, 6.75, 5.75), look=(0.45, 5.0, 4.7), fov_deg=100, ref='v6 f_0014'),
+]
+
+WHITE = 'joinery_white'
+GREIGE = '#C8C5BB'              # wall under the dado (stairs2.md 4)
+NOSE = 0.025                    # carpet nosing overhang
+X_WALL, X_OPEN = 0.99, 0.15     # staircase wall face / open side (strip and platform edge)
+XE = X_WALL - 0.015             # carpet runs into the 30 mm wall string
+XS = X_OPEN - 0.006             # face of the cut string
+XC = 0.205                      # west edge of the carpet = inside of the white tread ends
+X_RAIL = 0.18                   # handrail / spindle centre line of all three balustrades
+X_APRON = 0.215                 # well face of the platform apron: boxed out to the balustrade plane
+RAIL_H, DADO_H, STRING_H, PRINT_H = 0.90, 0.975, 0.10, 1.40     # plumb heights above the nosing line
+NEWEL_S = 0.095                 # newel stock
+SPINDLE_W = 0.038               # spindle stock: 0.4 x the newel as in v4 f_0178 (spec 32 mm, flight below 45 on a 115 newel)
+
+
+def roll(h):
+    """Carpet wrapped over a rounded nosing, to plant on a plain riser: (d out from the riser, height); the back
+    is open and 3 mm inside the riser, the top 1 mm proud of the tread."""
+    return [(-0.003, h - 0.052), (0, h - 0.050), (0.008, h - 0.044), (0.018, h - 0.034), (0.024, h - 0.022),
+            (0.025, h - 0.012), (0.021, h - 0.004), (0.012, h + 0.001), (-0.003, h + 0.001)]
+
+
+def nosing(mb, pts, z0, h, mat):
+    """Nosing roll along a riser line; pts = plan polyline walked with the LOWER tread on the left."""
+    mb.sweep(roll(h), [(x, y, z0) for x, y in pts], mat)
+
+
+def carpet():
+    """Cool grey twist of the flight, greyer than both landings: the library's carpet_grey_twist recoloured
+    (blender/textures/art/stairs2_carpet_col.jpg, mean #AAA8A3: the spec's #8E8B86 x 1.2, since in v4 f_0192 and
+    v6 f_0024 the stair carpet is nearly as light as the landing carpet) with the shared pile normal map."""
+    m = M.image_mat('stairs2_carpet', str(ART / 'stairs2_carpet_col.jpg'), size_m=(1.0, 1.0), roughness=1.0)
+    bsdf = next(n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
+    if not bsdf.inputs['Normal'].is_linked:
+        tex = m.node_tree.nodes.new('ShaderNodeTexImage')
+        tex.image = bpy.data.images.load(str(ART.parent / 'carpet_mink_nrm.jpg'), check_existing=True)
+        tex.image.colorspace_settings.name = 'Non-Color'
+        nm = m.node_tree.nodes.new('ShaderNodeNormalMap')
+        nm.inputs['Strength'].default_value = 0.5                   # full strength reads dark at grazing views
+        m.node_tree.links.new(tex.outputs['Color'], nm.inputs['Color'])
+        m.node_tree.links.new(nm.outputs['Normal'], bsdf.inputs['Normal'])
+        bsdf.inputs['Sheen Weight'].default_value = 0.3             # pile -> KHR_materials_sheen
+        bsdf.inputs['Sheen Roughness'].default_value = 0.45
+    return m
+
+
+def wood():
+    """Gloss mahogany of newels and handrails in daylight (v4 f_0178; landing2.md 4: #3B211A)."""
+    return M.solid('stairs2_mahogany', '#3B211A', 0.14)
+
+
+def newel(name, base, block):
+    """Mahogany newel on 95 mm stock (v4 f_0178 / f_0190, v5 f_0140).  Local z: square base to `base` with chamfered
+    shoulders, ring, long plain shaft swelling slightly upward, two rings, square block from `block` (0.21 high,
+    the handrails enter it) with a pyramidal top, collar, ball finial; top of the ball = block + 0.373."""
+    h, R, b = NEWEL_S / 2, 0.075, block                              # R > arris radius = full square after _square
+    s0, s1 = base + 0.03, block - 0.03
+    p = [(0, 0), (R, 0), (R, base),
+         (0.033, s0), (0.040, s0 + 0.006), (0.042, s0 + 0.012), (0.040, s0 + 0.018), (0.031, s0 + 0.022),      # ring
+         (0.029, s0 + 0.035), (0.031, s0 + 0.3 * (s1 - s0)), (0.036, s1 - 0.075),                               # shaft
+         (0.033, s1 - 0.062), (0.041, s1 - 0.057), (0.043, s1 - 0.050), (0.041, s1 - 0.043), (0.035, s1 - 0.040),
+         (0.041, s1 - 0.036), (0.044, s1 - 0.028), (0.041, s1 - 0.020), (0.036, s1 - 0.016), (0.034, s1 - 0.008),
+         (0.036, s1),
+         (R, b), (R, b + 0.21), (0.030, b + 0.240),                                                             # block
+         (0.027, b + 0.245), (0.036, b + 0.250), (0.038, b + 0.257), (0.035, b + 0.263), (0.026, b + 0.266)]   # collar
+    p += [(0.055 * math.cos(math.radians(a)), b + 0.318 + 0.055 * math.sin(math.radians(a)))
+          for a in (-60, -45, -30, -15, 0, 15, 30, 45, 60, 75)] + [(0, b + 0.373)]
+    mb = mo.MB()
+    mb.lathe(p, wood(), segs=32)
+    return SP.square(mb.finish(name), h)
+
+
+class _Balusters:
+    """Balusters by height, sharing one mesh per height."""
+
+    def __init__(self):
+        self.protos, self.out = {}, []
+
+    def add(self, name, loc, h, base=0.18, top=0.12):
+        h = round(h, 3)
+        key = (h, base, top)
+        if key not in self.protos:
+            full = h - base - top >= 0.47                            # the full turning needs 0.46 m
+            self.protos[key] = (SP.spindle(f'{name}.proto', h, base, top, SPINDLE_W) if full
+                                else SP.stub(f'{name}.proto', h, SPINDLE_W))
+        ob = bpy.data.objects.new(name, self.protos[key].data)
+        ob.location = loc
+        self.out.append(ob)
+
+    def done(self):
+        for ob in self.protos.values():
+            bpy.data.objects.remove(ob)
+        return self.out
+
+
+def build(ctx):
+    S = ctx.stair('stair_second')
+    z0, z2, rise, going, r1 = S['fromZ'], S['toZ'], S['rise'], S['going'], S['firstStraightRiserY']
+    ns = S['straightRisers']                                         # 10: R10 leads to the first winder
+    fx, fy = S['newel'][0] - 0.005, S['newel'][1]                    # 5 mm west: the base covers the carcass corner
+    tx, ty = S['turningNewel']
+    yw = max(p[1] for p in S['winders']['polygon'])                  # 8.73 north wall of the well
+    zp = ctx.floor_z('landing2_platform')                            # 6.22
+    y_well = min(p[1] for p in ctx.room_poly('landing2_platform'))   # 6.23 south face of the well
+    zb_ap = ctx.ceil_z('landing1_front') - 0.02                      # underside of the platform apron (5.75)
+    slope = rise / going
+    k = math.hypot(1, slope)                                         # plumb height of 1 m measured square to the rake
+    R = lambda n: r1 + going * (n - 1)                               # riser line of step n (straight part)
+    NL = lambda y: z0 + rise * ((y + NOSE - r1) / going + 1)         # nosing line
+    inv = lambda z: r1 - NOSE + going * ((z - z0) / rise - 1)        # y where the nosing line is at z
+    yn0, yn1 = fy + NEWEL_S / 2, ty - NEWEL_S / 2                    # north face of the foot newel / south face of the turning newel
+    last = ns - 1                                                    # last tread with an open end (9)
+    o = ctx.openings.get('d_gbath')
+    y_arch = o['center'][1] + o['width'] / 2 + 0.08 if o else r1 - 0.09      # north edge of the bathroom architrave (5.97)
+
+    # ---- carpet: the carcass recoloured, nosing rolls, bullnose ------------------------------------------
+    grey, pale = carpet(), M.mat('carpet_grey_twist')
+    fl = bpy.data.objects.get('stairs2.flight')
+    for sl in fl.material_slots if fl else ():
+        if sl.material == pale:
+            sl.material = grey
+    cb = mo.MB()
+    for n in range(2, ns + 1):
+        nosing(cb, [(XE, R(n)), (XC if n < ns else tx + NEWEL_S / 2, R(n))], z0 + rise * (n - 1), rise, grey)
+    # R10 riser face, 3 mm proud: the carcass leaves it open between T9 (5.22) and the quarter-landing ceiling (5.35)
+    # wherever the ql_vault end cap does not reach, a dark slot into the landing below (requested from the shell).
+    zr9, ya = z0 + rise * (ns - 1), R(ns) - 0.003
+    cb.face([(tx + NEWEL_S / 2, ya, zr9), (XE, ya, zr9), (XE, ya, zr9 + rise - 0.048), (tx + NEWEL_S / 2, ya, zr9 + rise - 0.048)],
+            grey, hint=(0, -1, 0))
+    for n, w in enumerate(S['winders']['risers'][:2], ns + 1):      # R11, R12: from the wall into the turning newel
+        (ax, ay), (bx, by) = w['line'][1], w['line'][0]
+        ln = math.hypot(bx - ax, by - ay)
+        ux, uy = (bx - ax) / ln, (by - ay) / ln
+        nosing(cb, [(ax + ux * 0.02, ay + uy * 0.02), (bx - ux * 0.05, by - uy * 0.05)], z0 + rise * (n - 1), rise, grey)
+    # top nosing R13 and its 7 cm return against the old rear wall: the landing carpet wraps over it
+    xj = max(x for x, y in ctx.room_poly('landing2_head') if abs(y - yw) < 1e-6 and x < 0.5)        # 0.22
+    nosing(cb, [(xj - 0.02, yw), (X_OPEN, yw), (X_OPEN, ty + NEWEL_S / 2)], z2 - rise, rise, pale)
+    # Bullnose (v6 f_0022-f_0024, v4 f_0190): the first step is carpeted in the pale landing carpet (the join with
+    # the grey is riser 2), stands 70 mm in front of the newel's south face and ends in a quarter round on the line
+    # of the newel's west face; the newel stands in it, the white tread end of T1 is north of the newel.
+    # 1 mm above the carcass tread so the two tops do not fight.
+    x0, yn_s, rb = fx - NEWEL_S / 2, fy - NEWEL_S / 2, 0.07
+    yf = yn_s - rb
+    arc = [(x0 + rb - rb * math.sin(a), yf + rb - rb * math.cos(a)) for a in (math.radians(15 * i) for i in range(7))]
+    SP.step(cb, [(XE, yf)] + arc[:-1] + [(x0, yn_s)], [(XC, yn_s), (XC, R(2)), (XE, R(2))], z0 + 0.001, rise, pale)
+    ctx.add(cb.finish('stairs2.carpet'), ROOM, 'fit')
+
+    # ---- open side: timber tread ends and the cut string ----------------------------------------------
+    sp, e = mo.MB(), 0.002                                           # tread ends 2 mm proud of the carcass
+    for n in range(1, last + 1):
+        z, ya, yb = z0 + rise * n + e, R(n), R(n + 1) if n < last else yn1
+        if n == 1:                                                   # starts behind the newel: side return only
+            ya = yn0 - 0.005
+            sp.sweep(SP.TREAD_END, [(XS, ya, z), (XS, yb, z)], WHITE)
+        else:                                                        # nosing mitred round the corner
+            sp.sweep(SP.TREAD_END, [(XC, ya, z), (XS, ya, z), (XS, yb, z)], WHITE)
+            sp.face([(X_OPEN, ya - e, z - rise), (XC, ya - e, z - rise), (XC, ya - e, z - 0.052),
+                     (X_OPEN, ya - e, z - 0.052)], WHITE, hint=(0, -1, 0))      # riser end between string and carpet
+        sp.face([(XC, ya, z), (XS, ya, z), (XS, yb, z), (XC, yb, z)], WHITE, hint=(0, 0, 1))
+    Zs = lambda y: NL(y) - 0.36                                      # lower edge of the string: 2 cm under the soffit
+    y_fl = inv(z0 + 0.36)                                            # where it reaches the landing floor (6.22)
+    saw = [(yn0, z0 + rise - 0.02)]
+    for n in range(2, last + 1):
+        saw += [(R(n), z0 + rise * (n - 1) - 0.02), (R(n), z0 + rise * n - 0.02)]
+    saw += [(yn1, z0 + rise * last - 0.02), (yn1, Zs(yn1)), (y_fl, z0), (yn0, z0)]
+    sp.prism([(XS, y, z) for y, z in saw], (X_OPEN - XS, 0, 0), WHITE, grain=1)
+    ctx.add(sp.finish('stairs2.string'), ROOM, 'joinery')
+
+    # ---- wall side: string with its sweep over the winders, dado, greige band -------------------------------
+    ws = mo.MB()
+    Sz = lambda y: NL(y) + STRING_H                                  # top of the wall string on the rake
+    yq = R(ns)                                                       # 8.13: the winders start
+    ws.sweep(SP.WALL_STRING, [(X_WALL, y_arch, Sz(y_arch)), (X_WALL, yq, Sz(yq))], WHITE)
+    # Over the winders (v4 f_0320, f_0333-f_0344): the top edge carries on up the rake, eases over at the internal
+    # corner and runs on in a shallow S along the old rear wall to a level bull-nosed capping block at the landing.
+    ya, za = yq + 0.27, Sz(yq + 0.27)
+    L = yw - ya
+    east = [(yq, Sz(yq))] + [(ya + L * t, za + slope * L * t - (slope - 0.2) * L * t * t / 2) for t in (0, .25, .5, .75, 1)]
+    zc_s, zt_s, x_cap = east[-1][1], z2 + 0.17, 0.46                 # string top at the corner / at the landing skirting
+    north = [(X_WALL - (X_WALL - x_cap) * t, zc_s + (zt_s - zc_s) * (1 - math.cos(math.pi * t)) / 2)
+             for t in (0, 1 / 6, 2 / 6, 3 / 6, 4 / 6, 5 / 6, 1)]
+    x_end = xj - 0.02                                                # covers the end of the landing skirting
+    top = [(0.030, -0.045)] + SP.WALL_STRING[1:]                     # the beaded top edge alone
+    ws.sweep(top, [(X_WALL, y, z) for y, z in east] + [(x, yw, z) for x, z in north[1:]] + [(x_end, yw, zt_s)], WHITE)
+    zw1, zw2, zw3 = (z0 + rise * n - 0.02 for n in (ns, ns + 1, ns + 2))     # just under winders 1-3
+    y11, x12 = S['winders']['risers'][0]['line'][1][1], S['winders']['risers'][1]['line'][1][0]    # 8.59 / 0.55
+    ws.prism([(X_WALL, y, z - 0.04) for y, z in east] + [(X_WALL, yw, zw2), (X_WALL, y11, zw2), (X_WALL, y11, zw1),
+                                                         (X_WALL, yq, zw1)], (-0.0295, 0, 0), WHITE, grain=1)
+    ws.prism([(x, yw, z - 0.04) for x, z in north] + [(x_end, yw, zt_s - 0.04), (x_end, yw, zw3), (x12, yw, zw3),
+                                                      (x12, yw, zw2), (X_WALL, yw, zw2)], (0, -0.0295, 0), WHITE, grain=0)
+    ws.box((x_end, yw - 0.045, zt_s), (x_cap, yw, zt_s + 0.04), WHITE, bev=0.012)       # capping block
+    # Dado (v4 f_0192, f_0345-f_0353): one straight rake from the bathroom architrave, a knee to level over the
+    # winders, the valley at the corner, then raking up the old rear wall to the level rail of the landing.
+    ph = mo.profile_size('dado_landing')[1]
+    dado = [(ph - h, p) for p, h in mo.PROFILES['dado_landing']]     # in the wall plane: (down from the top, off the wall)
+    D = lambda y: NL(y) + DADO_H
+    zc, zt = z2 + 0.48, z2 + mo.TRIM['landing2_head']['dado']['top']         # level over the winders 6.50 / landing 7.01
+    yk = inv(zc - DADO_H)                                            # knee (8.23)
+    x_d = xj - mo.profile_size('dado_landing')[0]                    # to the face of the landing rail (external corner)
+    sn = (zt - zc) / (X_WALL - x_d)
+    kn = math.hypot(1, sn)
+    ws.sweep(dado, [(X_WALL, y_arch, D(y_arch)), (X_WALL, yk, zc), (X_WALL, yw, zc)], WHITE, up=(-1, 0, 0),
+             ends=((0, 0, -k), None))
+    ws.sweep(dado, [(X_WALL, yw, zc), (x_d, yw, zt)], WHITE, up=(0, -1, 0), ends=((0, 0, -kn), (0, 0, -kn)))
+    ctx.add(ws.finish('stairs2.wall_string'), ROOM, 'trim')
+
+    gb, paint, e = mo.MB(), M.paint(GREIGE), 0.0015                  # greige band, 1.5 mm proud of the plaster
+    gb.face([(X_WALL - e, y, z - 0.03) for y, z in [(y_arch, Sz(y_arch))] + east + [(yw, zc), (yk, zc), (y_arch, D(y_arch))]],
+            paint, hint=(-1, 0, 0))
+    gb.face([(x, yw - e, z - 0.03) for x, z in north + [(xj, zt_s), (xj, zc + sn * (X_WALL - xj)), (X_WALL, zc)]],
+            paint, hint=(0, -1, 0))
+    band = gb.finish('stairs2.dado_band')
+    M.uv_box(band)
+    ctx.add(band, ROOM, 'trim')
+
+    # ---- ceiling of the well: the landing cove turns the external corner (0.22, 8.73) and runs along the old rear
+    # wall into the staircase wall, which has only a thin shadow bead (landing2.md 3; v5 f_0153, v4 f_0369).  The
+    # short return north overlaps the end of landing2_head.cornice by 2 mm so the mitre closes on it.
+    cz = ctx.ceil_z('landing2_head')
+    cove = mo.PROFILES[mo.TRIM['landing2_head']['cornice']['profile']]
+    tb = mo.MB()
+    tb.sweep(cove, [(X_WALL + 0.005, yw, cz), (xj, yw, cz), (xj, yw + 0.002, cz)], 'plaster_white')
+    tb.sweep([(d * 0.18, h * 0.18) for d, h in cove], [(X_WALL, y_well - 0.005, cz), (X_WALL, yw - 0.01, cz)],
+             'plaster_white')
+    ctx.add(tb.finish('stairs2.cornice'), ROOM, 'trim')
+
+    # ---- balustrade of the flight -------------------------------------------------------------------------
+    # Newel 1.40 high, not the spec's 1.20: the rail (0.90 above the nosing line) is 1.19 above the landing
+    # where it enters the block, and the ball stands at camera height in v4 f_0192.
+    post = newel('stairs2.newel', 0.27, 1.03)
+    post.location = (fx, fy, z0)
+    U = lambda y: NL(y) + RAIL_H - 0.055 * k                         # underside of the handrail
+    # With the reconciled levels the platform apron (underside 5.75) crosses the rail line 0.6 m before the turning
+    # newel: the rail dies into it there, as it does at the newel in v4 f_0171.
+    y_die = inv(zb_ap - RAIL_H + 0.055 * k) + 0.03
+    hb = mo.MB()
+    hb.sweep(SP.handrail(k), [(X_RAIL, yn0 - 0.005, U(yn0 - 0.005)), (X_RAIL, y_die, U(y_die))], wood())
+    rail = hb.finish('stairs2.handrail')
+    bal = _Balusters()
+    for n in range(1, last + 1):                                     # two per tread (v4 f_0178)
+        for dy, base in ((0.045, 0.20), (0.16, 0.30)):
+            y = R(n) + dy
+            if yn0 + 0.03 < y < yn1 - 0.03:
+                h = min(U(y) + 0.02, zb_ap + 0.005) - (z0 + rise * n)
+                bal.add(f'stairs2.spindle.{len(bal.out):02d}', (X_RAIL, y, z0 + rise * n), h, base, 0.15)
+    for ob in (post, rail, *bal.done()):
+        ctx.add(ob, ROOM, 'joinery', lm='dynamic')
+
+    # ---- platform balustrade over the well (v_platform_well; v5 f_0140, v4 f_0361) ----------------------------
+    PL = 'landing2_platform'
+    zt0 = Zs(yn1) - 0.06                                             # square drop below the string
+    turn = newel('landing2_platform.newel', z2 + 0.28 - zt0, zp + 0.81 - zt0)
+    turn.location = (tx, ty, zt0)
+    pb = mo.MB()
+    pb.box((X_OPEN, y_well, zb_ap), (X_APRON, yn1, zp - 0.001), WHITE, bev=0.003)               # apron
+    pb.box((X_APRON, y_well, zb_ap), (X_WALL, y_well + 0.015, zp - 0.001), WHITE, bev=0.003)    # the same band on the trimmer
+    pb.box((X_OPEN - 0.012, y_well, zp), (X_APRON + 0.012, yn1, zp + 0.035), WHITE, bev=0.006)  # capping under the spindles
+    pb.box((X_APRON + 0.012, y_well, zp), (X_WALL, y_well + 0.027, zp + 0.035), WHITE, bev=0.006)
+    zr = zp + 0.95 - 0.055                                           # underside of the rail, top 0.95 above the platform
+    hb = mo.MB()
+    hb.sweep(SP.handrail(1), [(X_RAIL, yn1 + 0.005, zr), (X_RAIL, y_well - 0.01, zr)], wood())
+    prail = hb.finish('landing2_platform.handrail')
+    bal = _Balusters()
+    cnt = int((yn1 - y_well - 0.13) / 0.09) + 1
+    for i in range(cnt):                                             # ~90 mm centres
+        y = yn1 - 0.07 - i * (yn1 - y_well - 0.13) / (cnt - 1)
+        bal.add(f'landing2_platform.spindle.{i:02d}', (X_RAIL, y, zp + 0.035), zr + 0.02 - zp - 0.035)
+    ctx.add(pb.finish('landing2_platform.apron'), PL, 'joinery')
+    for ob in (turn, prail, *bal.done()):
+        ctx.add(ob, PL, 'joinery', lm='dynamic')
+
+    # ---- level balustrade on the first-floor strip (v_strip_well; landing1.md 5.1, v4 f_0181-f_0190) -------------
+    # From the top newel of the main flight (0.20, 8.13; built by rooms/stairs.py) the rail runs level 0.90 over the
+    # strip, then knees DOWN and falls more gently than the stair until it dies into the underside of the outer
+    # string (landing1.md says "ramps up"; v4 f_0183 shows the bend steeper below the knee, which only a falling
+    # ramp gives from that camera).  South of that the string is the guard, the spindles under it get shorter; the
+    # capping and the spindle feet step down with the two steps to the rear level (y 7.88..8.13).
+    zu, y_kn, fall = z0 + 0.90 - 0.055, 7.32, 0.70                   # rail underside on the level; knee; ramp fall
+    under = lambda y: zu - fall * max(0.0, y_kn - y)
+    y_end = y_kn
+    while under(y_end) + 0.055 < Zs(y_end) + 0.01:                   # the rail top runs 10 mm into the string
+        y_end -= 0.005
+    hb = mo.MB()
+    hb.sweep(SP.handrail(1), [(X_RAIL, yn1 - 0.005, zu), (X_RAIL, y_kn, zu), (X_RAIL, y_end, under(y_end))], wood())
+    grail = hb.finish('stairs2.strip_handrail')
+    fz = lambda y: ctx.floor_z('landing1_front', X_RAIL - 0.2, y)    # strip floor: 3.42, the steps 3.23 / 3.04
+    gp, ya = mo.MB(), y_fl
+    for yb in sorted({y_fl, yn1} | {y for _, y in ctx.stair('steps_rear_front')['riserLines'][1][:1]}):
+        if yb > ya:
+            gp.box((X_OPEN - 0.015, ya, fz((ya + yb) / 2)), (X_RAIL + 0.04, yb, fz((ya + yb) / 2) + 0.03), WHITE, bev=0.006)
+            ya = yb
+    bal, y = _Balusters(), yn1 - 0.075
+    while True:
+        base = fz(y) + 0.03
+        h = min(under(y) + 0.02, Zs(y) + 0.004) - base
+        if h < 0.05:
+            break
+        bal.add(f'stairs2.strip_spindle.{len(bal.out):02d}', (X_RAIL, y, base), h)
+        y -= 0.11
+    ctx.add(gp.finish('stairs2.strip_capping'), ROOM, 'joinery')
+    for ob in (grail, *bal.done()):
+        ctx.add(ob, ROOM, 'joinery', lm='dynamic')
+
+    # ---- the cat studies (stairs2.md 7; landing2.md 7 N1 / N2 are C5 / C4) ----------------------------------------
+    # C1-C3 step up the staircase wall 1.40 above the nosing line, C4 hangs over the winders on the same wall, C5 on
+    # the old rear wall (v5 f_0153: C5 higher than C4).  Brushed pale-gold frame, white mount, burgundy band.
+    # C1 sits 2 cm off the bathroom architrave, its top ~5 cm over the architrave head (v4 f_0196).
+    cats = [(1, (X_WALL, y_arch + 0.27, NL(6.35) + PRINT_H + 0.05), (-1, 0)),
+            (2, (X_WALL, 7.05, NL(7.05) + PRINT_H), (-1, 0)),
+            (3, (X_WALL, 7.75, NL(7.75) + PRINT_H), (-1, 0)), (4, (X_WALL, 8.40, z2 + 0.95), (-1, 0)),
+            (5, (0.58, yw, z2 + 1.45), (0, -1))]
+    for i, loc, facing in cats:
+        pic = P.framed_picture(image=str(ART / f'stairs2_cat{i}.jpg'), w=0.50, h=0.37, frame_style='champagne',
+                               frame_w=0.02, depth=0.018, mount=0.065, slip=('#5B2A30', 0.012), mount_mat='#F1F0EC',
+                               glass=True, name=f'stairs2.cat.{i}')
+        ctx.add(P.place(pic, loc, facing=facing), ROOM, 'decor')

@@ -23,7 +23,7 @@ ART = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'textures',
 X0, X1, Y0, Y1 = 0.60, 3.10, 9.36, 10.14
 YC = 9.75                   # room centre line
 XD, LEDGE = 2.90, 1.20      # duct front, ledge top
-DOWN_W = 64                 # per downlight: the video shows the WC as bright as the utility (f_0507 / f_0476)
+DOWN_W = 43                 # per downlight (3 of them): the video shows the WC as bright as the utility (f_0507 / f_0476)
 WALL = '#7C7D81'            # dark cool grey: wall / tile code ratio 0.60-0.70 in f_0507, f_0509, f_0522 (shell: #A5A5A8)
 UP_W = 4.5                  # ceiling up-fill: the spots put nothing on the ceiling, the video's is near white
 
@@ -34,6 +34,7 @@ CAMERAS = [
     dict(name='basin_low', pos=(1.55, 9.80, 1.5), look=(0.75, 9.72, 0.6), fov_deg=100, ref='f_0518'),
     dict(name='door', pos=(2.2, 9.66, 1.5), look=(1.35, 10.5, 1.2), fov_deg=100, ref='f_0528'),
     dict(name='rad', pos=(1.80, 11.1, 1.5), look=(1.80, 9.36, 1.0), fov_deg=100, ref='f_0499'),
+    dict(name='ceiling', pos=(0.95, 9.75, 1.35), look=(2.9, 9.75, 2.25), fov_deg=100, ref='v2:f_0611'),   # 3 downlights
     # interaction checks (--pose 1): into the bowl with seat and lid up, the basin tap running
     dict(name='ix_pan', pos=(2.05, 9.60, 1.25), look=(2.75, 9.76, 0.45), fov_deg=100, ref='f_0507'),
     dict(name='ix_tap', pos=(1.25, 9.95, 1.25), look=(0.72, 9.74, 0.85), fov_deg=100, ref='f_0518'),
@@ -189,13 +190,16 @@ TAP_OUTLET = (X0 + 0.055 + 0.121, YC, 0.858 + 0.046)   # end of the spout; the b
 
 
 def _soap_dish(x, y, z):
-    """Frosted glass dish in a chrome wall ring on the wall x = const, room toward +x."""
+    """Shallow frosted-glass dish dia 110 sitting in a chrome band ring on a short arm, on the wall x = const, room
+    toward +x (v2 f_0625); z = top of the ring."""
     mb = mo.MB()
-    _lathe(mb, (x, y, z), (1, 0, 0), [(0.020, 0), (0.020, 0.004), (0.007, 0.005), (0.007, 0.022)], 'chrome', 16)
-    _ring(mb, (x + 0.066, y, z), Z, 0.043, 0.004, 'chrome', n=24)
-    cup = P.two_sided(M.solid('wc_soap_glass', '#DCE3E0', 0.45))          # frosted tumbler: opaque enough to read
-    _lathe(mb, (x + 0.066, y, z - 0.048), Z, [(0, 0), (0.030, 0), (0.033, 0.003), (0.040, 0.060), (0.037, 0.060),
-                                              (0.031, 0.006), (0, 0.006)], cup, 20)
+    r, xc = 0.055, x + 0.008 + 0.055
+    _lathe(mb, (x, y, z - 0.012), (1, 0, 0), [(0.016, 0), (0.016, 0.004), (0.006, 0.005), (0.006, 0.012)], 'chrome', 16)
+    _lathe(mb, (xc, y, z - 0.018), Z, [(r + 0.0015, 0), (r + 0.0015, 0.018), (r - 0.0005, 0.018), (r - 0.0005, 0.002),
+                                       (r + 0.0015, 0)], 'chrome', 32)                               # band ring
+    dish = P.two_sided(M.solid('wc_soap_glass', '#DCE3E0', 0.45))                                     # frosted: opaque enough to read
+    _lathe(mb, (xc, y, z - 0.026), Z, [(0, 0), (0.030, 0), (0.046, 0.010), (r - 0.001, 0.026), (r - 0.004, 0.026),
+                                       (0.044, 0.013), (0.028, 0.004), (0, 0.004)], dish, 32)
     return mb.finish('wc.soap_dish', sharp_deg=50)
 
 
@@ -420,8 +424,8 @@ def build(ctx):
     ctx.add(water, ROOM, 'fit', lm='dynamic')
     for o in (seat, lid, bowl, lever):           # after the roots' ctx.add, which resets its children
         o['lm'] = 'dynamic'
-    ctx.add(_soap_dish(X0, 9.53, 1.02), ROOM, 'fit', lm='dynamic')
-    ctx.add(_roll_holder(), ROOM, 'fit', lm='dynamic')
+    ctx.add(_soap_dish(X0, YC - 0.18, 0.86 + 0.16), ROOM, 'fit', lm='dynamic')    # W3: 0.18 left of the tap, 0.16 over the rim
+    ctx.add(_roll_holder(z=0.66), ROOM, 'fit', lm='dynamic')                      # W4: beside the pan, z 0.65 (v2 f_0605)
     ctx.add(_brush(2.82, 9.48), ROOM, 'fit', lm='dynamic')
     ctx.add(_fan(), ROOM, 'fit')
 
@@ -460,9 +464,10 @@ def build(ctx):
     # ---- walls: the owner's "dark grey colour wall" (the shell paints #A5A5A8, which reads mid-light grey)
     shell.repaint(ROOM, '#A5A5A8', WALL)
 
-    # ---- lighting: 2 downlights on the centre line + an invisible up-fill for the ceiling (the spots only shine
-    #      down; in the video the ceiling is near white from the fittings' spill and bounce)
-    for i, x in enumerate((1.25, 2.40)):
+    # ---- lighting: 3 downlights on the centre line (ground_corrections W1, v2 f_0608-f_0611) + an invisible up-fill
+    #      for the ceiling (the spots only shine down; in the video the ceiling is near white from spill and bounce).
+    #      They are switched from the utility side of the pocket door (utility.switch.light).
+    for i, x in enumerate((1.05, 1.85, 2.65)):
         lighting.downlight(ctx, ROOM, x, YC, watts=DOWN_W, kelvin=3000, spot_deg=135, name=f'wc.downlight.{i}')
         ctx.add(P.place(P.downlight(name=f'wc.downlight_trim.{i}'), (x, YC, cz)), ROOM, 'light')
     up = lighting.strip(ctx, ROOM, (0.8, YC, cz - 0.25), (2.85, YC, cz - 0.25), watts_per_m=UP_W / 2.05, kelvin=3000,

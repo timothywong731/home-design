@@ -9,8 +9,10 @@ sink-wall corner) through four wall frames: u runs along the wall to the viewer'
 off the wall into the room, z up. Each cabinet run is one static mesh (carcasses, plinth, cornice,
 pelmet) with its shaker fronts and handles parented to it, so the plan footprint is one rectangle.
 
-Everything that opens is tagged for the viewer (blender/INTERACT.md): fronts, drawers, oven / dishwasher /
-fridge doors, bin lids, taps, hob burners, the light switch. A moving part or an interior is a Run.sub() - its
+Everything that opens is tagged for the viewer (blender/INTERACT.md): fronts, drawers, the warming drawer, oven /
+dishwasher / fridge doors, bin lids, taps, hob burners, and the 2-gang switch (spotlights = the room's lights,
+LED strips = the 'lamp' group kitchen.led). Phase 2: re-checked against spec/phase2/ground_corrections.md
+(switch, sockets, tread plate, opening angles); the room polygon did not move, only the back-door reveal. A moving part or an interior is a Run.sub() - its
 own lm='dynamic' object parented to its run; Run.cab() turns a solid carcass into a lined one with contents
 (rooms/kitchen_ix.py draws what is inside). The modelled pose is state 0; check state 1 with --pose 1.
 Some pairs cannot be open together, as in the real room (the swings cross): EXCL lists them and interlock()
@@ -66,6 +68,9 @@ CAMERAS = [
     dict(name='ix_hob', pos=(3.35, 6.6, 1.5), look=(4.05, 6.6, .9), fov_deg=100, ref='v2 f_0452'),
     dict(name='ix_bins', pos=(3.6, 7.75, 1.55), look=(1.77, 8.56, .4), fov_deg=100, ref='v2 f_0431'),
     dict(name='ix_nook', pos=(2.35, 7.78, 1.5), look=(1.95, 8.9, .5), fov_deg=100, ref='v2 f_0438'),
+    dict(name='ix_switch', pos=(2.0, 7.95, 1.45), look=(1.25, 7.62, 1.0), fov_deg=80, ref='v2 f_0370'),
+    dict(name='pier', pos=(2.95, 7.55, 1.25), look=(3.05, 8.73, .55), fov_deg=95, ref='v2 f_0434'),
+    dict(name='backdoor', pos=(3.0, 6.9, 1.5), look=(4.1, 8.4, 1.0), fov_deg=100, ref='v6 f_0073'),
 ]
 
 
@@ -335,10 +340,15 @@ def pelmet_lip(r, u0, u1, depth=0.30):
     r.box(u0, u1, depth - .01, depth + .018, PELMET_Z, WALL_Z0 + .001, bev=.0005)
 
 
+LED_G = 'kitchen.led'                             # the LED circuit: left rocker of the 2-gang plate (corrections 1)
+
+
 def led(r, u0, u1, depth=LED_D):
     """Visible LED tape under a wall unit (the Cycles emitter is lighting.strip, see lights()). Warm white:
-    against the 3000 K view white balance a D65 white reads blue."""
-    r.box(u0 + .02, u1 - .02, depth - .006, depth + .006, WALL_Z0 - .003, WALL_Z0 - .0005, P.emissive('#FFCF9A', 10.0), bev=0)
+    against the 3000 K view white balance a D65 white reads blue. Its own object in the LED circuit's 'lamp'
+    group, so the LED rocker turns the tape off and on without the spotlights."""
+    r.sub(f'{r.name}.led', 'lamp', g=LED_G, label='Cabinet lights').box(
+        u0 + .02, u1 - .02, depth - .006, depth + .006, WALL_Z0 - .003, WALL_Z0 - .0005, P.emissive('#FFCF9A', 10.0), bev=0)
 
 
 def metro():
@@ -382,7 +392,7 @@ def hob_wall(ctx):
     fill(c, [(K.board, 1.585, .30, 0, dict(w=.44, h=.50)), (K.board, 1.625, .30, 0, dict(w=.40, h=.42, mat=K.col('tray', '#8E949A', .4, 1))),
              (K.board, 1.665, .32, 0, dict(w=.36, h=.34))])
     r.cab(G + 'h4.in', 1.730, 2.530, 0, .58, .15, BASE_TOP)   # H4 pan drawers: 175 slab + 2 x 270 framed
-    for n, (za, zb, zf, h, out) in enumerate(((.690, z1, .705, .10, .30), (.420, .690, .440, .19, .35), (z0, .420, .172, .19, .40))):
+    for n, (za, zb, zf, h, out) in enumerate(((.690, z1, .705, .10, .40), (.420, .690, .440, .19, .40), (z0, .420, .172, .19, .40))):
         f = r.front(1.730, 2.530, za, zb, .58, 'H', slab=not n, g=f'{G}drawer.{n}', op='slide', deg=out, label='Drawer')
         dr = r.sub(f'{G}drawer.{n}.box', like=f[0])
         K.drawer(dr.at(2.13, .58, zf), .74, .50, h)
@@ -434,8 +444,10 @@ def hob_wall(ctx):
     tiles(ctx, 'kitchen.splash.hob.b', X0 + SX - .003, X0 + SX, y(2.59), y(1.512), TILE_Z0, TILE_Z0 + 5 * .103, org)   # 5 courses, to just under the hood
     tiles(ctx, 'kitchen.splash.hob.c', X0 + SX - .003, X0 + SX, Y0, y(2.59), TILE_Z0, WALL_Z0, org)
 
-    for u, z in ((2.86, 1.13),):                              # double socket under W2
-        ctx.add(WE.put(P.socket(2, name='kitchen.socket.hob'), u, .003, z), ROOM, 'fit')
+    # double sockets on the tiles (corrections 9, v7 f_0001-0015): under W1 behind the spice rack (y 7.56) and
+    # under W2 near the sink-wall corner (y 5.87)
+    for nm, u, z in (('kitchen.socket.hob_w1', Y0 + SY - 7.56, 1.12), ('kitchen.socket.hob', Y0 + SY - 5.87, 1.13)):
+        ctx.add(WE.put(P.socket(2, name=nm), u, .003, z), ROOM, 'fit')
 
 
 def hob(ctx):
@@ -527,7 +539,7 @@ def sink_wall(ctx):
     c = r.cab('kitchen.dishwasher.in', .60, 1.20, 0, .58, .15, BASE_TOP, lining=st)
     K.dishwasher(c.at(.90, .525, .19), .54, .64, .50)
     c.at()
-    f = r.front(.60, 1.20, z0, z1, .58, 'H', g='kitchen.dishwasher', op='drop', deg=85, label='Dishwasher')
+    f = r.front(.60, 1.20, z0, z1, .58, 'H', g='kitchen.dishwasher', op='drop', deg=90, label='Dishwasher')
     dw = r.sub('kitchen.dishwasher.door', like=f[0])
     dw.box(.625, 1.175, .535, .58, .19, .84, st, bev=.004)
     dw.box(.80, 1.00, .525, .535, .40, .50, 'plastic_white', bev=.003)             # detergent drawer
@@ -579,9 +591,9 @@ def sink_wall(ctx):
     stock(t5, 2.47, 2.68, .15, 17)
     # T3 plate rack 900: lift-up flap door over an open rack
     u0, u1, zr = 1.225, 2.125, 1.975
-    c = r.cab('kitchen.wall.t3.in', u0, u1, 0, .30, zr, WALL_Z1)
-    r.front(u0, u1, zr, WALL_Z1, .30, 'H', 'bot', g='kitchen.wall.t3', op='flap', deg=85)
-    stock(c, 1.30, 2.05, .15, 15)
+    c = r.cab('kitchen.wall.t3.in', u0, u1, 0, .30, zr, WALL_Z1, 1)                  # one shelf (v6 f_0092-0094)
+    r.front(u0, u1, zr, WALL_Z1, .30, 'H', 'bot', g='kitchen.wall.t3', op='flap', deg=90)
+    stock(c, 1.30, 2.05, .15, 15, room=.14)
     r.box(u0, u0 + .018, 0, .30, WALL_Z0, zr)
     r.box(u1 - .018, u1, 0, .30, WALL_Z0, zr)
     r.box(u0, u1, 0, .006, WALL_Z0, zr, bev=0)
@@ -637,7 +649,10 @@ def sink_wall(ctx):
     org = (X0 + SX, Y0, TILE_Z0)
     tiles(ctx, 'kitchen.splash.sink', X0, X0 + SX, Y0, Y0 + .003, TILE_Z0, WALL_Z0, org)
     tiles(ctx, 'kitchen.splash.return', X0, X0 + .003, Y0, Y0 + .60, TILE_Z0, WALL_Z0, org)
+    # Behind the dish rack under T2, ~0.15 from the T1 / T2 joint (v7 f_0017-0021) - x 3.50, not the 3.95 the
+    # corrections table copied from kitchen.md; far corner behind the coffee machine (new, v7 f_0022-0031).
     ctx.add(WS.put(P.socket(2, name='kitchen.socket.sink'), .80, .003, 1.13), ROOM, 'fit')
+    ctx.add(WS.put(P.socket(2, name='kitchen.socket.corner'), X0 + SX - 1.60, .003, 1.13), ROOM, 'fit')
     ctx.add(WS.put(P.switch_plate(1, name='kitchen.spur'), .15, .003, 1.13), ROOM, 'fit')
 
 
@@ -736,11 +751,11 @@ def door_wall(ctx):
         r.box(a + .018, b - .018, .02, .60, z0, z1, bev=0)
     r.box(a, b, 0, .62, TALL_Z1, TALL_Z1 + .044, bev=0)
 
-    def oven(n, z0, z1, f, label, deg=85):
+    def oven(n, z0, z1, f, label, deg=85, fans=1):
         """Drop-down door `n` over z0..z1, hung on the bottom edge of its front face (f off the wall), bar
         handle underneath when down. Behind it the oven itself (K.oven) and its lamp. -> the door, to draw into."""
         g = f'kitchen.oven.{n}'
-        K.oven(r.sub(g + '.in').at(uc, .60, z0 + .004), b - a - .036, z1 - z0 - .008)      # frame to the side panels
+        K.oven(r.sub(g + '.in').at(uc, .60, z0 + .004), b - a - .036, z1 - z0 - .008, fans=fans)      # frame to the side panels
         r.sub(g + '.light', 'show', g=g, when=1, fx='glow').box(uc - .05, uc + .05, .24, .30, z1 - .052, z1 - .046,
                                                                 P.emissive('#FFE2B0', 12.0), bev=0)     # cavity lamp
         return r.sub(g + '.door', 'hinge', g=g, label=label, **hinge(WW, uc, f, z0, deg, 'x'))
@@ -750,11 +765,17 @@ def door_wall(ctx):
         for u in (ua + .075, ub - .075):
             t.box(u - .012, u + .012, .62, .652, z + .006, z + .022, SATIN, bev=.002)
 
-    t = oven('low', .152, .548, .621, 'Lower oven')
-    t.box(ua + .001, ub - .001, .60, .618, .153, .547, gl, bev=.001)   # lower drop-front appliance, 1 mm inside its steel surround
+    # warming drawer (v2 f_0398): black glass front in a steel surround, slides out 0.35 on a steel box
+    g, kw = 'kitchen.oven.low', dict(label='Warming drawer', d=WW.M.to_3x3() @ Vector((0, -.35, 0)))
+    t = r.sub(g + '.door', 'slide', g=g, **kw)
+    t.box(ua + .001, ub - .001, .60, .618, .153, .547, gl, bev=.001)   # glass, 1 mm inside its steel surround
     for u0, u1, z0, z1 in ((ua, ub, .152, .164), (ua, ub, .536, .548), (ua, ua + .012, .152, .548), (ub - .012, ub, .152, .548)):
         t.box(u0, u1, .60, .621, z0, z1, SATIN, bev=.001)
     bar(t, .49)
+    dr = r.sub(g + '.box', 'slide', g=g, **kw)                # the steel box it runs out on
+    K.drawer(dr.at(uc, .60, .18), ub - ua - .02, .44, .30)
+    dr.at()
+    K.lining(r.sub(g + '.in').mb, a + .02, b - .02, -.022, -.60, .158, .543, 'black_matt')       # the dark cavity behind
     # flat (90, not 85): the door edge passes 16 mm inside the reach of the S3 handle and lies 11 mm under its foot
     t = oven('mid', .553, 1.050, .622, 'Oven', 90)
     t.box(ua, ub, .60, .622, .553, 1.050, gl, bev=.002)       # single oven: door, handle, control band
@@ -762,7 +783,7 @@ def door_wall(ctx):
     r.box(ua, ub, .60, .618, 1.053, 1.143, gl, bev=.001)
     r.mb.face([(uc + .02 * math.cos(t), -.6195, 1.098 + .02 * math.sin(t)) for t in (2 * math.pi * k / 16 for k in range(16))],
               P.emissive('#E0506A', 1.5), hint=(0, -1, 0))    # round colour display (no glyphs)
-    t = oven('top', 1.148, 1.500, .622, 'Top oven')
+    t = oven('top', 1.148, 1.500, .622, 'Top oven', fans=2)   # compact combi: two fans at the back (corrections K3)
     t.box(ua, ub, .60, .622, 1.148, 1.500, gl, bev=.002)      # compact oven, control band at the top
     bar(t, 1.455)
     r.box(ua, ub, .60, .618, 1.503, 1.597, gl, bev=.001)
@@ -805,7 +826,7 @@ def door_wall(ctx):
     # Each door swings 100 deg on its outer front edge and carries half of the recessed grip strip between
     # them, its inner panel and bins; behind it shelves, drawers and a light that comes on (v2 t=414..423 s).
     G, glow = 'kitchen.fridge.', P.emissive('#EAF3FF', 5.0)
-    for nm, lab, ca, cb, hu, deg, sg in (('freezer', 'Freezer', u0 + .03, sp - .015, u0, -98, -1),
+    for nm, lab, ca, cb, hu, deg, sg in (('freezer', 'Freezer', u0 + .03, sp - .015, u0, -110, -1),   # 110: v2 f_0418-0424
                                           ('fridge', 'Fridge', sp + .015, u1 - .03, u1, 100, 1)):
         um, w = (ca + cb) / 2, cb - ca
         K.fridge(r.sub(G + nm + '.in').at(um, .64, .082), w - .004, 1.656, .588, freezer=nm == 'freezer')
@@ -827,8 +848,19 @@ def door_wall(ctx):
         t.box(n0, n1, .716, .7172, m1 + .012, m1 + .062, 'black_gloss', bev=0)         # control strip
     r.done(plan_sym='fridge')
 
-    sw = ctx.add(WW.put(P.switch_plate(1, name='kitchen.switch'), 2.34, 0, 1.25), ROOM, 'fit', lm='dynamic')
-    IX.tag(sw, 'light', rooms=[ROOM], label='Lights')         # downlights and under-cabinet strips together
+    # 2-gang rocker plate (corrections 1, v2 f_0366-0375, v7 f_0043-0045): the right rocker (north, nearest the
+    # door) = the four spotlights, the left one = the under-cabinet LED strips. The plate and the spot rocker are
+    # the room's light switch (group id kept for the viewer tests); the LED rocker is the trigger of the 'lamp'
+    # group of the LED tape (LED_G), which the viewer turns off on its own.
+    sw = ctx.add(WW.put(P.switch_plate(1, kind='blank', name='kitchen.switch'), 2.34, 0, 1.25), ROOM, 'fit', lm='dynamic')
+    IX.tag(sw, 'light', rooms=[ROOM], label='Lights')
+    for nm, du, tg in (('spots', .014, dict(t='light', rooms=[ROOM], label='Lights')),
+                       ('led', -.014, dict(t='lamp', g=LED_G, label='Cabinet lights'))):
+        mb = mo.MB().at(WW.M @ T(2.34 + du, -.009, 1.25) @ RX(6))
+        mb.box((-.01, -.0045, -.017), (.01, .001, .017), 'plastic_white', bev=.0008)
+        ro = mb.finish(f'kitchen.switch.{nm}')
+        IX.tag(ro, tg.pop('t'), g=tg.pop('g', 'kitchen.switch'), **tg)
+        ctx.add(ro, ROOM, 'fit', lm='dynamic')
 
     r = Run(ctx, WW, 'kitchen.bin.steel')                     # pedal bin between the housing and the hall door
     g, st = 'kitchen.bin.steel', satin()                      # lid lifts 70 deg on its back edge, the pedal works it
@@ -868,6 +900,8 @@ def nook(ctx):
     tiles(ctx, 'kitchen.splash.nook', xa, xb, yb - .003, yb, TILE_Z0, 1.464, org)
     tiles(ctx, 'kitchen.splash.nook.l', xa, xa + .003, ya + .002, yb, TILE_Z0, 1.464, org)
     tiles(ctx, 'kitchen.splash.nook.r', xb - .003, xb, ya + .002, yb, TILE_Z0, 1.464, org)
+    for nm, x0, x1 in (('l', xa, xa + .011), ('r', xb - .011, xb)):     # chrome edge trims on the tiled reveal arrises
+        ctx.add(shell.box(f'kitchen.splash.nook.trim.{nm}', x0, x1, ya, ya + .010, TILE_Z0, 1.464, 'chrome'), ROOM, 'fit')   # (v7 f_0039-0041)
     sof = shell.box('kitchen.nook.soffit', xa, xb, ya, yb, 2.018, 2.029, 'navy_cabinet')      # black soffit lining
     sof.data.materials[0] = NAVY
     ctx.add(sof, ROOM, 'fit')
@@ -1016,25 +1050,33 @@ def plaque(name, w=.44, h=.59, relief=.03, base=.004):
 
 
 def decor(ctx):
-    ctx.add(WN.put(plaque('kitchen.plaque'), 1.64, 0, 1.92), ROOM, 'decor')         # nook-wall pier
+    # Nook-wall pier: from the nook's +X reveal to the back-door reveal, read from the shell so the group follows the
+    # door set. Laid out as filmed (v1 f_0766, v6 f_0073, v2 f_0434, v7 f_0039): tread plate and black bin centred,
+    # the plaque 70 right of centre (its edge almost at the reveal), the thermostat between the two. On the 620 pier
+    # of kitchen.md this gives its numbers: plate 1410..1950, thermostat x 1700. (The shell pier is 740 for now.)
+    p0 = 1.37
+    p1 = min(x for x, y in ctx.feature('kitchen_backdoor_reveal')['polygon']) - X0
+    pc = (p0 + p1) / 2
+    ctx.add(WN.put(plaque('kitchen.plaque'), pc + .07, 0, 1.92), ROOM, 'decor')
 
     # wireless thermostat: landscape rounded 120 x 100 x 24 with a small blank display window (k_765: 0.27 of the
     # plaque width, wider than tall). Body = sweep round the R16 outline in the wall plane, chamfered front edge.
-    r = Run(ctx, WN, 'kitchen.thermostat')
-    r.mb.sweep([(.010, .024), (.003, .024), (0, .021), (0, 0)], [(u, 0, z) for u, z in rr(1.64, 1.76, 1.385, 1.485, .016)],
+    r, tc = Run(ctx, WN, 'kitchen.thermostat'), pc + .02
+    r.mb.sweep([(.010, .024), (.003, .024), (0, .021), (0, 0)], [(u, 0, z) for u, z in rr(tc - .06, tc + .06, 1.385, 1.485, .016)],
                'plastic_white', closed=True, up=(0, -1, 0))
-    r.mb.face([(1.646, -.0235, 1.391), (1.754, -.0235, 1.391), (1.754, -.0235, 1.479), (1.646, -.0235, 1.479)],
+    r.mb.face([(tc - .054, -.0235, 1.391), (tc + .054, -.0235, 1.391), (tc + .054, -.0235, 1.479), (tc - .054, -.0235, 1.479)],
               'plastic_white', hint=(0, -1, 0))
-    r.box(1.712, 1.746, .020, .025, 1.452, 1.467, M.solid('kitchen_lcd', '#5E6462', .2), bev=0)
+    r.box(tc + .012, tc + .046, .020, .025, 1.452, 1.467, M.solid('kitchen_lcd', '#5E6462', .2), bev=0)
     r.done()
 
-    # Aluminium 5-bar tread plate 540 x 265 (k_765 crop): clusters of five raised bars at 45 deg, one hand on a
+    # Aluminium 5-bar tread plate 540 x 265 (kitchen.md 4.5; the K6 narrowing assumed a socket right of it, which is
+    # the cat flap; pattern from the k_765 crop): clusters of five raised bars at 45 deg, one hand on a
     # 63.5 mm square grid, the other hand on the same grid shifted half a pitch both ways. Dull sheet + polished
     # ridge-shaped bars so the pattern reads from across the room; bars that would cross the cut edge are left out.
     r = Run(ctx, WN, 'kitchen.chequer')
     alu = M.solid('kitchen_chequer', '#B8B8B4', .6, 1)        # mill finish: lighter + rougher than the spec's #9C9C98 /
     bar = M.solid('kitchen_chequer_bar', '#D8D8D4', .2, 1)    # 0.35, which mirrored the navy units and read near-black
-    U0, U1, Z0, Z1, PIT, d0, d1 = 1.41, 1.95, .52, .785, .0635, .003, .006
+    U0, U1, Z0, Z1, PIT, d0, d1 = pc - .27, pc + .27, .52, .785, .0635, .003, .006
     r.box(U0, U1, 0, d0, Z0, Z1, alu, bev=.001)
     s = math.sqrt(.5)
     for hand in (0, 1):
@@ -1053,6 +1095,10 @@ def decor(ctx):
                         q2 = (q + 1) % 4
                         r.mb.face([lo[q], lo[q2], hi[q2], hi[q]], bar, hint=(lo[q] + lo[q2]) / 2 - o + Vector((0, -d0 - .01, 0)))
     r.done(lm='dynamic')
+    # "behind the bin there are also sockets" (v7 f_0039-0041): a double switched socket right under the left half
+    # of the tread plate, hidden by the black bin. Not the single at x 3.15 / z 0.60 of the corrections table: the
+    # glowing white square right of the plate there is the back door's cat flap (v2 f_0434, v7 f_0041).
+    ctx.add(WN.put(P.socket(2, name='kitchen.socket.pier'), U0 + .19, 0, .45), ROOM, 'fit')
 
     r = Run(ctx, WE, 'kitchen.memo_board')                    # frameless glass board, blank (privacy)
     r.box(.07, .87, .015, .020, .95, 1.95, 'glass_green', bev=.001)
@@ -1065,7 +1111,7 @@ def decor(ctx):
 
     r = Run(ctx, WN, 'kitchen.bin.black')                     # black pedal bin, wide side (420) along the pier (t=765 s)
     blk = M.solid('kitchen_bin_black', '#1C1C1D', .45)
-    uc = 1.63
+    uc = pc
     g = 'kitchen.bin.black'                                   # lid lifts 65 deg on its back edge, the pedal works it
     bin_body(r, uc - .21, uc + .21, .03, .36, 0, .52, blk, .015)
     K.lining(r.sub(g + '.in').mb, uc - .183, uc + .183, -.057, -.333, .20, .52, K.col('bin_bag', '#0E0E0F', .35), open='top')
@@ -1119,6 +1165,8 @@ EXCL = (
     ('kitchen.oven.mid', 'kitchen.base.sink.s3'), ('kitchen.oven.low', 'kitchen.base.sink.s3'),
     ('kitchen.oven.mid', 'kitchen.base.sink.s2b'),
     ('kitchen.tower.top', 'kitchen.wall.t3'), ('kitchen.wall.corner', 'kitchen.wall.t5'),
+    # the freezer at 110 deg (v2 f_0418-0424) crosses the outer corner of both dropped oven doors by up to 50 mm
+    ('kitchen.fridge.freezer', 'kitchen.oven.mid'), ('kitchen.fridge.freezer', 'kitchen.oven.top'),
 )
 
 

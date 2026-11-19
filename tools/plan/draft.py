@@ -11,13 +11,16 @@ cannot drift. Spec geometry (chamfers, stair treads, zone falls, opening frames)
 imports without Blender. Needs shapely, ezdxf, matplotlib.
 
 Footprints: [{name, room, plan_sym, obb: [[x, y] x 4], level?, front?}]. A record without `level` takes its room's
-(pseudo-rooms and building rooms X, unknown rooms G). A room with at least one exported footprint is drawn only from
-the export; other rooms fall back to SPEC_FOOTPRINTS (the phase-1 rooms, transcribed from spec/rooms/*.md) or, on the
-site, to exterior.features (cars, fire pit, planters, trellis, bins); rooms with neither stay empty.
+(pseudo-rooms and building rooms X, unknown rooms G). `front` = optional facing vector (2D, or 3D with z dropped;
+zero / malformed ones are ignored); without it symbols turn their back to the nearest wall. A room with at least one
+exported footprint is drawn only from the export; other rooms fall back to spec_footprints() (the phase-1 rooms,
+transcribed from spec/rooms/*.md) or, on the site, to exterior.features (cars, fire pit, planters, trellis, bins,
+pipes), and a fallback item that an exported item on its level covers by 30 % is dropped as well (never both).
+Symbol keys: SYMBOLS; any other key is drawn as its plain outline.
 """
 import argparse, datetime, json, math, sys
 from pathlib import Path
-import shapely
+import shapely, shapely.prepared
 from shapely.geometry import Polygon, Point, LineString, box
 from shapely.ops import unary_union, linemerge, polylabel
 
@@ -40,12 +43,13 @@ LAYERS = [
     ("A-ROOF", "#a0a0a0", "#444444", 8, 0.18),
     ("L-SITE", "#00c000", "#000000", 3, 0.13),
     ("L-SITE-BNDY", "#ff3030", "#000000", 1, 0.25),
+    ("L-SITE-CTXT", "#707070", "#999999", 8, 0.09),         # neighbouring buildings, context only
     ("A-ANNO-DIMS", "#ff0000", "#000000", 1, 0.13),
     ("A-ANNO-TEXT", "#ffffff", "#000000", 7, 0.18),
     ("A-ANNO-TTLB", "#ffffff", "#000000", 7, 0.35),
     ("A-ANNO-TTLB-BORD", "#ffffff", "#000000", 7, 0.70),
 ]
-DASHED_LAYERS = {"L-SITE-BNDY"}           # DXF layer linetype DASHED; every entity on it also carries ls "dashed"
+DASHED_LAYERS = {"L-SITE-BNDY", "L-SITE-CTXT"}           # DXF layer linetype DASHED; every entity on it also carries ls "dashed"
 # id, title, scale, drawing number. PDF page order = this order.
 SHEETS = [("B", "BASEMENT PLAN", 50, "GA-000"), ("G", "GROUND FLOOR PLAN", 50, "GA-001"),
           ("1", "FIRST FLOOR PLAN", 50, "GA-002"), ("2", "SECOND FLOOR (LOFT) PLAN", 50, "GA-003"),
@@ -60,7 +64,7 @@ NO_TAG = {"landing1_ql", "landing2_platform"}           # too small for a tag: F
 TAG_AT = {"vestibule": (0.0, 1.02), "hallway": (0.0, 3.1), "living": (2.0, 1.42), "kitchen": (2.83, 7.3),
           "wc": (1.72, 9.82), "utility": (1.95, 11.05), "dining": (2.33, 12.86),
           "balcony": (2.95, 17.9),                    # beside it: the French door leaves fill the deck
-          "landing1_ql": (0.6, 8.6), "landing2_platform": (-0.25, 7.75)}   # else the pole of inaccessibility
+          "landing1_ql": (0.6, 8.64), "landing2_platform": (-0.25, 7.75)}   # else the pole of inaccessibility
 SURF = {"concrete_setts_grey_buff": "CONCRETE SETTS", "concrete_flags": "CONCRETE FLAGS", "asphalt": "ASPHALT",
         "concrete_or_flags": "CONCRETE", "sandstone_flags_grey": "SANDSTONE FLAGS", "grass": "GRASS",
         "composite_deck_dark_brown": "COMPOSITE DECK", "timber_box_dark": "TIMBER STEP", "soil_lavender": "PLANTED",
@@ -531,15 +535,20 @@ def draw_flights(P, L):
             continue
         pts = [m for m, _ in seq]
         d = unit(pts[-2], pts[-1])
+        n0 = len(P.e)
         P.circle("A-STRS", pts[0], 0.02)
         P.pl("A-STRS", [pts[0]] + pts[1:-1] + [(pts[-1][0] - d[0] * 0.1, pts[-1][1] - d[1] * 0.1)])
         P.arrowhead("A-STRS", pts[-1], d)
+        # "UP 15R" / "DN 15R" (risers of the whole flight) on the walking line in the first straight tread, parallel
+        # to the risers so it stays inside that tread; the arrow line breaks under it
         par = lambda r, q: abs(unit(*r)[0] * unit(*q)[1] - unit(*r)[1] * unit(*q)[0]) < 1e-3
         i = next((i for i in range(len(seq) - 1) if par(seq[i][1], seq[i + 1][1])), 0)
         p, dd = mid(pts[i], pts[i + 1]), unit(pts[i], pts[i + 1])
-        perp = (dd[1], -dd[0])                                    # right of the walking direction
-        P.text("A-STRS", (p[0] + perp[0] * 0.07, p[1] + perp[1] * 0.07 - 0.9 * MM), 1.8 * MM,
-               "UP" if role == "lo" else "DN", "left" if perp[0] > 0.1 else "right" if perp[0] < -0.1 else "center")
+        rot = 90 if abs(dd[0]) > abs(dd[1]) else 0
+        h = 1.8 * MM
+        s = "%s %dR" % ("UP" if role == "lo" else "DN", len(st["walk"]["risers"]))
+        P.text("A-STRS", (p[0] + (h / 2 if rot else 0), p[1] - (0 if rot else h / 2)), h, s, "center", rot)
+        P.e[n0:] = clip(P.e[n0:], text_box(P.e[-1]).buffer(0.6 * MM, join_style=2))
 
 
 def draw_steps(P, L):
@@ -599,10 +608,11 @@ def draw_features(P, L):
         elif t in ("roof_window", "roof_opening"):                                    # overhead glazing
             q = f["polygon"]
             P.pl("A-GLAZ", q, True, "dashed")
-            P.line("A-GLAZ", q[0], q[2], "hidden")
-            P.line("A-GLAZ", q[1], q[3], "hidden")
             c = Polygon(q).centroid
             P.text("A-GLAZ", (c.x, c.y + 0.06), 1.5 * MM, "ROOF WINDOW" if t == "roof_window" else "ROOF LIGHT")
+            m = text_box(P.e[-1]).buffer(0.5 * MM, join_style=2)                      # the diagonals break under it
+            for a, b in ((q[0], q[2]), (q[1], q[3])):
+                P.e += clip([{"layer": "A-GLAZ", "type": "line", "p1": list(a), "p2": list(b), "ls": "hidden"}], m)
         elif t == "balcony":                                                          # deck edge, railing, posts
             q = Polygon(f["polygon"])
             P.geom(q, "A-FLOR-FIXT")
@@ -664,7 +674,7 @@ def draw_roofs_below(P, L, regions, mask):
 # ------------------------------------------------------------------ fixtures & furniture footprints
 FIXT = {"fireplace", "base_unit", "tall_unit", "worktop", "hob", "sink", "sink_belfast", "fridge", "oven_tower", "washer",
         "dryer", "wc", "basin", "radiator", "towel_rail", "bath", "shower", "vanity", "sauna", "boiler", "cylinder",
-        "wardrobe", "cabinet", "workbench", "rack", "fire_pit", "planter", "condenser"}     # -> A-FLOR-FIXT
+        "wardrobe", "cabinet", "workbench", "rack", "fire_pit", "planter", "condenser", "pipe"}   # -> A-FLOR-FIXT
 OVHD = {"wall_unit", "airer", "shelf"}                                         # -> A-FLOR-OVHD, dashed
 SKIP = {"stair", "mirror"}                # stairs come from house.json; wall-hung mirrors are not plan items
 MERGED = {"base_unit", "wall_unit", "worktop"}                                 # runs: shared edges drawn once
@@ -752,9 +762,12 @@ def site_footprints():
     room = lambda x, y: HC.zones[HC.zone_at(x, y)]["room"] if HC.zone_at(x, y) else "garden"
     for f in EXT.get("features", []):
         t = f["type"]
-        if t == "car":
+        if t == "car":                                    # parked nose-out: nose -Y at yaw 0, yaw CCW (validate_house)
             a = math.radians(f.get("yawDeg", 0))
-            out.append(fpc("front." + f["id"], "car", *f["center"], f["size"][1], f["size"][0], (-math.sin(a), math.cos(a)), "front"))
+            out.append(fpc("front." + f["id"], "car", *f["center"], f["size"][1], f["size"][0], (math.sin(a), -math.cos(a)), "front"))
+        elif t == "pipe":
+            r = f.get("diameter", 0.1) / 2
+            out.append(fp("facade." + f["id"], "pipe", f["at"][0] - r, f["at"][1] - r, f["at"][0] + r, f["at"][1] + r) | {"room": "facade"})
         elif t == "fire_pit":
             out.append(fpc("garden." + f["id"], "fire_pit", *f["center"], f["size"][0], f["size"][1], (0, -1), room(*f["center"])))
         elif t == "trellis":
@@ -779,7 +792,19 @@ def rec_level(r):
     return "X" if r["room"] in C.PSEUDO_ROOMS or r["room"] in HC.building_rooms else "G"
 
 
+def front_vec(f):
+    """Optional `front` of a footprint record -> unit [x, y] (a 3-vector's z is dropped), or None when absent or unusable."""
+    try:
+        x, y = float(f[0]), float(f[1])
+    except (TypeError, ValueError, IndexError, KeyError):
+        return None
+    L = math.hypot(x, y)
+    return [x / L, y / L] if math.isfinite(L) and L > 1e-6 else None
+
+
 def load_footprints(f):
+    """-> (records, source note). A spec record is dropped when its room has exported records, and also when an
+    exported record on its level covers 30 % of it (the export may file a site item under another room: `facade`)."""
     spec = spec_footprints()
     data = json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
     if data is None or (isinstance(data, dict) and data.get("standin")):       # the viewer's stand-in file is not an export
@@ -788,14 +813,22 @@ def load_footprints(f):
         items = data["items"] if isinstance(data, dict) else data
         exp = [{**r, "room": r.get("room") or str(r.get("name", "")).split(".")[0], "plan_sym": r.get("plan_sym") or r.get("sym"),
                 "obb": r.get("obb") or r.get("poly")} for r in items]            # untagged / degenerate records are not plan items
-        exp = [r for r in exp if r["plan_sym"] and r["obb"] and len(r["obb"]) == 4 and Polygon(r["obb"]).area > 1e-6]
+        exp = [r for r in exp if r["plan_sym"] and r["obb"] and len(r["obb"]) == 4 and Polygon(r["obb"]).is_valid
+               and Polygon(r["obb"]).area > 1e-6]
     for r in exp:
         r["src"] = "export"
-    rooms = {r["room"] for r in exp}
-    recs = exp + [dict(r, src="spec") for r in spec if r["room"] not in rooms]
-    for r in recs:
+        fv = front_vec(r.pop("front", None))
+        if fv:
+            r["front"] = fv
         r["level"] = rec_level(r)
-    left = sorted({r["room"] for r in spec} - rooms)
+    rooms = {r["room"] for r in exp}
+    recs = list(exp)
+    for r in spec:
+        r = dict(r, src="spec", level=rec_level(r))
+        g = Polygon(r["obb"])
+        if r["room"] not in rooms and not any(e["level"] == r["level"] and g.intersection(Polygon(e["obb"])).area > 0.3 * g.area for e in exp):
+            recs.append(r)
+    left = sorted({r["room"] for r in recs if r["src"] == "spec"})
     src = f"footprints.json ({len(exp)} items); spec fallback for {left or 'no rooms'}" if exp else \
         "spec/rooms/*.md + exterior.features fallback (no exported footprints)"
     return recs, src
@@ -819,8 +852,12 @@ def local_frame(r, tables):
         if me.distance(t) < 0.12:
             q = shapely.ops.nearest_points(t, Point(c))[0]
             f = (q.x - c[0], q.y - c[1]) if q.distance(Point(c)) > 1e-6 else (t.centroid.x - c[0], t.centroid.y - c[1])
-    if not f:                                                                    # back to the nearest wall (windows count)
-        f = min(cands, key=lambda cd: MASS.distance(Point(c[0] - cd[0][0] * cd[1] / 2, c[1] - cd[0][1] * cd[1] / 2)))[0]
+    if not f:                                                                    # back to the nearest wall (windows count);
+        dist = lambda cd: MASS.distance(Point(c[0] - cd[0][0] * cd[1] / 2, c[1] - cd[0][1] * cd[1] / 2))
+        best = min(cands, key=dist)
+        if dist(best) > 0.3:                                                     # free-standing: faces off its long side
+            best = min((cd for cd in cands if cd[1] <= min(L for _, L in cands) + 1e-9), key=dist)
+        f = best[0]
     v, d = max(cands, key=lambda cd: cd[0][0] * f[0] + cd[0][1] * f[1])
     w = next(L for dd, L in cands if abs(dd[0] * v[0] + dd[1] * v[1]) < 0.5)
     return c, (v[1], -v[0]), v, w, d
@@ -829,7 +866,8 @@ def local_frame(r, tables):
 def draw_footprints(P, recs):
     recs = [r for r in recs if r["plan_sym"] not in SKIP]
     tables = [Polygon(r["obb"]) for r in recs if r["plan_sym"] in ("table", "table_round", "desk")]
-    appliances = [Polygon(r["obb"]).centroid for r in recs if r["plan_sym"] in ("fridge", "oven_tower", "washer", "dryer")]
+    global APPLIANCES
+    APPLIANCES = [Polygon(r["obb"]).centroid for r in recs if r["plan_sym"] in ("fridge", "oven_tower", "washer", "dryer")]
     for sym in ("base_unit", "worktop", "wall_unit"):            # runs: node the outlines so shared edges are drawn once
         for room in sorted({r["room"] for r in recs}):
             rings = [Polygon(r["obb"]).exterior for r in recs if r["plan_sym"] == sym and r["room"] == room]
@@ -838,159 +876,23 @@ def draw_footprints(P, recs):
                 g = linemerge(g) if g.geom_type == "MultiLineString" else g          # a single ring is already one line
                 P.geom(g, "A-FLOR-OVHD" if sym in OVHD else "A-FLOR-FIXT", "hidden" if sym in OVHD else None)
     tops = unary_union(tables)
-    labs = []
-    order = {"rug": 0}                                           # rugs under the furniture standing on them
+    labs, obst = [], None
+    order = {"rug": 0, "pipe": 2}             # rugs under the furniture on them; pipe labels clear of the rest
     for r in sorted(recs, key=lambda r: order.get(r["plan_sym"], 1)):
         sym = r["plan_sym"]
         if sym in MERGED:
             continue
         n0 = len(P.e)
-        c, u, v, w, d = local_frame(r, tables)
-        hw, hd = w / 2, d / 2
         lay = "A-FLOR-OVHD" if sym in OVHD else "A-FLOR-FIXT" if sym in FIXT else "A-FURN"
-        T = lambda a, b: (c[0] + a * u[0] + b * v[0], c[1] + a * u[1] + b * v[1])
-        R = lambda a0, b0, a1, b1, ls=None: P.pl(lay, [T(a0, b0), T(a1, b0), T(a1, b1), T(a0, b1)], True, ls)
-        Ln = lambda a0, b0, a1, b1, ls=None: P.line(lay, T(a0, b0), T(a1, b1), ls)
-        Cc = lambda a, b, rad: P.circle(lay, T(a, b), rad)
-        ell = lambda a, b, ra, rb, t0=0.0, t1=360.0, n=24: [T(a + ra * math.cos(math.radians(t0 + (t1 - t0) * i / n)),
-                                                              b + rb * math.sin(math.radians(t0 + (t1 - t0) * i / n))) for i in range(n + 1)]
-        rr = lambda a0, b0, a1, b1, rad: P.pl(lay, [T(*q) for q in box(a0, b0, a1, b1).buffer(-rad, join_style=2).buffer(rad, quad_segs=3).exterior.coords], True)
-        lh = 1.5 * MM
-
-        def label(s):
-            P.text(lay, (c[0], c[1] - lh / 2), lh, s)
-            labs.append(box(c[0] - tw(s, lh) / 2 - 0.33 * lh, c[1] - 0.87 * lh, c[0] + tw(s, lh) / 2 + 0.33 * lh, c[1] + 0.87 * lh))
-        full = lambda ls=None: R(-hw, -hd, hw, hd, ls)
-        if sym == "sofa":
-            full(); Ln(-hw, -hd + 0.18, hw, -hd + 0.18)
-            for s in (-1, 1):
-                Ln(s * (hw - 0.18), -hd + 0.18, s * (hw - 0.18), hd)
-            if w > 1.4:
-                Ln(0, -hd + 0.18, 0, hd)
-        elif sym == "armchair":
-            full(); Ln(-hw + 0.09, -hd + 0.12, hw - 0.09, -hd + 0.12)
-            for s in (-1, 1):
-                Ln(s * (hw - 0.09), -hd, s * (hw - 0.09), hd - 0.08)
-        elif sym == "chair":
-            full(); Ln(-hw, -hd + 0.07, hw, -hd + 0.07)
-        elif sym == "office_chair":
-            Cc(0, 0, 0.42 * min(w, d)); Ln(-0.3 * w, -hd + 0.04, 0.3 * w, -hd + 0.04)
-        elif sym in ("stool", "coffee_table"):
-            full(); R(-hw + 0.05, -hd + 0.05, hw - 0.05, hd - 0.05)
-        elif sym == "table_round":
-            Cc(0, 0, min(hw, hd))
-        elif sym in ("bookcase", "tv_unit", "chest", "bureau", "cabinet", "workbench", "bench"):
-            full(); Ln(-hw, hd - 0.04, hw, hd - 0.04)
-        elif sym == "wardrobe":                                  # hanging rail with hangers
-            full(); Ln(-hw + 0.05, 0, hw - 0.05, 0)
-            for i in range(1, max(2, int(w / 0.15))):
-                a = -hw + i * w / max(2, int(w / 0.15))
-                Ln(a - 0.03, -0.12, a + 0.03, 0.12)
-        elif sym == "bed":                                       # head against the wall (back = -hd), two pillows, sheet fold
-            full()
-            n = 2 if w >= 1.1 else 1
-            for i in range(n):
-                a0 = -hw + 0.06 + i * (w - 0.12) / n
-                rr(a0 + 0.02, -hd + 0.06, a0 + (w - 0.12) / n - 0.02, -hd + 0.36, 0.05)
-            Ln(-hw, -hd + 0.55, hw, -hd + 0.55); Ln(-hw, -hd + 0.55, -hw + 0.25, -hd + 0.75)
-        elif sym == "bedside":
-            full(); Cc(0, 0, 0.3 * min(w, d))
-        elif sym == "rug":
-            full("dashed")
-        elif sym in ("plant", "planter") and abs(w - d) < 0.2:
-            rad = min(hw, hd)
-            Cc(0, 0, rad); Cc(0, 0, rad * 0.35)
-            for i in range(8):
-                a = math.radians(i * 45 + 22.5)
-                Ln(rad * 0.35 * math.cos(a), rad * 0.35 * math.sin(a), rad * math.cos(a), rad * math.sin(a))
-        elif sym == "planter":
-            full(); R(-hw + 0.05, -hd + 0.05, hw - 0.05, hd - 0.05)
-        elif sym == "fireplace":
-            full(); P.pl(lay, [T(-0.22 * w, hd), T(-0.22 * w, -hd + 0.05), T(0.22 * w, -hd + 0.05), T(0.22 * w, hd)])
-        elif sym == "fire_pit":
-            full(); R(-hw + 0.215, -hd + 0.215, hw - 0.215, hd - 0.215); label("FP")
-        elif sym == "tall_unit":
-            full()
-            if not any(Polygon(r["obb"]).contains(a) for a in appliances):      # full-height unit: crossed
-                Ln(-hw, -hd, hw, hd); Ln(-hw, hd, hw, -hd)
-        elif sym == "hob":
-            full()
-            burners = ([(-0.33 * w, 0, 0.08), (0, -0.24 * d, 0.055), (0, 0.24 * d, 0.045), (0.33 * w, -0.24 * d, 0.055), (0.33 * w, 0.24 * d, 0.045)]
-                       if w >= 0.7 else [(sx * 0.22 * w, sy * 0.22 * d, 0.05) for sx in (-1, 1) for sy in (-1, 1)])
-            for a, b, rad in burners:
-                Cc(a, b, rad); Cc(a, b, rad * 0.4)
-        elif sym == "sink":
-            full()
-            n = 2 if w >= 0.7 else 1
-            for i in range(n):
-                a0, a1 = -hw + i * w / n, -hw + (i + 1) * w / n
-                rr(a0 + 0.02, -hd + 0.02, a1 - 0.02, hd - 0.02, 0.04); Cc((a0 + a1) / 2, 0, 0.022)
-        elif sym == "sink_belfast":
-            full(); rr(-hw + 0.03, -hd + 0.03, hw - 0.03, hd - 0.03, 0.04); Cc(0, 0, 0.022)
-        elif sym == "fridge":
-            full(); Ln(-hw, hd - 0.07, hw, hd - 0.07); Ln(-0.08 * w, hd - 0.07, -0.08 * w, hd); label("FF")
-        elif sym == "oven_tower":
-            full(); Ln(-hw, hd - 0.04, hw, hd - 0.04); label("OV")
-        elif sym in ("washer", "dryer"):
-            full(); Cc(0, 0, 0.37 * min(w, d)); label("WM" if sym == "washer" else "TD")
-        elif sym == "wc":
-            b1 = -hd + 0.35 * d
-            P.pl(lay, [T(-hw, -hd), *ell(0, b1, hw, hd - b1, 180, 0), T(hw, -hd)], True)
-            P.pl(lay, ell(0, b1 + 0.08 * d, 0.62 * hw, 0.5 * (hd - b1)), True)
-            if d > 0.6:
-                Ln(-hw, -hd + 0.18, hw, -hd + 0.18)                              # close-coupled cistern
-        elif sym in ("basin", "vanity"):
-            if sym == "vanity":
-                full()
-            n = 2 if sym == "vanity" and w >= 1.0 else 1
-            for i in range(n):
-                a = -hw + (i + 0.5) * w / n
-                if sym == "basin":
-                    rr(-hw, -hd, hw, hd, 0.03)
-                P.pl(lay, ell(a, 0.03, 0.72 * w / n / 2, 0.58 * hd), True); Cc(a, -hd + 0.05, 0.02)
-        elif sym == "bath":
-            full(); rr(-hw + 0.06, -hd + 0.06, hw - 0.06, hd - 0.06, 0.12); Cc(-hw + 0.2, 0, 0.025)
-        elif sym == "shower":                                    # tray with diagonals and waste
-            full(); Ln(-hw, -hd, hw, hd); Ln(-hw, hd, hw, -hd); Cc(0, 0, 0.04)
-        elif sym == "sauna":
-            full(); R(-hw + 0.05, -hd + 0.05, hw - 0.05, hd - 0.05); Ln(-hw + 0.05, -hd + 0.45, hw - 0.05, -hd + 0.45); label("SAUNA")
-        elif sym == "boiler":
-            full(); label("B")
-        elif sym == "cylinder":
-            Cc(0, 0, min(hw, hd)); label("HW")
-        elif sym == "rack":
-            full(); Ln(-hw, 0, hw, 0) if w >= d else Ln(0, -hd, 0, hd)
-        elif sym == "radiator":
-            full(); Ln(-hw, 0, hw, 0)
-        elif sym == "condenser":
-            full(); Cc(0, 0, 0.35 * min(w, d))
-        elif sym == "towel_rail":
-            full()
-            for i in range(1, int(w / 0.05)):
-                Ln(-hw + i * 0.05, -hd, -hw + i * 0.05, hd)
-        elif sym == "airer":
-            (Ln(-hw, 0, hw, 0, "dashed") if w >= d else Ln(0, -hd, 0, hd, "dashed"))
-        elif sym == "shelf":
-            full("hidden")
-        elif sym == "trellis":                                   # panel on the wall: frame + lattice
-            full()
-            n = max(2, int(w / 0.3))
-            for i in range(n):
-                a0, a1 = -hw + i * w / n, -hw + (i + 1) * w / n
-                Ln(a0, -hd, a1, hd); Ln(a0, hd, a1, -hd)
-        elif sym == "flagpole":
-            Cc(0, 0, max(0.03, min(hw, hd)))
-        elif sym == "bin":
-            full(); Ln(-hw, hd - 0.06, hw, hd - 0.06)
-        elif sym == "car":                                       # body, bonnet / roof glazing lines, four wheels
-            P.pl(lay, [T(*q) for q in box(-hw, -hd, hw, hd).buffer(-0.25, join_style=2).buffer(0.25, quad_segs=4).exterior.coords], True)
-            Ln(-hw + 0.12, hd - 0.95, hw - 0.12, hd - 0.95); Ln(-hw + 0.12, hd - 2.1, hw - 0.12, hd - 2.1)
-            Ln(-hw + 0.12, hd - 0.95, -hw + 0.12, hd - 2.1); Ln(hw - 0.12, hd - 0.95, hw - 0.12, hd - 2.1)
-            for sa in (-1, 1):
-                for b in (hd - 0.75, -hd + 0.7):
-                    R(sa * (hw - 0.03), b - 0.3, sa * (hw - 0.22), b + 0.3)
-        else:                                                    # table, console, tv, desk and unknown keys: plain outline
-            full()
+        if sym == "pipe" and obst is None:                       # pipe labels keep clear of what is drawn so far
+            obst = drawn(P.e)
+        try:
+            c, u, v, w, d = local_frame(r, tables)
+            draw_symbol(P, r, sym, lay, c, u, v, w, d, labs, obst)
+        except Exception as ex:                                  # a record the symbols cannot read: its plain outline
+            print("  plan: %s (%s) drawn as its outline: %r" % (r.get("name"), sym, ex))
+            P.e[n0:] = []
+            P.pl(lay, r["obb"], True)
         if sym in ("chair", "armchair", "stool", "office_chair") and not tops.is_empty:
             P.e[n0:] = clip(P.e[n0:], tops)                      # tucked under the table: hidden part not drawn
         elif sym == "rug":                                       # ... nor the rug edge under furniture standing on it
@@ -1001,6 +903,200 @@ def draw_footprints(P, recs):
         P.e = [x for e in P.e for x in (clip([e], m) if e["layer"] == "A-FLOR-OVHD" else [e])]
 
 
+# plan_sym keys the drafter knows (table and console are a plain outline by design); any other key is drawn as its
+# plain outline, SKIP keys not at all
+SYMBOLS = ("sofa armchair chair office_chair stool coffee_table table_round bookcase tv_unit chest bureau cabinet workbench "
+           "bench desk tv wardrobe bed bedside rug plant planter fireplace fire_pit tall_unit hob sink sink_belfast fridge "
+           "oven_tower washer dryer wc basin vanity bath shower sauna boiler cylinder rack radiator condenser towel_rail "
+           "airer shelf trellis flagpole bin car pipe base_unit worktop wall_unit table console").split()
+
+
+def draw_symbol(P, r, sym, lay, c, u, v, w, d, labs, obst):
+    """CAD plan symbol of one footprint in its local frame: a across (u), b toward the front (v), origin at the centre."""
+    hw, hd = w / 2, d / 2
+    T = lambda a, b: (c[0] + a * u[0] + b * v[0], c[1] + a * u[1] + b * v[1])
+    R = lambda a0, b0, a1, b1, ls=None: P.pl(lay, [T(a0, b0), T(a1, b0), T(a1, b1), T(a0, b1)], True, ls)
+    Ln = lambda a0, b0, a1, b1, ls=None: P.line(lay, T(a0, b0), T(a1, b1), ls)
+    Cc = lambda a, b, rad: P.circle(lay, T(a, b), rad)
+    ell = lambda a, b, ra, rb, t0=0.0, t1=360.0, n=24: [T(a + ra * math.cos(math.radians(t0 + (t1 - t0) * i / n)),
+                                                          b + rb * math.sin(math.radians(t0 + (t1 - t0) * i / n))) for i in range(n + 1)]
+    rr = lambda a0, b0, a1, b1, rad: P.pl(lay, [T(*q) for q in box(a0, b0, a1, b1).buffer(-rad, join_style=2).buffer(rad, quad_segs=3).exterior.coords], True)
+    lh = 1.5 * MM
+
+    def label(s):                                                # centred, only where it fits inside the symbol
+        if tw(s, lh) <= 0.8 * min(w, d) and 1.6 * lh <= min(w, d):
+            P.text(lay, (c[0], c[1] - lh / 2), lh, s)
+            labs.append(box(c[0] - tw(s, lh) / 2 - 0.33 * lh, c[1] - 0.87 * lh, c[0] + tw(s, lh) / 2 + 0.33 * lh, c[1] + 0.87 * lh))
+    full = lambda ls=None: R(-hw, -hd, hw, hd, ls)
+    if sym == "sofa":
+        full(); Ln(-hw, -hd + 0.18, hw, -hd + 0.18)
+        for s in (-1, 1):
+            Ln(s * (hw - 0.18), -hd + 0.18, s * (hw - 0.18), hd)
+        if w > 1.4:
+            Ln(0, -hd + 0.18, 0, hd)
+    elif sym == "armchair":
+        full(); Ln(-hw + 0.09, -hd + 0.12, hw - 0.09, -hd + 0.12)
+        for s in (-1, 1):
+            Ln(s * (hw - 0.09), -hd, s * (hw - 0.09), hd - 0.08)
+    elif sym == "chair":                                         # seat, back rail
+        full(); Ln(-hw, -hd + 0.07, hw, -hd + 0.07)
+    elif sym == "office_chair":
+        Cc(0, 0, 0.42 * min(w, d)); Ln(-0.3 * w, -hd + 0.04, 0.3 * w, -hd + 0.04)
+    elif sym in ("stool", "coffee_table"):
+        full(); R(-hw + 0.05, -hd + 0.05, hw - 0.05, hd - 0.05)
+    elif sym == "table_round":
+        Cc(0, 0, min(hw, hd))
+    elif sym in ("bookcase", "tv_unit", "chest", "bureau", "cabinet", "workbench"):
+        full(); Ln(-hw, hd - 0.04, hw, hd - 0.04)
+    elif sym == "bench":                                         # slatted seat
+        full()
+        for k in (1, 2):
+            Ln(-hw, -hd + k * d / 3, hw, -hd + k * d / 3)
+    elif sym == "desk":                                          # top, drawer pedestal under it (hidden)
+        full(); pw = min(0.42, 0.35 * w); R(hw - pw, -hd + 0.03, hw - 0.03, hd - 0.03, "hidden")
+    elif sym == "tv":                                            # panel, screen face toward the room
+        full(); Ln(-hw + 0.02, hd - 0.35 * d, hw - 0.02, hd - 0.35 * d)
+    elif sym == "wardrobe":                                      # hanging rail with hangers
+        full(); Ln(-hw + 0.05, 0, hw - 0.05, 0)
+        n = max(2, int(w / 0.15))
+        for i in range(1, n):
+            a = -hw + i * w / n
+            Ln(a - 0.03, -min(0.12, 0.3 * d), a + 0.03, min(0.12, 0.3 * d))
+    elif sym == "bed":                                           # head against the wall (back = -hd), pillows, sheet fold
+        full()
+        n = 2 if w >= 1.1 else 1
+        for i in range(n):
+            a0 = -hw + 0.06 + i * (w - 0.12) / n
+            rr(a0 + 0.02, -hd + 0.06, a0 + (w - 0.12) / n - 0.02, -hd + 0.36, 0.05)
+        Ln(-hw, -hd + 0.55, hw, -hd + 0.55); Ln(-hw, -hd + 0.55, -hw + 0.25, -hd + 0.75)
+    elif sym == "bedside":
+        full(); Cc(0, 0, 0.3 * min(w, d))
+    elif sym == "rug":
+        full("dashed")
+    elif sym in ("plant", "planter") and abs(w - d) < 0.2:      # pot / round planter: leaves
+        rad = min(hw, hd)
+        Cc(0, 0, rad); Cc(0, 0, rad * 0.35)
+        for i in range(8):
+            a = math.radians(i * 45 + 22.5)
+            Ln(rad * 0.35 * math.cos(a), rad * 0.35 * math.sin(a), rad * math.cos(a), rad * math.sin(a))
+    elif sym == "planter":                                       # trough: rim and soil
+        full(); t = min(0.05, 0.2 * min(w, d)); R(-hw + t, -hd + t, hw - t, hd - t)
+    elif sym == "fireplace":
+        full(); P.pl(lay, [T(-0.22 * w, hd), T(-0.22 * w, -hd + 0.05), T(0.22 * w, -hd + 0.05), T(0.22 * w, hd)])
+    elif sym == "fire_pit":                                      # brick surround, fire bed
+        t = min(0.215, 0.3 * min(w, d))
+        full(); R(-hw + t, -hd + t, hw - t, hd - t); label("FP")
+    elif sym == "tall_unit":
+        full()
+        if not any(Polygon(r["obb"]).contains(a) for a in APPLIANCES):      # full-height unit: crossed
+            Ln(-hw, -hd, hw, hd); Ln(-hw, hd, hw, -hd)
+    elif sym == "hob":
+        full()
+        burners = ([(-0.33 * w, 0, 0.08), (0, -0.24 * d, 0.055), (0, 0.24 * d, 0.045), (0.33 * w, -0.24 * d, 0.055), (0.33 * w, 0.24 * d, 0.045)]
+                   if w >= 0.7 else [(sx * 0.22 * w, sy * 0.22 * d, 0.05) for sx in (-1, 1) for sy in (-1, 1)])
+        for a, b, rad in burners:
+            Cc(a, b, rad); Cc(a, b, rad * 0.4)
+    elif sym == "sink":
+        full()
+        n = 2 if w >= 0.7 else 1
+        for i in range(n):
+            a0, a1 = -hw + i * w / n, -hw + (i + 1) * w / n
+            rr(a0 + 0.02, -hd + 0.02, a1 - 0.02, hd - 0.02, 0.04); Cc((a0 + a1) / 2, 0, 0.022)
+    elif sym == "sink_belfast":
+        full(); rr(-hw + 0.03, -hd + 0.03, hw - 0.03, hd - 0.03, 0.04); Cc(0, 0, 0.022)
+    elif sym == "fridge":
+        full(); Ln(-hw, hd - 0.07, hw, hd - 0.07); Ln(-0.08 * w, hd - 0.07, -0.08 * w, hd); label("FF")
+    elif sym == "oven_tower":
+        full(); Ln(-hw, hd - 0.04, hw, hd - 0.04); label("OV")
+    elif sym in ("washer", "dryer"):
+        full(); Cc(0, 0, 0.37 * min(w, d)); label("WM" if sym == "washer" else "TD")
+    elif sym == "wc":                                            # pan, seat opening, cistern at the back
+        b1 = -hd + 0.35 * d
+        P.pl(lay, [T(-hw, -hd), *ell(0, b1, hw, hd - b1, 180, 0), T(hw, -hd)], True)
+        P.pl(lay, ell(0, b1 + 0.08 * d, 0.62 * hw, 0.5 * (hd - b1)), True)
+        if d > 0.6:
+            Ln(-hw, -hd + 0.18, hw, -hd + 0.18)                              # close-coupled cistern
+    elif sym in ("basin", "vanity"):
+        if sym == "vanity":
+            full()
+        n = 2 if sym == "vanity" and w >= 1.0 else 1
+        for i in range(n):
+            a = -hw + (i + 0.5) * w / n
+            if sym == "basin":
+                rr(-hw, -hd, hw, hd, 0.03)
+            P.pl(lay, ell(a, 0.03, 0.72 * w / n / 2, 0.58 * hd), True); Cc(a, -hd + 0.05, 0.02)
+    elif sym == "bath":                                          # rim, bowl, waste at the tap end
+        full(); rr(-hw + 0.06, -hd + 0.06, hw - 0.06, hd - 0.06, min(0.12, 0.25 * min(w, d))); Cc(-hw + 0.2, 0, 0.025)
+    elif sym == "shower":                                        # tray: diagonals and waste
+        full(); Ln(-hw, -hd, hw, hd); Ln(-hw, hd, hw, -hd); Cc(0, 0, 0.04)
+    elif sym == "sauna":                                         # timber cabin: wall lining, bench
+        full(); R(-hw + 0.05, -hd + 0.05, hw - 0.05, hd - 0.05)
+        if d > 0.9:
+            Ln(-hw + 0.05, -hd + 0.45, hw - 0.05, -hd + 0.45)
+        label("SAUNA")
+    elif sym == "boiler":
+        full(); label("BLR")
+    elif sym == "cylinder":                                      # hot-water cylinder
+        Cc(0, 0, min(hw, hd)); label("HWC")
+    elif sym == "rack":                                          # open shelving: bays, a brace each
+        full()
+        n = max(1, round(w / 0.9))
+        for i in range(n):
+            a0, a1 = -hw + i * w / n, -hw + (i + 1) * w / n
+            if i:
+                Ln(a0, -hd, a0, hd)
+            Ln(a0, -hd, a1, hd)
+    elif sym == "radiator":
+        full(); Ln(-hw, 0, hw, 0)
+    elif sym == "condenser":
+        full(); Cc(0, 0, 0.35 * min(w, d))
+    elif sym == "towel_rail":
+        full()
+        for i in range(1, int(w / 0.05)):
+            Ln(-hw + i * 0.05, -hd, -hw + i * 0.05, hd)
+    elif sym == "airer":
+        (Ln(-hw, 0, hw, 0, "dashed") if w >= d else Ln(0, -hd, 0, hd, "dashed"))
+    elif sym == "shelf":
+        full("hidden")
+    elif sym == "trellis":                                       # panel on the wall: frame + lattice
+        full()
+        n = max(2, int(w / 0.3))
+        for i in range(n):
+            a0, a1 = -hw + i * w / n, -hw + (i + 1) * w / n
+            Ln(a0, -hd, a1, hd); Ln(a0, hd, a1, -hd)
+    elif sym == "flagpole":
+        Cc(0, 0, max(0.03, min(hw, hd)))
+    elif sym == "bin":                                           # wheelie bin: body, lid hinge
+        full(); Ln(-hw, hd - min(0.06, 0.2 * d), hw, hd - min(0.06, 0.2 * d))
+    elif sym == "car":                                           # nose at +hd: body, windscreen, roof, rear screen, wheels
+        rr(-hw, -hd, hw, hd, min(0.25, 0.3 * hw))
+        si, ri = 0.08 * w, 0.18 * w
+        yb, yr0, yr1, yt = hd - 0.28 * d, hd - 0.42 * d, -hd + 0.24 * d, -hd + 0.1 * d
+        P.pl(lay, [T(-hw + si, yb), T(hw - si, yb), T(hw - ri, yr0), T(-hw + ri, yr0)], True)
+        P.pl(lay, [T(-hw + si, yt), T(hw - si, yt), T(hw - ri, yr1), T(-hw + ri, yr1)], True)
+        for sa in (-1, 1):
+            Ln(sa * (hw - ri), yr1, sa * (hw - ri), yr0)
+            for b in (hd - 0.19 * d, -hd + 0.2 * d):
+                R(sa * (hw - 0.02), b - 0.08 * d, sa * (hw - 0.02 - 0.11 * w), b + 0.08 * d)
+    elif sym == "pipe":                                          # rainwater / soil pipe at its true size, RWP / SVP
+        rad = max(0.025, min(hw, hd))
+        Cc(0, 0, rad)
+        s = "SVP" if "soil" in str(r.get("name", "")).lower() else "RWP"
+        for a, b in ((0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)):   # front, sides, back, corners
+            k = (rad + 0.6 * MM) / math.hypot(a, b)
+            q = T(a * k, b * k)
+            dx, dy = a * u[0] + b * v[0], a * u[1] + b * v[1]
+            P.text(lay, (q[0], q[1] - (0 if dy > 0.5 else lh if dy < -0.5 else lh / 2)), lh, s,
+                   "left" if dx > 0.5 else "right" if dx < -0.5 else "center")
+            tb = text_box(P.e[-1])
+            if (obst is None or not obst.intersects(tb.buffer(1.0 * MM))) and not any(tb.intersects(x) for x in labs):
+                labs.append(tb)
+                break
+            P.e.pop()
+    else:                                                        # table, console and unknown keys: plain outline
+        full()
+
+
 def mask_under_text(P, boxes, layers=("A-FURN", "A-FLOR-FIXT", "A-FLOR-OVHD")):
     """Break linework where it would run under a tag (CAD text-mask look)."""
     if boxes:
@@ -1008,23 +1104,53 @@ def mask_under_text(P, boxes, layers=("A-FURN", "A-FLOR-FIXT", "A-FLOR-OVHD")):
         P.e = [x for e in P.e for x in (clip([e], m) if e["layer"] in layers else [e])]
 
 
+def ent_line(e):
+    """LineString of a line / polyline / circle / arc entity, else None."""
+    if e["type"] == "line":
+        return LineString([e["p1"], e["p2"]])
+    if e["type"] == "polyline":
+        return LineString(e["pts"] + ([e["pts"][0]] if e["closed"] else [])) if len(e["pts"]) > 1 else None
+    if e["type"] in ("circle", "arc"):
+        a0, a1 = (0, 360) if e["type"] == "circle" else (e["a0"], e["a1"] + (360 if e["a1"] < e["a0"] else 0))
+        return LineString([(e["c"][0] + e["r"] * math.cos(math.radians(a0 + (a1 - a0) * i / 48)),
+                            e["c"][1] + e["r"] * math.sin(math.radians(a0 + (a1 - a0) * i / 48))) for i in range(49)])
+    return None
+
+
+def text_box(e):
+    """Polygon a text entity covers (plan.json form: p = middle of the capitals, h = font size); 10 % longer than the
+    font's advance, as hinted raster glyphs run (see fit_cell)."""
+    w, hh = 1.1 * tw(e["text"], e["h"] * CAP), e["h"] * CAP / 2
+    x0 = {"left": 0, "center": -w / 2, "right": -w}[e.get("align", "left")]
+    r = math.radians(e.get("rot", 0))
+    c, s_ = math.cos(r), math.sin(r)
+    return Polygon([(e["p"][0] + a * c - b * s_, e["p"][1] + a * s_ + b * c) for a, b in ((x0, -hh), (x0 + w, -hh), (x0 + w, hh), (x0, hh))])
+
+
+def drawn(ents):
+    """Everything already on the sheet as one geometry (linework, text boxes, dims' lines), for placing labels."""
+    gs = []
+    for e in ents:
+        if e["type"] == "text":
+            gs.append(text_box(e))
+        elif e["type"] == "dim":
+            gs.append(LineString([e["p1"], e["p2"]]))
+        elif e["type"] != "hatch":
+            g = ent_line(e)
+            if g is not None:
+                gs.append(g)
+    return shapely.prepared.prep(unary_union(gs)) if gs else None
+
+
 def clip(ents, m, inside=False):
     """Cut line / polyline / circle / arc entities where they run inside polygon m (inside=True: keep only that
     part); the rest pass through."""
     out = []
     for e in ents:
-        if e["type"] not in ("line", "polyline", "circle", "arc"):
+        g = ent_line(e)
+        if g is None:
             out.append(e)
             continue
-        if e["type"] == "line":
-            pts = [e["p1"], e["p2"]]
-        elif e["type"] == "polyline":
-            pts = e["pts"] + ([e["pts"][0]] if e["closed"] else [])
-        else:
-            a0, a1 = (0, 360) if e["type"] == "circle" else (e["a0"], e["a1"] + (360 if e["a1"] < e["a0"] else 0))
-            pts = [(e["c"][0] + e["r"] * math.cos(math.radians(a0 + (a1 - a0) * i / 48)),
-                    e["c"][1] + e["r"] * math.sin(math.radians(a0 + (a1 - a0) * i / 48))) for i in range(49)]
-        g = LineString(pts)
         if inside and m.contains(g) or not inside and not g.intersects(m):
             out.append(e)
             continue
@@ -1150,7 +1276,8 @@ def draw_tags(P, rids, at=None):
         r = ROOMS.get(rid) or HC.building_rooms[rid]
         poly = rpoly(rid)
         kind = HC.kind(rid) if rid in ROOMS else "room"
-        pt = (at or {}).get(rid) or TAG_AT.get(rid) or tuple(polylabel(poly, 0.01).coords[0])
+        free = max(parts(poly.difference(MASS)) or [poly], key=lambda q: q.area)       # less walls / breasts over it
+        pt = (at or {}).get(rid) or TAG_AT.get(rid) or label_point(free)
         rooms.append({"id": rid, "name": r["name"], "polygon": r["polygon"], "label": list(pt), "floorZ": r["floorZ"],
                       "area": round(poly.area, 2)})
         if kind == "stairwell":
@@ -1165,16 +1292,70 @@ def draw_tags(P, rids, at=None):
         gap = 1.3 * MM
         bw = lambda ls: max(tw(s, h) for s, h in ls) + 1.2 * MM
         bh = lambda ls: sum(h for _, h in ls) + gap * (len(ls) - 1) + 1.2 * MM
-        rw, rh = x1 - x0, y1 - y0
+        fx0, fy0, fx1, fy1 = free.bounds
+        rw, rh = fx1 - fx0, fy1 - fy0
         rot = 0
-        if bw(lines) > rw and rid not in TAG_AT:                  # does not fit across: turn it, else the name only
-            if rh > rw and bh(lines) <= rw and bw(lines) <= rh:
+        if bw(lines) > rw and rid not in TAG_AT:                  # does not fit across: turn it, else the name only,
+            if rh > rw and bh(lines) <= rw and bw(lines) <= rh:   # smaller where even that does not fit
                 rot = 90
             else:
                 lines = lines[:1]
                 rot = 90 if bw(lines) > rw and rh > rw else 0
+                along, across = (rh, rw) if rot else (rw, rh)
+                k = min(1.0, (along - 1.2 * MM) / tw(lines[0][0], T_NAME), (across - 1.2 * MM) / T_NAME)
+                lines = [(lines[0][0], max(1.2 * MM, k * T_NAME))]
         boxes.append(text_block(P, "A-ANNO-TEXT", pt, lines, rot, gap))
     return rooms, boxes
+
+
+def label_point(poly):
+    """Where a label goes: the centroid when it lies (nearly) as deep inside as the pole of inaccessibility (long thin
+    and rectangular shapes, where the pole is any point of the centre line), else the pole."""
+    pole, c = polylabel(poly, 0.01), poly.centroid
+    return (c.x, c.y) if poly.contains(c) and poly.exterior.distance(c) >= 0.9 * poly.exterior.distance(pole) else pole.coords[0]
+
+
+def slope_arrows(P, regions, win):
+    """Pitch arrow (downhill) + pitch on each sloped roof plane of 1 m2 or more, inside its plane and clear of every
+    line and text on the sheet and of each other: the pole of the plane first, then points ever further from it, with
+    arrows of 0.4 down to 0.15 m half-length; a plane where nothing fits gets no arrow (reported). -> [placed shapes]."""
+    obst, placed = drawn(P.e), []
+    h, gap, st = 1.5 * MM, 0.6 * MM, 0.05
+    for p in H["roof"]["planes"]:
+        g, z = regions[p["id"]].intersection(win), p["z"]
+        if g.is_empty or (abs(z["cx"]) < 1e-9 and abs(z["cy"]) < 1e-9) or g.area < 1.0:
+            continue
+        big = max(parts(g), key=lambda q: q.area)
+        inner = big.buffer(-1.2 * gap)
+        d = unit((0, 0), (-z["cx"], -z["cy"]))                     # downhill
+        s, along = "%g°" % p["pitchDeg"], abs(d[1]) >= abs(d[0])  # text beside a N-S arrow, above an E-W one
+        pole = polylabel(big, 0.02)
+        x0, y0, x1, y1 = big.bounds
+        grid = [Point(x0 + i * st, y0 + j * st) for i in range(int((x1 - x0) / st) + 1) for j in range(int((y1 - y0) / st) + 1)]
+        cands = [pole] + sorted((q for q in grid if inner.contains(q)), key=pole.distance)
+        hit = None
+        for r in (0.4, 0.3, 0.2, 0.15):
+            al = min(0.25, 0.6 * r)                                # arrowhead length
+            for q in cands:
+                c = (q.x, q.y)
+                a, b = (c[0] - d[0] * r, c[1] - d[1] * r), (c[0] + d[0] * r, c[1] + d[1] * r)
+                tp = (c[0] + 0.12, c[1] - h / 2) if along else (c[0], c[1] + 0.12)
+                t = {"type": "text", "p": [tp[0], tp[1] + h / 2], "h": h / CAP, "text": s, "align": "left" if along else "center"}
+                shape = unary_union([LineString([a, b]).buffer(0.32 * al), text_box(t)])
+                if inner.contains(shape) and not obst.intersects(shape.buffer(gap)) and not any(shape.intersects(x) for x in placed):
+                    hit = (a, b, tp, al, shape)
+                    break
+            if hit:
+                break
+        if not hit:
+            print("  plan: no room for the pitch arrow of roof plane %s" % p["id"])
+            continue
+        a, b, tp, al, shape = hit
+        P.line("A-ROOF", a, (b[0] - d[0] * al, b[1] - d[1] * al))
+        P.arrowhead("A-ROOF", b, d, al, 0.32 * al)
+        P.text("A-ROOF", tp, h, s, "left" if along else "center")
+        placed.append(shape)
+    return placed
 
 
 def datum(P, x, y, s):
@@ -1198,7 +1379,7 @@ def draw_sheet(P, sh, notes, levels, footsrc, date, n_sheets):
             (8, [(100, "PROJECT", "PRIVATE HOUSE - AS EXISTING - 3D MODEL", 2.5)]),
             (8, [(30, "SCALE", "%s @ A3" % sh["scale"], 2.5), (28, "DRAWING No.", sh["number"], 2.5), (14, "REV", "B", 2.5), (28, "DATE", date, 2.5)]),
             (7, [(100, "SOURCE", "DRAWN FROM VIDEO WALKTHROUGHS - NOT A MEASURED SURVEY", 2.0)]),
-            (7, [(30, "UNITS", "MILLIMETRES", 2.0), (42, "LEVELS", levels, 2.0), (28, "SHEET", "%d OF %d" % (sh["index"], n_sheets), 2.0)])]
+            (7, [(22, "UNITS", "MILLIMETRES", 2.0), (60, "LEVELS", levels, 2.0), (18, "SHEET", "%d OF %d" % (sh["index"], n_sheets), 2.0)])]
     y = by0 + sum(h for h, _ in rows) * MM
     P.pl(L, [(tx0, by0), (tx0, y), (bx1, y)])
     for h, cells in rows:
@@ -1209,9 +1390,10 @@ def draw_sheet(P, sh, notes, levels, footsrc, date, n_sheets):
         for i, (w, cap, val, vh) in enumerate(cells):
             if i:
                 P.line(L, (x, y), (x, y + h * MM))
-            vh = min(vh, (w - 3.0) / (len(val) * CHAR_W))           # long values shrink to fit their cell
             P.text(L, (x + 1.2 * MM, y + (h - 2.4) * MM), 1.2 * MM, cap, "left")
-            P.text(L, (x + 1.5 * MM, y + 1.5 * MM), vh * MM, val, "left")
+            fit = fit_cell(val, w, h, vh)
+            for k, (s, sz) in enumerate(fit):                       # baselines from the bottom line up
+                P.text(L, (x + 1.5 * MM, y + (1.5 + (len(fit) - 1 - k) * 1.6 * sz) * MM), sz * MM, s, "left")
             x += w * MM
     # scale bar, 80 mm long: first unit halved, alternate blocks filled
     u = SCALE / 50.0
@@ -1251,11 +1433,28 @@ def draw_sheet(P, sh, notes, levels, footsrc, date, n_sheets):
     if sh["id"] == "X":
         key = [("A-WALL", None, "BUILDING OUTLINE / SHED WALL, CUT"), ("A-ROOF", None, "ROOF PLAN: EAVES, RIDGES, VALLEYS"),
                ("L-SITE", None, "EXTERNAL SURFACES, STEPS"), ("L-SITE-BNDY", "dashed", "PLOT / BOUNDARY: WALL, FENCE"),
-               ("A-FURN", None, "CARS, GARDEN ITEMS (INDICATIVE)")]
+               ("L-SITE-CTXT", "dashed", "NEIGHBOURING BUILDINGS (CONTEXT)"), ("A-FURN", None, "CARS, GARDEN ITEMS (INDICATIVE)")]
     for lay, ls, s in key:
         P.line(lay, (tx0, y + 1.0 * MM), (tx0 + 14 * MM, y + 1.0 * MM), ls)
         P.text("A-ANNO-TEXT", (tx0 + 17 * MM, y), 2.0 * MM, s, "left")
         y -= 4.0 * MM
+
+
+def fit_cell(val, w, h, vh):
+    """Value of a w x h mm title-block cell under its 1.2 mm caption -> [(line, cap height mm)]: one line at the
+    preferred cap height vh when it fits, else whichever is larger of one line shrunk to the cell and two lines split
+    at a space. Any length fits (it only gets smaller); 10 % width slack because hinted raster glyphs (PNG proofs, the
+    web canvas) run wider than the font's advance at these sizes."""
+    W, H = (w - 3.0) * 0.9, h - 4.9                          # value from 1.5 mm up to 1.0 mm under the caption
+    one = min(vh, H, W / (max(len(val), 1) * CHAR_W))
+    words = val.split(" ")
+    two = max(((" ".join(words[:k]), " ".join(words[k:])) for k in range(1, len(words))),
+              key=lambda ab: -max(map(len, ab)), default=None)
+    if two:
+        sz = min(vh, H / 2.6, W / (max(map(len, two)) * CHAR_W))           # two lines, 0.6 x size apart
+        if sz > 1.15 * one:
+            return [(two[0], sz), (two[1], sz)]
+    return [(val, one)]
 
 
 # ------------------------------------------------------------------ sheets
@@ -1387,7 +1586,9 @@ def site_sheet(sid, title, number, recs, regions):
     P.geom(linemerge(edges) if edges.geom_type == "MultiLineString" else edges, "L-SITE")
     boxes = []
     fps = [r for r in recs if r["level"] == "X"]
-    items = unary_union([Polygon(r["obb"]).buffer(0.15) for r in fps])
+    items = unary_union([Polygon(r["obb"]).buffer(0.5 if r["plan_sym"] == "pipe" else 0.15) for r in fps]   # pipes: room for RWP / SVP
+                        + [LineString(b["line"]).buffer(0.1) for b in EXT["boundaries"] if "line" in b]
+                        + [Point(b["hingeAt"]).buffer(b.get("width", 1.0) + 0.1) for b in EXT["boundaries"] if b["type"] == "gate"])
     for z in zs:
         g = vis[z["id"]]
         if g.is_empty or g.area < 0.05:
@@ -1397,10 +1598,8 @@ def site_sheet(sid, title, number, recs, regions):
         if z.get("fall"):
             big = big.difference(LineString([z["fall"]["from"], z["fall"]["to"]]).buffer(0.3))
             big = max(parts(big), key=lambda p: p.area) if not big.is_empty else max(parts(g), key=lambda p: p.area)
-        free = big.difference(items)                              # labels clear of cars, planters, the fire pit, falls
-        free = max(parts(free), key=lambda p: p.area) if not free.is_empty else big
-        c = free.centroid
-        pt = (c.x, c.y) if free.buffer(-0.3).contains(c) else polylabel(free, 0.02).coords[0]
+        free = big.difference(items)                              # labels clear of cars, planters, the fire pit, falls,
+        free = max(parts(free), key=lambda p: p.area) if not free.is_empty else big     # boundaries and the gate swing
         fall = z.get("fall")
         lines = [(name, T_SUB), (SURF.get(z["surface"], z["surface"].upper()), 1.5 * MM)] if name else []
         if not fall:
@@ -1408,7 +1607,7 @@ def site_sheet(sid, title, number, recs, regions):
         fx0, fy0, fx1, fy1 = free.bounds
         fit = fit_block(lines, fx1 - fx0, fy1 - fy0)
         if fit:
-            boxes.append(text_block(P, "L-SITE", pt, *fit))
+            boxes.append(text_block(P, "L-SITE", block_point(free, *fit), *fit))
         if fall:                                              # fall arrow, the level at both ends beside it
             a, b = fall["from"], fall["to"]
             ab = LineString([a, b]).intersection(win)
@@ -1457,8 +1656,9 @@ def site_sheet(sid, title, number, recs, regions):
         else:
             P.geom(LineString(b["line"]).intersection(win), "L-SITE-BNDY")
     P.geom(Polygon(EXT["plot"]["polygon"]).exterior.intersection(win), "L-SITE-BNDY")
-    for n in EXT.get("neighbours", []):                          # massing only, no numbers
-        P.geom(Polygon(n["polygon"]).boundary.intersection(win).difference(house.buffer(0.01)), "A-ROOF")
+    bnd = unary_union([LineString(b["line"]) for b in EXT["boundaries"] if "line" in b] + [house.exterior]).buffer(0.02)
+    for n in EXT.get("neighbours", []):                          # context only, where inside the window
+        P.geom(Polygon(n["polygon"]).boundary.intersection(win).difference(bnd), "L-SITE-CTXT")
     # shed: walls cut and hatched, openings, roof edge over the veranda
     for poly in parts(shed_cut):
         for piece in split_holes(poly):
@@ -1481,20 +1681,6 @@ def site_sheet(sid, title, number, recs, regions):
     for rid in ROOMS:                                             # the balcony, overhead
         if HC.kind(rid) == "exterior":
             P.geom(rpoly(rid).exterior.difference(house.buffer(0.005)), "A-ROOF", "dashed")
-    for p in H["roof"]["planes"]:
-        g = regions[p["id"]]
-        z = p["z"]
-        if g.is_empty or (abs(z["cx"]) < 1e-9 and abs(z["cy"]) < 1e-9) or g.area < 1.0:
-            continue
-        big = max(parts(g), key=lambda q: q.area)
-        c = polylabel(big, 0.02)
-        r = min(0.4, 0.8 * big.exterior.distance(c))                # arrow half-length within the plane
-        c = c.coords[0]
-        d = unit((0, 0), (-z["cx"], -z["cy"]))                     # downhill
-        P.line("A-ROOF", (c[0] - d[0] * r, c[1] - d[1] * r), (c[0] + d[0] * (r - 0.25), c[1] + d[1] * (r - 0.25)))
-        P.arrowhead("A-ROOF", (c[0] + d[0] * r, c[1] + d[1] * r), d, 0.25, 0.08)
-        P.text("A-ROOF", (c[0] + abs(d[1]) * 0.12, c[1] + abs(d[0]) * 0.12 - 0.75 * MM * abs(d[1])), 1.5 * MM, "%g°" % p["pitchDeg"],
-               "left" if abs(d[1]) > abs(d[0]) else "center")
     P.geom(house.exterior, "A-WALL")
     hx = polylabel(house, 0.02).coords[0]
     ridge = H["roof"]["ridge"]
@@ -1505,6 +1691,7 @@ def site_sheet(sid, title, number, recs, regions):
     rooms, tb = draw_tags(P, list(HC.building_rooms))
     boxes += tb
     mask_under_text(P, boxes, ("A-FURN", "A-FLOR-FIXT", "A-FLOR-OVHD", "L-SITE", "A-ROOF"))
+    slopes = slope_arrows(P, regions, win)
     P.e = clip(P.e, win.buffer(1e-6), inside=True)               # nothing of the model outside the plot window
     rows = []
     plot = Polygon(EXT["plot"]["polygon"])
@@ -1529,12 +1716,13 @@ def site_sheet(sid, title, number, recs, regions):
             poly, fz = z["polygon"], z["z"]
         site_rooms.append({"id": pr, "name": pr.replace("_", " ").capitalize(), "polygon": poly, "floorZ": fz,
                            "area": round(Polygon(poly).area, 2), "label": list(polylabel(Polygon(poly), 0.02).coords[0])})
-    notes = ["SITE PLAN WINDOW = PLOT + 300; THE FOOTWAY,", "   CARRIAGEWAY AND NEIGHBOURS ARE NOT SHOWN.",
+    notes = ["SITE PLAN WINDOW = PLOT + 300; NEIGHBOURING", "   BUILDINGS DASHED, FOR CONTEXT ONLY.",
              "SURFACE LEVELS IN METRES; ARROW = FALL, LEVEL", "   GIVEN AT BOTH ENDS.",
-             "BOUNDARIES APPROXIMATE, NOT SURVEYED.", "HOUSE SHOWN AS ROOF PLAN OVER ITS OUTLINE."]
+             "BOUNDARIES APPROXIMATE, NOT SURVEYED.", "HOUSE SHOWN AS ROOF PLAN OVER ITS OUTLINE;",
+             "   ARROW = ROOF PITCH, DOWN THE SLOPE.", "RWP / SVP: RAINWATER / SOIL PIPE."]
     sh = {"id": sid, "level": "X", "title": title, "number": number, "scale": "1:%d" % SCALE, "paper": "A3",
           "orientation": "portrait", "sheetBounds": sb}
-    return P, sh, rooms + site_rooms, dict(cut=shed_cut, rows=rows, leaves=leaf_count(shed_ops) + 1, notes=notes,
+    return P, sh, rooms + site_rooms, dict(cut=shed_cut, rows=rows, leaves=leaf_count(shed_ops) + 1, notes=notes, slopes=slopes,
                                            levels="SURFACES -0.450 TO ±0.000", footsrc=fsrc(fps), hb=hb, bounds=hb)
 
 
@@ -1551,11 +1739,31 @@ def fit_block(lines, w, h):
     return None
 
 
+def block_half(lines, rot=0, gap=None):
+    """Half width, half height of a text_block (its text-mask box)."""
+    gap = 1.0 * MM if gap is None else gap
+    hw = max(tw(s, h) for s, h in lines) / 2 + 0.6 * MM
+    hh = (sum(h for _, h in lines) + gap * (len(lines) - 1)) / 2 + 0.6 * MM
+    return (hh, hw) if rot == 90 else (hw, hh)
+
+
+def block_point(free, lines, rot=0):
+    """Centre for a text_block inside polygon `free`: its label point, else the nearest point (0.05 m grid) where the
+    whole block fits, else the label point anyway."""
+    pt = label_point(free)
+    hw, hh = block_half(lines, rot)
+    fits = lambda x, y: free.contains(box(x - hw, y - hh, x + hw, y + hh))
+    if fits(*pt):
+        return pt
+    x0, y0, x1, y1 = free.bounds
+    grid = [(x0 + i * 0.05, y0 + j * 0.05) for i in range(int((x1 - x0) / 0.05) + 1) for j in range(int((y1 - y0) / 0.05) + 1)]
+    return min((q for q in grid if fits(*q)), key=lambda q: math.dist(q, pt), default=pt)
+
+
 def text_block(P, layer, pt, lines, rot=0, gap=None):
     """Centred stack of text lines at pt (rot 0 or 90). -> its text-mask box."""
     gap = 1.0 * MM if gap is None else gap
     tot = sum(h for _, h in lines) + gap * (len(lines) - 1)
-    hw = max(tw(s, h) for s, h in lines) / 2 + 0.6 * MM
     off = tot / 2
     for s, h in lines:
         off -= h
@@ -1564,9 +1772,8 @@ def text_block(P, layer, pt, lines, rot=0, gap=None):
         else:
             P.text(layer, (pt[0], pt[1] + off), h, s)
         off -= gap
-    if rot == 90:
-        return (pt[0] - tot / 2 - 0.6 * MM, pt[1] - hw, pt[0] + tot / 2 + 0.6 * MM, pt[1] + hw)
-    return (pt[0] - hw, pt[1] - tot / 2 - 0.6 * MM, pt[0] + hw, pt[1] + tot / 2 + 0.6 * MM)
+    hw, hh = block_half(lines, rot, gap)
+    return (pt[0] - hw, pt[1] - hh, pt[0] + hw, pt[1] + hh)
 
 
 # ------------------------------------------------------------------ assemble + writers
@@ -1723,11 +1930,19 @@ def self_check(plan, checks):
                     if c["z"][0] <= HC.floor_z(rid) + CUT < c["z"][1]:
                         assert edge.distance(Point(mid(c["p"], c["q"]))) < 2e-3 and edge.distance(Point(c["p"])) < 2e-3, (sid, c["id"])
             roles = {(st["id"], role) for st, role, reg, _ in flights_on(sid) if not reg.is_empty}
-            for s in HC.stairs:                                 # every flight: UP on its lower sheet, DN on its upper
+            texts = {e["text"] for e in E if e["type"] == "text"}
+            for s in HC.stairs:                                 # every flight: UP nR on its lower sheet, DN nR on its upper
                 if s["kind"] == "flight":
                     lo, hi = sorted((s["fromRoom"], s["toRoom"]), key=lambda r: ROOMS[r]["floorZ"])
                     for room, role in ((lo, "lo"), (hi, "hi")):
-                        assert HC.level(room) != sid or (s["id"], role) in roles, (sid, s["id"], role)
+                        if HC.level(room) == sid:
+                            assert (s["id"], role) in roles, (sid, s["id"], role)
+                            assert "%s %dR" % ("UP" if role == "lo" else "DN", len(s["walk"]["risers"])) in texts, (sid, s["id"], role)
+        else:                                                   # pitch arrows: every sloped plane of 1 m2 +, none overlapping
+            rg = roof_regions()
+            want = [q for q in H["roof"]["planes"] if (q["z"]["cx"] or q["z"]["cy"]) and rg[q["id"]].area >= 1.0]
+            assert len(ex["slopes"]) == len(want), (len(ex["slopes"]), [q["id"] for q in want])
+            assert all(not a.intersects(b) for i, a in enumerate(ex["slopes"]) for b in ex["slopes"][i + 1:])
     site = plan["sheets"][-1]
     assert site["scale"] == "1:100" and tuple(site["bounds"][k] for k in ("minX", "minY", "maxX", "maxY")) == site_window()
     assert all(f["scale"] == "1:50" for f in plan["sheets"][:-1])

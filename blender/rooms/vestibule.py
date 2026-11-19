@@ -1,8 +1,9 @@
-"""Vestibule / porch furnishing (spec/rooms/vestibule.md): alarm keypad + switch, box stool, door rug,
-brass hall-lantern chandelier, recess-B downlight and the street canopy with the three outside lights.
+"""Vestibule / porch furnishing (spec/rooms/vestibule.md + spec/phase2/ground_corrections.md section 2): alarm
+keypad + switch, box stool, door rug, brass hall-lantern chandelier, the two recess-B downlights, the corner cover
+board beside the street door and the three downlights in the canopy soffit (the canopy itself is lib/envelope).
 
     B="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
-    "$B" -b --factory-startup --python blender/build.py -- --only shell,vestibule,hallway --preview vestibule,hallway --res 540x960 --samples 64 --tag hall
+    "$B" -b --factory-startup --python blender/build.py -- --levels G --only shell,vestibule,hallway --preview vestibule,hallway --res 540x960 --samples 64 --tag hall
 """
 import os
 from math import cos, sin, pi, tau, radians
@@ -10,7 +11,7 @@ from math import cos, sin, pi, tau, radians
 import bpy
 from mathutils import Matrix, Vector
 
-from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
 
 ROOM = 'vestibule'
 ART = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'textures', 'art', ROOM)
@@ -23,7 +24,12 @@ CAMERAS = [
     dict(name='keypad', pos=(-0.1, 1.15, 1.5), look=(0.65, 1.5, 1.15), fov_deg=100, ref='f_0033'),
     dict(name='inner', pos=(0.0, 3.33, 1.75), look=(0.0, 1.83, 1.7), fov_deg=100, ref='f_0057'),
     dict(name='stool', pos=(-0.45, 0.95, 1.25), look=(0.15, 1.5, 0.3), fov_deg=75),     # drawers (--pose 1: out)
+    dict(name='corner', pos=(0.05, 0.62, 1.35), look=(0.9, 0.0, 0.85), fov_deg=80, ref='v2:f_0933'),   # dado stop, cover board
+    dict(name='haunch', pos=(0.1, 0.62, 1.2), look=(0.1, 0.0, 2.7), fov_deg=100, ref='v2:f_0917'),     # recess-B ceiling
+    dict(name='stop', pos=(0.70, 0.55, 1.0), look=(0.78, 0.0, 0.85), fov_deg=60, ref='v2:f_0937'),     # dado return close up
 ]
+
+CANOPY_Z = 2.62                                 # flat soffit of the porch lean-to (lib/envelope.PORCH_SOFFIT_Z)
 
 RX = Matrix.Rotation(pi / 2, 4, 'X')            # local +Z -> -Y: lathes that face out of a wall
 
@@ -191,7 +197,7 @@ def build(ctx):
     kp = P.place(keypad('vestibule.keypad'), (0.65, 1.52, 1.48), facing=(-1, 0))
     ctx.add(kp, ROOM, 'fit', lm='dynamic')
     sw = P.place(P.switch_plate(1, name='vestibule.switch'), (0.65, 1.52, 1.22), facing=(-1, 0))
-    IX.tag(sw, 'light', rooms=['vestibule'])
+    IX.tag(sw, 'light', rooms=['vestibule'], label='Porch light')        # lantern, 2-way with the hall plate (v2:f_0903-0906)
     ctx.add(sw, ROOM, 'fit', lm='dynamic')
 
     # --- box stool in the corner of the east wall and the inner screen (drawers face west)
@@ -220,25 +226,31 @@ def build(ctx):
     for i, p in enumerate(P.bulb_points(ch)):
         lighting.bulb(ctx, ROOM, p, watts=10.5, kelvin=2800, radius=.012, name=f'vestibule.lantern.bulb.{i}')
 
-    # --- recessed downlight, recess B
-    lighting.downlight(ctx, ROOM, 0.20, 0.35, watts=60, kelvin=3000, spot_deg=130, name='vestibule.downlight')
-    ctx.add(P.place(P.downlight(name='vestibule.downlight_trim'), (0.20, 0.35, cz)), ROOM, 'light')
+    # --- two recessed downlights set diagonally in the flat part of the recess-B ceiling (corrections V2)
+    for i, (x, y) in enumerate(((-0.25, 0.28), (0.35, 0.50))):
+        lighting.downlight(ctx, ROOM, x, y, watts=32, kelvin=3000, spot_deg=130, name=f'vestibule.downlight.{i}')
+        ctx.add(P.place(P.downlight(name=f'vestibule.downlight_trim.{i}'), (x, y, ctx.ceil_z(ROOM, x, y))), ROOM, 'light')
 
-    # --- street canopy with the three outside lights (seen as soft discs through the frosted transom)
+    # --- east of the street door (corrections V4, v2:f_0931-0939): a flat cover board in the corner of the cheek
+    #     wall and the front wall, a beaded cover strip against the door frame, and between them the dado rail and
+    #     skirting of the 0.28 m piece of front wall, both ending 40 mm short of the frame with a returned end.
+    #     ponytail: built here because mo.TRIM['vestibule'] leaves the door walls bare; drop it if lib takes it over
     f = ctx.opening_frame('d_street')
-    y_out = f['center'].y - f['wall_thickness'] / 2
+    y_in = f['center'].y + abs(f['face_pos'])                            # room face of the front wall (0.0)
+    x_frame, x_board = 0.62, 0.83                                        # outside of the door frame / cover board edge
     mb = mo.MB()
-    mb.box((-0.80, y_out - 0.80, 2.65), (0.80, y_out, 2.69), 'upvc_white')                    # boarded soffit
-    mb.box((-0.82, y_out - 0.82, 2.64), (0.82, y_out - 0.80, 2.82), 'upvc_white', bev=.004)   # fascia
-    for sx in (-1, 1):
-        mb.box((sx * 0.82, y_out - 0.82, 2.64), (sx * 0.80, y_out, 2.82), 'upvc_white', bev=.004)
-    mb.box((-0.82, y_out - 0.82, 2.82), (0.82, y_out, 2.84), M.solid('canopy_lead', '#5A5D60', 0.6))
-    for k in range(1, 8):                                                                     # board joints
-        mb.box((-0.80, y_out - 0.1 * k - .002, 2.649), (0.80, y_out - 0.1 * k + .002, 2.651),
-               M.solid('canopy_joint', '#C9C9C4', 0.6))
-    can = mb.finish('vestibule.canopy')
-    ctx.add(can, ROOM, 'fit')
+    mb.box((x_board, y_in, 0.0), (0.90, y_in + 0.022, 2.60), 'joinery_white', bev=.002)
+    mb.sweep([(0, 0), (0.035, 0), (0.035, 0.008), (0.027, 0.016), (0.018, 0.012), (0.009, 0.016), (0, 0.016)],
+             [(x_frame, y_in, 0.0), (x_frame, y_in, 2.57)], 'joinery_white', up=(0, 1, 0))
+    for key, z in (('dado_hall', shell.finish(ROOM)['dado'] - mo.profile_size('dado_hall')[1]), ('sk_vest', 0.0)):
+        x0 = x_frame + 0.04 + mo.profile_size(key)[0]                    # the return wraps this corner of the path
+        mb.sweep(mo.PROFILES[key], [(x0, y_in - 0.02, z), (x0, y_in, z), (x_board, y_in, z)], 'joinery_white')
+    ctx.add(mb.finish('vestibule.door_corner'), ROOM, 'trim')
+
+    # --- the three outside lights: downlights in the canopy soffit, same circuit as the lantern (front_elevation
+    #     3.4 / 8; seen as soft discs through the frosted transom). The soffit is the envelope's
+    y_out = f['center'].y - f['wall_thickness'] / 2
     for i, x in enumerate((-0.38, 0.0, 0.38)):
-        lighting.downlight(ctx, ROOM, x, y_out - 0.40, z=2.63, watts=40, kelvin=3000, name=f'vestibule.outside.{i}')
-        ctx.add(P.place(P.downlight(dia=.105, lamp_dia=.065, strength=30.0, name=f'vestibule.outside_trim.{i}'),
-                        (x, y_out - 0.40, 2.649)), ROOM, 'light')
+        lighting.downlight(ctx, ROOM, x, y_out - 0.22, z=CANOPY_Z - 0.02, watts=40, kelvin=3000, name=f'vestibule.outside.{i}')
+        ctx.add(P.place(P.downlight(dia=.09, lamp_dia=.055, strength=30.0, name=f'vestibule.outside_trim.{i}'),
+                        (x, y_out - 0.22, CANOPY_Z)), ROOM, 'light')

@@ -6,7 +6,7 @@ from math import sin, cos, pi, radians, tau
 import bpy
 from mathutils import Matrix, Vector
 from lib import materials as M, mouldings as mo, props as P
-from living_parts import (Tr, Rz, Rx, Ry, MIRX, kid, loft, rrect, circ, slab, _face, tube_var, rtube, crystal, brass,
+from living_parts import (Tr, Rz, Rx, Ry, MIRX, kid, loft, rrect, circ, slab, _face, tube_var, rtube, crystal, brass, wood,
                           _bsdf, ART)
 
 
@@ -227,18 +227,25 @@ def speaker(name='living.speaker'):
     return root
 
 
-def disc_player(name='living.disc_player'):
+def games_console(name='living.games_console'):
+    """Black games console lying flat, 0.275 x 0.305 x 0.053 (ground_corrections L6: "a PlayStation" centred on the
+    shelf): a matt lower slab and a gloss upper slab with a thin groove between them and slanted front edges, no
+    logo or text. Origin bottom centre, front -Y."""
     mb = mo.MB()
-    mb.box((-0.215, -0.14, 0.006), (0.215, 0.14, 0.066), M.mat('black_matt'), bev=0.002)
-    mb.box((-0.20, -0.1412, 0.03), (0.06, -0.1398, 0.042), M.mat('black_gloss'))
-    mb.box((0.12, -0.1412, 0.03), (0.19, -0.1398, 0.036), M.mat('silver_satin'))
+    Bk, Bg = M.mat('black_matt'), M.mat('black_gloss')
+    lo = [(-0.1375, 0.0), (-0.1375, 0.030), (0.1375, 0.030), (0.1375, 0.0)]
+    mb.prism([(x, -0.150, z) if z else (x, -0.140, z) for x, z in lo], (0, 0.295, 0), Bk)          # lower slab, raked front
+    mb.box((-0.134, -0.146, 0.030), (0.134, 0.150, 0.033), M.solid('living_console_groove', '#0A0A0A', 0.6))
+    mb.prism([(-0.1375, -0.152, 0.033), (-0.1375, -0.144, 0.053), (0.1375, -0.144, 0.053), (0.1375, -0.152, 0.033)],
+             (0, 0.297, 0), Bg)                                                                      # upper slab
+    mb.box((-0.12, -0.153, 0.010), (-0.09, -0.1495, 0.013), M.solid('living_console_led', '#3A4A66', 0.4))   # light bar, off
     return mb.finish(name)
 
 
 def xiangqi(name='living.xiangqi'):
     """Chinese chess board 0.38 x 0.42 in pale wood with the 32 dark-red round pieces set out."""
     mb = mo.MB()
-    red = M.solid('living_xiangqi_red', '#6B211B', 0.35)
+    red = M.solid('living_xiangqi_red', '#4A1A15', 0.45)          # dark maroon discs (v2:f_0833)
     mb.box((-0.19, -0.21, 0), (0.19, 0.21, 0.018), 'oak_light', bev=0.002, grain=1)
     dx, dy = 0.04, 0.04
     spots = [(c, 0) for c in range(9)] + [(1, 2), (7, 2)] + [(c, 3) for c in (0, 2, 4, 6, 8)]
@@ -316,7 +323,7 @@ def tantalus(name='living.tantalus'):
     straps and lock plate, two end boards with a serpentine front edge, a top locking bar with two small brass
     knobs; three square hobnail-cut decanters, the first half full of whisky; key tassel."""
     mb = mo.MB()
-    W, B = 'dark_oak_antique', M.mat('bronze_antique')
+    W, B = wood(), M.mat('bronze_antique')
     mb.box((-0.18, -0.075, 0), (0.18, 0.075, 0.03), W, bev=0.003, grain=0)                          # base board
     mb.box((-0.164, -0.07, 0.03), (0.164, -0.058, 0.108), W, bev=0.002, grain=0)                    # front board
     mb.box((-0.164, 0.058, 0.03), (0.164, 0.066, 0.075), W, bev=0.002, grain=0)                     # low back rail
@@ -600,7 +607,7 @@ def inlay_box(name='living.inlay_box'):
     """Bone-inlaid marquetry box 0.20 x 0.13 x 0.07: pale inlay all over, dark banding and a geometric star."""
     mb = mo.MB()
     iv = P.mat('ivory')
-    dk = 'dark_oak_antique'
+    dk = wood()
     mb.box((-0.10, -0.065, 0), (0.10, 0.065, 0.07), iv, bev=0.003)
     for z0, z1 in ((0.0, 0.008), (0.046, 0.052), (0.064, 0.0705)):          # base, lid joint and lid edge bands
         mb.box((-0.1012, -0.0662, z0), (0.1012, 0.0662, z1), dk, grain=0)

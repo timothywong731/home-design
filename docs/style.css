@@ -39,7 +39,8 @@ button svg { width: 15px; height: 15px; }
 .brand span { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 #rooms { flex: 1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; justify-content: safe center; mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent); padding: 0 12px; }
 #rooms::-webkit-scrollbar { display: none; }
-#rooms button { height: 28px; padding: 0 10px; font-size: 12.5px; }
+#rooms button { height: 28px; padding: 0 8px; font-size: 12px; }
+@media (max-width: 1700px) { #rooms button kbd { display: none; } }     /* digits still work: help and tooltips say so */
 #rooms button kbd { font: 10px var(--cad); color: var(--muted); }
 #rooms button[aria-current="true"] kbd { color: inherit; opacity: .7; }
 .tools { display: flex; gap: 8px; align-items: center; }
@@ -82,11 +83,13 @@ button svg { width: 15px; height: 15px; }
 .plan-tabs button.here:not([aria-pressed="true"]) { box-shadow: inset 0 -2px 0 var(--accent); }
 #plan.collapsed .plan-tabs { display: none; }
 
-/* room buttons grouped by level */
+/* room buttons grouped by level: the open group lists its rooms, the others are a floor chip */
 #rooms .grp { display: flex; gap: 6px; align-items: center; flex: none; }
 #rooms .grp + .grp { border-left: 1px solid var(--line); padding-left: 8px; }
-#rooms .lv { font: 600 10px var(--cad); color: var(--muted); letter-spacing: .08em; min-width: max-content; }
-#rooms .grp:not(.cur) kbd { display: none; }
+#rooms .lv { padding: 0 7px; font: 600 10.5px var(--cad); color: var(--muted); letter-spacing: .08em; min-width: 30px; justify-content: center; }
+#rooms .grp.open .lv { color: var(--accent); border-color: transparent; padding: 0 2px; min-width: 0; }
+#rooms .grp.cur .lv { box-shadow: inset 0 -2px 0 var(--accent); }
+#rooms .grp:not(.open) > button[data-room] { display: none; }
 
 /* dollhouse level cut, streaming chip, layer-change fade */
 #dh-levels { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 8;

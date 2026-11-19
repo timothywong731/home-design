@@ -125,14 +125,21 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
       it.tv = { c, g: c.getContext('2d'), tex, t0: -1e9, last: 0 };
       const mat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
       it.o.traverse((m) => m.isMesh && (m.material = mat));
-    } else if (f === 'flame') {
+    } else if (f === 'flame') {          // its own emissive hue (blue gas, an orange fire pit), else gas blue
       it.o.traverse((m) => m.isMesh && mapMat(m, (mat) => new THREE.MeshBasicMaterial({
-        color: mat.emissive && mat.emissive.b > mat.emissive.r ? mat.emissive : new THREE.Color(0x3f7cff),
+        color: mat.emissive && mat.emissive.r + mat.emissive.g + mat.emissive.b > 0.05 ? mat.emissive : new THREE.Color(0x3f7cff),
         transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide })));
       const box = new THREE.Box3().setFromObject(it.o);       // flicker scales about the burner cap
       it.pv = pivot(it.o, box.getCenter(v).setY(box.min.y));
     } else if (f === 'water') {
-      it.o.traverse((m) => m.isMesh && mapMat(m, (mat) => Object.assign(mat, { transparent: true, depthWrite: false, alphaMap: waterTex() })));
+      // the streaks keep one density whatever the mesh: a tap stream ~1-2 cm across gets the texture once around, a
+      // shower spray (a wide cone, tens of cm) gets it repeated round its girth and down its length, with clear gaps
+      // between the jets. Size from the mesh as modelled (the tag has no size key, INTERACT.md): girth = surface area /
+      // height, which a curved stream or a splash ring at its foot hardly changes.
+      const s = new THREE.Box3().setFromObject(it.o).getSize(q), girth = areaOf(it.o) / Math.max(s.y, 0.05), spray = girth > 0.2;
+      it.tex = waterTex(spray).clone();
+      it.tex.repeat.set(Math.max(1, Math.round(girth / 0.04)), Math.max(2, Math.round(s.y / 0.12)));
+      it.o.traverse((m) => m.isMesh && mapMat(m, (mat) => Object.assign(mat, { transparent: true, depthWrite: false, alphaMap: it.tex, side: THREE.DoubleSide, ...(spray ? { opacity: mat.opacity * 0.7 } : {}) })));
     }
     if (f !== 'none') fx.push(it);
     it.mats = matsOf(it.o).map((m) => ({ m, e0: m.emissive?.clone(), k: m.emissiveIntensity ?? 1, op: m.opacity, tr: m.transparent }));
@@ -282,7 +289,7 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
     for (const it of fx) {
       if (!it.o.visible) continue;
       // glTF stores v = 1 - Blender v, so a falling offset moves the streaks toward Blender -V (down the stream)
-      if (it.fx === 'water') { WATER.offset.y = 1 - ((t * 1.6) % 1); for (const x of it.mats) x.m.opacity = x.op * it.a * (0.82 + 0.1 * Math.sin(t * 23 + it.phase) + 0.06 * Math.sin(t * 37)); }
+      if (it.fx === 'water') { it.tex.offset.y = 1 - ((t * 1.6) % 1); for (const x of it.mats) x.m.opacity = x.op * it.a * (0.82 + 0.1 * Math.sin(t * 23 + it.phase) + 0.06 * Math.sin(t * 37)); }
       else if (it.fx === 'flame') {
         const n = 0.5 + 0.3 * Math.sin(t * 31 + it.phase) + 0.2 * Math.sin(t * 57 + it.phase * 2);
         it.pv.scale.set(1, 0.85 + 0.35 * n, 1);
@@ -324,18 +331,30 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
 }
 
 // ---- effects ----
-let WATER = null;
-function waterTex() {                    // streaky alpha for running water; scrolled along V
-  if (WATER) return WATER;
+const ta = new THREE.Vector3(), tb = new THREE.Vector3(), tc = new THREE.Vector3();
+function areaOf(o) {                     // world surface area of an object's meshes
+  let a = 0;
+  o.updateMatrixWorld(true);
+  o.traverse((m) => {
+    if (!m.isMesh) return;
+    const p = m.geometry.attributes.position, ix = m.geometry.index, n = ix ? ix.count : p.count, at = (k) => (ix ? ix.getX(k) : k);
+    for (let k = 0; k + 2 < n; k += 3) {
+      ta.fromBufferAttribute(p, at(k)).applyMatrix4(m.matrixWorld); tb.fromBufferAttribute(p, at(k + 1)).applyMatrix4(m.matrixWorld); tc.fromBufferAttribute(p, at(k + 2)).applyMatrix4(m.matrixWorld);
+      a += tb.sub(ta).cross(tc.sub(ta)).length() / 2;
+    }
+  });
+  return a;
+}
+const WATER = {};
+function waterTex(spray) {               // streaky alpha for running water (a spray: jets with clear gaps); scrolled along V
+  if (WATER[spray]) return WATER[spray];
   const c = Object.assign(document.createElement('canvas'), { width: 32, height: 128 }), g = c.getContext('2d');
-  g.fillStyle = '#8c8c8c'; g.fillRect(0, 0, 32, 128);
+  g.fillStyle = spray ? '#141414' : '#8c8c8c'; g.fillRect(0, 0, 32, 128);
   for (let i = 0; i < 70; i++) {
     const x = Math.random() * 32, y = Math.random() * 128, h = 12 + Math.random() * 50, w = 1 + Math.random() * 2;
     g.fillStyle = `rgba(255,255,255,${0.25 + Math.random() * 0.6})`; g.fillRect(x, y, w, h); g.fillRect(x, y - 128, w, h);
   }
-  WATER = Object.assign(new THREE.CanvasTexture(c), { wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping });
-  WATER.repeat.set(1, 2);
-  return WATER;
+  return (WATER[spray] = Object.assign(new THREE.CanvasTexture(c), { wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping }));
 }
 
 // An original abstract picture: drifting landscape bands under a slowly turning sky, a sun, a clock widget.

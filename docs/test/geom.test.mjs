@@ -274,6 +274,17 @@ function schema2(house) {
   assert.ok(G.yawDir(vp.balcony.yaw)[1] > 0.99, 'balcony looks out');
   assert.ok(G.yawDir(vp.landing1_ql.yaw)[1] < -0.99 && vp.landing1_ql.pitch < 0, 'quarter landing looks down the main flight');
   assert.ok(!vp.eaves_front && !vp.stairs && !vp.stairs2, 'no viewpoint in voids / stairwells');
+  // review additions are tolerated: the plan symbol `pipe` blocks; feature types ceiling_cove (ignored) and boxing
+  // (blocks when it stands on the floor); floor_void.bottom (ignored); a neighbour given by `parts` alone still blocks
+  assert.equal(G.obstaclesFrom([{ room: 'bathroom2', plan_sym: 'pipe', obb: sq }], false, house)['2']?.length, 1, 'pipe blocks');
+  const h2 = structuredClone(house), nb = h2.exterior.neighbours[0];
+  h2.features.push({ id: 't_cove', type: 'ceiling_cove', room: 'hallway', polygon: [[0.2, 3], [0.6, 3], [0.6, 3.4], [0.2, 3.4]], z: [2.4, 2.6] },
+    { id: 't_box', type: 'boxing', room: 'hallway', polygon: [[0.2, 3], [0.6, 3], [0.6, 3.4], [0.2, 3.4]], z: [0, 2.4] },
+    { id: 't_void', type: 'floor_void', level: 'G', room: 'hallway', polygon: [[0.2, 2], [0.6, 2], [0.6, 2.2], [0.2, 2.2]], z: 0, bottom: -0.03 });
+  delete nb.polygon;
+  const W2 = G.buildWalk(h2), gr = W2.cells.find((c) => c.kind === 'ground');
+  assert.ok(!G.isFree(W2, 'G', 0.4, 3.2) && G.isFree(W, 'G', 0.4, 3.2), 'a floor-standing boxing blocks, a ceiling cove does not');
+  assert.ok(nb.parts.every((p) => p.polygon.every(([x, y]) => gr.blockers.some((b) => Math.hypot(b.a[0] - x, b.a[1] - y) < 1e-9))), 'neighbour parts block');
   console.log(`geom ok (schema 2): ${W.cells.length} cells on ${W.layers.length} layers, ${W.portals.length} portals, ${n} portal grid points with finite Z, ${Object.keys(vp).length} viewpoints`);
   for (const s of out) console.log('  route', s);
 }

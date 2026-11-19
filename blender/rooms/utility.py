@@ -6,6 +6,8 @@
 
 World coords, metres. Room x 0.60..3.10, y 10.26..12.23, ceiling 2.40. W-rear = y 12.23 (washer, dryer,
 sink, wall cabinets), W-ext = x 3.10 (window, base doors A/B, tall cupboard), W-wc = y 10.26, W-hall = x 0.60.
+In the NE corner a plastered boxing (x 2.95..3.10, y 11.89..12.23, worktop to the bulkhead) is flush with the bulkhead
+face and the window's +y reveal side; the wall-cabinet run stops 0.11 short of it (the owner's "tiny gap", v2 f_0554-0567).
 Built-in pieces are mo.MB meshes in world coordinates (object at identity) with the lib props parented to
 them, so each plan footprint covers the whole piece.
 
@@ -38,6 +40,12 @@ SINK_Z0 = 0.649             # underside of the Belfast sink: its rim (0.869) sit
 # Base door A (W-ext, next to the inside corner): hinge edge and width. Its free edge swings out to
 # A_Y0 + hypot(A_W, 0.02) = 11.587, in front of the end of the sink apron (face y 11.59, 2.5 mm off the door plane).
 A_Y0, A_W = 11.2465, 0.340
+# Wall cabinets on W-rear (camera fitted to v1 t=475 against the splash tile joints and the machines; v2 f_0553, t=556:
+# D3/D4 meet just left of the tap, D5 hangs over the drainer; v2 t=559-561: D5's end panel stands 0.11 off the
+# corner boxing, the corner socket is under D5): door edges D1 | D2 || D3 | D4 || D5, then a 20 mm end panel.
+WALL_EDGES = (0.64, 0.985, 1.33, 1.92, 2.51, 2.82)
+WALL_END = 2.84             # outer face of the end panel
+BOX_X = 2.95                # -x face of the NE corner boxing = face of the shell's utility_bulkhead (x 2.95..3.10)
 
 CAMERAS = [
     dict(name='rear', pos=(0.78, 10.72, 1.5), look=(1.75, 12.23, 1.05), fov_deg=100, ref='f_0476'),
@@ -48,6 +56,10 @@ CAMERAS = [
     dict(name='wcdoor', pos=(1.8, 11.26, 1.5), look=(1.6, 10.2, 0.9), fov_deg=100, ref='f_0499'),
     dict(name='fromhall', pos=(-0.2, 10.8, 1.5), look=(3.1, 11.0, 1.3), fov_deg=100, ref='f_0567'),
     dict(name='out', pos=(1.8, 10.86, 1.5), look=(0.6, 10.8, 1.4), fov_deg=100, ref='f_0546'),
+    dict(name='window', pos=(2.62, 11.30, 1.45), look=(3.2, 11.70, 1.15), fov_deg=100, ref='v2:f_0567'),   # board, reveal tiles (clear of D4 / D5 open)
+    dict(name='rail', pos=(1.2, 10.55, 1.4), look=(1.9, 11.3, 2.25), fov_deg=100, ref='v2:f_0591'),
+    dict(name='slot', pos=(2.84, 11.64, 1.55), look=(2.90, 12.23, 1.60), fov_deg=100, ref='v2:f_0562'),   # run end, slot, boxing
+    dict(name='wallrun', pos=(1.30, 10.80, 1.55), look=(2.70, 12.10, 1.55), fov_deg=100, ref='v2:f_0557'),
     # interaction checks (--pose 1): portholes + drums, the base cupboards round the corner, the wall units from below
     dict(name='ix_machines', pos=(1.75, 10.75, 1.25), look=(1.2, 11.7, 0.4), fov_deg=100, ref='f_0476'),
     dict(name='ix_base', pos=(1.45, 10.75, 1.45), look=(2.45, 11.55, 0.45), fov_deg=100, ref='f_0461'),
@@ -57,17 +69,19 @@ CAMERAS = [
 # State-1 angle of every cabinet front (degrees, right-hand rule about +Z: hinge on the viewer's left = negative).
 # The contract asks for 95-110; a front opens less where something stands in its swing, so that nothing touches
 # with every front open at once (checked: build/ix_service/check.py, also part-way through each swing):
-#   base.sink    the inside corner: any further and it crosses base door A standing open
+#   base.sink    the inside corner: at 55 its face clears the closed door A's pull by 6 mm (58 would touch it)
 #   ext.B, ext.A, D4   90: past that they lean into the arc of the next front's free edge
 #   tall.lower   its pull meets the WC wall behind it at 88;  tall.upper  its face meets the horse plaque at 68
 #   D1           its pull meets the hall wall at 90;  D2 / D3 hang on one partition and open face to face
 #   washer       the hall wall is 0.14 m beyond its hinge
-# Left as the room is built: base door A cannot swing while the sink door stands open in front of it (an inside
-# corner: one of the two at a time).
+# The sink door and base door A cross each other in the inside corner (one of the two at a time): both carry
+# excl=[the other], so the viewer shuts one before it opens the other.
 # Keys are the group ids without the 'utility.' prefix.
-OPEN = {'base.sink': 42, 'base.ext.B': 90, 'base.ext.A': 90, 'tall.lower': 85, 'tall.upper': 65,
+OPEN = {'base.sink': 55, 'base.ext.B': 90, 'base.ext.A': 90, 'tall.lower': 85, 'tall.upper': 65,
         'wall.D1': -85, 'wall.D2': 80, 'wall.D3': -84, 'wall.D4': 90, 'wall.D5': 100, 'washer': -90, 'dryer': -100}
-LINING = '#ECEAE4'          # carcass interiors: pale melamine
+LINING = '#A3967A'          # carcass interiors: mid oak-effect board (tall unit opened in v2 f_0587, sampled #5D4E3D in shade;
+                            # pulled toward olive: #A78C6D rendered salmon-pink under the 3000 K balance);
+                            # flat colour: the library oaks render too orange for it, and a re-toned texture would be a new file
 STOCK = ('#D9D5CB', '#C9C2B4', '#B7A58E', '#8E9AA3', '#A9B2A6', '#8497A6', '#CDBE85', '#9AA590', '#E6E2D8')   # muted
 
 Z = Vector((0, 0, 1))
@@ -388,16 +402,39 @@ def _worktops(o):
     return rear, mb.finish('utility.worktop.ext', sharp_deg=50)
 
 
-def _airer(name, y=11.38, z=2.10, cz=2.40):
-    """Ceiling clothes rail: chrome tube dia 25 along x on three drop rods with ceiling flanges. Empty."""
+def _airer(name, y=11.26, z=2.10, cz=2.40):
+    """Ceiling clothes rail (ground_corrections U3): chrome tube dia 25 from the hall wall to the window wall with a
+    round flange at each end, carried by two ceiling drop rods at x 1.45 / 2.45 (v2 f_0589-f_0595). Empty."""
     mb = mo.MB()
     ch = 'chrome'
-    _lathe(mb, (0.90, y, z), (1, 0, 0), [(0, 0), (0.010, 0), (0.0125, 0.003), (0.0125, 1.897), (0.010, 1.90), (0, 1.90)], ch, 16)
-    for x in (1.05, 1.85, 2.65):
+    L = X1 - X0 - 0.012
+    _lathe(mb, (X0 + 0.006, y, z), (1, 0, 0), [(0, 0), (0.0125, 0), (0.0125, L), (0, L)], ch, 16)
+    for x0, d in ((X0, 1), (X1, -1)):                                                             # wall flanges
+        _lathe(mb, (x0, y, z), (d, 0, 0), [(0, 0), (0.030, 0), (0.030, 0.004), (0.020, 0.008), (0.016, 0.022),
+                                           (0, 0.022)], ch, 20)
+    for x in (1.45, 2.45):
         _lathe(mb, (x, y, z), Z, [(0.008, 0), (0.008, cz - z - 0.008)], ch, 12)                       # drop rod
         _lathe(mb, (x, y, cz), (0, 0, -1), [(0, 0), (0.030, 0), (0.030, 0.004), (0.014, 0.010), (0.011, 0.030),
                                             (0.008, 0.030)], ch, 20)                                # ceiling flange
         _lathe(mb, (x - 0.02, y, z), (1, 0, 0), [(0, 0), (0.0165, 0), (0.0165, 0.04), (0, 0.04)], ch, 16)    # T clamp
+    return mb.finish(name, sharp_deg=50)
+
+
+def _vacuum(name):
+    """Broom-cupboard contents of the tall unit's lower bay (v2 f_0587): a grey stick vacuum on a dock screwed to the
+    back panel, its wand down to a floor head, and a broom leaning in the front corner. One mesh, world coordinates,
+    inside the carcass (x 2.536..3.094, y 10.298..10.862, floor z 0.168)."""
+    mb = mo.MB()
+    grey, dark = M.solid('utility_vacuum_grey', '#8A8D92', 0.35, 0.4), M.solid('utility_vacuum_dark', '#3A3B3E', 0.5)
+    xb, yc = 3.094, 10.66
+    mb.box((xb - 0.035, yc - 0.04, 1.00), (xb, yc + 0.04, 1.16), dark, bev=0.004)                   # wall dock
+    _lathe(mb, (xb - 0.075, yc, 0.86), Z, [(0, 0), (0.045, 0), (0.048, 0.03), (0.048, 0.22), (0.035, 0.26), (0, 0.26)], grey, 16)
+    mb.box((xb - 0.07, yc - 0.012, 1.10), (xb - 0.035, yc + 0.012, 1.13), dark)                     # handle into the dock
+    _lathe(mb, (xb - 0.075, yc, 0.21), Z, [(0.016, 0), (0.016, 0.65)], dark, 10)                    # wand
+    mb.box((xb - 0.17, yc - 0.13, 0.168), (xb - 0.02, yc + 0.13, 0.225), dark, bev=0.01)            # floor head
+    _lathe(mb, (2.60, 10.34, 0.175), (0.30, 0.0, 1.0), [(0.012, 0), (0.012, 1.15)], M.solid('utility_broom_stick',
+           '#B9442E', 0.5), 8)                                                                        # broom stick
+    mb.box((2.55, 10.31, 0.168), (2.62, 10.60, 0.21), M.solid('utility_broom_head', '#2E2F31', 0.7), bev=0.006)
     return mb.finish(name, sharp_deg=50)
 
 
@@ -424,10 +461,12 @@ def build(ctx):
     S, W = (0, -1), (-1, 0)                 # room-side normals of W-rear (faces -Y) and W-ext (faces -X)
     dyn = []                                # what moves and what it reveals: lm='dynamic' (set at the end of build)
 
-    def front(key, pivot, *objs, label='Cupboard'):
+    def front(key, pivot, *objs, label='Cupboard', excl=None):
         """objs (a front and its pull) = hinge group 'utility.<key>' about the vertical through `pivot` - the
-        front's outer corner on its hinge side, so the opened front never enters the carcass or its neighbour."""
-        dyn.extend(IX.tag_many(objs, 'hinge', g='utility.' + key, label=label, p=pivot, deg=OPEN[key]))
+        front's outer corner on its hinge side, so the opened front never enters the carcass or its neighbour.
+        excl: keys of fronts whose swing crosses this one (the viewer shuts them first)."""
+        kw = dict(excl=['utility.' + k for k in excl]) if excl else {}
+        dyn.extend(IX.tag_many(objs, 'hinge', g='utility.' + key, label=label, p=pivot, deg=OPEN[key], **kw))
         return objs
 
     def carcass(w, d, h, loc, facing, name, **kw):
@@ -461,7 +500,7 @@ def build(ctx):
           carcass(0.60, Y1 - YF, zr, (2.21, Y1, 0), S, 'utility.base.sink_carcass'), trap,
           *front('base.sink', (2.508, YF - 0.02, 0.155),
                  door(0.596, zr - 0.044 - 0.155, 2.21, YF, 0.155, S, 'utility.base.sink_door'),
-                 handle(1.955, YF - 0.02, zr - 0.044 - 0.06 - 0.11, S)))
+                 handle(1.955, YF - 0.02, zr - 0.044 - 0.06 - 0.11, S), excl=['base.ext.A']))
     ctx.add(base, ROOM, 'fit', plan_sym='base_unit')
 
     # the tap: lever lifts 20 deg, one stream from the hand spray (outlet z 1.015) to the floor of the bowl
@@ -484,7 +523,8 @@ def build(ctx):
     for k, y0, w in (('B', 10.8815, 0.362), ('A', A_Y0, A_W)):                             # hinge edge, width
         kids += front('base.ext.' + k, (XF - 0.02, y0, 0.152),
                       door(w, 0.716, XF, y0 + w / 2, 0.152, W, f'utility.base.ext_door.{k}'),
-                      handle(XF - 0.02, y0 + w - 0.045, 0.868 - 0.06 - 0.11, W))
+                      handle(XF - 0.02, y0 + w - 0.045, 0.868 - 0.06 - 0.11, W),
+                      excl=['base.sink'] if k == 'A' else None)
     for o in kids:                                         # ext is a rotated prop: keep the children's world placement
         o.parent = ext
         o.matrix_parent_inverse = ext.matrix_basis.inverted()
@@ -493,37 +533,45 @@ def build(ctx):
     for wt in _worktops(OAK):
         ctx.add(wt, ROOM, 'fit', plan_sym='worktop')
 
-    # ---- tall cupboard x 2.53..3.10, y 10.28..10.88; lower door 0.15..1.395, upper 1.40..2.295, top board 2.31
+    # ---- tall cupboard x 2.53..3.10, y 10.28..10.88; lower door 0.15..1.395, upper 1.40..2.295, top board 2.31.
+    #      Lower bay = broom cupboard (no shelf, v2 f_0587), fixed shelf at the door split, one shelf above (U4).
     mb = mo.MB()
     mb.box((XF - 0.02, Y0, 0), (X1, 10.28, 2.31), GREY, bev=0.001)                         # scribe filler against W-wc
     mb.box((XF - 0.03, 10.28, WALL_Z1), (X1, 10.88, 2.31), GREY, bev=0.002)                # top board, 10 mm overhang
     tall = mb.finish('utility.tall')
-    _kids(tall,
-          carcass(0.60, X1 - XF, WALL_Z1, (X1, 10.58, 0), W, 'utility.tall.carcass', shelves=4),
+    upper = carcass(0.60, X1 - XF, WALL_Z1 - 1.40, (X1, 10.58, 1.40), W, 'utility.tall.carcass_upper', plinth=0, shelves=1)
+    vac = _vacuum('utility.tall.vacuum')
+    dyn.append(vac)
+    _kids(tall, upper, vac,
+          carcass(0.60, X1 - XF, 1.40, (X1, 10.58, 0), W, 'utility.tall.carcass'),
           *front('tall.lower', (XF - 0.02, 10.282, 0.152), door(0.596, 1.243, XF, 10.58, 0.152, W, 'utility.tall.door_lower'),
                  handle(XF - 0.02, 10.88 - 0.047, 1.21, W), label='Tall cupboard'),
           *front('tall.upper', (XF - 0.02, 10.282, 1.400), door(0.596, 0.893, XF, 10.58, 1.400, W, 'utility.tall.door_upper'),
                  handle(XF - 0.02, 10.88 - 0.047, 1.56, W), label='Tall cupboard'))
     ctx.add(tall, ROOM, 'fit', plan_sym='tall_unit')
 
-    # ---- wall cabinets on W-rear: D1 D2 (300) | D3 D4 (500) | D5 (300, vent slots); fronts at y 11.90
+    # ---- wall cabinets on W-rear: D1 D2 (345) | D3 D4 (590) | D5 (310, vent slots) + 20 mm end panel, x 0.64..2.84;
+    #      fronts at y 11.90. The run stops 0.11 short of the corner boxing (WALL_EDGES).
     yw = Y1 - 0.31                                                                         # carcass front 11.92
+    e = WALL_EDGES
     mb = mo.MB()
-    mb.box((X0, yw - 0.02, WALL_Z0), (0.64, Y1, WALL_Z1), GREY, bev=0.001)                 # scribe filler
-    mb.box((0.64, yw - 0.02, WALL_Z0 - 0.016), (2.56, yw - 0.002, WALL_Z0), GREY, bev=0.001)    # light pelmet
-    mb.box((0.66, 12.150, WALL_Z0 - 0.006), (2.54, 12.166, WALL_Z0), P.emissive('#FFC489', 6.0))   # LED strip body: ~3400 K, reads neutral under the 3000 K view white balance
+    mb.box((X0, yw - 0.02, WALL_Z0), (e[0], Y1, WALL_Z1), GREY, bev=0.001)                 # scribe filler
+    mb.box((e[0], yw - 0.02, WALL_Z0 - 0.016), (WALL_END, yw - 0.002, WALL_Z0), GREY, bev=0.001)   # light pelmet
+    mb.box((e[0] + 0.02, 12.150, WALL_Z0 - 0.006), (WALL_END - 0.02, 12.166, WALL_Z0), P.emissive('#FFC489', 6.0))   # LED strip body: ~3400 K, reads neutral under the 3000 K view white balance
     wall = mb.finish('utility.wall_units')
     mb = mo.MB()
     yp = yw - 0.02 + REC                                                                   # panel face of the doors
-    for z in (2.130, 2.153):                                                               # D5 vent slots, on its panel
-        mb.box((2.338, yp - 0.0012, z), (2.442, yp + 0.0005, z + 0.008), 'black_matt')
+    xv = (e[4] + e[5]) / 2                                                                 # D5 vent slots, on its panel
+    for z in (2.130, 2.153):
+        mb.box((xv - 0.052, yp - 0.0012, z), (xv + 0.052, yp + 0.0005, z + 0.008), 'black_matt')
     vents = mb.finish('utility.wall.door.D5.vents')
     kids = [carcass(xb - xa, 0.31, WALL_Z1 - WALL_Z0, ((xa + xb) / 2, Y1, WALL_Z0), S, f'utility.wall.carcass.{i}',
                     plinth=0, shelves=2)
-            for i, (xa, xb) in enumerate(((0.64, 1.24), (1.24, 2.24), (2.24, 2.56)))]      # 600 | 1000 | 300 + end panel
+            for i, (xa, xb) in enumerate(((e[0], e[2]), (e[2], e[4]), (e[4], WALL_END)))]   # 690 | 1180 | 310 + end panel
     zh = WALL_Z0 + 0.06 + 0.11
-    for i, (xa, xb, hx) in enumerate(((0.64, 0.94, 0.895), (0.94, 1.24, 0.985), (1.24, 1.74, 1.695),
-                                      (1.74, 2.24, 1.785), (2.24, 2.54, 2.285))):
+    for i in range(5):
+        xa, xb = e[i], e[i + 1]
+        hx = xb - 0.045 if i in (0, 2) else xa + 0.045                                     # D1 / D3 pulls on the meeting edge
         k = f'wall.D{i + 1}'                                                               # hinge on the side away from the pull
         kids += front(k, (xa + 0.0015 if OPEN[k] < 0 else xb - 0.0015, yw - 0.02, WALL_Z0 + 0.0015),
                       door(xb - xa - 0.003, WALL_Z1 - WALL_Z0 - 0.003, (xa + xb) / 2, yw, WALL_Z0 + 0.0015, S,
@@ -535,26 +583,71 @@ def build(ctx):
     # ---- what the cupboards hold (rows: axis, from, to, front, back, shelf z, headroom)
     rows = [(0, 1.95, 2.20, 11.78, 12.19, 0.168, 0.26), (0, 2.31, 2.47, 11.78, 12.19, 0.168, 0.26)]          # under the sink
     rows += [(1, y, y + 0.31, 2.60, 3.06, z, 0.32) for y in (10.905, 11.27) for z in (0.168, 0.519)]         # base B, A
-    rows += [(1, 10.31, 10.85, 2.60, 3.06, z, 0.40) for z in (0.168, 0.599, 1.021, 1.443, 1.865)]            # tall cupboard
+    rows += [(1, 10.31, 10.85, 2.60, 3.06, z, 0.40) for z in (1.418, 1.8565)]                               # tall, upper bay
     rows += [(0, xa + 0.03, xb - 0.03, 11.96, 12.20, z, 0.27)
-             for xa, xb in ((0.64, 1.24), (1.24, 2.24), (2.24, 2.56)) for z in (1.413, 1.710, 1.998)]        # wall units
+             for xa, xb in ((e[0], e[2]), (e[2], e[4]), (e[4], WALL_END)) for z in (1.413, 1.710, 1.998)]    # wall units
     dyn.append(ctx.add(_stock('utility.stock', rows), ROOM, 'fit'))
 
-    # ---- marble metro splashbacks, 2 mm proud: W-rear full length, W-ext cut round the window reveal
-    ob = shell.box('utility.splash.rear', X0, X1, Y1 - 0.002, Y1, TOP, WALL_Z0, 'marble_metro')
+    # ---- NE corner boxing (v2 t=559-566): plastered, from the worktop up to the bulkhead underside, its -x face flush
+    #      with the shell's utility_bulkhead (x 2.95), its -y face flush with the window's +y reveal side, so that reveal
+    #      side runs on from the frame to x 2.95. Tiled to 1.39 on both faces like the reveal; the wall-cabinet run
+    #      stops 0.11 short of it, a shadowed slot down to the rear splash (the owner's "really tiny gap").
+    fr = ctx.opening_frame('w_utility')
+    ya_w, yb_w = fr['center'].y - fr['width'] / 2, fr['center'].y + fr['width'] / 2
+    x_frame = fr['center'].x + fr['normal'].x * fr['face_out'] - fr['outward'].x * (fr['ext_reveal'] + 0.06)  # 3.24
+    z_board, z_tile = fr['center'].z + 0.012, 1.39
+    z_bulk = 2.15                                                                            # bulkhead underside (house.json)
+    ob = shell.box('utility.corner_boxing', BOX_X, X1 - 0.001, yb_w, Y1 - 0.001, TOP, z_bulk, '#F1F0EB')
+    ctx.add(ob, ROOM, 'fit')
+
+    # ---- marble metro splashbacks, 2 mm proud: W-rear up to the boxing, W-ext cut round the window reveal and wrapped
+    #      into its -y side up to the tile line (v2 f_0567, f_0578), the boxing and the +y reveal side as one tiled face;
+    #      brushed-steel edge trims on the exposed tile edges (f_0559 / f_0561); in the reveal a dark-stained timber
+    #      window board from the frame to 20 mm proud of the W-ext tiles, its top 12 mm over the sill (U2, v2 f_0573).
+    #      The reveal depth comes from the shell.
+    ob = shell.box('utility.splash.rear', X0, BOX_X - 0.002, Y1 - 0.002, Y1, TOP, WALL_Z0, 'marble_metro')
     M.uv_box(ob, origin=(0.729, 0, TOP))                   # first joint of the top course 0.28 m from the hall corner
     ctx.add(ob, ROOM, 'fit')
-    for i, (ya, yb, zt) in enumerate(((10.88, 11.33, 1.39), (11.33, 11.89, 1.05), (11.89, Y1 - 0.002, 1.39))):
-        ob = shell.box(f'utility.splash.ext.{i}', X1 - 0.002, X1, ya, yb, TOP, zt, 'marble_metro')
+    for i, (xa, xb, ya, yb, za, zt) in enumerate((
+            (X1 - 0.002, X1, 10.88, ya_w, TOP, z_tile),                                      # W-ext, tall unit -> window
+            (X1 - 0.002, X1, ya_w, yb_w, TOP, z_board),                                      # W-ext, under the board
+            (BOX_X - 0.002, BOX_X, yb_w - 0.002, Y1 - 0.002, TOP, z_tile),                   # boxing -x face
+            (X1, x_frame - 0.001, ya_w, ya_w + 0.002, z_board, z_tile),                      # -y reveal side
+            (BOX_X - 0.002, x_frame - 0.001, yb_w - 0.002, yb_w, TOP, z_tile))):             # boxing -y face + reveal side
+        ob = shell.box(f'utility.splash.ext.{i}', xa, xb, ya, yb, za, zt, 'marble_metro')
         M.uv_box(ob, origin=(0, Y1, TOP))
         ctx.add(ob, ROOM, 'fit')
+    ob = shell.box('utility.window_board', X1 - 0.02, x_frame - 0.001, ya_w, yb_w - 0.002, z_board - 0.03, z_board,
+                   'dark_joinery')
+    M.uv_box(ob, rotate=True)
+    ctx.add(ob, ROOM, 'fit')
+    mb, st, t = mo.MB(), 'steel_brushed', 0.004
+    mb.box((X1 - t, ya_w - t, z_board), (X1 + t, ya_w + t, z_tile), st)                    # -y reveal arris
+    mb.box((BOX_X - t, yb_w - t, TOP), (BOX_X + t, yb_w + t, z_tile), st)                  # boxing arris
+    mb.box((X1 - t, 10.88, z_tile - 0.008), (X1, ya_w, z_tile + 0.002), st)                # W-ext tile top
+    mb.box((X1, ya_w, z_tile - 0.008), (x_frame - 0.001, ya_w + t, z_tile + 0.002), st)    # -y reveal tile top
+    mb.box((BOX_X - t, yb_w - t, z_tile - 0.008), (x_frame - 0.001, yb_w, z_tile + 0.002), st)   # boxing / +y reveal top
+    mb.box((BOX_X - t, yb_w, z_tile - 0.008), (BOX_X, Y1 - 0.002, z_tile + 0.002), st)     # boxing -x face top
+    mb.box((WALL_END, Y1 - t, WALL_Z0 - 0.008), (BOX_X - t, Y1, WALL_Z0 + 0.002), st)     # rear splash top in the slot
+    trims = mb.finish('utility.tile_trims', sharp_deg=50)
+    M.uv_box(trims)
+    ctx.add(trims, ROOM, 'fit')
 
-    # ---- electrical. The grid by the hall door switches this room; the plate under the plaque is the WC light
-    #      (the WC has no switch inside); the high plate is the WC fan isolator - nothing to show, not tagged.
+    # ---- the pocket doorway floor: the shell leaves the white opening liner between the two tile floors; the
+    #      tile runs straight through (utility.md 2.2), so cover it 1.5 mm proud, registered with the room floors
+    ob = shell.box('utility.d_wc.floor', 1.47, 2.08, Y0 - 0.12, Y0, 0.0, 0.0015, 'wood_tile_floor')
+    M.uv_box(ob)
+    ctx.add(ob, ROOM, 'fit')
+
+    # ---- electrical (ground_corrections section 1 / 9): the 3-rocker grid by the hall door is this room's lights
+    #      (spots + under-cabinet strip, third rocker inert); the plate under the plaque is the WC light (the WC has
+    #      no switch inside); the high plate is the WC fan isolator - nothing to show, not tagged. Two doubles on the
+    #      rear splashback; the corner one sits under D5, its right edge 0.15 short of the end panel (v2 t=559, the
+    #      plate's own 146 mm as the scale; corrections section 9 had x 2.90, which the boxing would cut).
     for name, prop, loc, n, lit in (
-            ('utility.socket.rear', P.socket(2), (0.815, Y1 - 0.002, 1.10), S, None),
-            ('utility.socket.corner', P.socket(1), (2.90, Y1 - 0.002, 1.10), S, None),
-            ('utility.switch.grid', P.switch_plate(3, 'rocker', wide=False), (X0, 11.29, 1.27), (1, 0), 'utility'),
+            ('utility.socket.rear', P.socket(2), (1.00, Y1 - 0.002, 1.10), S, None),
+            ('utility.socket.corner', P.socket(2), (WALL_END - 0.22, Y1 - 0.002, 1.10), S, None),
+            ('utility.switch.grid', P.switch_plate(3, 'rocker', wide=False), (X0, 11.30, 1.27), (1, 0), 'utility'),
             ('utility.switch.fan', P.switch_plate(1, 'rocker'), (2.34, Y0, 2.02), (0, 1), None),
             ('utility.switch.light', P.switch_plate(1, 'rocker'), (2.32, Y0, 1.22), (0, 1), 'wc')):
         prop.name = name
@@ -576,18 +669,19 @@ def build(ctx):
             plaque.data.materials[i] = pale
     ctx.add(P.place(plaque, (2.35, Y0, 1.62), facing=(0, 1)), ROOM, 'decor')
 
-    # ---- ceiling clothes rail (empty)
+    # ---- ceiling clothes rail (empty), wall to wall
     ctx.add(_airer('utility.airer', cz=cz), ROOM, 'fit', plan_sym='airer', lm='dynamic')
 
-    # ---- lighting: 2 downlights on the room centre line + the under-cabinet strip (neutral-warm white in the video)
-    #      + an invisible up-fill for the ceiling (the spots only shine down; the video's ceiling is near white).
-    #      The second downlight stands 0.4 m in front of the tall cupboard (f_0455), so its doors are lit face-on.
+    # ---- lighting: 2 downlights + the under-cabinet strip (neutral-warm white in the video) + an invisible up-fill
+    #      for the ceiling (the spots only shine down; the video's ceiling is near white). The spots sit 0.14 south of
+    #      the rail as utility.md 7 / 4.7 have them (v2 f_0589: the spot is on the tall-cupboard side of the rail);
+    #      the second stands 0.36 m in front of the tall cupboard (f_0455, v2 f_0583), so its doors are lit face-on.
     for i, x in enumerate((1.30, 2.15)):
-        lighting.downlight(ctx, ROOM, x, 11.245, watts=DOWN_W, kelvin=3000, spot_deg=160, name=f'utility.downlight.{i}')
-        ctx.add(P.place(P.downlight(name=f'utility.downlight_trim.{i}'), (x, 11.245, cz)), ROOM, 'light')
-    lighting.strip(ctx, ROOM, (0.68, 12.158, WALL_Z0 - 0.03), (2.52, 12.158, WALL_Z0 - 0.03), watts_per_m=STRIP_W,
-                   kelvin=3200, name='utility.strip')
-    for i, (ya, yb) in enumerate(((10.45, 11.33), (11.43, 11.85))):        # two upward panels, clear of the airer rods
+        lighting.downlight(ctx, ROOM, x, 11.12, watts=DOWN_W, kelvin=3000, spot_deg=160, name=f'utility.downlight.{i}')
+        ctx.add(P.place(P.downlight(name=f'utility.downlight_trim.{i}'), (x, 11.12, cz)), ROOM, 'light')
+    lighting.strip(ctx, ROOM, (WALL_EDGES[0] + 0.04, 12.158, WALL_Z0 - 0.03), (WALL_END - 0.04, 12.158, WALL_Z0 - 0.03),
+                   watts_per_m=STRIP_W, kelvin=3200, name='utility.strip')
+    for i, (ya, yb) in enumerate(((10.40, 11.20), (11.32, 11.85))):        # two upward panels either side of the rail
         up = lighting.strip(ctx, ROOM, (0.9, (ya + yb) / 2, cz - 0.30), (2.4, (ya + yb) / 2, cz - 0.30),
                             watts_per_m=UP_W_M2 * (yb - ya), kelvin=3000, width=yb - ya, direction=(0, 0, 1),
                             name=f'utility.upfill.{i}')

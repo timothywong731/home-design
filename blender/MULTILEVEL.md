@@ -715,8 +715,42 @@ walls) are not obstacles: jambs intrude <= 0.10 m.
   windows). State gains `layer` and `z`; camera Y = z + eye.
 - **Dollhouse**: level buttons B G 1 2 and "All"; one clipping plane at `levels[].cutZ` removes everything above the
   selected level (floors above, roof, upper skin); "All" clips nothing. **`B` also hides the `X` GLB** (visibility,
-  not clipping: the lawn and shed feet would float beside the basement). When `levelAt` is `X` the dollhouse level is
-  `G`. The orbit target sits on the level's `datumZ`. Section caps as today.
+  not clipping: the lawn and shed feet would float beside the basement). The orbit target sits on the level's
+  `datumZ`. Section caps as today. **[phase 2]** Visibility (`dollVis`, set on `visible`, never on an `ix`-tagged
+  object, whose visibility belongs to `interact.js`): the pseudo-room `neighbours` is hidden in every dollhouse view;
+  on a level cut also every mesh wholly above `cutZ`, every `roof` mesh rising more than 1.2 m above the level's
+  `datumZ` (the loft slopes sit below the level-2 cut; the porch lean-to and the rear flat roof stay beside level 1)
+  and every `<room>.ceiling` of a room of that level. "All" shows house, roof, garden, shed and forecourt. When
+  `levelAt` is `X` (and on a click on the SITE sheet) the dollhouse level is **"All"**, no extra button. **Framing**
+  (`frameBox`, on entering the dollhouse and on a level button; plan clicks and room jumps only move the target): the
+  box is the level's room polygons from `datumZ` to `cutZ` ("All": `exterior.plot.polygon`, `X.datumZ` to the highest
+  `cutZ` + 1). Of eight compass directions 57 deg up (66 deg on a portrait screen) the one that shows the box largest
+  wins (side-on on a wide screen; ties go to the side the camera was on), at the distance that puts every corner of
+  the box inside 85 % of the part of the view the open plan panel leaves free (its left on a wide screen, its top on a
+  phone). A camera view offset (`applyViewShift`: `setViewOffset` with a 70 deg view kept in the free part) centres
+  the target in that part, so the target - plan marker, orbit pivot, the spot "Walk" returns to - stays on the house;
+  it follows the panel (collapse, maximise, resize) and is cleared in walk mode. `orbit.maxDistance` = max(60, 1.6 x
+  the fit distance).
+- **Room bar** **[phase 2]**: one group per level (B, G, 1F, 2F, OUT) with a floor chip; only the open group lists its
+  room buttons (short names: `/`, `(`, ` and ` cut, "room", "First-floor" / "Second-floor" dropped; the full name is
+  the tooltip). The open group is the visitor's level, re-opened whenever the level changes; a chip click or PageUp /
+  PageDown opens another until then. Digits 1-9 jump within the open group. The current room's button is scrolled
+  into view on every room change; a vertical mouse wheel scrolls the strip sideways (it has no scrollbar).
+- **Textures** **[phase 2, E-TEXMEM]**: the export writes an image into every level GLB that uses it. `prepare`
+  keeps one `THREE.Texture` per image `name` + size + sampling (colour space, wrap, channel, flipY, offset, repeat,
+  rotation) for all level scenes; unnamed images are never merged. Phones (coarse pointer, or a screen under 600 px
+  on its short side) draw GLB colour maps (`map`, `emissiveMap`) over 512 px down to 512 before upload; lightmaps
+  over 2048 as before. Measured on `build/export_int` with every level loaded (decoded RGBA + mips of every texture
+  source the scene draws; `viewer.texStats()` uploads what is not on the GPU yet and returns `{gpuTextures, sources,
+  MB}`): GLB textures 177 sources / 539 MB before, 149 / 471 MB shared (desktop), 170 MB on a phone; with lightmaps
+  and probes 705 -> 637 MB (desktop), 336 MB (phone); `renderer.info.memory.textures` 277 -> 249. The rest of the
+  desktop figure is unique images: 67 colour maps over 512 px remain at full size there.
+- **Effects** **[phase 2]**: `fx water` sizes its streaks from the mesh as modelled (no tag key): girth g = surface
+  area / height (a curved stream or a splash ring at its foot hardly changes it; the bounding box does). Every water
+  object gets its own clone of the streak texture repeated round(g / 0.04) (>= 1) times round the girth and
+  round(h / 0.12) (>= 2) down the length, double-sided; g > 0.2 m is a spray (a shower cone): jets with clear gaps
+  between them and opacity x 0.7. A tap stream keeps one repeat round. `fx flame` takes the hue of the object's emissive when it
+  is not black (blue gas hob, orange fire pit), else gas blue.
 - **Sky**: `manifest.sky.image` as equirect `scene.background`, unchanged (section 9); fallback `sky.color`; a
   schema-1 `sky` is a hex string. Emissive colours keep the white-balance matrix.
 - **Probes**: a mesh uses the probe of its `room`; without one, the nearest probe **of the same exterior-ness**:
@@ -726,7 +760,37 @@ walls) are not obstacles: jambs intrude <= 0.10 m.
   changes, a tab click overrides until the next change. Marker and view cone are drawn on the sheet of the visitor's
   level and always on SITE (hollow when indoors). Click = walk / teleport on that sheet's layer.
   `PlanView.setSheet(id)` re-reads the sheet's `linestyles`, `hatch`, `dimstyle` and bounds; room highlight from the
-  sheet's rooms. Downloads point to `house-plans.dxf` / `.pdf`. Room buttons are grouped by level.
+  sheet's rooms. Downloads point to `house-plans.dxf` / `.pdf`. Room buttons are grouped by level (see Room bar).
+- **Lights off** **[phase 2]**: a switch loads the lights-off lightmap and probe of exactly the rooms in its `rooms`
+  list, on its first use (`ensureOff`; the fade waits for them), whatever level they are on; until then a room's
+  materials sample its lights-on atlas in the off slot (no extra texture). Rooms of a level that arrives after the
+  switch was used pick up the current state (shared `lmOn` uniform, emissives registered at `engine.add`).
+- **Light uniforms of a lightmapped material** (`specOnly` in `main.js`): `lmOn` (the room's light state, 1 = lights
+  on), `lightMapOff` / `lightMapOffIntensity` (the room's lights-off atlas), `lmMix` (1 = bake; `interact.js` fades a
+  baked door leaf or front toward 0 as it leaves its modelled pose, because the bake only fits that pose) and
+  **`lmProbe`**: the probe light that replaces the bake as `lmMix` falls, `iblIrradiance += (1 - lmMix) * lmProbe *
+  getIBLIrradiance(n)`. `lmProbe` = the light the bake gave the face that looks the way the leaf swings (its
+  surroundings once open: the deck for a French door, the vestibule for the street door), area-weighted from a 512 px
+  copy of the atlas, over the probe's irradiance (`lmProbeScale`, clamped 0.05..1.5; one value per leaf), so an
+  exterior leaf does not jump to its room's brighter probe.
+
+**Door leaves are moving walk obstacles** (`geom.js`, driven by `interact.js`). `walk.dynamic` = `[{id, layers, poly,
+bb}]`; `setObstacle(walk, id, layers, poly)` replaces (or with `poly` null removes) one; `dynDist(walk, L, x, y)` is
+the distance to the nearest moving obstacle of layer L (0 inside). `isFree` rejects points within the body radius of
+one, like a fixed obstacle. `interact.js` (`syncPortals`, on every add and toggle) gives each hinge group with a
+vertical axis and `blocks`, and each slide group with `blocks`, the convex hull of its meshes in plan at the pose it is
+heading for (set at once, not per frame), on the layers of its doorway's portal (else the layer of its level). A
+portal is open while any leaf that blocks it is open, so a double door with one leaf open keeps its shut leaf's half
+solid and the route goes round it. A walker left inside a doorway that shuts is moved to the nearest free spot
+(`onPortals`). Tests open a doorway through its leaf (`ix.toggle` of the group whose `blocks` names it); only the
+fixture, whose GLB has no leaves for the new doorways, sets `portal.open` directly.
+
+**Viewpoint fields**: `viewpoints(walk, spawn)` -> `{room: {pos, yaw, layer, pitch?, into?}}`. `pitch` (radians, < 0
+looks down) is set where the view would face a wall close by with nothing deeper: the quarter landing looks back
+down the main flight at -0.35. `into` is the unit plan vector from the viewpoint's doorway into the room; a room jump
+steps on along it (up to 1.2 m, 0.15 m at a time, while free) until no open leaf is within 0.6 m (`dynDist`), so a
+leaf standing open beside the doorway does not fill the view. Hand-framed `manifest.viewpoints` replace `pos` / `yaw`
+when they snap (`nearestFree` within 0.6 m) into their own room; the room holding the spawn keeps the spawn view.
 
 ## 12. Agents
 

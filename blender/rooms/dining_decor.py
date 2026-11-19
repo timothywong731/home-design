@@ -279,17 +279,17 @@ def plaque(name, kind='bend', board='#6E4F31', field='#1B2540', field2='#4A1A22'
 
 
 # ============================================================================== curtains
-def curtain(name, seed=0):
+def curtain(name, seed=0, back=.025):
     """New curtain object; the two drops share one mesh (linked duplicates)."""
-    return shared(_CACHE, ('curtain', seed), lambda: _curtain_mesh(seed), name)
+    return shared(_CACHE, ('curtain', seed, back), lambda: _curtain_mesh(seed, back=back), name)
 
 
-def _curtain_mesh(seed=0, name='dining.curtain'):
+def _curtain_mesh(seed=0, name='dining.curtain', back=.025):
     """Full-length check curtain on the pelmet track, tied round its middle into a symmetric hourglass: 0.60
     wide at the gathered pencil-pleat heading (75 mm tape, 46 small pleats), 0.25 at the tie-back 1.50 below,
     0.50 at the hem, 10 mm clear of the floor. Soft, shallow folds of uneven width (8 columns per fold), deep
-    only where the tie bunches the cloth. Doubled cream cord with a 40 mm bead and a long gold fringed tassel.
-    Origin: wall plane, top centre."""
+    only where the tie bunches the cloth. Doubled cream cord with a 40 mm bead and a long gold fringed tassel,
+    hooked to the wall pier `back` behind the origin. Origin: top centre of the heading's back."""
     Ht, zt, n, zh = 2.49, -1.50, 11, -.075                                          # zh = foot of the heading tape
     cloth = P.two_sided(check_mat())
     mb = mo.MB()
@@ -318,12 +318,15 @@ def _curtain_mesh(seed=0, name='dining.curtain'):
         return (.60 * (u - .5), -.030 - (.006 + .009 * (.5 + .5 * cos(2 * pi * 46 * u))) * k, (zh - .012) * v)
     grid(mb, head, 46 * 4, 2, cloth, uv=lambda u, v: (1.3 * u, (zh - .012) * v))
     # tie-back: doubled twisted cord round the bunch, sagging to the front, from a brass hook on the post
-    cord, gold = P.mat('rope_cream'), P.mat('tassel_gold')
+    # gold rope and tassel (v2 f_0067, D5; spec est. #C9B45A): the library's tassel_gold / rope_cream read beige here
+    cord, gold = M.solid('dining_tie_rope', '#D0BF72', .65), M.solid('dining_tassel', '#C9B45A', .6)
     rx, ry, yc = .14, .058, -.062
     for dz in (0, .011):
         loop = [(rx * sin(a), yc - ry * cos(a), zt + dz + .05 * (1 - cos(a)) / 2) for a in (2 * pi * i / 20 for i in range(21))]
         bar(mb, loop, oval(.009, .009, 6), cord, up=(0, 0, 1))
-    mb.at(T((0, -.008, zt + .055)) @ WALL)
+    zk = zt + .075                                                                  # hook just above the dado rail top
+    mb.tube([(0, back, zk), (0, -.006, zk)], .004, 'brass', 6)                      # its stem, from the pier wall
+    mb.at(T((0, -.008, zk)) @ WALL)
     mb.dome(.012, .012, .02, 'brass', 8, 2)                                         # hook
     mb.at()
     # tassel hanging from the front of the loop: cord, cream bead, gold collar, skirt of fringe strands
@@ -344,6 +347,58 @@ def _curtain_mesh(seed=0, name='dining.curtain'):
     mb.lathe([(0, -.24), (.022, -.24), (.026, -.20), (.016, -.10), (0, -.10)], gold, 10)                                      # core of the skirt
     mb.at()
     return fin(mb, name)
+
+
+def pull_cords(name, drop=1.15):
+    """The corded track's two thin white pull cords with acorn weights (v2 f_0067, f_0111), hanging `drop` from
+    the track; origin = top of the cords, 15 mm apart along X."""
+    def build():
+        cord = M.solid('dining_cord', '#ECEAE2', .7)
+        mb = mo.MB()
+        for i, x in enumerate((-.0075, .0075)):
+            zb = -drop - .06 * i
+            mb.tube([(x, 0, 0), (x, 0, zb)], .0012, cord, 4)
+            mb.at(T((x, 0, zb)))
+            mb.lathe([(0, -.036), (.005, -.03), (.006, -.016), (.004, -.004), (0, 0)], cord, 8)
+            mb.at()
+        return fin(mb, 'dining.curtain.cords')
+    return shared(_CACHE, ('cords', drop), build, name)
+
+
+def ribbon_crossings(runs, skip, z0=.995, pitch=.32):
+    """Reed-and-ribbon enrichment of the white dado rail (ground_corrections D6): a pair of thin raised ribbons
+    crossing the five reeds in an X 45 mm wide, every `pitch` along each straight run (one in the middle of a short
+    pier), lying on the reed tops (22 mm off the wall). runs = mo.trim_runs output (room on the left); skip(x, y)
+    drops an X hidden behind something (the fire surround)."""
+    from mathutils import Matrix, Vector
+    mb = mo.MB()
+    l, a = math.hypot(.045, .040), math.atan2(.040, .045)
+    for run, closed in runs:
+        pts = list(run) + ([run[0]] if closed else [])
+        for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+            L = math.hypot(bx - ax, by - ay)
+            if L < .22:
+                continue
+            u = Vector(((bx - ax) / L, (by - ay) / L, 0))
+            n = Vector((-u.y, u.x, 0))                                              # into the room
+            k = max(1, int((L - .10) / pitch))
+            for i in range(k):
+                s = L / 2 + (i - (k - 1) / 2) * pitch
+                c = Vector((ax, ay, z0 + .029)) + u * s + n * .0212
+                if skip(c.x, c.y):
+                    continue
+                for sg in (1, -1):
+                    ex = u * cos(a) + Vector((0, 0, sg * sin(a)))
+                    ez = ex.cross(n)
+                    F = Matrix.Identity(4)
+                    for col, v in enumerate((ex, n, ez)):
+                        for r in range(3):
+                            F[r][col] = v[r]
+                    F.translation = c + n * (.0006 if sg > 0 else 0)                # one ribbon over the other
+                    mb.at(F)
+                    mb.box((-l / 2, 0, -.0025), (l / 2, .0014, .0025), 'joinery_white', bev=.0005)
+    mb.at()
+    return fin(mb, 'dining.dado.ribbons')
 
 
 def frame_beads(w, h, inset, y, pitch=.011, r=.0045, mat='gold_antique'):

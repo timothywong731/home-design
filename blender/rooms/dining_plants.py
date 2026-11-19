@@ -6,6 +6,7 @@ import math
 import random
 from math import sin, cos, pi
 
+import bmesh
 from mathutils import Matrix, Vector
 
 from lib import materials as M, mouldings as mo, props as P
@@ -54,11 +55,14 @@ def _monstera_leaf(mb, F, L, mat, slits=0):
     mb.at(Fw)
 
 
-def monstera(name, seed=0, lean=0.0):
-    """Swiss-cheese plant for a window sill, 0.60 wide x 0.55 high: nine deep-green heart-shaped leaves, 0.14 -
-    0.18 across (the largest split), carried 0.2 - 0.4 above the pot rim on long slender arching stalks, all
-    leaning toward the room; mottled jade pot 0.15 x 0.15 on a cork mat. `lean` shifts the head sideways (+X).
-    Nothing reaches behind y = +0.10 (the glass is 0.13 behind the pot centre)."""
+def monstera(name, seed=0, lean=0.0, keep=None):
+    """Swiss-cheese plant for a window sill, about 0.50 wide x 0.58 high (v1 f_0675, v2 f_0061): twelve deep-green
+    heart-shaped leaves 0.11 - 0.15 across (the larger ones split) on long slender stalks rising out of the pot, the
+    upper ones held up inside the window reveal, the lower ones arching out toward the room; mottled jade pot
+    0.15 x 0.15 on a cork mat. `lean` shifts the head sideways (+X).
+    keep(x, y, z) (local coords): a leaf whose blade or stalk fails it is tried again smaller and pulled in toward
+    the stem, then left out, so the plant stays inside its window reveal and clear of its neighbours."""
+    keep = keep or (lambda x, y, z: True)
     rng = random.Random(11 + seed)
     mb = mo.MB()
     mb.lathe([(0, 0), (.062, 0), (.062, .006), (0, .006)], 'cork', 20)
@@ -69,35 +73,49 @@ def monstera(name, seed=0, lean=0.0):
     # glossy: at roughness .45 the broad sheen of that downlight washed the dark blades out to sage
     leafs = [P.two_sided(M.solid(f'dining_leaf_{k}', h, .3)) for k, h in (('a', '#3A5A1E'), ('b', '#456A28'))]
     stem = M.solid('dining_leaf_stem', '#557A36', .45)
-    # (base x, y, z, length, slits): the leaves in front of the architraves spread 0.60, those inside the reveal <= 0.50
-    plan = [(-.25, -.20, .40, .19, 2), (-.13, -.02, .50, .17, 0), (-.03, -.09, .53, .18, 1), (.08, .00, .47, .16, 0),
-            (.23, -.18, .44, .20, 2), (.14, -.25, .36, .18, 0), (-.09, -.27, .34, .17, 0), (-.28, -.13, .29, .16, 0),
-            (.03, -.17, .43, .19, 1)]
-    for i, (bx, by, bz, L, slits) in enumerate(plan):
-        bx, bz = bx + rng.uniform(-.012, .012) + lean * (bz - .15), bz + rng.uniform(-.012, .012)
-        B = Vector((bx, by, bz))
-        d = Vector(((bx - lean * .25) * 4 + rng.uniform(-.25, .25), -.45 + 1.5 * by, rng.uniform(-.75, -.1))).normalized()   # midrib: outward, drooping
-        n = Vector((bx * .8, -.6, .8))                                                      # blade faces up and toward the room
-        n = (n - n.dot(d) * d).normalized()
-        F = Matrix.Identity(4)
-        for c, v in enumerate((d.cross(n), d, n)):
-            for r in range(3):
-                F[r][c] = v[r]
-        F.translation = B
-        _monstera_leaf(mb, F, L, leafs[i % 2], slits)
-        h = Vector((bx, by, 0))
-        up = h.cross(Vector((0, 0, 1)))
-        root = Vector((bx * .1, by * .1, .135))
-        rise = B.z - root.z                                                         # stalk: up out of the pot, then arching over
-        path = spline([tuple(root), tuple(root.lerp(B, .3) + Vector((0, 0, .42 * rise))), tuple(root.lerp(B, .72) + Vector((0, 0, .26 * rise))),
-                       tuple(B)], 5)
-        bar(mb, path, oval(.0055, .0055, 5), stem, up=tuple(up) if up.length > 1e-4 else (1, 0, 0), caps=False)
+    # (base x, y, z, length, slits): top tier held up inside the reveal (y > -0.07), lower tiers arching out over the
+    # sill nosing; overall spread about 0.50 along the wall, as the plants keep within their window surrounds
+    plan = [(-.08, -.01, .55, .15, 1), (.07, .02, .57, .14, 0), (.15, -.03, .49, .15, 1), (-.17, .00, .47, .14, 0),
+            (-.03, -.10, .45, .17, 2), (.11, -.12, .40, .15, 1), (-.19, -.10, .37, .15, 0), (.20, -.05, .36, .13, 0),
+            (.01, .03, .38, .13, 0), (-.11, -.19, .30, .15, 1), (.12, -.20, .28, .14, 0), (.00, -.16, .32, .16, 2)]
+    bm = mb.bm
+    for i, (bx0, by0, bz0, L0, slits) in enumerate(plan):
+        jx, jz, jd, dz = (rng.uniform(-.012, .012), rng.uniform(-.012, .012), rng.uniform(-.2, .2), rng.uniform(-.6, -.05))
+        for s in (1.0, .82, .66, .5):                                               # shrink + pull in until it fits
+            bx, by = (bx0 + jx) * s + lean * (bz0 - .15), by0 * s
+            bz, L = bz0 + jz, L0 * (.8 + .2 * s)
+            B = Vector((bx, by, bz))
+            d = Vector(((bx - lean * .25) * 2.0 * s + jd * s, -.5 + 1.0 * by, dz)).normalized()   # midrib: outward, drooping
+            n = Vector((bx * .8, -.6, .8))                                                  # blade faces up and toward the room
+            n = (n - n.dot(d) * d).normalized()
+            F = Matrix.Identity(4)
+            for c, v in enumerate((d.cross(n), d, n)):
+                for r in range(3):
+                    F[r][c] = v[r]
+            F.translation = B
+            n0 = len(bm.verts)
+            _monstera_leaf(mb, F, L, leafs[i % 2], slits)
+            h = Vector((bx, by, 0))
+            up = h.cross(Vector((0, 0, 1)))
+            root = Vector((bx * .1, by * .1, .135))
+            rise = B.z - root.z                                                     # stalk: up out of the pot, then arching over
+            path = spline([tuple(root), tuple(root.lerp(B, .3) + Vector((0, 0, .42 * rise))),
+                           tuple(root.lerp(B, .72) + Vector((0, 0, .26 * rise))), tuple(B)], 5)
+            bar(mb, path, oval(.0055, .0055, 5), stem, up=tuple(up) if up.length > 1e-4 else (1, 0, 0), caps=False)
+            bm.verts.ensure_lookup_table()
+            new = bm.verts[n0:]
+            if all(keep(*v.co) for v in new):
+                break
+            bmesh.ops.delete(bm, geom=list(new), context='VERTS')
     return fin(mb, name)
 
 
-def citrus(name='dining.citrus', crown=.68, top=1.75):
+def citrus(name='dining.citrus', crown=.68, top=1.75, keep=None):
     """Citrus tree: olive glazed pot 0.33 x 0.30 with three embossed bands on a low dark stand, stout pale stem
-    bare for 0.75, dense irregular round head (dia `crown`) of some 800 glossy ovate leaves on twigs."""
+    bare for 0.75, dense irregular round head (dia `crown`) of some 800 glossy ovate leaves on twigs.
+    keep(x, y, z) (local coords): leaves and twigs failing it are left out, so the head can push into a window
+    recess without crossing its architraves or the curtain beside it."""
+    keep = keep or (lambda x, y, z: True)
     rng = random.Random(7)
     mb = mo.MB()
     mb.lathe([(0, 0), (.15, 0), (.16, .01), (.16, .07), (.15, .08), (0, .08)], 'dark_oak_antique', 24)        # stand
@@ -120,6 +138,8 @@ def citrus(name='dining.citrus', crown=.68, top=1.75):
         return Vector((r * s * cos(th), r * s * sin(th), zc + r * cz * 1.05))
     tips = [shell(.75) for _ in range(20)]
     for t in tips:                                                                  # twigs
+        if not keep(*t):
+            continue
         mid = fork.lerp(t, .5) + Vector((0, 0, .03))
         bar(mb, [tuple(fork), tuple(mid), tuple(t)], oval(.007, .007, 4), bark, up=(.3, .9, 0), caps=False)
     L, W = .078, .042                                                               # ovate leaf, folded along the midrib
@@ -129,6 +149,10 @@ def citrus(name='dining.citrus', crown=.68, top=1.75):
         base = shell(rng.uniform(.45, .97) ** .6) if i % 5 else tips[i // 5 % 20].lerp(fork, rng.uniform(0, .5))
         out = (base - Vector((0, 0, zc - .1))).normalized()
         d = (out + Vector((rng.uniform(-.7, .7), rng.uniform(-.7, .7), rng.uniform(-.5, .5)))).normalized()   # leaf axis
+        k = rng.uniform(.75, 1.15)
+        if not (keep(*base) and keep(*(base + d * L * k))):                         # same draws either way: the rest stay put
+            m = rng.random()
+            continue
         n = out + Vector((0, 0, .6))
         n = n - n.dot(d) * d
         n = n.normalized() if n.length > 1e-3 else d.orthogonal().normalized()
@@ -137,7 +161,6 @@ def citrus(name='dining.citrus', crown=.68, top=1.75):
             for r in range(3):
                 F[r][c] = v[r]
         F.translation = base
-        k = rng.uniform(.75, 1.15)
         mb.at(F @ Matrix.Scale(k, 4))
         m = leaves[2] if rng.random() < .04 else leaves[i % 2]
         for q in quad:

@@ -1,9 +1,10 @@
 """Living room: case furniture, chairs and tables (imported by rooms/living.py). Conventions as living_parts."""
 import math
+import bpy
 from math import sin, cos, pi, radians, tau, sqrt
 from mathutils import Matrix, Vector
 from lib import materials as M, mouldings as mo, props as P
-from living_parts import (Tr, Rz, Rx, Ry, MIRX, kid, loft, rrect, circ, slab, pad, gimp_band, OGEE, WOOD, GIMP, velvet,
+from living_parts import (Tr, Rz, Rx, Ry, MIRX, kid, loft, rrect, circ, slab, pad, gimp_band, OGEE, wood, GIMP, velvet,
                           tube_var, rtube)
 
 
@@ -43,8 +44,8 @@ BOOKS = ['#E9E2D0', '#F1EEE6', '#D9CDB0', '#B8433A', '#9A3A32', '#3C5E8C', '#4A7
          '#7A2E2A', '#2C3A46', '#C9B88A', '#F4F1EA', '#A8603C', '#6C86A4', '#EDE6D6', '#DDD3BC']
 
 
-BOOKCASE_DEG = (-95, 25, -25, 95)      # door swing, state 0 -> 1. ponytail: the inner pair hinges on the centre stile
-#                                        and stops at the window stool standing 0.2 m in front; 95 once the stool moves
+BOOKCASE_DEG = (-95, 88, -88, 95)      # door swing, state 0 -> 1: the inner pair hinges on the 30 mm centre stile, so
+#                                        both stop just short of square (at 95 they would cross); the bench is ~1 m away
 
 
 def bookcase(name='living.bookcase'):
@@ -54,7 +55,7 @@ def bookcase(name='living.bookcase'):
     point on the floor in the root's frame, degrees about +Z that open it)]; hinges on the end stiles and the
     centre stile, escutcheons on the meeting stiles, the key tassel hangs from door 1."""
     mb = mo.MB()
-    W = WOOD
+    W = wood()
     hx, yf, yb = 0.875, -0.18, 0.18
     z_pl, z_c0, z_c1 = 0.20, 0.26, 1.15
     mb.box((-hx + 0.005, yf + 0.004, z_pl), (hx - 0.005, yb, z_c0 + 0.005), W, bev=0.005, grain=0)      # plinth rail
@@ -165,10 +166,11 @@ def torchere(name='living.pedestal', mat='mahogany_dark'):
     return root
 
 
-def lamp_table(name='living.lamp_table', top='mahogany_mid', mat='dark_oak_antique'):
+def lamp_table(name='living.lamp_table', top='mahogany_mid', mat=None):
     """Round brown lamp table dia 0.62 x 0.64: polished mid-brown top of plain straight-grained boards, darker
     carved (gadrooned) edge band, plain apron, four splayed square tapered legs with spade feet."""
     mb = mo.MB()
+    mat = mat or wood()
     mb.lathe([(0, 0.60), (0.285, 0.60), (0.303, 0.606), (0.303, 0.634), (0.296, 0.6385), (0, 0.6385)], mat, 40)
     mb.face(circ(0.292, 0.64, 40), top, (0, 0, 1), grain=0)                    # planar UVs: grain straight across
     pts = []
@@ -196,7 +198,7 @@ def armchair(name='living.armchair'):
     in cream cord; open arms on turned supports ending in knobs, full velvet pads centred on the arm rails;
     stacked-ring front legs, raked back legs."""
     mb = mo.MB()
-    W, V = WOOD, velvet()
+    W, V = wood(), velvet()
     HF, HB, YF, YB = 0.275, 0.225, -0.33, 0.22            # seat half-width front / back, front / back edge
     hd, yc, k = (YB - YF) / 2, (YB + YF) / 2, HB / HF
     mb.prism([(-HF, YF, 0.20), (HF, YF, 0.20), (HB, YB, 0.20), (-HB, YB, 0.20)], (0, 0, 0.085), W, grain=0)   # seat rails
@@ -267,7 +269,7 @@ def armchair(name='living.armchair'):
 # ---------------------------------------------------------------------------------- TV unit, A/C
 def tv_unit(name='living.tv_unit', mat='oak_rustic'):
     """Rustic oak TV unit 1.80 x 0.45 x 0.56: plank top, square posts, door | shelf over drawer | door,
-    black iron drop handles. Returns (root, ix) with everything parented to root; ix holds the parts for the
+    black thumb latches on the doors, a black cup pull on the drawer. Returns (root, ix) with everything parented to root; ix holds the parts for the
     interaction tags, points / vectors in the root's frame: doors = [(objects, hinge point, degrees about +Z)]
     (hinged on the outer posts, pulls toward the middle), drawer = (objects, slide vector) - front, pull and a
     real drawer box with a few things in it - and inner = what the doors reveal (a lined carcass with a shelf in
@@ -286,9 +288,14 @@ def tv_unit(name='living.tv_unit', mat='oak_rustic'):
     mb.box((-0.36, yf + 0.01, 0.262), (0.36, yb - 0.02, 0.282), mat, grain=0)                        # shelf
     root = mb.finish(name)
     doors, inner = [], []
+    lb = mo.MB()                                      # black thumb latch on the closing stile of each door (v2:f_0833)
+    Bk = M.mat('black_matt')
+    lb.box((-0.008, -0.003, -0.018), (0.008, 0.0, 0.018), Bk, bev=0.001)
+    lb.box((-0.0035, -0.013, -0.005), (0.0035, -0.003, 0.007), Bk, bev=0.0012)
+    latch = lb.finish(f'{name}.pull.0')
     for i, sx in enumerate((-1, 1)):
         d = kid(root, P.panel_door(0.39, 0.392, t=0.02, stile=0.06, mat=mat, name=f'{name}.door.{i}'), (sx * 0.63, yf + 0.026, 0.101))
-        h = kid(root, P.handle_drop(0.07, 0.035, 'black', name=f'{name}.pull.{i}'), (sx * 0.63 - sx * 0.13, yf + 0.005, 0.32))
+        h = kid(root, latch if i == 0 else bpy.data.objects.new(f'{name}.pull.{i}', latch.data), (sx * 0.465, yf + 0.0055, 0.34))
         doors.append(([d, h], (sx * 0.825, yf + 0.006, 0.0), sx * 100))    # front arris of the outer edge
         # behind the door: a lined box between the posts with one shelf (shelf top 0.304, floor 0.1125)
         inner.append(kid(root, P.cabinet_carcass(0.398, 0.399, 0.394, mat, plinth=0, open_front=True, shelves=1, panel=0.012,
@@ -302,7 +309,7 @@ def tv_unit(name='living.tv_unit', mat='oak_rustic'):
     sb.box((0.63 - 0.168, -0.163, 0.2225), (0.63 + 0.168, 0.143, 0.2545), M.solid('living_box_lid', '#6B5E44', 0.6), bev=0.002)
     inner.append(kid(root, sb.finish(name + '.stored'), (0, 0, 0)))
     front = kid(root, P.panel_door(0.716, 0.158, t=0.02, slab=True, mat=mat, name=name + '.drawer'), (0, yf + 0.026, 0.102))
-    pull = kid(root, P.handle_drop(0.07, 0.035, 'black', name=name + '.pull.2'), (0, yf + 0.005, 0.185))
+    pull = kid(root, P.handle_cup(0.096, 0.04, 0.026, finish='black', name=name + '.pull.2'), (0, yf + 0.005, 0.181))   # cup pull
     bx = mo.MB()                                                          # drawer box 0.70 x 0.38 behind the front
     y0, y1, z0, z1 = yf + 0.026, yf + 0.406, 0.112, 0.245
     for sx in (-1, 1):

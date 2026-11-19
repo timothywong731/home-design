@@ -1,7 +1,7 @@
 """Verify the drafter's outputs by re-reading them, then rasterise every sheet for a human/agent to look at.
 
-    python tools/plan/check.py [--assets DIR]     # default docs/assets
-        -> build/plan/<sheet>_dxf_dark.png, <sheet>_pdf.png, <sheet>_plan_dark.png, <sheet>_plan_paper.png
+    python tools/plan/check.py [--assets DIR] [--out DIR]     # defaults docs/assets, build/plan
+        -> <out>/<sheet>_dxf_dark.png, <sheet>_pdf.png, <sheet>_plan_dark.png, <sheet>_plan_paper.png
 
 plan.json: schema 2, sheets B G 1 2 X in order, 1:50 floor sheets, the site at exactly 1:100 in the plot window,
 per-sheet style tables, every entity inside its A3 frame. DXF: ezdxf audit, units, layers (colour, lineweight,
@@ -22,7 +22,9 @@ from render import render
 ROOT = Path(__file__).resolve().parents[2]
 ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 ap.add_argument("--assets", default=str(ROOT / "docs" / "assets"), help="directory holding plan.json, house-plans.dxf/.pdf")
-A, OUT = Path(ap.parse_args().assets), ROOT / "build" / "plan"
+ap.add_argument("--out", default=str(ROOT / "build" / "plan"), help="raster directory (default build/plan)")
+_a = ap.parse_args()
+A, OUT = Path(_a.assets), Path(_a.out)
 OUT.mkdir(parents=True, exist_ok=True)
 plan = json.loads((A / "plan.json").read_text(encoding="utf-8"))
 SHEETS = plan["sheets"]
@@ -59,11 +61,13 @@ by_type, by_layer = Counter(e.dxftype() for e in msp), Counter(e.dxf.layer for e
 print("DXF  audit OK | version", doc.dxfversion, "| units mm | entities", sum(by_type.values()))
 print("     types :", dict(sorted(by_type.items())))
 print("     layers:", dict(sorted(by_layer.items())))
+OPTIONAL = {"L-SITE-CTXT"}                    # neighbours: only when they reach into the site window
 for l in plan["layers"]:
     lay = doc.layers.get(l["name"])
     assert lay.color == l["aci"] and lay.dxf.lineweight == round(l["lineweight"] * 100), l["name"]
-    assert by_layer[l["name"]] > 0, f"layer {l['name']} is empty"
-assert doc.layers.get("L-SITE-BNDY").dxf.linetype.upper() == "DASHED"
+    assert by_layer[l["name"]] > 0 or l["name"] in OPTIONAL, f"layer {l['name']} is empty"
+for n in ("L-SITE-BNDY", "L-SITE-CTXT"):
+    assert doc.layers.get(n).dxf.linetype.upper() == "DASHED", n
 for t in ("LWPOLYLINE", "LINE", "ARC", "CIRCLE", "HATCH", "TEXT", "DIMENSION"):
     assert by_type[t] > 0, f"no {t} entities"
 
@@ -120,6 +124,7 @@ for i, (pg, s) in enumerate(zip(d, SHEETS)):
     assert not pg.get_images(), f"PDF page {i + 1} contains raster images"
     words = pg.get_text()
     assert s["title"] in words and s["scale"] in words, (s["id"], "title / scale missing on its page")
+    assert "%d OF %d" % (i + 1, len(SHEETS)) in words and "NOTES" in words and "KEY" in words, (s["id"], "title block / notes")
     paths = pg.get_drawings()
     print(f"PDF  page {i + 1} {s['id']}: {w_mm:.1f} x {h_mm:.1f} mm, {len(paths)} vector paths, 0 images")
     pg.get_pixmap(dpi=110).save(OUT / f"{s['id']}_pdf.png")

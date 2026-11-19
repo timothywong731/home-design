@@ -10,7 +10,7 @@ from math import sin, cos, pi, radians, tau
 from mathutils import Matrix, Vector
 from lib import materials as M, mouldings as mo, props as P
 
-WOOD, GIMP = 'dark_oak_antique', 'linen_cream'          # dark show-wood (brown-black, not red), cream gimp braid
+GIMP = 'linen_cream'                                     # cream gimp braid
 ART = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'textures', 'art', 'living'))
 
 
@@ -88,6 +88,19 @@ def crystal(alpha=0.22, name='living_crystal', glow=0.0):
     _bsdf(m).inputs['Alpha'].default_value = alpha
     m.surface_render_method = 'BLENDED'
     m.use_backface_culling = False
+    return m
+
+
+def wood():
+    """Dark show-wood (brown-black, not red) of the bookcase, sofa frame, chairs, stools and small tables: library
+    'dark_oak_antique' at roughness 0.5 instead of 0.30, which mirrored the bay glass and the sky steel-blue on
+    the open bookcase doors. ponytail: drop it if the library key gets a satin roughness."""
+    m = bpy.data.materials.get('living_dark_oak')
+    if m is None:
+        m = M.mat('dark_oak_antique').copy()
+        m.name = 'living_dark_oak'
+        m['key'] = m.name
+        _bsdf(m).inputs['Roughness'].default_value = 0.5
     return m
 
 
@@ -323,14 +336,14 @@ def sofa(name='living.sofa'):
     facings, stout three-ring bobbin legs, low upholstered back under a dark top rail, fixed squab, bolsters
     and plump loose cushions."""
     mb = mo.MB()
-    VELVET = velvet()
+    VELVET, WOOD = velvet(), wood()
     leg = [(0, 0), (0.03, 0), (0.042, 0.006), (0.048, 0.02), (0.042, 0.036), (0.028, 0.044), (0.031, 0.052),
            (0.05, 0.064), (0.056, 0.085), (0.05, 0.106), (0.031, 0.118), (0.028, 0.126), (0.042, 0.136), (0.048, 0.152),
            (0.042, 0.168), (0.031, 0.178), (0.036, 0.186), (0.036, 0.20), (0, 0.20)]
     for sx in (-1, 1):
         for sy in (-1, 1):
             mb.at(Tr(sx * 0.74, sy * 0.27, 0))
-            mb.lathe(leg, WOOD, 20)
+            mb.lathe(leg, wood(), 20)
     mb.at()
     mb.box((-0.84, -0.35, 0.20), (0.84, 0.35, 0.315), WOOD, bev=0.006, grain=0)
     mb.tube([(-0.835, -0.352, 0.214), (0.835, -0.352, 0.214)], 0.008, WOOD, 6)          # bead on the lower edge
@@ -411,7 +424,7 @@ def coffee_table(name='living.coffee_table', mat=None):
 def bench(name='living.bench'):
     """Window stool 1.15 x 0.42 x 0.46: velvet pad with gimp on a dark oak frame, turned legs, H-stretcher."""
     mb = mo.MB()
-    W = 'dark_oak_antique'
+    W = wood()
     mb.box((-0.56, -0.195, 0.31), (0.56, 0.195, 0.375), W, bev=0.004, grain=0)
     pad(mb, 0.575, 0.21, 0.03, 0.372, 0.455)
     gimp_band(mb, 0.575, 0.21, 0.03, 0.372, 0.014)
@@ -428,6 +441,7 @@ def bench(name='living.bench'):
 def footstool(name='living.footstool'):
     """Overstuffed velvet footstool 0.55 x 0.45 x 0.40 on four short cabriole legs."""
     mb = mo.MB()
+    WOOD = wood()
     mb.box((-0.255, -0.205, 0.20), (0.255, 0.205, 0.255), WOOD, bev=0.004, grain=0)
     pad(mb, 0.275, 0.225, 0.075, 0.25, 0.355, crown=0.05, n=6)             # domed, overstuffed: 0.405 at the crown
     gimp_band(mb, 0.275, 0.225, 0.075, 0.25, 0.012, n=6)

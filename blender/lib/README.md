@@ -1591,3 +1591,102 @@ about 4 s each, 30 probes 3 s each, the off set 4 min; first view 24.1 MB, 136 f
 - A `plan_sym` object's footprint includes all its parented children.
 - Scale 1 on static objects (the texel density is computed from mesh-space areas).
 - Everything of one interaction group is tagged with rooms of one level.
+
+## bath (`lib/bath.py`)
+
+`from lib import bath`. Shared bathroom fittings so `green_bathroom`, `blue_ensuite` and `bathroom2` match ("shower
+controls: same in every bathroom"). Built, posed and rendered by `blender/test_bath.py` (prints `BATH OK`, contact
+sheet `build/rooms2/kit/kit.jpg`: top row state 0, bottom row state 1).
+
+**Two kinds of function**
+- **Builders** (`wc basin_mixer bath_filler bath_mixer shower_set shower_slider glass_door`) take `name`, `at` and
+  `facing=(nx, ny)` (or `rot_z=deg`) and return a **list of unlinked objects, already placed and already tagged** with
+  `lib.interact` (tags are world coordinates, so do not move the parts afterwards). `name` is the object-name prefix
+  **and** the interaction group prefix. `parts[0]` is the fixed body. No parenting: every part is its own object.
+  Link them with `bath.add(ctx, room, parts, plan_sym=None, kind='fit')`: `parts[0]` gets `plan_sym`, tagged parts
+  `lm='dynamic'`.
+- **Props** (`glass_pane handset flush_plate flush_button towel_rail`) work like `lib.props`: one unlinked object,
+  `P.place(obj, loc, facing=...)`, `ctx.add(...)`, `name=` keyword.
+- Local frame of everything = the props wall convention: wall / back plane local y = 0, front toward local **-Y**
+  (`facing` = the wall normal pointing into the room, or the direction a spout points), +X to the viewer's right.
+  Same arguments → same mesh datablock. `finish` / `mat` take any `P.mat` spec (`'chrome'`, `'brass_antique'`,
+  `'steel_brushed'`, `'#RRGGBB'`, a Material).
+- `to_z` is always the **world z** the water lands on (bowl floor, bath floor, tray top); the stream height follows.
+
+```python
+bath.wc(name, at, facing=None, rot_z=None, kind='wall_hung', w=.36, proj=.53, top=.42, clear=.085, lift=90,
+        flush='plate', flush_z=1.0, label='Toilet') -> [pan, seat, lid(, flush)]
+bath.basin_mixer(name, at, to_z, facing=None, rot_z=None, style='mono', finish='chrome', label='Tap') -> [body, lever, water]
+bath.bath_filler(name, at, to_z, facing=None, rot_z=None, finish='brass_antique', h=1.10, reach=.22, label='Bath tap')
+        -> [body, lever, water]
+bath.bath_mixer(name, at, to_z, facing=None, rot_z=None, finish='chrome', label='Bath tap') -> [body, water]
+bath.shower_set(name, at, facing=None, rot_z=None, to_z=None, valve_z=1.10, head_z=2.12, reach=.35, head_dia=.25,
+        basket_z=None, finish='chrome', label='Shower') -> [set, spray]
+bath.shower_slider(name, at, width, facing=None, rot_z=None, height=1.95, door_w=None, door='right', travel=None,
+        rail='flat', rail_z=None, handle_z=1.05, finish='steel_brushed', label='Shower door') -> [fixed, door]
+bath.glass_door(name, at, w, h, facing=None, rot_z=None, hinge='left', deg=100, mat='glass_clear', handle_z=1.05,
+        finish='chrome', label='Door') -> [door]
+bath.glass_pane(w, h, t=.008, mat='glass_clear', channel=None, finish='chrome')     # prop
+bath.handset(finish='chrome')                                                       # prop
+bath.flush_plate(w=.25, h=.16, finish='chrome');  bath.flush_button(dia=.05, finish='chrome')   # props
+bath.towel_rail(w=.5, h=1.5, mat='black_matt')                                      # prop
+bath.add(ctx, room, parts, plan_sym=None, kind='fit') -> parts
+```
+
+| function | `at` (origin) and facing | objects `<name>…` | interaction |
+|---|---|---|---|
+| `wc` | point on the wall / duct / furniture front the pan backs onto, **at floor level**, on the pan's centre line; nose toward `facing` | `<name>` pan (bowl, water, hinge caps), `.seat`, `.lid`, `.flush` | group `<name>.seat`: lid and seat ring `hinge` `lift` deg together about the hinge line 32 mm off the wall (as `rooms/wc.py`; becomes `<name>.lid` + `<name>.seat` once `interact` has `needs`). The flush is not tagged (neither is the ground-floor one) |
+| `basin_mixer` | centre of the tap base on the basin deck; spout toward `facing` | `<name>` body, `.lever`, `.water` | group `<name>`: body `trigger`, lever `hinge` 20 deg up, stream `show` / `fx water` |
+| `bath_filler` | centre of the base on the floor; swan neck arches `reach` toward `facing` | `<name>` (column, neck, hand shower + hose), `.lever`, `.water` | group `<name>`: body `trigger`, side lever `hinge` 25 deg, stream `show` |
+| `bath_mixer` | centre between the two pillars on the bath rim; spout toward `facing` | `<name>`, `.water` | group `<name>`: body (both heads) `trigger`, stream `show` |
+| `shower_set` | point on the shower wall on the riser's centre line **at room floor level** (`valve_z`, `head_z`, `basket_z` are heights above it); the arm reaches `reach` toward `facing` | `<name>` (bar valve, riser, arm, rain head, slider + hand shower + hose, basket), `.spray` | group `<name>`: the whole set `trigger`, spray under the rain head `show` / `fx water` down to `to_z` (default `at.z + 0.04`) |
+| `shower_slider` | centre of the front at the level the glass stands on (tray top); `facing` points **out of the shower** | `<name>` (top rail over the whole `width`, fixed pane, stand-offs, wall profile, floor guide), `.door` (pane, two rollers, bar handle) | group `<name>`: door `slide` `travel` (default `door_w - 0.06`) across the fixed pane |
+| `glass_door` | bottom centre of the pane; `facing` = the side it opens to; `hinge` `'left'` / `'right'` seen from there | `<name>` (pane, two glass hinges, bar handle outside) | group `<name>`: `hinge` `deg` about the vertical hinge edge. A handle of your own on it: `IX.tag(h, **json.loads(door['ix']))` |
+
+- **`wc`**: `kind='wall_hung'` (green bathroom, en-suite: underside `clear` above the floor) or `'back_to_wall'`
+  (bathroom2: pedestal to the floor, `at` on the furniture unit's front). `w` x `proj` D plan; `top` = top of the shut
+  lid (bowl rim = `top - 0.04`). `flush='plate'` (250 x 160 dual plate) | `'button'` (round, bathroom2) | `None`, centred
+  `flush_z` above `at` on the same plane. `lift=90` stands lid and seat vertical, 9 mm clear of the wall: more hits it.
+  About 1.2 k tris.
+- **`basin_mixer`**: `style='mono'` = chrome monobloc with a flat top lever (en-suite, bathroom2); `'pin'` = slim
+  cylinder 0.167 high with a straight spout and a pin lever, for `finish='brass_antique'` (green bathroom). The outlet
+  is at `bath.TAP[style]` = (local y, height above the deck, pivot height): `mono` (-0.104, 0.066, 0.108), `pin`
+  (-0.108, 0.096, 0.150). About 0.5 k tris; two taps share their meshes.
+- **`bath_filler`** (green bathroom): base dia 140, column to 0.82, neck to `h`, outlet `reach` in front at
+  `h - reach / 2 - 0.05`. **`bath_mixer`** (en-suite): pillars 0.18 apart, outlet 0.105 in front, 0.03 above the rim;
+  its wall-parked hand shower is the prop `bath.handset()` (origin: bracket centre on the wall; the hose is yours, from
+  the handset foot at local (0, -0.036, -0.045)).
+- **`shower_set`**: bar valve 0.30 long, its axis 65 mm off the wall; rain head underside at `head_z`; hand shower on
+  the riser at `valve_z + 0.45`; `basket_z=1.30` adds the chrome wire basket (en-suite, bathroom2; none in the green
+  bathroom). The spray is 36 thin streams + a splash disc, material `water`, UVs like `P.water_stream` (V along the
+  fall). 1.9 k tris.
+- **`shower_slider`**: local y: fixed pane +18 mm (shower side), rail 0, door -18 mm (outside). `door='right'` /
+  `'left'` = the end the door closes, seen from outside; it opens toward the other end. `door_w` default
+  `width / 2 + 0.015` (30 mm overlap), `rail='flat'` (40 x 12 bar) | `'round'` (dia 25) at `rail_z` (default
+  `height - 0.075`). The bar handle is by the door edge that meets the fixed pane, as in all three rooms. The rail runs
+  the full `width`: make `width` the distance wall to return pane.
+- **`glass_pane(w, h)`**: fixed frameless panel (shower return, end panel). Origin bottom centre, pane in the local XZ
+  plane; `channel='left' | 'right'` = a slim wall profile down that edge (left = local -X) and a floor clamp at the
+  other. Glass is one alpha surface (`glass_clear`) with a pale green polished rim 8 mm deep; the export keeps glass
+  out of the lightmap by itself. `glass_door(mat='glass_dark')` is the sauna door.
+- **`towel_rail(w, h, mat)`**: `P.radiator_towel_rail` with the bars in four groups (28 at 1.5 m, 32 at 1.6 m), chrome
+  valves; `mat='black_matt'` (green bathroom 0.6 x 1.6, bathroom2 0.5 x 1.6) or `'anthracite'` (en-suite 0.5 x 1.5).
+  Origin: wall plane, bottom centre of the uprights, 80 mm stand-off. Give it `plan_sym='towel_rail'`.
+- Keep the walker's lane clear: the hinged `glass_door` sweeps a `w`-radius quarter circle toward `facing`; the slider
+  stays in its own plane; a raised WC lid stays over the pan.
+
+**Example** (a shower in a corner: control on the wall x = 1.25 whose room side is +X, front along y = 7.83 facing
+south, floor at `fz`, tray top `fz + 0.04`; then the WC on a duct face x = 4.08, one basin tap and the towel rail):
+```python
+from lib import bath, props as P
+
+bath.add(ctx, ROOM, bath.shower_set('green_bathroom.shower', (1.25, 8.30, fz), (1, 0)))
+bath.add(ctx, ROOM, bath.shower_slider('green_bathroom.screen', (1.95, 7.83, fz + .04), 1.40, (0, -1), door='right'))
+ret = P.place(bath.glass_pane(.90, 1.95, channel='right', name='green_bathroom.screen.return'), (2.65, 8.28, fz + .04), rot_z=90)
+ctx.add(ret, ROOM, 'fit')
+bath.add(ctx, ROOM, bath.wc('green_bathroom.wc', (4.08, 5.41, fz), (-1, 0), flush_z=1.02), plan_sym='wc')
+bath.add(ctx, ROOM, bath.basin_mixer('green_bathroom.tap.s', (1.31, 6.40, fz + .94), fz + .80, (1, 0),
+                                     style='pin', finish='brass_antique'))
+rail = P.place(bath.towel_rail(.6, 1.6, name='green_bathroom.towel_rail'), (3.00, 8.73, fz + .25), facing=(0, -1))
+ctx.add(rail, ROOM, 'fit', plan_sym='towel_rail')
+```

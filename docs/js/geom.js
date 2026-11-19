@@ -148,7 +148,7 @@ export function buildWalk(house, { radius = BODY, obstacles = {}, soft = {} } = 
       if (bd.type === 'gate' && bd.line) gates.push({ bd, half });
     }
     for (const w of bWalls) seg(w.a, w.b, (w.thickness || 0) / 2);
-    for (const n of ext.neighbours || []) if (n.polygon) edges(n.polygon).forEach(([a, b]) => seg(a, b));
+    for (const n of ext.neighbours || []) for (const p of n.polygon ? [n.polygon] : (n.parts || []).map((q) => q.polygon)) if (p) edges(p).forEach(([a, b]) => seg(a, b));
     cells.push({ id: 'ground', layer: 'G', level: 'X', kind: 'ground',
       zones: ext.zones.filter((z) => z.walk !== false).map((z) => ({ id: z.id, room: z.room, polygon: z.polygon, z: z.z ?? 0, ...(z.fall ? { fall: z.fall } : {}) })).sort(byArea),
       treads: (ext.steps || []).flatMap((s) => s.treads || []).map((t) => ({ polygon: t.polygon, z: t.z })).sort(byArea), blockers });

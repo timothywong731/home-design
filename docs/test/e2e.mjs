@@ -97,8 +97,10 @@ if (run('desktop')) {
   await shot(page, 'walk_spawn.png');
 
   // keyboard walking: W for 1 s moves forward (+Y) and stays inside the walkable area
-  await page.locator('#scene').focus();
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(1000); await page.keyboard.up('KeyW');
+  await page.locator('#scene').focus();      // held until 0.6 m (frames crawl while levels stream in or Cycles shares the GPU)
+  await page.keyboard.down('KeyW');
+  await page.waitForFunction((y0) => window.viewer.S.y > y0 + 0.6, i.y, { timeout: 6000, polling: 50 }).catch(() => {});
+  await page.keyboard.up('KeyW');
   const j = await info(page);
   check(j.y > i.y + 0.5 && Math.abs(j.x - i.x) < 0.05, `W walks into the house (y ${i.y.toFixed(2)} -> ${j.y.toFixed(2)})`);
   check(await page.evaluate(() => { const v = window.viewer; return !v.walk || v.G.isFree(v.walk, v.S.layer, v.S.x, v.S.y); }), 'position is inside the walkable area');
@@ -644,6 +646,211 @@ if (run('ix')) {
 }
 
 // ---- schema 2: levels, layers, sheets, routes, dollhouse cut (MULTILEVEL.md 11.2, 11.3) ----
+// the room bar: open group, the current room in view, floor chips, digits, PageUp / PageDown
+const barState = (page) => page.evaluate(() => {
+  const nav = document.querySelector('#rooms'), r = nav.getBoundingClientRect(), b = nav.querySelector('button[data-room][aria-current="true"]'), q = b?.offsetParent && b.getBoundingClientRect();
+  return { open: [...nav.querySelectorAll('.grp.open')].map((g) => g.dataset.level).join(), shown: [...nav.querySelectorAll('button[data-room]')].filter((x) => x.offsetParent).map((x) => x.dataset.room),
+    cur: b?.dataset.room ?? null, inView: !!q && q.left >= r.left - 1 && q.right <= r.right + 1 };
+});
+async function roomBar(page, tag) {
+  const press = (sel) => (tag === 'phone' ? page.tap(sel) : page.click(sel));
+  await page.evaluate(() => window.viewer.jump('hallway')); await idle(page, 200);
+  const rooms = await page.evaluate(() => Object.fromEntries(['G', '1', 'X'].map((lv) => [lv, window.viewer.rooms.filter((r) => r.level === lv && window.viewer.vps[r.id]).map((r) => r.id)])));
+  let b = await barState(page);
+  check(b.open === 'G' && b.shown.join() === rooms.G.join() && b.cur === 'hallway' && b.inView, `${tag} room bar on G: only the ground-floor rooms, the hallway marked and in view (${b.shown.length} shown)`);
+  await page.evaluate(() => window.viewer.jump('blue_bedroom')); await idle(page, 300);
+  b = await barState(page);
+  check(b.open === '1' && b.shown.join() === rooms['1'].join() && b.cur === 'blue_bedroom' && b.inView, `${tag} room bar follows to level 1, the blue bedroom marked and in view (${b.cur}, in view ${b.inView})`);
+  await shot(page, `${tag}_roombar_1.png`);
+  await press('#rooms .grp[data-level="X"] .lv'); await page.waitForTimeout(200);
+  b = await barState(page);
+  check(b.open === 'X' && b.shown.join() === rooms.X.join(), `${tag}: the OUT chip opens the outside rooms (${b.shown})`);
+  if (tag === 'phone') {
+    await press('#rooms button[data-room="garden"]'); await idle(page, 300);
+    b = await barState(page); const i = await info(page);
+    check(i.room === 'garden' && b.cur === 'garden' && b.inView, `${tag}: a tap on Garden jumps there, its button in view (${i.room})`);
+  } else {
+    await page.locator('#scene').focus(); await page.keyboard.press(`Digit${rooms.X.indexOf('garden') + 1}`); await idle(page, 300);
+    const i = await info(page); check(i.room === 'garden', `a digit in the open OUT group jumps to the garden (${i.room})`);
+    await page.keyboard.press('PageDown'); await page.waitForTimeout(150);
+    b = await barState(page); check(b.open === '2', `PageDown opens the floor below in the bar (${b.open})`);
+    await page.keyboard.press('PageUp'); await page.keyboard.press('PageUp'); await page.waitForTimeout(150);
+    b = await barState(page); check(b.open === 'X', `PageUp opens the floor above, stopping at the last group (${b.open})`);
+  }
+  await shot(page, `${tag}_roombar_X.png`);
+  await page.evaluate(() => window.viewer.jump('hallway')); await idle(page, 200);
+}
+// dollhouse state: what is drawn, and where the level's box lands in the part of the view the plan panel leaves free
+const dollState = (page, id) => page.evaluate((id) => {
+  const { THREE, camera, levelBox, dhMeshes, renderer, orbit, LEVELS } = window.viewer, b = levelBox(id), xs = [], ys = [];
+  const plan = document.querySelector('#plan').getBoundingClientRect(), wide = innerWidth > 760;
+  camera.updateMatrixWorld();
+  for (const x of [b.minX, b.maxX]) for (const y of [b.minY, b.maxY]) for (const z of [b.z0, b.z1]) { const p = new THREE.Vector3(x, z, -y).project(camera); xs.push((p.x + 1) / 2 * innerWidth); ys.push((1 - p.y) / 2 * innerHeight); }
+  const free = { l: wide ? plan.right : 0, t: wide ? 0 : plan.bottom, r: innerWidth, b: innerHeight }, dz = LEVELS.find((l) => l.id === id)?.datumZ ?? 0;
+  const vis = dhMeshes.filter((d) => d.o.visible);
+  return { inside: Math.min(...xs) >= free.l - 2 && Math.max(...xs) <= free.r + 2 && Math.min(...ys) >= free.t - 2 && Math.max(...ys) <= free.b + 2,
+    fill: Math.max((Math.max(...xs) - Math.min(...xs)) / (free.r - free.l), (Math.max(...ys) - Math.min(...ys)) / (free.b - free.t)),
+    neighbours: vis.filter((d) => d.room === 'neighbours').length, roofOver: vis.filter((d) => d.room === 'roof' && d.maxY > dz + 1.2).length, roof: vis.filter((d) => d.room === 'roof').length,
+    planes: renderer.clippingPlanes.map((p) => p.constant), ty: orbit.target.y, d: camera.position.distanceTo(orbit.target) };
+}, id);
+// The owner's walking requests ("double click to move like street view", "zoom in/out", "walk through narrow areas") on
+// the new floors and outside, with every door leaf open: W through the narrow doorways (the open leaves stand beside
+// them), double-click to go on the stairs, a landing, the garden, the shed and the forecourt, wheel zoom on the stairs.
+async function walkChecks(page) {
+  for (const id of ['o_stair_foot', 'd_basement', 'd_loft', 'd_balcony', 'shed_d1', 'side_gate']) {
+    // start 0.4 m off the wall on a free side, square to the opening, on its centre line; hold W
+    const st = await page.evaluate((id) => {
+      const { S, G, walk } = window.viewer, p = walk.portals.find((q) => q.id === id);
+      for (const s of [1, -1]) for (const L of p?.layers || []) {
+        const x = p.center[0] - s * p.normal[0] * (p.depth + 0.4), y = p.center[1] - s * p.normal[1] * (p.depth + 0.4);
+        if (!G.isFree(walk, L, x, y)) continue;
+        Object.assign(S, { anim: null, glide: null, x, y, layer: L, z: G.zAt(walk, L, x, y), yaw: G.dirYaw(s * p.normal[0], s * p.normal[1]), pitch: 0 });
+        return { s, L, depth: p.depth, other: p.layers[0] === L ? p.layers[1] : p.layers[0], width: p.width };
+      }
+      return null;
+    }, id);
+    if (!st) { check(false, `W through ${id}: no free spot in front of it`); continue; }
+    // how far past the opening's centre line the walker is, on the far side
+    const past = `((() => { const { S, walk } = window.viewer, p = walk.portals.find((q) => q.id === ${JSON.stringify(id)}); return ((S.x - p.center[0]) * p.normal[0] + (S.y - p.center[1]) * p.normal[1]) * ${st.s}; })())`;
+    await page.locator('#scene').focus(); await page.keyboard.down('KeyW');    // held until 0.6 m past the opening, 6 s at most
+    await page.waitForFunction(`${past} > ${st.depth + 0.6}`, null, { timeout: 6000, polling: 50 }).catch(() => {});
+    await page.keyboard.up('KeyW');
+    const r = await page.evaluate(`({ across: ${past}, layer: window.viewer.S.layer, room: window.viewer.info().room })`);
+    check(r.across > st.depth + 0.15 && r.layer === st.other, `W walks through ${id} (${Math.round(st.width * 1000)} mm): ${st.L} -> ${r.layer}, ${r.room}, ${r.across.toFixed(2)} m past its centre`);
+    await shot(page, `gap_${id}.png`);
+  }
+  const pose = (s) => page.evaluate((s) => {
+    const { S, G, walk } = window.viewer;
+    if (s.portal) {                       // stand `back` m out of a doorway on the side that is not the target room, facing in
+      const p = walk.portals.find((q) => q.id === s.portal);
+      for (const k of [1, -1]) {
+        const x = p.center[0] - k * p.normal[0] * s.back, y = p.center[1] - k * p.normal[1] * s.back, c = G.cellAt(walk, 'G', x, y);
+        if (c && c.room !== s.room && G.isFree(walk, 'G', x, y)) return Object.assign(S, { anim: null, glide: null, x, y, layer: 'G', z: c.z, yaw: G.dirYaw(k * p.normal[0], k * p.normal[1]), pitch: s.pitch }) && true;
+      }
+      return false;
+    }
+    Object.assign(S, { anim: null, glide: null, x: s.x, y: s.y, layer: s.L, z: G.zAt(walk, s.L, s.x, s.y), yaw: s.yaw, pitch: s.pitch });
+    return true;
+  }, s);
+  // the first pixel (scanning the lower middle of the view) whose double-click target lands on the wanted layer / room
+  // at least `min` m away
+  const aim = (want, min) => page.evaluate(([want, min]) => {
+    const { castAt, targetOf, G, walk, S, renderer } = window.viewer;
+    for (let fy = 0.5; fy < 0.96; fy += 0.04) for (const fx of [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74]) {
+      const X = innerWidth * fx, Y = innerHeight * fy;
+      if (document.elementFromPoint(X, Y) !== renderer.domElement) continue;
+      const t = targetOf(castAt(X, Y)), room = t && G.cellAt(walk, t.layer, ...t.p)?.room;
+      if (t && (!want.layer || t.layer === want.layer) && (!want.room || room === want.room) && Math.hypot(t.p[0] - S.x, t.p[1] - S.y) >= min) return { X, Y, to: t.p, layer: t.layer, room };
+    }
+    return null;
+  }, [want, min]);
+  for (const [what, s, want, min] of [
+    ['stairs', { L: 'G', x: 0.55, y: 4.4, yaw: 0, pitch: 0.25 }, { layer: 'stair_main' }, 1.0],
+    ['landing', { jump: 'landing1_rear' }, { layer: '1' }, 1.0],
+    ['garden', { jump: 'garden' }, { room: 'garden' }, 1.5],
+    ['shed', { portal: 'shed_d1', back: 2.2, pitch: -0.35, room: 'shed' }, { room: 'shed' }, 2.5],
+    ['forecourt', { jump: 'front' }, { room: 'front' }, 1.5]]) {
+    if (s.jump) { await page.evaluate((id) => window.viewer.jump(id), s.jump); await idle(page, 200); await page.evaluate(() => { window.viewer.S.pitch = -0.3; }); }
+    else check(await pose(s), `${what}: stands in front of it`);
+    await settle(page, 150);
+    const a = await aim(want, min);
+    if (!a) { check(false, `double-click on the ${what}: no pixel lands on ${JSON.stringify(want)}`); await shot(page, `dbl_${what}_none.png`); continue; }
+    await page.mouse.move(a.X, a.Y); await settle(page, 60);
+    await page.mouse.dblclick(a.X, a.Y); await page.waitForTimeout(300);
+    await page.waitForFunction(() => !window.viewer.S.glide, null, { timeout: 30000 }).catch(() => {});
+    const i = await info(page);
+    check(Math.hypot(i.x - a.to[0], i.y - a.to[1]) < 0.2 && i.layer === a.layer, `double-click on the ${what} walks there (${a.room} on ${a.layer} at ${a.to.map((v) => v.toFixed(2))} -> ${i.room} on ${i.layer} at ${i.x.toFixed(2)}, ${i.y.toFixed(2)})`);
+    await shot(page, `dbl_${what}.png`);
+    if (what === 'stairs') {              // wheel zoom works on the flight like anywhere else
+      await page.mouse.move(720, 450); await page.mouse.wheel(0, -700); await page.waitForTimeout(700);
+      const f = await page.evaluate(() => window.viewer.camera.fov);
+      check(f < 50 && i.layer === 'stair_main', `wheel zooms in on the stairs (fov ${f.toFixed(1)})`);
+      await page.evaluate(() => { window.viewer.S.fovT = window.viewer.FOV; }); await page.waitForTimeout(600);
+    }
+  }
+}
+// Interaction types the new rooms bring (blender/INTERACT.md), on test objects handed to the engine like a level GLB
+// arriving: a shower spray (wide water cone), a fire pit flame (warm emissive), a glass sauna door, a bin lid on a
+// horizontal axis, a clock hand, a TV, a lamp on its own plug, and a switch for rooms on two floors. The switch must
+// fetch the lights-off bake of exactly its rooms and dim an upper floor like the ground floor.
+async function syntheticIx(page) {
+  const made = await page.evaluate(() => {
+    const { THREE, ix, scene } = window.viewer, lv = new THREE.Group(), T = (x, y, z) => [x, z, -y];   // Blender -> three
+    lv.name = 'level_test'; lv.userData.level = '2';
+    const add = (name, geo, mat, at, tag, room = 'bathroom2') => { const m = new THREE.Mesh(geo, mat); m.position.set(...T(...at)); m.name = name.replace(/\./g, ''); Object.assign(m.userData, { name, room, ix: JSON.stringify(tag) }); lv.add(m); return m; };
+    const std = (o = {}) => new THREE.MeshStandardMaterial({ color: 0x888888, ...o });
+    add('test.shower.spray', new THREE.CylinderGeometry(0.02, 0.15, 0.9, 24, 1, true), std({ color: 0xb8d4e3, transparent: true, opacity: 0.45 }), [1.0, 12.0, 7.0], { t: 'show', when: 1, fx: 'water', g: 'test.shower' });
+    add('test.shower.valve', new THREE.BoxGeometry(0.08, 0.08, 0.03), std(), [1.0, 12.3, 7.1], { t: 'trigger', g: 'test.shower', label: 'Shower' });
+    add('test.firepit.flame', new THREE.ConeGeometry(0.12, 0.3, 12), std({ emissive: 0xff6a10 }), [1.5, 26.0, -0.2], { t: 'show', when: 1, fx: 'flame', g: 'test.firepit' }, 'garden');
+    add('test.firepit.bowl', new THREE.CylinderGeometry(0.3, 0.2, 0.2, 16), std(), [1.5, 26.0, -0.4], { t: 'trigger', g: 'test.firepit', label: 'Fire pit' }, 'garden');
+    add('test.sauna.door', new THREE.BoxGeometry(0.6, 1.9, 0.04), std({ name: 'sauna_glass' }), [1.5, 12.5, 7.0], { t: 'hinge', p: [1.2, 12.5, 7.0], a: [0, 0, 1], deg: 95, g: 'test.sauna', label: 'Sauna door' });
+    add('test.bin.lid', new THREE.BoxGeometry(0.3, 0.02, 0.3), std(), [2.0, 12.5, 6.6], { t: 'hinge', p: [2.0, 12.65, 6.61], a: [1, 0, 0], deg: -70, g: 'test.bin', label: 'Bin lid' });
+    add('test.clock.minute', new THREE.BoxGeometry(0.01, 0.12, 0.005), std(), [2.2, 13.0, 8.0], { t: 'clock', hand: 'm', p: [2.2, 13.0, 7.94], a: [0, -1, 0] });
+    add('test.tv.picture', new THREE.PlaneGeometry(0.8, 0.45), std(), [2.2, 13.2, 7.5], { t: 'show', when: 1, fx: 'tv', g: 'test.tv' });
+    add('test.tv', new THREE.BoxGeometry(0.82, 0.47, 0.04), std({ color: 0x111111 }), [2.2, 13.22, 7.5], { t: 'trigger', g: 'test.tv' });
+    add('test.lamp.shade', new THREE.SphereGeometry(0.1), std({ emissive: 0xffc27a, emissiveIntensity: 2 }), [1.0, 13.0, 7.0], { t: 'lamp', g: 'test.lamp', label: 'Lamp' });
+    add('test.switch', new THREE.BoxGeometry(0.08, 0.08, 0.01), std({ color: 0xffffff }), [0.2, 9.0, 7.4], { t: 'light', rooms: ['green_bedroom', 'landing2_head'], g: 'test.switch' }, 'landing2_head');
+    scene.getObjectByName('house').add(lv); ix.add(lv);
+    return ix.groups().filter((g) => g.id.startsWith('test.')).map((g) => `${g.id}:${g.kind}`);
+  });
+  check(made.join() === 'test.shower:water,test.firepit:flame,test.sauna:move,test.bin:move,test.tv:tv,test.lamp:lamp,test.switch:light', `test objects added to the engine as one more level (${made})`);
+  const toggle = (id) => page.evaluate((id) => window.viewer.ix.toggle(id), id);
+  const centre = (id) => page.evaluate((id) => window.viewer.ix.box(id).getCenter(new window.viewer.THREE.Vector3()).toArray(), id);
+  const c0 = { sauna: await centre('test.sauna'), bin: await centre('test.bin') };
+  for (const id of ['test.shower', 'test.firepit', 'test.sauna', 'test.bin', 'test.tv', 'test.lamp']) await toggle(id);
+  await idle(page, 900);
+  const fx = await page.evaluate(() => {
+    const { scene, ix } = window.viewer, mat = (n) => { let r = null; scene.traverse((o) => { if (o.userData.name === n) r = [].concat(o.material)[0]; }); return r; };
+    const spray = mat('test.shower.spray'), tap = mat('kitchen.sink.mixer.water'), fire = mat('test.firepit.flame'), hob = mat('kitchen.hob.flame.0'), lamp = mat('test.lamp.shade');
+    const tv = ix.tvCanvas('test.tv').getContext('2d').getImageData(160, 90, 1, 1).data;
+    return { spray: spray.alphaMap && [spray.alphaMap.repeat.x, spray.alphaMap.repeat.y, spray.side, spray.opacity], tap: tap?.alphaMap && [tap.alphaMap.repeat.x, tap.alphaMap.repeat.y], sprayShown: scene.getObjectByName('testshowerspray')?.visible,
+      fire: [fire.color.r, fire.color.b], hob: hob && [hob.color.r, hob.color.b], lamp: lamp.emissiveIntensity, tv: tv[0] + tv[1] + tv[2], clock: ix.clocks().find((c) => c.name === 'test.clock.minute') };
+  });
+  const c1 = { sauna: await centre('test.sauna'), bin: await centre('test.bin') }, d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const mins = new Date().getMinutes() + new Date().getSeconds() / 60, err = fx.clock && Math.abs(Math.atan2(Math.sin(fx.clock.angle - (2 * Math.PI * mins) / 60), Math.cos(fx.clock.angle - (2 * Math.PI * mins) / 60)));
+  check(fx.sprayShown && fx.spray[0] >= 8 && fx.spray[2] === 2 && (!fx.tap || fx.tap[0] <= 2), `shower spray: water fx repeated round the cone (repeat ${fx.spray}), a tap stream keeps one or two (${fx.tap})`);
+  check(fx.fire[0] > 2 * fx.fire[1] && (!fx.hob || fx.hob[1] > fx.hob[0]), `fire pit flame keeps its warm emissive (r ${fx.fire[0].toFixed(2)} b ${fx.fire[1].toFixed(2)}), the hob stays blue (${fx.hob?.map((v) => v.toFixed(2))})`);
+  check(d(c0.sauna, c1.sauna) > 0.3 && c1.bin[1] - c0.bin[1] > 0.05 && fx.lamp < 1e-3 && fx.tv > 30 && err < 0.02,
+    `sauna door swings (${Math.round(d(c0.sauna, c1.sauna) * 1000)} mm), bin lid lifts (${Math.round((c1.bin[1] - c0.bin[1]) * 1000)} mm), lamp off (${fx.lamp}), TV on (${fx.tv}), clock at local time (err ${err?.toFixed(4)})`);
+  for (const id of ['test.shower', 'test.firepit', 'test.sauna', 'test.bin', 'test.tv', 'test.lamp']) await toggle(id);
+  await idle(page, 300);
+  // the real roof window, eaves hatches and shed store doors of the export (hinges on other levels and axes)
+  const real = (await groups(page)).filter((g) => /^roof\.velux|h_eaves|shed_store_doors|shed_w1/.test(g.id)).map((g) => g.id);
+  const r0 = await Promise.all(real.map(centre));
+  for (const id of real) await toggle(id);
+  await idle(page, 300);
+  const moved = (await Promise.all(real.map(centre))).map((c, k) => Math.round(d(c, r0[k]) * 1000));
+  for (const id of real) await toggle(id);
+  await idle(page, 300);
+  check(!real.length || moved.every((m) => m > 40), `Velux, eaves hatches, shed doors and windows open (${real.map((id, k) => `${id} ${moved[k]} mm`).join(', ')})`);
+  // the two-floor switch: only its rooms' lights-off images are fetched, both rooms go dark, the green bedroom dims
+  await page.evaluate(() => window.viewer.jump('green_bedroom')); await idle(page, 300);
+  const offs = () => page.evaluate(() => performance.getEntriesByType('resource').filter((r) => /lightmaps_off|probes_off/.test(r.name)).map((r) => r.name.split('/assets/')[1]));
+  const before = await offs(), lum0 = await meanLum(page), mem0 = await page.evaluate(() => window.viewer.texStats());
+  await toggle('test.switch'); await idle(page);
+  const lum1 = await meanLum(page), mem1 = await page.evaluate(() => window.viewer.texStats()), fetched = (await offs()).filter((n) => !before.includes(n));
+  const lit = await page.evaluate(() => ['green_bedroom', 'landing2_head', 'blue_bedroom'].map((r) => window.viewer.roomLights.get(r)?.target ?? null));
+  await shot(page, 'ix_upper_lights_off.png');
+  check(fetched.length && fetched.every((n) => /\/(green_bedroom|landing2_head)\.jpg$/.test(n)) && lit[0] === 0 && lit[1] === 0 && lit[2] !== 0 && lum1 < lum0 * 0.75,
+    `two-floor switch: fetched only ${fetched}; green bedroom and level-2 head off, blue bedroom untouched (${lit}); view ${lum0.toFixed(0)} -> ${lum1.toFixed(0)}; textures ${mem0.MB} -> ${mem1.MB} MB`);
+  await toggle('test.switch'); await idle(page);
+  const lum2 = await meanLum(page);
+  check(Math.abs(lum2 - lum0) < lum0 * 0.04, `... and back on (${lum2.toFixed(0)})`);
+  await page.evaluate(() => { const lv = window.viewer.scene.getObjectByName('level_test'); lv.visible = false; });
+}
+// Interactions as each level arrives: with the upper levels held back, the ground floor's doors already work; a door
+// of a level that arrives later works once it is there.
+async function incremental() {
+  let release; const gate = new Promise((f) => { release = f; });
+  const { ctx, page } = await open({ viewport: { width: 1280, height: 800 } }, '', (page) => page.route(/glb\/[X12B]\.glb$/, async (r) => { await gate; await r.continue(); }));
+  const s0 = await page.evaluate(() => ({ loaded: [...window.viewer.levelScenes.keys()], ix: window.viewer.ixLevels.slice() }));
+  const door = await page.evaluate(() => { const { ix, walk } = window.viewer, g = ix.groups().find((q) => q.blocks.includes('d_kitchen')) || ix.groups().find((q) => q.blocks.length); const p = walk.portals.find((q) => g.blocks.includes(q.id)); const o0 = p.open; ix.toggle(g.id); return { id: g.id, pid: p.id, o0, o1: p.open }; });
+  check(s0.loaded.join() === 'G' && s0.ix.join() === 'G' && door.o1 === !door.o0, `before the other levels arrive (${s0.loaded}), ${door.id} already opens / shuts ${door.pid} (${door.o0} -> ${door.o1})`);
+  release(); await page.evaluate(() => window.viewer.streaming);
+  const up = await page.evaluate(() => { const { ix, walk } = window.viewer, p = walk.portals.find((q) => q.id === 'd_green'), g = ix.groups().find((q) => q.blocks.includes('d_green')); if (!g) return null; const o0 = p.open; ix.toggle(g.id); return { loaded: [...window.viewer.levelScenes.keys()], o0, o1: p.open }; });
+  check(!up || (up.loaded.length === 5 && up.o1 === !up.o0), `after the upper levels arrive (${up?.loaded}), the level-1 door d_green works (${up?.o0} -> ${up?.o1})`);
+  await ctx.close();
+}
 if (run('levels')) {
   let i;
   const { ctx, page } = await open({ viewport: { width: 1440, height: 900 } });
@@ -683,9 +890,21 @@ if (run('levels')) {
   check(!(await page.evaluate(() => performance.getEntriesByType('resource').some((r) => /lightmaps_off|probes_off/.test(r.name)))), 'no lights-off image is fetched at load');
   await shot(page, 'spawn.png');
 
-  // room buttons grouped by level; digits jump within the floor you are on
-  const grp = await page.$$eval('#rooms .grp', (gs) => gs.map((g) => [g.dataset.level, g.querySelectorAll('button').length, g.classList.contains('cur')]));
+  // GLB textures: one texture per image name + size across the five level scenes (E-TEXMEM); the numbers go in the log
+  const tex = await page.evaluate(() => {
+    const { scene, texStats } = window.viewer, src = new Map();
+    scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap']) {
+      const t = m[k]; if (!t?.name || !t.image) continue; const key = `${t.name}|${t.image.width}x${t.image.height}`; (src.get(key) || src.set(key, new Set()).get(key)).add(t.source); } });
+    return { dup: [...src].filter(([, s]) => s.size > 1).map(([k]) => k), images: src.size, ...texStats() };
+  });
+  console.log('textures desktop', JSON.stringify({ ...tex, dup: tex.dup.length }));
+  check(!tex.dup.length && tex.images > 20, `level scenes share one texture per GLB image (${tex.images} images, ${tex.sources} sources, ${tex.MB} MB decoded; duplicates: ${tex.dup.slice(0, 5)})`);
+
+  // room buttons grouped by level; only the open group (the visitor's floor unless a chip picked another) lists its
+  // rooms, the current one scrolled into view; digits jump within the open group, PageUp / PageDown change it
+  const grp = await page.$$eval('#rooms .grp', (gs) => gs.map((g) => [g.dataset.level, g.querySelectorAll('button[data-room]').length, g.classList.contains('cur')]));
   check(grp.map((g) => g[0]).join() === 'B,G,1,2,X' && grp.find((g) => g[0] === 'G')[2] && grp.reduce((n, g) => n + g[1], 0) >= 25, `room buttons grouped by level (${grp.map((g) => `${g[0]}:${g[1]}`)})`);
+  await roomBar(page, 'desktop');
 
   // plan tabs; marker on every sheet (full on the visitor's floor, hollow on SITE while indoors, none on other floors)
   const tabs = await page.$$eval('#plan-tabs button', (bs) => bs.map((b) => [b.textContent, b.getAttribute('aria-pressed')]));
@@ -793,7 +1012,7 @@ if (run('levels')) {
       ['5 dining French doors to deck', ['G', 1.2, 16.6], [1.2, 19.0, 'G'], 'garden', -0.05],
       ['6 street doors to forecourt', ['G', 0, 0.9], [1.9, -3.0, 'G'], 'front', null]]) {
       await place(...from); await frames(3);
-      i = await go(...to, 90000);
+      i = await go(...to, 240000);      // frames crawl while Cycles shares the GPU
       check(i && i.room === room && (z === null || Math.abs(i.z - z) < 0.02), `route ${name} walked on the real model (${i?.room}, z ${i?.z?.toFixed(2)})`);
       await shot(page, `route_${name[0]}.png`);
     }
@@ -813,6 +1032,7 @@ if (run('levels')) {
       return out;
     });
     check(!near.length, `no free spot within 0.10 m of an open door leaf (${JSON.stringify(near)})`);
+    await walkChecks(page);
     await page.evaluate((ids) => ids.forEach((id) => window.viewer.ix.toggle(id)), opened); await idle(page, 1500);
     // a double door with one leaf open: its shut leaf keeps its half of the doorway shut, the open half is a route
     const half = await page.evaluate(() => {
@@ -834,6 +1054,7 @@ if (run('levels')) {
   const after = await meanLum(page), offs = await page.evaluate(() => performance.getEntriesByType('resource').filter((r) => /lightmaps_off|probes_off/.test(r.name)).map((r) => r.name.split('/assets/')[1]));
   check(after < before * 0.75 && offs.some((n) => n.startsWith('lightmaps_off/kitchen')), `kitchen switch: lights-off loaded on first use (${offs}) and the view darkens (${before.toFixed(0)} -> ${after.toFixed(0)})`);
   await page.evaluate(() => window.viewer.ix.toggle('kitchen.switch')); await idle(page);
+  if (!FIXTURE) await syntheticIx(page);
 
   // dollhouse: one cut plane per level at its cutZ, orbit target on its datumZ; B also hides the outside; All clips nothing
   await page.evaluate(() => window.viewer.jump('hallway')); await idle(page, 200);
@@ -845,21 +1066,42 @@ if (run('levels')) {
     const d = await page.evaluate(() => { const { renderer, orbit, levelScenes } = window.viewer; return { planes: renderer.clippingPlanes.map((p) => p.constant), ty: orbit.target.y, out: levelScenes.get('X')?.visible ?? null }; });
     const ok = id === 'all' ? d.planes.length === 0 : d.planes.length === 1 && Math.abs(d.planes[0] - cut) < 1e-6 && Math.abs(d.ty - datum) < 1e-6;
     check(ok && (d.out === null || d.out === (id !== 'B')), `dollhouse ${id}: cut ${d.planes} (want ${cut ?? 'none'}), target y ${d.ty.toFixed(2)}, outside shown ${d.out}`);
+    // no neighbours; a cut shows no roof over its level; "All" keeps the roof; the level (All: the plot) is framed in
+    // the part of the view the plan panel leaves free, filling at least half of it one way
+    const f = await dollState(page, id);
+    check(!f.neighbours && (id === 'all' ? f.roof > 5 : !f.roofOver) && f.inside && f.fill > 0.5,
+      `dollhouse ${id}: neighbours hidden (${f.neighbours}), roof ${id === 'all' ? `shown (${f.roof})` : `over the level hidden (${f.roofOver})`}, framed inside the free view (fill ${f.fill.toFixed(2)}, distance ${f.d.toFixed(1)} m)`);
     await shot(page, `dollhouse_${id}.png`);
   }
   await page.click('#dh-levels button[data-level="1"]'); await page.waitForTimeout(300);
   await page.click('#mode-walk'); await page.waitForTimeout(500); i = await info(page);
   check(i.mode === 'walk' && i.layer === '1' && await page.evaluate(() => window.viewer.renderer.clippingPlanes.length === 0), `back to walk on the dollhouse level (${i.layer}, ${i.room})`);
   await ctx.close();
+  if (!FIXTURE) await incremental();
 
   // phone: tabs, grouped room buttons and the dollhouse level control fit the screen
   {
     const { ctx, page } = await open({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     await shot(page, 'phone.png');
+    // phones: GLB colour maps drawn down to 512 px before upload, shared across levels like on the desktop
+    await page.evaluate(() => window.viewer.streaming);
+    const pt = await page.evaluate(() => {
+      const { scene, texStats } = window.viewer; let big = 0, maps = 0;
+      scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) for (const k of ['map', 'emissiveMap']) { const im = m[k]?.image; if (im && m[k].name) { maps++; if (Math.max(im.width, im.height) > 512) big++; } } });
+      return { big, maps, ...texStats() };
+    });
+    console.log('textures phone', JSON.stringify(pt));
+    check(pt.maps > 0 && !pt.big && (!tex || pt.MB < tex.MB), `phone: GLB colour maps <= 512 px (${pt.big} of ${pt.maps} over), ${pt.MB} MB decoded vs ${tex?.MB} MB on the desktop`);
+    await roomBar(page, 'phone');
     await page.tap('#mode-orbit'); await page.waitForTimeout(600);
     const fit = await page.evaluate(() => [...document.querySelectorAll('#dh-levels, #plan-tabs')].map((e) => { const r = e.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }));
     check(fit.every(Boolean), 'phone: plan tabs and dollhouse levels fit the screen');
-    await shot(page, 'phone_dollhouse.png');
+    for (const id of ['G', 'all']) {
+      await page.tap(`#dh-levels button[data-level="${id}"]`); await page.waitForTimeout(700);
+      const f = await dollState(page, id);
+      check(f.inside && f.fill > 0.5 && !f.neighbours, `phone dollhouse ${id}: framed below the plan panel (fill ${f.fill.toFixed(2)}, ${f.d.toFixed(1)} m)`);
+      await shot(page, `phone_dollhouse_${id}.png`);
+    }
     await ctx.close();
   }
 }

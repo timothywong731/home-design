@@ -1,10 +1,11 @@
 """Hallway furnishing (spec/rooms/hallway.md): console table, gilt mirror, banjo barometer, the six paintings,
-mosaic wall clock, switches / sockets / thermostat / PIR / smoke alarm / Wi-Fi access point, overhead cupboard
-door, door stops + cabin hooks and the eight recessed downlights. Coordinates are world (hall local y + offset,
-see the "Reconciled dimensions" table of the spec).
+mosaic wall clock, switches / sockets / thermostat / PIR / smoke alarm / Wi-Fi access point, the overhead
+storage cupboard of the lobby (flap, mouldings, boarding under it), door stops + cabin hooks and the eight recessed
+downlights. Coordinates are world (hall local y + offset, see the "Reconciled dimensions" table of the spec);
+phase-2 corrections: spec/phase2/ground_corrections.md sections 1, 3 and 9.
 
     B="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
-    "$B" -b --factory-startup --python blender/build.py -- --only shell,vestibule,hallway --preview vestibule,hallway --res 540x960 --samples 64 --tag hall
+    "$B" -b --factory-startup --python blender/build.py -- --levels G --only shell,vestibule,hallway --preview vestibule,hallway --res 540x960 --samples 64 --tag hall
 """
 import os
 from math import atan2, cos, sin, pi, tau, hypot, radians
@@ -25,9 +26,12 @@ CAMERAS = [
     dict(name='passage', pos=(-0.2, 6.2, 1.6), look=(-0.3, 12.0, 1.5), fov_deg=100, ref='f_0273'),
     dict(name='w3', pos=(0.9, 8.2, 1.6), look=(-0.65, 8.1, 1.35), fov_deg=100, ref='f_0770'),
     dict(name='arch', pos=(0.0, 8.13, 1.6), look=(0.0, 10.0, 2.7), fov_deg=100, ref='f_0283'),
-    dict(name='rear', pos=(-0.1, 12.6, 1.6), look=(-0.1, 6.0, 1.4), fov_deg=100, ref='f_0745'),
+    dict(name='rear', pos=(-0.1, 12.2, 1.6), look=(-0.1, 6.0, 1.4), fov_deg=100, ref='f_0745'),
     dict(name='clock', pos=(-0.06, 10.4, 1.7), look=(-0.056, 12.23, 2.42), fov_deg=14),        # live hands
     dict(name='cupboard', pos=(-0.5, 9.0, 1.6), look=(0.5, 8.14, 2.42), fov_deg=60),            # --pose 1: flap up
+    dict(name='cupboard2', pos=(-0.1, 8.75, 1.5), look=(0.75, 7.75, 2.25), fov_deg=75, ref='v2:f_0505'),
+    dict(name='switch', pos=(0.1, 3.1, 1.45), look=(0.65, 3.29, 1.3), fov_deg=45, ref='v2:f_1001'),
+    dict(name='corridor', pos=(0.3, 10.55, 1.5), look=(-0.65, 11.6, 0.6), fov_deg=100, ref='v2:f_0669'),
 ]
 
 RX = Matrix.Rotation(pi / 2, 4, 'X')            # local +Z -> -Y: lathes / leaves that face out of a wall
@@ -296,7 +300,7 @@ CLOCK_R = .0495                 # minute hand 0.8 x this = 40 mm, inside the gol
 def thermostat(name):
     mb = mo.MB()
     mb.box((-.05, -.025, -.05), (.05, 0, .05), 'plastic_white', bev=.007)
-    mb.box((.012, -.0258, .018), (.04, -.0248, .036), M.solid('lcd_grey', '#4A5052', 0.25))
+    mb.box((.012, -.0258, .018), (.04, -.0248, .036), M.solid('lcd_grey', '#4A5052', 0.25))     # upper right = north (v2:f_0675)
     return mb.finish(name)
 
 
@@ -322,6 +326,27 @@ def ceiling_disc(name, dia, h, gap=0.0):
         mb.lathe([(0, -.0015), (.007, -.0015), (.007, 0), (0, 0)], M.solid('pir_lens', '#E4E4DE', 0.3), 10)
         mb.at()
     return mb.finish(name)
+
+
+def gang_plate(ctx, name, loc, facing, gangs):
+    """White 86 x 86 rocker plate with one object per rocker, so that every gang switches its own circuit
+    (ground_corrections.md section 1). gangs = [(group suffix, label, rooms), ...] left to right as you face the
+    plate; the gang with suffix '' is the plate's own circuit: the plate body joins its group, id = name."""
+    plate = ctx.add(P.place(P.switch_plate(len(gangs), 'blank', wide=False, name=name), loc, facing=facing), ROOM,
+                    'fit', lm='dynamic')                    # 86 x 86 like the real one (v2:f_1001), not the 146 of 'blank'
+    mb = mo.MB()                                            # rockers 12.5 x 26, 3 mm apart (v2:f_1001)
+    mb.box((-.00625, -.0045, -.013), (.00625, .001, .013), 'plastic_white', bev=.0008)
+    first = mb.finish(f'{name}.rocker.0')
+    pitch = min(.036, .0465 / len(gangs))
+    for i, (suffix, label, rooms) in enumerate(gangs):
+        rk = first if i == 0 else bpy.data.objects.new(f'{name}.rocker.{i}', first.data)
+        rk.matrix_basis = (plate.matrix_basis @ T((i - (len(gangs) - 1) / 2) * pitch, -.009, 0)
+                           @ Matrix.Rotation(radians(6), 4, 'X'))
+        IX.tag(rk, 'light', g=name + suffix, label=label, rooms=rooms)
+        ctx.add(rk, ROOM, 'fit', lm='dynamic')
+        if not suffix:
+            IX.tag(plate, 'light', g=name, label=label, rooms=rooms)
+    return plate
 
 
 def door_stop(name):
@@ -417,9 +442,67 @@ def reframe(ob, w, h, rim=.0005, tilt=1.5):
     me.transform(T(0, 0, -h / 2) @ Matrix.Rotation(radians(tilt), 4, 'X') @ T(0, 0, h / 2))
 
 
+# ----------------------------------------------------------------------------- lobby overhead cupboard
+def cupboard(ctx):
+    """Overhead storage cupboard above the basement door (corrections HA3; v2:f_0503-0507, v6:f_0290-0298).
+    The shell gives the plain block x 0.15..0.99, y 7.68..8.13, z 2.30..2.60 under the 2.60 landing soffit; here:
+    white face frame on its north face, small cornice under the soffit and moulded base board (both with a returned
+    end flush with the bulkhead face x 0.15, where the drop newel of rooms/stairs.py stands), the top-hung flap with its brass bow pull (group 'hallway.cupboard',
+    lifts 78 deg about its top front edge), the lined box behind it and the beaded boarding between the basement
+    door architrave and the cupboard."""
+    W, G = 'white_gloss', 'joinery_white'
+    # the shell block = ceiling zone lobby_under_flight: ys = door wall, yf = cupboard face, z0 = underside. Read
+    # from the spec so the cupboard follows when the face moves to about y 7.80 (v2:f_0505, v6:f_0290: shallow)
+    uf = next(z for z in ctx.rooms[ROOM]['ceilingZones'] if z['id'] == 'lobby_under_flight')
+    ys, yf, z0 = min(p[1] for p in uf['polygon']), max(p[1] for p in uf['polygon']), uf['z']
+    x0, x1, z1 = 0.15, 0.99, 2.60
+    ox0, ox1, oz0, oz1 = 0.212, 0.942, 2.327, 2.587                    # opening = outside of the lined box
+    yo = yf + 0.002                                                    # face frame, 2 mm proud of the plaster
+    mb = mo.MB()
+    zt = z0 + 0.0248                                                   # top of the base board
+    for a, b in (((x0, zt), (ox0, z1)), ((ox1, zt), (x1, z1)), ((ox0, zt), (ox1, oz0)), ((ox0, oz1), (ox1, z1))):
+        mb.box((a[0], yf, a[1]), (b[0], yo, b[1]), G)
+    crown = [(d * 0.75, h * 0.75) for d, h in mo.PROFILES['cornice_wc']] + [(0, 0)]      # 65 x 60 cornice
+    base = [(d * 0.62, h * 0.62) for d, h in mo.PROFILES['ped_cap']]                     # 20 x 25 moulded edge
+    yb = yo + 0.020
+    for prof, y, z in ((crown, yo, z1), (base, yb, z0)):               # the first leg is inside the block: returned end
+        xr = x0 + max(d for d, _ in prof)
+        mb.sweep(prof, [(xr, yf - 0.02, z), (xr, y, z), (x1, y, z)], G)
+    mb.box((x0, yf, z0), (x1, yb, zt), G)                              # the board the base moulding edges
+    # beaded tongue-and-groove boarding on the door wall, architrave head to the cupboard: 8 boards of 105
+    zb = ctx.opening_frame('d_basement')['head'] + 0.064
+    mb.box((x0, ys, zb), (x1, ys + 0.002, z0), G)
+    n = 8
+    for k in range(n):
+        xa = x0 + (x1 - x0) * k / n
+        mb.box((xa + 0.002, ys + 0.002, zb), (xa + (x1 - x0) / n - 0.002, ys + 0.009, z0), G, bev=.002)
+    ctx.add(mb.finish('hallway.cupboard_trim'), ROOM, 'fit')
+
+    # flap: flat panel between the base board and the cornice, 8 mm clear of the drop newel (x <= 0.20) at its
+    # west end and lapping the opening on every side, so no slot shows into the box once the carve exists
+    fx0, fx1, fz0, fz1, t = 0.208, 0.984, z0 + 0.026, z1 - 0.066, 0.018
+    mb = mo.MB()
+    mb.box((fx0, yo, fz0), (fx1, yo + t, fz1), W, bev=.002)
+    door = ctx.add(mb.finish('hallway.cupboard_door'), ROOM, 'fit', lm='dynamic')
+    pull = ctx.add(P.place(P.handle_d(.11, finish='brass', name='hallway.cupboard_handle'),
+                           ((fx0 + fx1) / 2, yo + t, fz0 + 0.06), facing=(0, 1)), ROOM, 'fit', lm='dynamic')
+    IX.tag_many([door, pull], 'hinge', g='hallway.cupboard', label='Cupboard', p=((fx0 + fx1) / 2, yo + t, fz1),
+                a=(1, 0, 0), deg=78)
+    # plain white lined box behind the flap, 0.21 deep (the top risers of the flight pass behind and above it).
+    # ponytail: it needs the hole the phase-1 shell cut for it - carve (0.212, 0.942, 7.92, 8.13) z 2.327..2.587,
+    # 'hallway' in lib/shell._ops; until that is back the box is buried and the lifted flap shows the block's face
+    ctx.add(P.place(P.cabinet_carcass(ox1 - ox0, .21, oz1 - oz0, W, plinth=0, open_front=True,
+                                      name='hallway.cupboard_carcass'), ((ox0 + ox1) / 2, yf - 0.2095, oz0),
+                    facing=(0, 1)), ROOM, 'fit', lm='dynamic')
+    # west cheek packed out 20 mm: the bulkhead string of steps 13-15 (stairs.wall_string, x 0.21..0.244) rises
+    # through the back top corner of the box and would show as a dark wedge 10 mm inside the side panel
+    mb = mo.MB()
+    mb.box((0.229, yf - 0.205, 2.344), (0.250, yf + 0.0005, 2.570), W)
+    ctx.add(mb.finish('hallway.cupboard_liner'), ROOM, 'fit', lm='dynamic')
+
+
 # ----------------------------------------------------------------------------- build
 def build(ctx):
-    cz = ctx.ceil_z(ROOM)
     xw, xp = -0.65, -0.59                                    # west wall, west pilaster faces
 
     def put(ob, loc, facing, kind='fit', **kw):
@@ -454,53 +537,38 @@ def build(ctx):
         IX.tag(hand, 'clock', hand=w, p=centre, a=out)
         ctx.add(hand, ROOM, 'decor', lm='dynamic')
 
-    # --- electrics and sensors
-    for sw in (put(P.switch_plate(3, name='hallway.switch.front'), (0.65, 3.29, 1.27), EAST, lm='dynamic'),
-               put(P.switch_plate(1, name='hallway.switch.rear'), (0.45, 11.30, 1.25), EAST, lm='dynamic')):
-        IX.tag(sw, 'light', rooms=['hallway', 'stairs'])
+    # --- electrics and sensors. Switch circuits as the owner demonstrated them (corrections section 1): hall
+    #     3-gang, facing it: left (north) = first-floor landing, middle = the hall downlights, right (south, by the
+    #     inner doors) = porch / vestibule lights; the corridor rocker is 2-way with the middle gang
+    HALL = ['hallway', 'stairs']
+    gang_plate(ctx, 'hallway.switch.front', (0.65, 3.29, 1.27), EAST,
+               [('.landing', 'Landing lights', ['landing1_front', 'landing1_ql', 'landing1_rear']),
+                ('', 'Hall lights', HALL), ('.porch', 'Porch light', ['vestibule'])])
+    sw = put(P.switch_plate(1, name='hallway.switch.rear'), (0.45, 11.32, 1.25), EAST, lm='dynamic')
+    IX.tag(sw, 'light', rooms=HALL, label='Hall lights')
     put(P.socket(2, name='hallway.socket.front'), (xw, 3.715, 0.36), WEST)    # behind the console, between its two south legs (F_0236, F_0795)
     put(P.socket(2, name='hallway.socket.lobby'), (xw, 8.36, 0.34), WEST)
-    put(P.socket(2, name='hallway.socket.rear'), (xp, 9.53, 0.34), WEST)
-    put(thermostat('hallway.thermostat'), (xw, 8.42, 1.42), WEST, lm='dynamic')
+    put(P.socket(2, name='hallway.socket.rear'), (xp, 9.53, 0.34), WEST)      # on the south pilaster (v2:f_0491)
+    put(P.socket(1, name='hallway.socket.corridor'), (xw, 11.40, 0.30), WEST)  # just south of the north pilaster (v2:f_0669)
+    put(thermostat('hallway.thermostat'), (xw, 8.43, 1.42), WEST, lm='dynamic')
     put(pir('hallway.pir'), (xw, 2.03, 2.45), WEST, lm='dynamic')
     ap = ceiling_disc('hallway.wifi_ap', 0.20, 0.035, gap=.004)
-    ap.location = (-0.26, 9.36, cz)                          # 30 mm clear of the cornice break round the pilaster (x -0.39)
+    ap.location = (-0.26, 9.36, ctx.ceil_z(ROOM, -0.26, 9.36))   # 30 mm clear of the cornice break round the pilaster (x -0.39)
     ctx.add(ap, ROOM, 'fit', lm='dynamic')
     sm = ceiling_disc('hallway.smoke_alarm', 0.11, 0.04)
-    sm.location = (-0.20, 7.88, cz)
+    sm.location = (-0.12, 8.22, ctx.ceil_z(ROOM, -0.12, 8.22))     # just past the 2.95 / 2.84 step, in line with
+    #                                                                 downlight 5 (v1 f_0273); clear of the x 0.15 bulkhead cornice (x > -0.05)
     ctx.add(sm, ROOM, 'fit', lm='dynamic')
 
     # --- brass door stops + cabin hooks on both skirtings, 0.60 north of the inner screen
     for i, (x, nrm) in enumerate(((xw + 0.02, WEST), (0.65 - 0.02, EAST))):
         put(door_stop(f'hallway.door_stop.{i}'), (x, 2.43, 0.06), nrm, lm='dynamic')
 
-    # --- overhead cupboard over the under-stairs door (the box is shell): top-hung flap with a brass D handle.
-    #     It lifts about its top front edge and stops at 75 deg, handle 30 mm under the 2.60 landing soffit.
-    mb = mo.MB()
-    mb.box((0.206, 8.13, 2.327), (0.944, 8.148, 2.594), 'white_gloss', bev=.004)
-    door = ctx.add(mb.finish('hallway.cupboard_door'), ROOM, 'fit', lm='dynamic')
-    pull = put(P.handle_d(.13, finish='brass', name='hallway.cupboard_handle'), (0.575, 8.148, 2.36), (0, 1),
-               lm='dynamic')
-    IX.tag_many([door, pull], 'hinge', g='hallway.cupboard', label='Cupboard', p=(0.575, 8.148, 2.594),
-                a=(1, 0, 0), deg=75)
-    # 25 mm bullnose under the door: flush with the door face, rounding back under the carcass (F_0753)
-    mb = mo.MB()
-    nose = [(-.007 + .025 * cos(radians(a)), -.025 * sin(radians(a))) for a in (73.7, 60, 45, 30, 15, 0)] + [(0, 0)]
-    mb.sweep(nose, [(0.206, 8.13, 2.325), (0.944, 8.13, 2.325)], 'white_gloss')
-    ctx.add(mb.finish('hallway.cupboard_nose'), ROOM, 'fit')
-    # plain white lined box behind the flap, 0.21 deep (the top risers of the flight pass behind and above it).
-    # It sits in the box lib/shell.py carves out of the solid 'lobby_overhead_cupboard' fill
-    put(P.cabinet_carcass(.73, .21, .26, 'white_gloss', plinth=0, open_front=True, name='hallway.cupboard_carcass'),
-        (0.577, 7.9205, 2.327), (0, 1), lm='dynamic')
-    # west cheek packed out 20 mm: the bulkhead string of steps 13-15 (stairs.wall_string, x 0.21..0.244) rises
-    # through the back top corner of the box and would show as a dark wedge 10 mm inside the side panel
-    mb = mo.MB()
-    mb.box((0.229, 7.925, 2.344), (0.250, 8.1305, 2.570), 'white_gloss')
-    ctx.add(mb.finish('hallway.cupboard_liner'), ROOM, 'fit', lm='dynamic')
+    cupboard(ctx)
 
     # --- recessed downlights, one row down the middle of each zone
-    spots = [(0.0, 2.95), (0.0, 4.10), (-0.25, 5.38), (-0.25, 6.33), (-0.25, 7.28), (-0.10, 8.32),
+    spots = [(0.0, 2.95), (0.0, 4.10), (-0.25, 5.38), (-0.25, 6.33), (-0.25, 7.28), (-0.10, 8.40),
              (-0.10, 10.15), (-0.10, 11.40)]
     for i, (x, y) in enumerate(spots):
         lighting.downlight(ctx, ROOM, x, y, watts=70, kelvin=3000, spot_deg=130, name=f'hallway.downlight.{i}')
-        ctx.add(P.place(P.downlight(name=f'hallway.downlight_trim.{i}'), (x, y, cz)), ROOM, 'light')
+        ctx.add(P.place(P.downlight(name=f'hallway.downlight_trim.{i}'), (x, y, ctx.ceil_z(ROOM, x, y))), ROOM, 'light')

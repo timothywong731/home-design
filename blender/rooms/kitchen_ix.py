@@ -154,9 +154,10 @@ def _wire(mb, a, b, y0, y1, z, mat, pitch=.05, along='y'):
             mb.box((a, v - .002, z), (b, v + .002, z + .004), mat)
 
 
-def oven(mb, w, h, depth=.43):
+def oven(mb, w, h, depth=.43, fans=1):
     """Built-in oven behind its drop-down door. Origin: bottom centre of the front (y = 0): black frame round the
-    mouth, enamel cavity with side runners, one wire shelf and the fan cover on the back."""
+    mouth, enamel cavity with side runners, one wire shelf and the fan cover(s) on the back: one central 170, or
+    fans=2, a pair of 110 side by side (the compact combi oven, v2 f_0403-0404)."""
     B, en, ch, x, fr = mb.M.copy(), col('oven_enamel', '#26262A', .35), 'chrome', w / 2, .034
     a, b, za, zb = -x + fr, x - fr, fr * .8, h - fr * 1.2
     for p, q in (((-x, .001, 0), (a, .02, h)), ((b, .001, 0), (x, .02, h)), ((a, .001, 0), (b, .02, za)),
@@ -169,8 +170,10 @@ def oven(mb, w, h, depth=.43):
         for sx in (-1, 1):
             mb.box((sx * (b - .008), .05, z), (sx * b, depth - .03, z + .006), ch)
     _wire(mb, a + .010, b - .010, .045, depth - .025, za + 2 * step + .006, ch, .045)
-    mb.at(B @ T(0, depth - .001, (za + zb) / 2) @ Matrix.Rotation(math.radians(90), 4, 'X'))
-    mb.lathe([(0, 0), (.085, 0), (.075, .006), (0, .006)], col('oven_fan', '#3A3A3E', .4), 16)    # fan cover, faces -y
+    r = .085 if fans == 1 else .055
+    for k in range(fans):                                      # fan covers, facing -y
+        mb.at(B @ T((k - (fans - 1) / 2) * (2 * r + .012), depth - .001, (za + zb) / 2) @ Matrix.Rotation(math.radians(90), 4, 'X'))
+        mb.lathe([(0, 0), (r, 0), (r - .01, .006), (0, .006)], col('oven_fan', '#3A3A3E', .4), 16)
     mb.at(B)
 
 
@@ -264,7 +267,7 @@ def _demo():
     from lib import mouldings as mo
     mb = mo.MB()
     for fn, a in ((plates, ()), (bowls, ()), (dish, ()), (pot, ()), (jar, ()), (bottle, ()), (carton, ()), (tub, ()),
-                  (board, ()), (drawer, (.74, .5, .18)), (cutlery, (.7, .46)), (oven, (.56, .49)),
+                  (board, ()), (drawer, (.74, .5, .18)), (cutlery, (.7, .46)), (oven, (.56, .49)), (oven, (.56, .34, .43, 2)),
                   (dishwasher, (.56, .68)), (row, (.5,)), (fridge, (.34, 1.66, .59)), (fridge_door, (.26, 1.6))):
         before = len(mb.bm.faces)
         fn(mb, *a)

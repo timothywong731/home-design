@@ -112,11 +112,35 @@ root.name = 'house'; scene.add(root);
 const levelScenes = new Map(), meshes = [], byName = new Map();
 const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 const mapMats = (o, f) => (Array.isArray(o.material) ? o.material.map(f) : f(o.material));
+const drawDown = (im, max) => {        // an image drawn down to `max` px on its long side (a canvas), or itself
+  const s = max / Math.max(im.width, im.height);
+  if (s >= 1) return im;
+  const c = Object.assign(document.createElement('canvas'), { width: Math.round(im.width * s), height: Math.round(im.height * s) });
+  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+  return c;
+};
+// GLB textures: the export writes an image into every level GLB that uses it, so the same picture arrives up to five
+// times; one THREE.Texture per image name + size (+ sampling) serves every level. Phones (coarse pointer or a small
+// screen) get colour maps over 512 px drawn down before upload. Unnamed images are never merged.
+const TEX_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'];
+const sharedTex = new Map(), phone = touch || Math.min(screen.width, screen.height) < 600;
+function shareTextures(m) {
+  for (const k of TEX_SLOTS) {
+    const t = m[k], im = t?.image;
+    if (!im) continue;
+    const key = t.name && [t.name, im.width, im.height, t.colorSpace, t.wrapS, t.wrapT, t.channel, t.flipY, ...t.offset, ...t.repeat, t.rotation].join('|');
+    const s = key && sharedTex.get(key);
+    if (s) { m[k] = s; continue; }
+    if (phone && (k === 'map' || k === 'emissiveMap') && Math.max(im.width, im.height) > 512) { t.image = drawDown(im, 512); t.needsUpdate = true; }
+    t.anisotropy = maxAniso;
+    if (key) sharedTex.set(key, t);
+  }
+}
 function prepare(model) {
   const mine = [];
   model.traverse((o) => o.isMesh && mine.push(o));
   for (const o of mine) mapMats(o, (m) => {
-    for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap']) if (m[k]) m[k].anisotropy = maxAniso;
+    shareTextures(m);
     if (/glass|glaz/i.test(m.name) || m.transmission > 0) {
       // The export's glass is already alpha-blended (clear = 10 % mirror, frosted/obscure/dark keep their own alpha):
       // leave it alone. Only opaque or transmissive glass from elsewhere is turned into cheap see-through glass.
@@ -130,8 +154,16 @@ function prepare(model) {
   });
   model.traverse((o) => { for (const n of [o.userData.name, o.name]) if (n && !byName.has(n)) byName.set(n, o); });   // names are unique across levels
   meshes.push(...mine);
+  model.updateMatrixWorld(true);
+  for (const o of mine) {               // what the dollhouse may hide (never a tagged object: interact.js owns their visibility)
+    if (o.userData.ix || o.parent?.userData.ix) continue;
+    const room = o.userData.room ?? o.parent?.userData.room, name = o.userData.name || o.parent?.userData.name || '';
+    dhBox.setFromObject(o);
+    dhMeshes.push({ o, room, minY: dhBox.min.y, maxY: dhBox.max.y, ceil: /\.ceiling$/.test(name) ? rooms.find((r) => r.id === room)?.level ?? null : null });
+  }
   return mine;
 }
+const dhMeshes = [], dhBox = new THREE.Box3();
 const findNode = (n) => byName.get(n) || byName.get(THREE.PropertyBinding.sanitizeNodeName(n));
 
 // ---------- lighting ----------
@@ -173,8 +205,7 @@ const ratioOf = (a, ka, b, kb) => Math.min(1, Math.max(0.01, (meanLinear(a.image
 const texCache = new Map();
 function loadTex(u, atlas = false) {   // once per file; on phones an atlas over 2048 px is drawn down to 2048 on load
   if (!texCache.has(u)) texCache.set(u, texLoader.loadAsync('assets/' + u).then((t) => {
-    const im = t.image, s = touch && atlas ? 2048 / Math.max(im.width, im.height) : 1;
-    if (s < 1) { const c = Object.assign(document.createElement('canvas'), { width: Math.round(im.width * s), height: Math.round(im.height * s) }); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); t.image = c; }
+    if (touch && atlas) t.image = drawDown(t.image, 2048);
     if (atlas) Object.assign(t, { channel: 1, flipY: false, colorSpace: THREE.SRGBColorSpace, anisotropy: maxAniso });
     else Object.assign(t, { mapping: THREE.EquirectangularReflectionMapping, colorSpace: THREE.SRGBColorSpace });
     return t;
@@ -475,7 +506,10 @@ addEventListener('keydown', (e) => {
   else if (k === 'KeyP') togglePlan();
   else if (e.key === '?' || k === 'KeyH') toggleHelp();
   else if (k === 'Escape' && planEl.classList.contains('max')) $('#plan-max').click();
-  else if (/^Digit[1-9]$/.test(k)) jump(curGroup()[+k.slice(5) - 1]?.id);          // rooms of the floor you are on
+  else if (/^Digit[1-9]$/.test(k)) jump(curGroup()[+k.slice(5) - 1]?.id);          // rooms of the floor open in the bar
+  else if ((k === 'PageUp' || k === 'PageDown') && groupOf.size > 1) {             // open the floor above / below in the bar
+    const ids = [...groupOf.keys()]; e.preventDefault(); openGroup(ids[clamp(ids.indexOf(openLv) + (k === 'PageUp' ? 1 : -1), 0, ids.length - 1)]);
+  }
   else if (MOVE.has(k) || k.startsWith('Shift')) {
     if (MOVE.has(k) && document.activeElement?.tagName === 'BUTTON' && k.startsWith('Arrow')) return;
     S.keys.add(k); if (MOVE.has(k)) e.preventDefault();
@@ -610,39 +644,100 @@ const tmp = new THREE.Vector3();
 const capMat = new THREE.MeshBasicMaterial({ color: 0x8f8a83, side: THREE.BackSide });
 const HOUSE_LEVELS = LEVELS.filter((l) => l.id !== 'X').map((l) => l.id);
 let dhLevel = 'G';
-const dollLevelOf = (lv) => (HOUSE_LEVELS.includes(lv) ? lv : 'G');           // outside -> the ground floor
-function setDollLevel(id) {             // a level id or 'all'
+const dollLevelOf = (lv) => (HOUSE_LEVELS.includes(lv) ? lv : schema2 ? 'all' : 'G');     // outside -> the whole plot
+// What the dollhouse shows: never the neighbours' massing; on a level cut nothing wholly above the cut, no roof rising
+// over the level (the loft slopes sit below the level-2 cut; a porch roof below the floor stays) and no ceiling of the
+// level; "All" = house, roof and plot.
+function dollVis() {
+  const on = S.mode === 'orbit', cut = on && dhLevel !== 'all', dz = level(dhLevel)?.datumZ ?? 0;
+  for (const d of dhMeshes) d.o.visible = !on || (d.room !== 'neighbours' && !(cut && (d.minY > cutY || (d.room === 'roof' && d.maxY > dz + 1.2) || d.ceil === dhLevel)));
+  const out = levelScenes.get('X');
+  if (out) out.visible = !(on && dhLevel === 'B');                  // the lawn and shed would float beside the basement
+}
+// plan box + heights of what a dollhouse level shows: the level's rooms from its floor to its cut; "all": the plot
+function levelBox(id) {
+  const all = id === 'all', lv = level(id), plot = all && house?.exterior?.plot?.polygon;
+  const pts = plot || rooms.filter((r) => r.polygon && (all || r.level === id)).flatMap((r) => r.polygon);
+  if (!pts.length) return null;
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), top = Math.max(...LEVELS.map((l) => l.cutZ ?? -Infinity), CUT) + 1;
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys),
+    z0: all ? level('X')?.datumZ ?? 0 : lv?.datumZ ?? 0, z1: all ? top : lv?.cutZ ?? CUT };
+}
+// Framing: the orbit target on the box centre (at height ty); of eight compass directions `el` radians up, the one that
+// shows the box largest (a long plot side-on on a wide screen, end-on or corner-on on a phone), ties going to the side
+// the camera is on; the camera just far enough for every corner of the box to be inside 85 % of the part of the view
+// the open plan panel leaves free (its left side on a wide screen, its top on a phone). A view offset puts the target
+// in the middle of that part (applyViewShift), so the target - the plan marker, the orbit pivot - stays on the house.
+const fr = new THREE.Vector3(), fu = new THREE.Vector3(), fo = new THREE.Vector3(), TAN = Math.tan((FOV * Math.PI) / 360);
+function planCover() {                  // [left, top] share of the view the plan panel covers
+  if (planEl.classList.contains('collapsed') || planEl.classList.contains('max')) return [0, 0];
+  const r = planEl.getBoundingClientRect();
+  return innerWidth > 760 ? [clamp(r.right / innerWidth, 0, 0.5), 0] : [0, clamp(r.bottom / innerHeight, 0, 0.6)];
+}
+function applyViewShift() {             // the dollhouse's view offset (walk: none); the free part keeps a 70 deg view
+  const W = innerWidth, H = innerHeight, [pl, pt] = S.mode === 'orbit' ? planCover() : [0, 0];
+  camera.aspect = (W * (1 + pl)) / (H * (1 + pt));
+  if (S.mode === 'orbit') camera.fov = (2 * Math.atan(TAN * (1 + pt)) * 180) / Math.PI;
+  if (pl || pt) camera.setViewOffset(W * (1 + pl), H * (1 + pt), 0, 0, W, H); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+function fitDist(b, dir, [pl, pt]) {
+  fr.crossVectors(camera.up, dir).normalize(); fu.crossVectors(dir, fr);
+  const tx = TAN * (innerWidth / innerHeight) * 0.85 * (1 - pl), tz = TAN * 0.85 * (1 - pt);
+  let d = orbit.minDistance;
+  for (const x of [b.minX, b.maxX]) for (const y of [b.minY, b.maxY]) for (const z of [b.z0, b.z1]) {
+    fo.set(x, z, -y).sub(orbit.target);
+    const a = fo.dot(dir);
+    d = Math.max(d, a + Math.abs(fo.dot(fr)) / tx, a + Math.abs(fo.dot(fu)) / tz);
+  }
+  return d;
+}
+function frameBox(b, ty, el) {
+  const cur = tmp.subVectors(camera.position, orbit.target).setY(0).normalize().clone(), p = planCover();
+  orbit.target.set((b.minX + b.maxX) / 2, ty, -(b.minY + b.maxY) / 2);
+  let best = null;
+  for (let k = 0; k < 8; k++) {
+    const a = (k * Math.PI) / 4, dir = new THREE.Vector3(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el));
+    const d = fitDist(b, dir, p), s = d * (1.04 - 0.02 * dir.clone().setY(0).normalize().dot(cur));
+    if (!best || s < best.s) best = { s, d, dir };
+  }
+  orbit.maxDistance = Math.max(60, best.d * 1.6);
+  camera.position.copy(orbit.target).addScaledVector(best.dir, best.d); applyViewShift(); orbit.update();
+}
+// a level id or 'all'; fit = frame what it shows (a level button, entering the dollhouse), else only the target height
+function setDollLevel(id, fit = false) {
   dhLevel = id;
   const lv = level(id), all = id === 'all';
   cutY = all ? Infinity : lv?.cutZ ?? CUT;
   cutPlanes[0].constant = cutY;
   renderer.clippingPlanes = S.mode === 'orbit' && !all ? cutPlanes : [];
-  const out = levelScenes.get('X');
-  if (out) out.visible = !(S.mode === 'orbit' && id === 'B');        // the lawn and shed would float beside the basement
-  if (S.mode === 'orbit' && lv) { const dy = (lv.datumZ ?? 0) - orbit.target.y; orbit.target.y += dy; camera.position.y += dy; }
-  for (const b of dhEl.children) b.setAttribute('aria-pressed', b.dataset.level === id);
+  dollVis();
+  const b = S.mode === 'orbit' && fit && levelBox(id);
+  if (b) frameBox(b, all ? (b.z0 + b.z1) / 3 : lv?.datumZ ?? 0, camera.aspect < 1 ? 1.15 : 1.0);   // 57 deg up (66 end-on): over the cut walls, the roof
+  else if (S.mode === 'orbit' && lv) { const dy = (lv.datumZ ?? 0) - orbit.target.y; orbit.target.y += dy; camera.position.y += dy; }
+  for (const x of dhEl.children) x.setAttribute('aria-pressed', x.dataset.level === id);
   hoverDirty = true;
 }
 const dhEl = $('#dh-levels');
 if (schema2 && HOUSE_LEVELS.length > 1) {
   dhEl.hidden = false;
   for (const id of [...HOUSE_LEVELS, 'all']) {
-    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: id === 'all' ? 'All' : id, title: id === 'all' ? 'Whole house' : `Cut above: ${levelName(id)}` });
-    b.dataset.level = id; b.onclick = () => setDollLevel(id); dhEl.append(b);
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: id === 'all' ? 'All' : id, title: id === 'all' ? 'Whole house, roof and garden' : `Cut above: ${levelName(id)}` });
+    b.dataset.level = id; b.onclick = () => setDollLevel(id, true); dhEl.append(b);
   }
 }
 function setMode(m) {
   if (m === S.mode) return;
   S.mode = m; ptrs.clear(); pinch = null; S.anim = S.glide = null; fadeEl.style.opacity = '0'; document.exitPointerLock?.(); ring.visible = false; hoverDirty = true;
-  camera.fov = FOV; camera.updateProjectionMatrix();     // the dollhouse zooms by distance; walk eases back to its own zoom
+  camera.fov = FOV; applyViewShift();    // the dollhouse zooms by distance; walk eases back to its own zoom
   document.body.classList.toggle('orbit', m === 'orbit');
   $('#mode-walk').setAttribute('aria-pressed', m === 'walk'); $('#mode-orbit').setAttribute('aria-pressed', m === 'orbit');
   scene.background = m === 'orbit' ? DARK : SKY;
-  if (m === 'orbit') {
+  if (m === 'orbit') {                   // the floor you are on (outside: the whole plot), seen from behind you, framed
     const id = dollLevelOf(S.level), d = level(id)?.datumZ ?? 0, [fx, fy] = G.yawDir(S.yaw);
     orbit.target.set(S.x, d, -S.y); camera.position.set(S.x - fx * 6, d + 9, -(S.y - fy * 6));
     orbit.enabled = true; orbit.update();
-    setDollLevel(id);
+    setDollLevel(id, true);
   } else {
     setDollLevel(dhLevel); orbit.enabled = false;            // clears the clipping, shows the outside again
     const [tx, ty] = G.threeToPlan(orbit.target);
@@ -688,7 +783,7 @@ const plan = planJson || (house && {      // minimal fallback drawing from house
 const sheetLayer = () => G.layerOfLevel(planView?.sheet.level || planView?.sheetId || 'G');
 const planView = plan ? new PlanView(planCanvas, plan, {
   sheet: spawn.layer,
-  onPick: (x, y) => { const L = sheetLayer(); if (S.mode === 'orbit' && schema2) setDollLevel(dollLevelOf(L)); teleport(x, y, hasLayer(L) ? L : S.layer); },
+  onPick: (x, y) => { const L = sheetLayer(); if (S.mode === 'orbit' && schema2) setDollLevel(dollLevelOf(planView.sheet.level ?? planView.sheetId)); teleport(x, y, hasLayer(L) ? L : S.layer); },
   onHover: (x, y) => { $('#plan-xy').textContent = `X ${Math.round(x * 1000)}  Y ${Math.round(y * 1000)}`; },
 }) : null;
 if (!planView) $('.plan-empty').hidden = false;
@@ -711,6 +806,7 @@ function togglePlan(force) {
   $('#plan-toggle').setAttribute('aria-expanded', !c);
 }
 $('#plan-toggle').onclick = () => togglePlan();
+new ResizeObserver(() => S.mode === 'orbit' && applyViewShift()).observe(planEl);   // collapsed, maximised, resized
 $('#plan-fit').onclick = () => planView?.fit();
 $('#plan-max').onclick = () => {
   if (planView) planView.fitted = false;          // refit once the ResizeObserver reports the new size
@@ -732,33 +828,48 @@ for (const [a, ext] of [[$('#dl-dxf'), 'dxf'], [$('#dl-pdf'), 'pdf']]) {
 }
 
 // ---------- room buttons (grouped by level), help, gallery, hint ----------
+// One group per floor (B G 1F 2F OUT); only the open group lists its rooms, the others are a floor chip that opens
+// them. The open group is the visitor's floor until a chip (or PageUp / PageDown) picks another; digits jump within it.
 const nav = $('#rooms'), groupOf = new Map();
 const jumpList = rooms.filter((r) => vps[r.id]);
 const LV_TAG = { B: 'B', G: 'G', 1: '1F', 2: '2F', X: 'OUT' };
+const shortName = (n) => { const s = n.split(/ \/| \(| and /)[0].replace(/ room$/i, '').replace(/^(first|second)-floor /i, ''); return s[0].toUpperCase() + s.slice(1); };
+let openLv = null;
 for (const lv of [...new Set([...(house?.levels || []).map((l) => l.id), 'G', 'X'])]) {
   const list = jumpList.filter((r) => r.level === lv);
   if (!list.length) continue;
   const grp = Object.assign(document.createElement('div'), { className: 'grp' });
   grp.dataset.level = lv; grp.setAttribute('role', 'group'); grp.setAttribute('aria-label', levelName(lv));
-  if (house?.levels?.length) grp.append(Object.assign(document.createElement('span'), { className: 'lv', textContent: LV_TAG[lv] ?? lv, title: levelName(lv) }));
+  if (house?.levels?.length) {
+    const c = Object.assign(document.createElement('button'), { type: 'button', className: 'lv', textContent: LV_TAG[lv] ?? lv, title: `${levelName(lv)} (PageUp / PageDown)` });
+    c.setAttribute('aria-expanded', 'false'); c.onclick = () => openGroup(lv); grp.append(c);
+  }
   list.forEach((r, i) => {
     const b = document.createElement('button'), k = document.createElement('kbd');
-    b.type = 'button'; b.dataset.room = r.id; b.title = r.name; k.textContent = i + 1;
-    b.append(r.name.split(/ \/| \(| and /)[0].replace(/ room$/i, ''), ' ', k); b.onclick = () => jump(r.id); grp.append(b);   // short name, full one in title
+    b.type = 'button'; b.dataset.room = r.id; b.title = `${r.name} (key ${i + 1})`; k.textContent = i + 1;
+    b.append(shortName(r.name), ' ', k); b.onclick = () => jump(r.id); grp.append(b);   // short name, full one in title
   });
   nav.append(grp); groupOf.set(lv, list);
 }
-const curGroup = () => groupOf.get(S.level) || groupOf.get('G') || [...groupOf.values()][0] || [];
+// a mouse wheel scrolls the strip sideways (it has no scrollbar)
+nav.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { nav.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+const showCurrent = () => (nav.querySelector('.grp.open button[aria-current="true"]') || nav.querySelector('.grp.open'))?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+function openGroup(lv) {
+  openLv = groupOf.has(lv) ? lv : groupOf.has('G') ? 'G' : [...groupOf.keys()][0];
+  for (const g of nav.children) { const o = g.dataset.level === openLv; g.classList.toggle('open', o); g.querySelector('.lv')?.setAttribute('aria-expanded', o); }
+  showCurrent();
+}
+openGroup(spawn.layer);
+const curGroup = () => groupOf.get(openLv) || [];
 // the floor you are on changed: the plan sheet follows (a tab click overrides until the next change), its tab and room
-// group are marked, the dollhouse cut follows in the dollhouse
+// group are marked and opened
 function onLevel(lv) {
   if (!lv || lv === S.level) return;
   S.level = lv;
   if (planView?.sheets.some((s) => s.id === lv)) showSheet(lv);
   for (const b of tabsEl.children) b.classList.toggle('here', b.dataset.sheet === lv);
-  const cur = groupOf.has(lv) ? lv : 'G';
-  for (const g of nav.children) g.classList.toggle('cur', g.dataset.level === cur);
-  if (groupOf.size > 1) nav.querySelector('.grp.cur')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  for (const g of nav.children) g.classList.toggle('cur', g.dataset.level === lv);
+  openGroup(lv);
 }
 function updateRoom(x, y) {
   const L = S.mode === 'walk' || dhLevel === 'all' ? S.layer : G.layerOfLevel(dhLevel);
@@ -767,7 +878,8 @@ function updateRoom(x, y) {
   const r = h ? rooms.find((q) => q.id === h.room) || null : walk ? null : G.roomAt(rooms, x, y);
   if (r?.id === S.room?.id) return;
   S.room = r; $('#plan-room').textContent = r ? r.name : '';
-  for (const b of nav.querySelectorAll('button')) b.setAttribute('aria-current', b.dataset.room === r?.id);
+  for (const b of nav.querySelectorAll('button[data-room]')) b.setAttribute('aria-current', b.dataset.room === r?.id);
+  showCurrent();
 }
 const help = $('#help');
 function toggleHelp() { help.open ? help.close() : help.showModal(); }
@@ -813,7 +925,7 @@ async function loadLevel(id, onProgress) {
   if (realtime) for (const o of mine) { o.castShadow = !o.userData.glass; o.receiveShadow = true; }
   else await applyBake(id, mine);
   root.add(model); levelScenes.set(id, model);
-  if (id === 'X') model.visible = !(S.mode === 'orbit' && dhLevel === 'B');
+  dollVis();                            // arriving while the dollhouse is open: its rules apply at once
   ix.add(model); ixLevels.push(id);     // its doors, switches and lamps work from now on
   hoverDirty = true;
   return true;
@@ -823,7 +935,7 @@ catch (err) { msg.textContent = 'The 3D model is not available yet.'; bar.parent
 
 // ---------- loop ----------
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight, false);
+  applyViewShift(); renderer.setSize(innerWidth, innerHeight, false);
 });
 let last = performance.now();
 function frame(now) {
@@ -865,8 +977,19 @@ const streaming = (async () => {
   chip.hidden = true;
 })();
 
+// decoded texture memory of what the scene can draw (unique sources, mip chain +1/3; lights-off maps once loaded),
+// uploading what is not on the GPU yet - for tests and measurements
+function texStats() {
+  const seen = new Map(), add = (t) => t?.image && !seen.has(t.source) && seen.set(t.source, t);
+  scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) for (const k of [...TEX_SLOTS, 'lightMap']) add(m[k]); });
+  for (const L of roomLights.values()) add(L.off?.tex);
+  let bytes = 0;
+  for (const t of seen.values()) { renderer.initTexture(t); bytes += (t.image.width || 0) * (t.image.height || 0) * 4 * (t.generateMipmaps ? 4 / 3 : 1); }
+  return { gpuTextures: renderer.info.memory.textures, sources: seen.size, MB: +(bytes / 1048576).toFixed(1) };
+}
+
 // debug / test handle
-window.viewer = { THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump, ix, walkTo, castAt, castRay, ring, roomLights,
+window.viewer = { texStats, sharedTex, dhMeshes, levelBox, openGroup, THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump, ix, walkTo, castAt, castRay, ring, roomLights,
   FOV, FOV_MIN, FOV_MAX, LEVELS, ORDER, levelScenes, ixLevels, setDollLevel, streaming, schema2, targetOf, lmProbeScale,
   info: () => ({ mode: S.mode, x: S.x, y: S.y, z: S.z, layer: S.layer, level: S.level, yaw: S.yaw, room: S.room?.id ?? null, sheet: planView?.sheetId ?? null,
     realtime, meshes: meshes.length, lightmapped: meshes.filter((m) => m.userData.baked).length, probed: meshes.filter((m) => !realtime && !m.userData.baked).length,
