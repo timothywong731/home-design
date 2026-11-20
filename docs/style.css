@@ -105,6 +105,12 @@ body.orbit #hint { display: none; }
 #loader { position: fixed; inset: 0; display: grid; place-items: center; z-index: 50; transition: opacity .5s;
   background: radial-gradient(1200px 600px at 50% 40%, #1b1e22, #0c0d0f); }
 #loader.done { opacity: 0; pointer-events: none; }
+#gate label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.gate-row { display: flex; gap: 6px; }
+#gate input { flex: 1; min-width: 0; padding: 7px 9px; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 4px; }
+#gate button { padding: 7px 14px; font: inherit; color: #121417; background: var(--accent); border: 0; border-radius: 4px; cursor: pointer; }
+#gate-msg { margin-top: 8px; min-height: 1.3em; color: var(--accent); font-size: 12px; }
+#gate:not([hidden]) ~ .bar, #gate:not([hidden]) ~ #loader-msg { display: none; }
 .loader-card { width: min(320px, 80vw); }
 .loader-kicker { color: var(--muted); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
 .loader-title { font-size: 26px; font-weight: 300; letter-spacing: .01em; margin: 2px 0 18px; }

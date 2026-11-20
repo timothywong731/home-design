@@ -82,9 +82,16 @@ names per video are in `spec/BRIEF.md`):
 ffmpeg -v error -ss <seconds> -i "C:/Users/Timothy Wong/Downloads/PXL_20261118_173753601.mp4" -frames:v 1 -q:v 2 reference/work/out.jpg
 ```
 
-Deploy: GitHub Pages serves the `docs/` folder of `main` (legacy branch build, no Actions).
-Committing and pushing `docs/` is the deploy; the first schema-2 export into `docs/assets` deletes
-`home.glb`, so viewer and assets land in the same commit. Budgets (asserted by `export.py`):
+Deploy (password-gated): GitHub Pages serves the root of the `gh-pages` branch, a sealed copy of `docs/`
+in which every file under `assets/` and `renders/` is AES-GCM ciphertext; `docs/sw.js` decrypts it in the browser
+with the key `docs/js/gate.js` derives from the password. `docs/` on `main` stays plain (private repo, dev, tests;
+its `gate.json` is `{"sealed": false}`). Password: env `VIEWER_PASSWORD` or `.viewer-password` (git-ignored) — never
+commit it. Each deploy is one orphan commit, force-pushed:
+
+```bash
+python tools/gate/seal.py                    # docs/ -> build/site (SEAL OK); node tools/gate/test_gate.mjs checks the gate (GATE OK)
+cd build/site && git init -q -b gh-pages && git add -A && git commit -qm "Deploy" && git push -f "$(git -C ../.. remote get-url origin)" gh-pages
+``` Budgets (asserted by `export.py`):
 triangles 4.0 M in all (G 0.85 M, 1 1.3 M, 2 0.85 M, B 0.15 M, X 0.85 M); every GLB ≤ 40 MB and
 `glb/G.glb` ≤ 21.5 MB; first view (`glb/G.glb` + level-G lightmaps and probes + json) < 35 MB;
 `docs/` < 300 MB; no file over 50 MB. `ATLAS_CAP` in `export.py` trims a room when one fails.

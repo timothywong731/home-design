@@ -13,6 +13,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as G from './geom.js';
 import { PlanView } from './plan2d.js';
 import { initInteract } from './interact.js';
+import { unlock } from './gate.js';
 
 const LIBS = 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/libs/';
 const EYE = 1.6, WALK = 1.4, RUN = 2.8, TURN = 1.9, FOV = 70, CUT = 2.2;
@@ -67,6 +68,7 @@ function progress(loaded = load.glb, total = load.glbTotal) {
   msg.textContent = known ? `${what} ${Math.round(Math.min(100, (100 * got) / all))}% · ${mb} MB` : `${what} · ${mb} MB`;
 }
 
+await unlock($('#gate'), $('#gate-pw'), $('#gate-msg')).catch((e) => { msg.textContent = e.message; throw e; });   // sealed site only
 msg.textContent = 'Loading plan…';
 const [manifest, house, planJson, foot, renders] = await Promise.all(
   ['assets/manifest.json', 'assets/house.json', 'assets/plan.json', 'assets/footprints.json', 'renders/index.json'].map(getJSON));

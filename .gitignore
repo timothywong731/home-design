@@ -4,3 +4,6 @@ reference/
 __pycache__/
 build/
 .venv/
+
+# viewer password for tools/gate/seal.py - never commit
+.viewer-password
