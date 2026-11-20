@@ -38,7 +38,7 @@ const BASE = `http://127.0.0.1:${server.address().port}/home-design/`;
 const { chromium } = createRequire(join(REPO, 'build/e2e/'))('playwright');
 const launch = (channel) => chromium.launch({ channel, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const browser = await launch(undefined).catch(() => launch('chrome'));
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }), page = await ctx.newPage();
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true }), page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 const loaded = () => page.waitForFunction(() => window.viewer?.ix?.groups?.().length > 0, null, { timeout: 240000 }).then(() => true, () => false);
@@ -58,6 +58,11 @@ check(await loaded(), 'right password: the house loads, past a stale cached mani
 const pdf = await page.evaluate(() => fetch('assets/house-plans.pdf').then((r) => r.arrayBuffer()).then((b) => new TextDecoder().decode(b.slice(0, 4))));
 check(pdf === '%PDF', `plan PDF decrypts through the worker (${pdf})`);
 await page.screenshot({ path: join(REPO, 'build/gate_test_open.png') });
+for (const [sel, magic] of [['#dl-pdf', '%PDF'], ['#dl-dxf', '  0']]) {   // the download buttons, as a visitor clicks them
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click(sel)]).catch(() => [null]);
+  const got = dl ? (await readFile(await dl.path())).subarray(0, 4).toString('latin1') : 'no download';
+  check(got.startsWith(magic), `${sel} downloads a readable file (${JSON.stringify(got)})`);
+}
 
 await page.reload();
 check(await loaded() && !(await page.isVisible('#gate')), 'reload: key remembered, no gate');

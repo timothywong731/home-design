@@ -1048,6 +1048,17 @@ for (const [a, ext] of [[$('#dl-dxf'), 'dxf'], [$('#dl-pdf'), 'pdf']]) {
   a.setAttribute('href', `assets/${dlName}.${ext}`);
   fetch(a.getAttribute('href'), { method: 'HEAD' }).then((r) => { if (!r.ok) throw 0; })
     .catch(() => { a.setAttribute('aria-disabled', 'true'); a.removeAttribute('href'); a.title = 'Not generated yet'; });
+  // The download manager fetches past the service worker, so on a sealed site it would save the ciphertext: fetch the
+  // file here (through the worker) and save that copy.
+  a.addEventListener('click', async (e) => {
+    if (!a.hasAttribute('href')) return;
+    e.preventDefault();
+    const r = await fetch(a.getAttribute('href')).catch(() => null);
+    if (!r?.ok) return;
+    const url = URL.createObjectURL(await r.blob());
+    Object.assign(document.createElement('a'), { href: url, download: `${dlName}.${ext}` }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  });
 }
 
 // ---------- room buttons (grouped by level), help, gallery, hint ----------
