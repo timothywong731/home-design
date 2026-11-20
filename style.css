@@ -1,0 +1,184 @@
+:root {
+  --panel: rgba(18, 20, 23, 0.86);
+  --panel-solid: #15171a;
+  --line: rgba(255, 255, 255, 0.11);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --text: #ece8e2;
+  --muted: #a39d94;
+  --accent: #d2a86a;
+  --accent-ink: #1a140c;
+  --cad: "ISOCPEUR", "osifont", Consolas, Menlo, "DejaVu Sans Mono", monospace;
+  --r: 7px;
+  --bar-h: 48px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0e1012; color: var(--text);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+button, a.btn { font: inherit; color: inherit; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; cursor: grab; }
+#scene:active { cursor: grabbing; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- buttons ---------- */
+button, .plan-foot a { background: transparent; border: 1px solid var(--line); border-radius: 6px; height: 30px; padding: 0 11px;
+  cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+button:hover, .plan-foot a:hover { background: rgba(255, 255, 255, 0.07); border-color: var(--line-strong); }
+button[aria-pressed="true"], button[aria-current="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.icon { width: 30px; padding: 0; justify-content: center; font-size: 15px; }
+button svg { width: 15px; height: 15px; }
+.plan-foot a[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+
+/* ---------- top bar ---------- */
+#topbar { position: fixed; top: 0; left: 0; right: 0; height: var(--bar-h); display: flex; align-items: center; gap: 14px;
+  padding: 0 12px; padding-top: env(safe-area-inset-top); background: var(--panel); border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 10; }
+.brand { display: flex; flex-direction: column; line-height: 1.1; min-width: max-content; }
+.brand b { font-weight: 600; letter-spacing: .02em; }
+.brand span { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+#rooms { flex: 1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; justify-content: safe center; mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent); padding: 0 12px; }
+#rooms::-webkit-scrollbar { display: none; }
+#rooms button { height: 28px; padding: 0 8px; font-size: 12px; }
+@media (max-width: 1700px) { #rooms button kbd { display: none; } }     /* digits still work: help and tooltips say so */
+#rooms button kbd { font: 10px var(--cad); color: var(--muted); }
+#rooms button[aria-current="true"] kbd { color: inherit; opacity: .7; }
+.tools { display: flex; gap: 8px; align-items: center; }
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.seg button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+
+/* ---------- plan panel ---------- */
+#plan { position: fixed; left: 12px; top: calc(var(--bar-h) + 12px); width: 310px; height: min(560px, calc(100vh - var(--bar-h) - 24px));
+  min-width: 220px; min-height: 160px; max-width: calc(100vw - 24px); max-height: calc(100vh - var(--bar-h) - 24px);
+  display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  overflow: hidden; resize: both; z-index: 9; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.plan-head, .plan-foot { display: flex; align-items: center; gap: 6px; padding: 6px; flex: none; }
+.plan-head { border-bottom: 1px solid var(--line); }
+.plan-name { border: 0; padding: 0 6px; font-weight: 600; letter-spacing: .04em; }
+.plan-name svg { transition: transform .15s; }
+#plan-room { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11.5px var(--cad); letter-spacing: .06em; color: var(--accent); text-transform: uppercase; }
+.plan-tools { display: flex; gap: 4px; }
+.plan-tools button.icon { width: 28px; height: 28px; }
+.plan-body { position: relative; flex: 1; min-height: 0; background: #1c1f23; }
+#plan-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.plan-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: 12px var(--cad); }
+.plan-foot { border-top: 1px solid var(--line); font: 10.5px var(--cad); color: var(--muted); letter-spacing: .05em; }
+#plan-title { flex: none; white-space: nowrap; }                      /* the scale is never cut; the readout gives way */
+#plan-xy { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; white-space: nowrap; }
+.plan-foot .dl { display: flex; gap: 4px; }
+.plan-foot a { height: 24px; padding: 0 8px; font: 600 10.5px system-ui, sans-serif; letter-spacing: .06em; }
+#plan.collapsed { height: auto !important; min-height: 0; resize: none; }
+#plan.collapsed .plan-body, #plan.collapsed .plan-foot { display: none; }
+#plan.collapsed .plan-name svg { transform: rotate(-90deg); }
+#plan.max { inset: calc(var(--bar-h) + 12px) 12px 12px 12px; width: auto !important; height: auto !important; max-height: none; resize: none; }
+#plan.paper .plan-body { background: #fbfaf6; }
+/* sheet tabs B G 1 2 SITE */
+.plan-tabs { display: flex; gap: 0; padding: 5px 6px; border-bottom: 1px solid var(--line); flex: none; }
+.plan-tabs button { height: 24px; padding: 0 9px; border-radius: 0; font: 600 10.5px var(--cad); letter-spacing: .06em; }
+.plan-tabs button + button { border-left: 0; }
+.plan-tabs button:first-child { border-radius: 5px 0 0 5px; }
+.plan-tabs button:last-child { border-radius: 0 5px 5px 0; }
+.plan-tabs button.here:not([aria-pressed="true"]) { box-shadow: inset 0 -2px 0 var(--accent); }
+#plan.collapsed .plan-tabs { display: none; }
+
+/* room buttons grouped by level: the open group lists its rooms, the others are a floor chip */
+#rooms .grp { display: flex; gap: 6px; align-items: center; flex: none; }
+#rooms .grp + .grp { border-left: 1px solid var(--line); padding-left: 8px; }
+#rooms .lv { padding: 0 7px; font: 600 10.5px var(--cad); color: var(--muted); letter-spacing: .08em; min-width: 30px; justify-content: center; }
+#rooms .grp.open .lv { color: var(--accent); border-color: transparent; padding: 0 2px; min-width: 0; }
+#rooms .grp.cur .lv { box-shadow: inset 0 -2px 0 var(--accent); }
+#rooms .grp:not(.open) > button[data-room] { display: none; }
+
+/* dollhouse level cut, streaming chip, layer-change fade */
+#dh-levels { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 8;
+  background: var(--panel); border-radius: 7px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+#dh-levels button { min-width: 38px; justify-content: center; font: 600 12px var(--cad); }
+body:not(.orbit) #dh-levels { display: none; }
+body.orbit #hint { display: none; }
+#chip { position: fixed; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 8; padding: 5px 10px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted); font: 11px var(--cad); letter-spacing: .04em; pointer-events: none; }
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 6; }
+
+/* ---------- loader ---------- */
+#loader { position: fixed; inset: 0; display: grid; place-items: center; z-index: 50; transition: opacity .5s;
+  background: radial-gradient(1200px 600px at 50% 40%, #1b1e22, #0c0d0f); }
+#loader.done { opacity: 0; pointer-events: none; }
+#gate label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.gate-row { display: flex; gap: 6px; }
+#gate input { flex: 1; min-width: 0; padding: 7px 9px; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 4px; }
+#gate button { padding: 7px 14px; font: inherit; color: #121417; background: var(--accent); border: 0; border-radius: 4px; cursor: pointer; }
+#gate-msg { margin-top: 8px; min-height: 1.3em; color: var(--accent); font-size: 12px; }
+#gate:not([hidden]) ~ .bar, #gate:not([hidden]) ~ #loader-msg { display: none; }
+.loader-card { width: min(320px, 80vw); }
+.loader-kicker { color: var(--muted); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+.loader-title { font-size: 26px; font-weight: 300; letter-spacing: .01em; margin: 2px 0 18px; }
+.bar { height: 2px; background: var(--line); overflow: hidden; border-radius: 2px; }
+.bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.bar.indet span { width: 30%; animation: indet 1.2s infinite ease-in-out; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+#loader-msg { margin-top: 10px; color: var(--muted); font: 11px var(--cad); letter-spacing: .04em; min-height: 1.4em; }
+
+/* ---------- touch pad + hint ---------- */
+#pad { position: fixed; left: 22px; bottom: calc(22px + env(safe-area-inset-bottom)); width: 116px; height: 116px; border-radius: 50%;
+  border: 1px solid var(--line-strong); background: rgba(18, 20, 23, .45); display: none; touch-action: none; z-index: 8; }
+#pad-knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  background: rgba(236, 232, 226, .85); box-shadow: 0 2px 8px rgba(0, 0, 0, .4); }
+body.touch #pad { display: block; }
+body.orbit #pad { display: none; }
+#hint { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 7px 12px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 12px; white-space: nowrap; pointer-events: none; transition: opacity .6s; z-index: 7; }
+#hint.gone { opacity: 0; }
+/* pointing: label next to the cursor, or (.key) the Space candidate centred above the hint */
+#ix-tip { position: fixed; z-index: 8; pointer-events: none; padding: 4px 9px; border-radius: 6px; background: var(--panel);
+  border: 1px solid var(--line-strong); color: var(--text); font-size: 12px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); }
+#ix-tip.key { left: 50%; top: auto; bottom: calc(58px + env(safe-area-inset-bottom)); transform: translateX(-50%); }
+#ix-tip kbd { margin-right: 6px; color: var(--accent); }
+#crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; z-index: 7;
+  background: rgba(255, 255, 255, .85); box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .45); pointer-events: none; display: none; }
+body.locked #crosshair { display: block; }
+body.locked #ix-tip:not(.key) { transform: translate(-50%, 0); }
+body.touch #btn-look, body.orbit #btn-look { display: none; }
+
+/* ---------- dialogs ---------- */
+dialog { background: var(--panel-solid); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 0; max-width: min(860px, calc(100vw - 24px)); max-height: calc(100vh - 24px); }
+dialog::backdrop { background: rgba(5, 6, 8, .6); backdrop-filter: blur(3px); }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 10px 18px; border-bottom: 1px solid var(--line); margin: 0; position: sticky; top: 0; background: var(--panel-solid); z-index: 1; }
+.dlg-head h2 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: .03em; }
+.help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 26px; padding: 14px 18px; }
+.help-grid h3 { font-size: 11px; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; margin: 6px 0 8px; font-weight: 600; }
+.help-grid dl { display: grid; grid-template-columns: auto 1fr; gap: 7px 12px; margin: 0; align-items: center; }
+.help-grid dt { white-space: nowrap; color: var(--text); }
+.help-grid dd { margin: 0; color: var(--muted); }
+kbd { display: inline-block; min-width: 20px; padding: 1px 5px; margin-right: 2px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 4px; font: 11px var(--cad); text-align: center; }
+.note { color: var(--muted); font-size: 12px; padding: 0 18px 16px; margin: 0; }
+#gallery { width: min(1100px, calc(100vw - 24px)); }
+#help { width: min(820px, calc(100vw - 24px)); }
+#gallery .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 14px; }
+#gallery .grid button { height: auto; padding: 0; border-radius: 6px; overflow: hidden; display: block; position: relative; }
+#gallery .grid img { width: 100%; aspect-ratio: 16/10; object-fit: cover; display: block; }
+#gallery .grid span { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 8px 6px; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); font-size: 12px; text-align: left; }
+.lightbox { margin: 0; padding: 10px 14px 14px; position: relative; }
+.lightbox img { display: block; max-width: 100%; max-height: calc(100vh - 170px); margin: 0 auto; border-radius: 4px; }
+.lightbox figcaption { color: var(--muted); padding: 8px 0 0; text-align: center; min-height: 1.4em; }
+.lightbox .nav { position: absolute; top: 45%; width: 38px; height: 38px; font-size: 24px; background: var(--panel); }
+.lightbox .prev { left: 20px; } .lightbox .next { right: 20px; }
+.lightbox .back { margin: 8px auto 0; display: flex; }
+
+/* ---------- phone ---------- */
+@media (max-width: 760px) {
+  :root { --bar-h: 88px; }
+  #topbar { flex-wrap: wrap; height: auto; min-height: var(--bar-h); padding: 6px 8px; gap: 6px 8px; align-content: center; }
+  .brand { flex: 1; }
+  #rooms { order: 3; flex-basis: 100%; justify-content: flex-start; padding: 0; mask-image: none; }
+  #rooms button kbd { display: none; }
+  #plan { left: 8px; top: calc(var(--bar-h) + 8px); width: min(56vw, 260px); height: min(44vh, 380px); resize: none; }
+  #plan .plan-foot #plan-title, #plan-xy, .plan-name span { display: none; }
+  .plan-tools button.icon { width: 26px; height: 26px; }
+  #plan.max { inset: calc(var(--bar-h) + 8px) 8px 8px 8px; }
+  #hint { font-size: 11px; max-width: calc(100vw - 160px); white-space: normal; border-radius: 12px; left: auto; right: 12px; transform: none; }
+  .plan-tabs button { padding: 0 6px; }
+  #chip { bottom: auto; top: calc(var(--bar-h) + 8px); right: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
