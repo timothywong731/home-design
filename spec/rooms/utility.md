@@ -330,3 +330,13 @@ top of wall door D2 (looks like a clip-on hanger hook, not part of the door).
 - Hall door centre (0.525, 10.72) in a 0.15 m wall; pocket door centre (1.775, 10.20) in a 0.12 m
   partition; flank wall 0.20 m (inner face x 3.10).
 - W-rear backs onto the dining room through a 0.13 m wall; W-wc onto the WC.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 4.5 / 4.6 Wall-cabinet run: D1 0.64-0.985, D2 -1.33, D3 -1.92, D4 -2.51, D5 -2.82, 20 mm end panel to 2.84 (v1 t=475
+  camera fit, v2 f_0553 / t=556); the gap to the corner boxing is about 0.11 m (v2 t=559 / t=561), not 20 mm.
+- Corner boxing x 2.95..3.10, y 11.89..12.23, from the worktop (0.91) to the bulkhead (2.15), flush with
+  utility_bulkhead and the window's +y reveal side (house.json utility_corner_boxing; v2 t=559-566).
+- The corner double socket is at (2.62, 12.23, 1.10), under D5 (v2 t=559), not x 2.90.
+- w_utility: inner reveal 0.23 deep (extReveal 0.01; corrections U2).
+- Reconciled section: rail y 11.26 (U3) and downlights y 11.12 (v2 f_0589), not the +0.12 shift.
+- The floor tile runs through the WC pocket-door opening (the shell lays the floor there, no white liner).

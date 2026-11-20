@@ -235,3 +235,8 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   paving Z -0.42; workshop floor Z -0.32.
 - Front openings as world x: window 1.15..2.45, French doors 2.75..3.95; store doors in the plane x -0.36,
   y 23.75..24.98; rear window centred x 2.30.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Veranda soffit `mahogany_mid` (#6A452C) with the boards running E-W; workshop floor `wood_tile_floor_grey`
+  (#6B6A66 planks 0.20 wide running N-S) - lib/site.py SOFFIT / SHED_FIN.
+- The store doors open 90 degrees (at 95 the north leaf ran 10 mm into the front wall).

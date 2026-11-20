@@ -149,17 +149,14 @@ def wc(name, at, facing=None, rot_z=None, kind='wall_hung', w=.36, proj=.53, top
     at = point on the wall / furniture front the pan backs onto, at FLOOR level, on the pan's centre line;
     top = top of the shut lid (bowl rim = top - 0.04). flush: 'plate' | 'button' | None, centred flush_z above `at`
     on the same plane (not tagged: the ground-floor WC has no flush interaction).
-    Groups: '<name>.seat' - lid and seat ring lift `lift` deg together about the hinge line 32 mm off the wall
-    (90 = vertical, 9 mm clear of the wall; as rooms/wc.py: '<name>.lid' + '<name>.seat' once interact knows 'needs')."""
+    Groups: '<name>.lid' and '<name>.seat' (needs the lid) - each lifts `lift` deg about the hinge line 32 mm off
+    the wall (90 = vertical, 9 mm clear of the wall; as rooms/wc.py)."""
     pan = _pan(kind, w, proj, top, clear, name=name)
     seat, lid = _seat(w, proj, top, name=name + '.seat'), _lid(w, proj, top, name=name + '.lid')
     parts = _put([pan, seat, lid], at, facing, rot_z)
     hinge = dict(p=_wp(pan, (0, -.032, top - .023)), a=_wv(pan, (-1, 0, 0)), deg=lift)
-    if 'needs' in IX.OPTIONAL:
-        IX.tag(lid, 'hinge', label=label + ' lid', **hinge)
-        IX.tag(seat, 'hinge', label=label + ' seat', needs=lid.name, **hinge)
-    else:
-        IX.tag_many([lid, seat], 'hinge', g=name + '.seat', label=label + ' seat', **hinge)
+    IX.tag(lid, 'hinge', label=label + ' lid', **hinge)
+    IX.tag(seat, 'hinge', label=label + ' seat', needs=lid.name, **hinge)
     if flush:
         fl = flush_plate(name=name + '.flush') if flush == 'plate' else flush_button(name=name + '.flush')
         fl.location, fl.rotation_euler = _wp(pan, (0, 0, flush_z)), pan.rotation_euler

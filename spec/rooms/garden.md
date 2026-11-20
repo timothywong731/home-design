@@ -308,3 +308,8 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   owner confirms its street end.
 - Zones and levels are in `exterior.zones` / `exterior.steps`: side passage -0.30, deck -0.05, path and lawn -0.45,
   veranda -0.42; kitchen door 2 x 0.15, passage step 0.15, deck to lawn 2 x 0.20.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Kitchen steps: both treads stop at the main-roof downpipe, x 3.40..4.33 (v2 f_0349); the gully sits on the passage
+  paving (-0.30) and the downpipe ends at -0.28 just above its grate.
+- d_french leaves open 100 degrees.

@@ -37,13 +37,14 @@ FALLBACK = {
     'sill_stone': ('#EDEDE8', 0.8), 'pipe_black': ('#18181A', 0.35), 'pipe_old': ('#3A3B3E', 0.6),
     'steel_black': ('#33373A', 0.5), 'dormer_panel': ('#3F4146', 0.6), 'sill_board': ('#4A3F38', 0.7),
     'lead': ('#7C8087', 0.6), 'velux_grey': ('#5A5D62', 0.5), 'lamp_amber': ('#E8B45A', 0.3),
+    'velux_white': ('#F4F3EF', 0.35),           # roof-window frame / sash faces below the roof plane (v5 hr_313, hr_194)
     'edge_trim': ('#1F2A24', 0.5),
 }
 
 # rear_elevation.md 5.3 / 6 and front_elevation.md 5: (material, diameter, square, [(x, y, z), ...]);
 # z None = on the paving, 'porch' = on the lean-to roof
 PIPES = [
-    ('pipe_black', 0.068, False, [(4.38, 9.08, -0.25), (4.38, 9.08, 6.56)]),               # main-roof downpipe, face K
+    ('pipe_black', 0.068, False, [(4.38, 9.08, -0.28), (4.38, 9.08, 6.56)]),               # main-roof downpipe, face K, ends just over the gully
     ('pipe_black', 0.068, False, [(3.45, 9.08, 3.35), (3.45, 9.08, 8.58)]),                # flank gutter, F / K corner
     ('pipe_black', 0.110, False, [(4.25, 9.10, 3.30), (3.47, 9.10, 3.30), (3.47, 12.35, 3.10)]),   # first-floor waste
     ('pipe_black', 0.050, False, [(3.44, 13.40, 4.05), (3.44, 12.42, 3.45)]),              # second branch
@@ -580,18 +581,22 @@ def _roof_windows(ctx):
         k = 0.04                                            # fixed frame inside the hole, 25 mm above the slates
         for lo, hi in (((0, 0, -0.10), (W, k, 0.025)), ((0, H - k, -0.10), (W, H, 0.025)),
                        ((0, k, -0.10), (k, H - k, 0.025)), ((W - k, k, -0.10), (W, H - k, 0.025))):
-            m.box(lo, hi, 'velux_grey', fr)
+            m.box(lo, (hi[0], hi[1], 0.0), 'velux_white', fr)      # white painted inside, grey cladding above the slates
+            m.box((lo[0], lo[1], 0.0), hi, 'velux_grey', fr)
         objs.append(m.obj(ctx, name + '.frame', 'roof', 'fit', solid=True))
         s, b = _Mesh(), 0.05                                # sash: four rails and the pane
         for lo, hi in (((k, k, 0.0), (W - k, k + b, 0.045)), ((k, H - k - b, 0.0), (W - k, H - k, 0.045)),
                        ((k, k + b, 0.0), (k + b, H - k - b, 0.045)), ((W - k - b, k + b, 0.0), (W - k, H - k - b, 0.045))):
-            s.box(lo, hi, 'velux_grey', fr)
+            s.box(lo, (hi[0], hi[1], 0.018), 'velux_white', fr)
+            s.box((lo[0], lo[1], 0.018), hi, 'velux_grey', fr)
         s.box((k + b, k + b, 0.018), (W - k - b, H - k - b, 0.030), 'glass_clear', fr)
+        yh = H - k - b / 2 if cy < 0 else k + b / 2        # operating bar on the rail opposite the hinge (v5 hr_194)
+        s.box((W / 2 - 0.175, yh - 0.011, -0.028), (W / 2 + 0.175, yh + 0.011, 0.0), 'silver_satin', fr)
         sash = s.obj(ctx, name + '.sash', 'roof', 'joinery', solid=True, lm='dynamic')
         top_low = cy < 0                                    # the hinge is on the high edge
         hinge = fr[0] + ex * (W / 2) + ey * (k if top_low else H - k) + en * 0.025
         IX.tag(sash, 'hinge', p=hinge, a=(1, 0, 0), deg=f.get('angle', 30) * (1 if top_low else -1),
-               label='Roof window', reach=2.2)
+               label='Roof window', reach=2.2, excl=[f"{f['room']}.velux_blind"] if f.get('room') else [])
         objs.append(sash)
     return objs
 
@@ -788,20 +793,7 @@ def _balcony(ctx):
             p.pipe([(px, py + 0.30, zt - th), (px, py + 0.30, zt - th - 0.12), (px, py + 0.06, zt - th - 0.40),
                     (px, py + 0.06, 0.10)], 0.068, 'pipe_black')
             objs.append(p.obj(ctx, f'{room}.rainpipe', room, 'fit', solid=True, smooth=True))
-        if f.get('lantern'):                                        # coach lantern on a scroll bracket (balcony.md 5)
-            lx, ly, lz = f['lantern']
-            l = _Mesh()
-            l.box((lx - 0.05, ly, lz + 0.10), (lx + 0.05, ly + 0.015, lz + 0.20), S)
-            l.pipe([(lx, ly, lz + 0.15), (lx, ly + 0.13, lz + 0.19), (lx, ly + 0.13, lz + 0.125)], 0.015, S, n=6)
-            for (h0, w0), (h1, w1), k in (((-0.125, 0.05), (0.075, 0.08), 'lamp_amber'), ((0.075, 0.10), (0.125, 0.02), S),
-                                          ((-0.14, 0.06), (-0.125, 0.06), S)):
-                q = [Vector((lx + sx * w, ly + 0.13 + sy * w, lz + h)) for h, w in ((h0, w0), (h1, w1))
-                     for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-                for i in range(4):
-                    l.face([q[i], q[(i + 1) % 4], q[4 + (i + 1) % 4], q[4 + i]], k)
-                l.face(q[:4], k)
-                l.face(q[4:], k)
-            objs.append(l.obj(ctx, f'{room}.lantern', room, 'fit', solid=True))
+        # the coach lantern (f['lantern']) is rooms/balcony.py's: a lamp with its switch, not envelope massing
     return objs
 
 

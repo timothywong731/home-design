@@ -121,13 +121,17 @@ def door_stop(ctx, w, u, n, along=0.47, z=0.30):
     return gap
 
 
+def _circ(name):
+    """Tag kwargs of lighting circuit name (INTERACT.md, Circuits)."""
+    return {'circuit': name}
+
+
 def dimmer(ctx, loc=None):
     """3-gang rotary dimmer 146 x 86 on the TV wall (ground_corrections 1): one object per knob so that every knob
     drives its own circuit. As you face it: right (north) = ceiling spotlights, middle = the two wall lights, left
-    (south) = chandelier. The viewer bakes the room as one circuit, so the plate body + spotlight knob is the room
-    switch `living.dimmer` (bake, and every lamp of the room with it); the other two knobs share a `lamp` group with
-    their fittings (living.sconces, living.chandelier), which switch the fittings' glow. Returns (sconce knob,
-    chandelier knob)."""
+    (south) = chandelier. The plate body + spotlight knob is `living.dimmer`, circuit 'main'; the other two knobs share
+    a `lamp` group with their fittings (living.sconces, living.chandelier), each a circuit of its own (INTERACT.md,
+    Circuits). Returns (sconce knob, chandelier knob)."""
     loc = loc or (X0, 3.40, 1.21)
     plate = P.place(P.switch_plate(3, 'blank', wide=True, name='living.dimmer'), loc, facing=(1, 0))
     _add(ctx, plate, 'fit', lm='dynamic')
@@ -141,7 +145,7 @@ def dimmer(ctx, loc=None):
         k.matrix_basis = plate.matrix_basis @ LP.Tr(x, 0, 0)
         _add(ctx, k, 'fit', lm='dynamic')
         knobs.append(k)
-    IX.tag_many([plate, knobs[0]], 'light', g='living.dimmer', rooms=[ROOM], label='Lights')
+    IX.tag_many([plate, knobs[0]], 'light', g='living.dimmer', rooms=[ROOM], label='Spotlights', **_circ('main'))
     return knobs[1], knobs[2]
 
 
@@ -593,8 +597,6 @@ def curtains(ctx):
         ((4.00 - off, yr, top), (-1, 0), 'left'),        # east return
     ]
     cloth = LP.tartan()
-    # the shutters (joinery) swing into the drawn curtains: the viewer shuts them before the curtains are drawn
-    excl = sorted(o.name for o in bpy.data.objects if '.shutter.' in o.name and o.get('room') == ROOM and 'ix' in o.keys())
     dead = M.solid('living_tie_strip', '#000000', 1.0)   # the prop's hoop: stripped below
     meshes, ties = {}, {}
     for i, (loc, n, side) in enumerate(spec):
@@ -611,7 +613,7 @@ def curtains(ctx):
         c.data = meshes[side]
         LP.kid(c, tb, (0, 0, tie - top))
         _add(ctx, P.place(c, loc, facing=n), 'decor')
-        IX.tag_many([c, tb], 'show', g='living.curtains', when=0, fx='none', label='Curtains', excl=excl)
+        IX.tag_many([c, tb], 'show', g='living.curtains', when=0, fx='none', label='Curtains')
     # one continuous white track round the bay under the cornice (v2:f_0741, f_0749): both cheeks to the ends of the
     # return drops, the front between them; 40 mm deep from 10 mm behind the heading line, butt-jointed in the corners
     tr = mo.MB()
@@ -623,4 +625,4 @@ def curtains(ctx):
     _add(ctx, tr.finish('living.curtain_track'), 'fit')
     ob = drawn_curtains(cloth, top, hem, off, ye=ys - 0.008)
     _add(ctx, ob, 'decor', lm='dynamic')
-    IX.tag(ob, 'show', g='living.curtains', when=1, fx='none', label='Curtains', excl=excl)
+    IX.tag(ob, 'show', g='living.curtains', when=1, fx='none', label='Curtains')

@@ -11,6 +11,7 @@ import bmesh
 from lib import mouldings as mo
 
 WHITE = 'joinery_white'
+STRIP_FASCIA = 0.10     # white fascia under the strip capping (rooms/stairs2.py); the main flight's rail dies into it
 
 # timber tread end: 30 mm rounded nosing over a 20 mm scotia, (d out from the string face, h from the tread top)
 TREAD_END = [(0, -0.052), (0.006, -0.052), (0.006, -0.048), (0.008, -0.040), (0.012, -0.034), (0.018, -0.031),

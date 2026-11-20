@@ -235,3 +235,13 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   WC centre y 11.48); items keyed to the north wall +0.19 (door wall y 12.85..12.95; shower tray → y 11.75..12.85).
 - West wall is x 0.40..0.50 (shared with the landing's arch bay and the bedroom recess). East: false wall 2.90..3.10 in
   front of the flank wall 3.10..**3.40**; window frame near x 3.33.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 4 / doubt 7 Cladding joints read from f_0385 / f_0391 / f_0405: a course joint at +1.20 and verticals on the east wall
+  at y about 11.40 and 12.20, i.e. slabs about 0.80 wide; no vertical joint on the 0.80 shower back wall.
+  `porcelain_calacatta_slab` now has bold gold-beige #B9A06A bands and patches with grey #9C9A93 veins on #EDE9E0.
+- 5.2 The soap dish is EAST of the tap (x about 1.80), the double tumbler holder WEST (rings at x about 1.30 / 1.42); the
+  bath handset bracket is on the WEST wall about 0.20 north of the SW corner (0.50, 11.35, Z 4.14).
+- 5.2 / 10 I2 The west vanity door opens about 80 degrees (its pull reaches the bath rim beyond that).
+- Wall paint #AEB6CE (the spec's #B3BEC8 rendered teal) is now the shell finish.
+- 2.2 `glass_obscure` is now alpha 0.85 / roughness 0.40, so the window reads frosted from both sides.

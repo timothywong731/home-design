@@ -39,8 +39,9 @@ FENCE = {'closeboard_grey_painted': dict(rails=-1, trellis=('deck', 0.30)), 'clo
 BAY, POST = 1.83, 0.10
 GATE_DEG, GATE_POST = 50, 0.095                                 # state-1 angle (contract), goal-post section
 EXT_DEPTH = 5.5                                                 # a neighbour_wall with no massing behind it gets this
-SOFFIT = 'mahogany_dark'                                        # shed veranda: stained T&G boards
-SHED_FIN = {'shed_workshop': dict(walls='#EFEEEA', ceiling='#EFEEEA', floor='vinyl_grey_sheet')}
+SOFFIT = 'mahogany_mid'          # shed veranda: red-brown T&G boards running E-W (shed.md #5A3229; v2 f_0257 / f_0273 / f_0305)
+# workshop floor: dark grey wood-effect planks ~0.2 wide running N-S (shed.md 4; v2 f_0281 / f_0283 / f_0287)
+SHED_FIN = {'shed_workshop': dict(walls='#EFEEEA', ceiling='#EFEEEA', floor='wood_tile_floor_grey')}
 ROOF_FALL = 0.07                                                # shed felt roof falls to the front gutter
 EXPORT_BACKDROP = False                                         # True: the backdrop ground is exported too
 MISSING = set()
@@ -459,8 +460,9 @@ def _gate(ctx, b):
     fr.obj(ctx, f"{b['room']}.{b['id']}.frame", b['room'], bevel=0.004)
     # the leaf clears by 20 mm whatever ground and treads it sweeps over on the way to GATE_DEG
     base = math.atan2(u[1], u[0])
-    sweep = [(piv[0] + r * math.cos(base + sg * math.radians(d)), piv[1] + r * math.sin(base + sg * math.radians(d)))
-             for d in range(0, GATE_DEG + 1, 2) for r in np.arange(0.03, s_end - s_piv + 0.03, 0.03)]
+    sweep = [(piv[0] + r * math.cos(t) - k * math.sin(t), piv[1] + r * math.sin(t) + k * math.cos(t))
+             for d in range(0, GATE_DEG + 1, 2) for t in [base + sg * math.radians(d)]
+             for r in np.arange(0.03, s_end - s_piv + 0.03, 0.03) for k in (-0.06, 0.0, 0.06)]     # boards + ledges
     z0 = max(z for z in (ctx.ground_z(x, y) for x, y in sweep) if z is not None) + 0.02
     z1 = min(z0 + b['height'], head - 0.09)
     m = _Mesh()
@@ -616,7 +618,7 @@ def _shed(ctx, b):
         return top - ROOF_FALL * (y1 - y) / (y1 - y0)
     for sfx, m in meshes.items():
         m.v = [(x, y, roof_z(y) if abs(z - top) < 1e-6 else z) for x, y, z in m.v]
-        m.obj(ctx, f'{room}.{sfx}', room, dissolve=True, origin=org)
+        m.obj(ctx, f'{room}.{sfx}', room, rot=sfx == 'soffit', dissolve=True, origin=org)      # soffit boards E-W
     if heads.f:
         heads.obj(ctx, f'{room}.heads', room)
     # roof trim: kerbs with coping on the west and back, a capped pier at each front corner

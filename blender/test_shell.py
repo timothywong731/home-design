@@ -16,7 +16,7 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from lib import ctx as C, lighting, materials, shell         # noqa: E402
+from lib import ctx as C, lighting, materials, mouldings, shell         # noqa: E402
 
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 HOUSE = ARGS[ARGS.index('--house') + 1] if '--house' in ARGS else HERE.parent / 'spec' / 'house.json'
@@ -77,7 +77,15 @@ def whole():
     assert not shell.is_solid(h, 1.09, 5.6, -0.47) and shell.is_solid(h, 1.09, 5.6, -0.45) and shell.is_solid(h, 1.09, 6.5, -1.5)
     assert any(abs(c.z + 0.46) < 1e-4 and n.z < -0.9 for o in ('basement.walls', 'basement_stair.walls') for c, n, *_ in faces(o))
     # the main flight opens the wall and the slab above treads 12-14, not the door wall below them
-    assert not shell.is_solid(h, 0.57, 7.62, 2.6) and shell.is_solid(h, 0.57, 7.62, 2.2) and shell.is_solid(h, 0.57, 8.0, 2.4)
+    assert not shell.is_solid(h, 0.57, 7.62, 2.6) and shell.is_solid(h, 0.57, 7.62, 2.2) and shell.is_solid(h, 0.57, 7.80, 2.4)
+    # the overhead cupboard is hollow behind its flap (lobby_cupboard_interior), under tread 14
+    assert not shell.is_solid(h, 0.57, 8.0, 2.45) and shell.is_solid(h, 0.57, 8.0, 2.62)
+    # the loft cabinet's 0.70 m hollow in loft_block; the shower niche; the utility corner boxing
+    assert not shell.is_solid(h, 0.78, 6.02, 7.5) and shell.is_solid(h, 0.78, 6.10, 7.5)
+    assert not shell.is_solid(h, 1.2, 13.75, 7.33) and shell.is_solid(h, 3.02, 12.10, 8.2)
+    assert shell.is_solid(h, 3.0, 12.0, 1.5) and not shell.is_solid(h, 3.0, 12.0, 0.5)
+    # the hall ceiling carried over the stair foot (stair_foot zone, also over the cell on the diagonal)
+    assert shell.is_solid(h, 0.4, 5.3, 3.0) and shell.is_solid(h, 0.82, 5.22, 3.0) and not shell.is_solid(h, 0.4, 5.7, 3.0)
 
     # finishes: floors, ceilings, feature tops, split paint, feature walls, risers
     mat = lambda spec: shell.material(spec).name
@@ -170,14 +178,26 @@ def whole():
     # quarter vault over the quarter landing, WC duct, pipe boxing with its tiled top
     zs = [v.co.z for v in ob['landing1_ql.cove.ql_vault'].data.vertices]
     assert abs(min(zs) - 4.95) < 1e-5 and abs(max(zs) - 5.35) < 1e-5
-    assert shell.is_solid(h, 4.2, 5.4, 5.0) and shell.is_solid(h, 3.04, 12.0, 6.5) and not shell.is_solid(h, 3.04, 12.0, 7.5)
+    assert shell.is_solid(h, 4.2, 5.4, 5.0) and shell.is_solid(h, 3.04, 12.0, 6.5) and shell.is_solid(h, 3.04, 12.0, 7.5)
     assert any(m == mat('metro_carrara_100x400') and abs(c.x - 4.08) < 1e-4 and z1 > 6.0 for c, n, m, z0, z1 in faces('green_bathroom.walls'))
-    assert any(abs(c.z - 7.22) < 1e-4 and n.z > 0.9 and m == mat('marble_metro') for c, n, m, *_ in faces('bathroom2.walls'))
+    # the full-height pipe-boxing column: tiled to the 1.20 dado line, painted above (v5 f_0095)
+    box = [(c, m) for c, n, m, *_ in faces('bathroom2.walls') if abs(c.x - 2.98) < 1e-3 and n.x < -0.9 and 11.5 < c.y < 12.16]
+    assert any(m == mat('marble_metro') and c.z < 7.22 for c, m in box) and any(m == mat('#B9B7B1') and c.z > 7.22 for c, m in box)
     # thresholds: aluminium nosing at the basement door, a brass strip at every doorway upstairs
     th = {o.name.split('.threshold.')[1]: o.data.materials[0].name for o in h.col('shell').objects if '.threshold.' in o.name}
     assert th['d_basement'] == mat('silver_satin') and th['d_green'] == th['d_loft'] == th['d_study'] == mat('brass') and 'd_balcony' not in th, th
     d = lighting.downlight(h, 'loft_office', 2.0, 3.0)
     assert abs(d.location.z - (5.9435 + 0.57735 * 3.0 - 0.015)) < 1e-6
+    # round 3: the basement riser R9 stops at the pier (x 0.93); stair_second R10 has a back face over the QL; the
+    # tile runs through d_wc; the three-centred hall arch rises vertically off the springing; landing1's steps cut
+    r9 = [c for c, n, *_ in faces('basement_stair.flight') if abs(n.z) < 0.5 and abs(c.y - 6.0) < 0.01]
+    assert r9 and all(c.x < 0.93 for c in r9), r9
+    assert any(abs(c.y - 8.131) < 0.002 and n.y > 0.9 for c, n, *_ in faces('stairs2.flight'))
+    assert any(abs(c.y - 10.2) < 0.07 and n.z > 0.9 and 1.47 < c.x < 2.08 for c, n, *_ in faces('wc.floor') + faces('utility.floor'))
+    arc = shell._three_centred(-0.12, 0.47, 2.40, 2.75, 0.32, 24)(-1)
+    assert arc[0] == (-0.59, 2.40) and abs(arc[-1][1] - 2.75) < 1e-9 and arc[1][1] - arc[0][1] > 15 * (arc[1][0] - arc[0][0])
+    assert mouldings.steps_skip(h, 'landing1_front') == mouldings.steps_skip(h, 'landing1_rear') and \
+        [round(v, 6) for v in mouldings.steps_skip(h, 'landing1_rear')[0]] == [-0.67, 7.88, 0.17, 8.38]
     return tris
 
 

@@ -410,3 +410,11 @@ Camera positions are room-local (x, y), eye height ~1.45, ultrawide (~105 deg ve
 - East windows at y 13.02 and 16.20. Chimney breast x 2.92..3.10, y 13.80..15.42, fireplace centred
   y 14.61. French doors centred x 1.225; side windows at x -0.09 (short, z 1.10..2.23) and 2.54
   (tall, z 0.30..2.20).
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 6.2 Curtain centres x 0.41 / 2.0625 on the D1 piers; the closed pair covers only the French-door recess, x 0.28..2.195.
+- 6.5 Mantel shelf at 1.21 (the surround stands on the 20 mm hearth).
+- 6.3 Monstera: about 0.50 wide x 0.58 high above the sill board, about 12 leaves 0.11-0.15 across, kept inside the
+  window surround (v2 f_0061, v1 f_0675).
+- The boxed pelmet projects 0.18 (ground_corrections D5; lib mouldings).
+- d_french leaves open 100 degrees (garden.md 10).

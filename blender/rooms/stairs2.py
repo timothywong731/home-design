@@ -4,11 +4,12 @@
     "$B" -b --factory-startup --python blender/build.py -- --levels 1,2 --only shell,stairs2,landing2_platform,landing2_head \
         --preview stairs2 --res 540x960 --samples 64 --tag stairs2
 
-The shell's carcass (`stairs2.flight`: treads, risers, raked soffit) stays; this module dresses it: grey carpet with
-rolled nosings and the bullnose, cut string with timber tread ends, wall string with its sweep over the winders,
-raking dado and the greige band under it, both newels, handrail, spindles, the five cat studies.  Per
-blender/MULTILEVEL.md section 1 it also owns the guards on the well's virtual walls: the platform balustrade with
-its apron (tagged landing2_platform) and the level balustrade on the first-floor strip (v_strip_well).
+The shell's carcass (`stairs2.flight`: treads, risers, raked soffit) stays; this module dresses it: the carpet shared
+with the main flight and the first-floor landings (carpet_silver_beige) with rolled nosings and the bullnose, cut
+string with timber tread ends, wall string with its sweep over the winders, raking dado and the greige band under it,
+both newels, handrail, spindles, the five cat studies.  Per blender/MULTILEVEL.md section 1 it also owns the guards
+on the well's virtual walls: the platform balustrade with its apron (tagged landing2_platform) and the level
+balustrade on the first-floor strip (v_strip_well) with the fascia the main flight's handrail dies into.
 Spindle, handrail section, tread-end and wall-string profiles are those of the flight below (copied into
 rooms/stairs2_parts.py).  No light fitting, switch or socket on the stair itself (stairs2.md 5, 8).
 """
@@ -43,7 +44,9 @@ X_WALL, X_OPEN = 0.99, 0.15     # staircase wall face / open side (strip and pla
 XE = X_WALL - 0.015             # carpet runs into the 30 mm wall string
 XS = X_OPEN - 0.006             # face of the cut string
 XC = 0.205                      # west edge of the carpet = inside of the white tread ends
-X_RAIL = 0.18                   # handrail / spindle centre line of all three balustrades
+X_RAIL = 0.19                   # handrail centre line of all three balustrades: inside the newels (x 0.195 / 0.20)
+X_SP = 0.185                    # spindle centre line: on the tread ends, clear of the carpet edge XC
+X_CAP = 0.22                    # well face of the strip capping and fascia
 X_APRON = 0.215                 # well face of the platform apron: boxed out to the balustrade plane
 RAIL_H, DADO_H, STRING_H, PRINT_H = 0.90, 0.975, 0.10, 1.40     # plumb heights above the nosing line
 NEWEL_S = 0.095                 # newel stock
@@ -62,34 +65,20 @@ def nosing(mb, pts, z0, h, mat):
     mb.sweep(roll(h), [(x, y, z0) for x, y in pts], mat)
 
 
-def carpet():
-    """Cool grey twist of the flight, greyer than both landings: the library's carpet_grey_twist recoloured
-    (blender/textures/art/stairs2_carpet_col.jpg, mean #AAA8A3: the spec's #8E8B86 x 1.2, since in v4 f_0192 and
-    v6 f_0024 the stair carpet is nearly as light as the landing carpet) with the shared pile normal map."""
-    m = M.image_mat('stairs2_carpet', str(ART / 'stairs2_carpet_col.jpg'), size_m=(1.0, 1.0), roughness=1.0)
-    bsdf = next(n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
-    if not bsdf.inputs['Normal'].is_linked:
-        tex = m.node_tree.nodes.new('ShaderNodeTexImage')
-        tex.image = bpy.data.images.load(str(ART.parent / 'carpet_mink_nrm.jpg'), check_existing=True)
-        tex.image.colorspace_settings.name = 'Non-Color'
-        nm = m.node_tree.nodes.new('ShaderNodeNormalMap')
-        nm.inputs['Strength'].default_value = 0.5                   # full strength reads dark at grazing views
-        m.node_tree.links.new(tex.outputs['Color'], nm.inputs['Color'])
-        m.node_tree.links.new(nm.outputs['Normal'], bsdf.inputs['Normal'])
-        bsdf.inputs['Sheen Weight'].default_value = 0.3             # pile -> KHR_materials_sheen
-        bsdf.inputs['Sheen Roughness'].default_value = 0.45
-    return m
+CARPET = 'carpet_silver_beige'  # one carpet for both flights and the first-floor landings (#A9A397, stairs.md round 3)
 
 
 def wood():
-    """Gloss mahogany of newels and handrails in daylight (v4 f_0178; landing2.md 4: #3B211A)."""
-    return M.solid('stairs2_mahogany', '#3B211A', 0.14)
+    """Gloss mahogany of every newel and handrail round both flights: one named solid with rooms/stairs.py and
+    rooms/landing1.py, whose newel takes the strip rail (v4 f_0183, v6 f_0026: newel and rails one colour)."""
+    return M.solid('stairs_mahogany', '#2E211C', 0.14)
 
 
-def newel(name, base, block):
+def newel(name, base, block, foot=None):
     """Mahogany newel on 95 mm stock (v4 f_0178 / f_0190, v5 f_0140).  Local z: square base to `base` with chamfered
     shoulders, ring, long plain shaft swelling slightly upward, two rings, square block from `block` (0.21 high,
-    the handrails enter it) with a pyramidal top, collar, ball finial; top of the ball = block + 0.373."""
+    the handrails enter it) with a pyramidal top, collar, ball finial; top of the ball = block + 0.373.
+    foot = (lo, hi) local corners of a box carrying part of the square base further down."""
     h, R, b = NEWEL_S / 2, 0.075, block                              # R > arris radius = full square after _square
     s0, s1 = base + 0.03, block - 0.03
     p = [(0, 0), (R, 0), (R, base),
@@ -104,6 +93,8 @@ def newel(name, base, block):
           for a in (-60, -45, -30, -15, 0, 15, 30, 45, 60, 75)] + [(0, b + 0.373)]
     mb = mo.MB()
     mb.lathe(p, wood(), segs=32)
+    if foot:
+        mb.box(*foot, wood())
     return SP.square(mb.finish(name), h)
 
 
@@ -151,7 +142,9 @@ def build(ctx):
     y_arch = o['center'][1] + o['width'] / 2 + 0.08 if o else r1 - 0.09      # north edge of the bathroom architrave (5.97)
 
     # ---- carpet: the carcass recoloured, nosing rolls, bullnose ------------------------------------------
-    grey, pale = carpet(), M.mat('carpet_grey_twist')
+    # The flight, its bullnose and the first-floor landings share one carpet; only the top nosing R13 wraps the
+    # second-floor landing carpet (house.json landing2_head floor).
+    grey, pale = M.mat(CARPET), M.mat('carpet_grey_twist')
     fl = bpy.data.objects.get('stairs2.flight')
     for sl in fl.material_slots if fl else ():
         if sl.material == pale:
@@ -159,11 +152,6 @@ def build(ctx):
     cb = mo.MB()
     for n in range(2, ns + 1):
         nosing(cb, [(XE, R(n)), (XC if n < ns else tx + NEWEL_S / 2, R(n))], z0 + rise * (n - 1), rise, grey)
-    # R10 riser face, 3 mm proud: the carcass leaves it open between T9 (5.22) and the quarter-landing ceiling (5.35)
-    # wherever the ql_vault end cap does not reach, a dark slot into the landing below (requested from the shell).
-    zr9, ya = z0 + rise * (ns - 1), R(ns) - 0.003
-    cb.face([(tx + NEWEL_S / 2, ya, zr9), (XE, ya, zr9), (XE, ya, zr9 + rise - 0.048), (tx + NEWEL_S / 2, ya, zr9 + rise - 0.048)],
-            grey, hint=(0, -1, 0))
     for n, w in enumerate(S['winders']['risers'][:2], ns + 1):      # R11, R12: from the wall into the turning newel
         (ax, ay), (bx, by) = w['line'][1], w['line'][0]
         ln = math.hypot(bx - ax, by - ay)
@@ -172,14 +160,14 @@ def build(ctx):
     # top nosing R13 and its 7 cm return against the old rear wall: the landing carpet wraps over it
     xj = max(x for x, y in ctx.room_poly('landing2_head') if abs(y - yw) < 1e-6 and x < 0.5)        # 0.22
     nosing(cb, [(xj - 0.02, yw), (X_OPEN, yw), (X_OPEN, ty + NEWEL_S / 2)], z2 - rise, rise, pale)
-    # Bullnose (v6 f_0022-f_0024, v4 f_0190): the first step is carpeted in the pale landing carpet (the join with
-    # the grey is riser 2), stands 70 mm in front of the newel's south face and ends in a quarter round on the line
-    # of the newel's west face; the newel stands in it, the white tread end of T1 is north of the newel.
-    # 1 mm above the carcass tread so the two tops do not fight.
+    # Bullnose (v6 f_0022-f_0024, v4 f_0190): the first step is carpeted in the landing carpet, stands 70 mm in
+    # front of the newel's south face and ends in a quarter round on the line of the newel's west face; the newel
+    # stands in it, the white tread end of T1 is north of the newel.  1 mm above the carcass tread so the two tops
+    # do not fight.
     x0, yn_s, rb = fx - NEWEL_S / 2, fy - NEWEL_S / 2, 0.07
     yf = yn_s - rb
     arc = [(x0 + rb - rb * math.sin(a), yf + rb - rb * math.cos(a)) for a in (math.radians(15 * i) for i in range(7))]
-    SP.step(cb, [(XE, yf)] + arc[:-1] + [(x0, yn_s)], [(XC, yn_s), (XC, R(2)), (XE, R(2))], z0 + 0.001, rise, pale)
+    SP.step(cb, [(XE, yf)] + arc[:-1] + [(x0, yn_s)], [(XC, yn_s), (XC, R(2)), (XE, R(2))], z0 + 0.001, rise, grey)
     ctx.add(cb.finish('stairs2.carpet'), ROOM, 'fit')
 
     # ---- open side: timber tread ends and the cut string ----------------------------------------------
@@ -279,14 +267,19 @@ def build(ctx):
             y = R(n) + dy
             if yn0 + 0.03 < y < yn1 - 0.03:
                 h = min(U(y) + 0.02, zb_ap + 0.005) - (z0 + rise * n)
-                bal.add(f'stairs2.spindle.{len(bal.out):02d}', (X_RAIL, y, z0 + rise * n), h, base, 0.15)
+                bal.add(f'stairs2.spindle.{len(bal.out):02d}', (X_SP, y, z0 + rise * n), h, base, 0.15)
     for ob in (post, rail, *bal.done()):
         ctx.add(ob, ROOM, 'joinery', lm='dynamic')
 
     # ---- platform balustrade over the well (v_platform_well; v5 f_0140, v4 f_0361) ----------------------------
     PL = 'landing2_platform'
-    zt0 = Zs(yn1) - 0.06                                             # square drop below the string
-    turn = newel('landing2_platform.newel', z2 + 0.28 - zt0, zp + 0.81 - zt0)
+    # No drop below the string: the newel straddles the quarter-landing edge (R10, y 8.13), and a drop would hang
+    # 0.37 out of the QL ceiling (5.35) beside its vault (none in v6 f_0033, v3 f_0029).  It starts just above that
+    # ceiling; only its south half (over T9) carries on down into the T9 carcass, 2 mm behind the R10 riser plane.
+    zt0, h = max(Zs(yn1) - 0.06, ctx.ceil_z('landing1_ql') + 0.002), NEWEL_S / 2
+    zt9 = z0 + rise * (ns - 1)                                       # T9 top (5.22)
+    turn = newel('landing2_platform.newel', z2 + 0.28 - zt0, zp + 0.81 - zt0,
+                 foot=((-h, -h, min(0.0, zt9 - 0.03 - zt0)), (h, R(ns) - 0.002 - ty, 0.001)))
     turn.location = (tx, ty, zt0)
     pb = mo.MB()
     pb.box((X_OPEN, y_well, zb_ap), (X_APRON, yn1, zp - 0.001), WHITE, bev=0.003)               # apron
@@ -301,7 +294,7 @@ def build(ctx):
     cnt = int((yn1 - y_well - 0.13) / 0.09) + 1
     for i in range(cnt):                                             # ~90 mm centres
         y = yn1 - 0.07 - i * (yn1 - y_well - 0.13) / (cnt - 1)
-        bal.add(f'landing2_platform.spindle.{i:02d}', (X_RAIL, y, zp + 0.035), zr + 0.02 - zp - 0.035)
+        bal.add(f'landing2_platform.spindle.{i:02d}', (X_SP, y, zp + 0.035), zr + 0.02 - zp - 0.035)
     ctx.add(pb.finish('landing2_platform.apron'), PL, 'joinery')
     for ob in (turn, prail, *bal.done()):
         ctx.add(ob, PL, 'joinery', lm='dynamic')
@@ -321,10 +314,15 @@ def build(ctx):
     hb.sweep(SP.handrail(1), [(X_RAIL, yn1 - 0.005, zu), (X_RAIL, y_kn, zu), (X_RAIL, y_end, under(y_end))], wood())
     grail = hb.finish('stairs2.strip_handrail')
     fz = lambda y: ctx.floor_z('landing1_front', X_RAIL - 0.2, y)    # strip floor: 3.42, the steps 3.23 / 3.04
+    # capping on the floor edge, and under it a white fascia on the well side that steps down with it: the main
+    # flight's handrail dies into its underside short of the top newel (v6 f_0038; rooms/stairs.py), so the main rail
+    # and spindles stay under the strip guard instead of running through it.
     gp, ya = mo.MB(), y_fl
     for yb in sorted({y_fl, yn1} | {y for _, y in ctx.stair('steps_rear_front')['riserLines'][1][:1]}):
         if yb > ya:
-            gp.box((X_OPEN - 0.015, ya, fz((ya + yb) / 2)), (X_RAIL + 0.04, yb, fz((ya + yb) / 2) + 0.03), WHITE, bev=0.006)
+            z = fz((ya + yb) / 2)
+            gp.box((X_OPEN - 0.015, ya, z), (X_CAP, yb, z + 0.03), WHITE, bev=0.006)
+            gp.box((X_OPEN, ya, z - SP.STRIP_FASCIA), (X_CAP, yb, z - 0.0005), WHITE, bev=0.003)
             ya = yb
     bal, y = _Balusters(), yn1 - 0.075
     while True:
@@ -332,7 +330,7 @@ def build(ctx):
         h = min(under(y) + 0.02, Zs(y) + 0.004) - base
         if h < 0.05:
             break
-        bal.add(f'stairs2.strip_spindle.{len(bal.out):02d}', (X_RAIL, y, base), h)
+        bal.add(f'stairs2.strip_spindle.{len(bal.out):02d}', (X_SP, y, base), h)
         y -= 0.11
     ctx.add(gp.finish('stairs2.strip_capping'), ROOM, 'joinery')
     for ob in (grail, *bal.done()):

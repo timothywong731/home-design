@@ -402,17 +402,12 @@ def build(ctx):
     # ---- sanitaryware. Interaction (blender/INTERACT.md): lid and seat ring lift 90 deg (the duct front stops
     #      them at vertical), the basin lever lifts and runs a stream from the spout to the bowl floor.
     #      The room's light switch is on the utility side of the pocket door (rooms/utility.py).
-    #      Seat and lid are one group: as two independent groups the seat lifts through the shut lid and the lid
-    #      shuts through the raised seat. They become "lid, then seat" (spec W2) only once the tag schema and the
-    #      viewer know a dependency key - 'needs': opening a group opens the group it needs, closing a group closes
-    #      those that need it. Until lib.interact accepts that key they lift together.
+    #      Lid, then seat (spec W2): the seat `needs` the lid - opening the seat opens the lid first, closing the
+    #      lid closes the seat first.
     pan, seat, lid, bowl = _pan()
     hinge = dict(p=PAN_HINGE, a=(0, 1, 0), deg=90)
-    if 'needs' in IX.OPTIONAL:
-        IX.tag(lid, 'hinge', label='Toilet lid', **hinge)
-        IX.tag(seat, 'hinge', label='Toilet seat', needs='wc.pan.lid', **hinge)
-    else:
-        IX.tag_many([lid, seat], 'hinge', g='wc.pan.seat', label='Toilet seat', **hinge)
+    IX.tag(lid, 'hinge', label='Toilet lid', **hinge)
+    IX.tag(seat, 'hinge', label='Toilet seat', needs='wc.pan.lid', **hinge)
     ctx.add(pan, ROOM, 'fit', plan_sym='wc')
     ctx.add(_flush_plate(), ROOM, 'fit')
     basin, tap, lever = _basin()

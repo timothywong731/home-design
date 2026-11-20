@@ -372,3 +372,7 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - **Bay corners** [verification V1]: feature `green_bay` (x 1.16..3.90, y 0.14..0.99) now carries the two chamfers of
   section 3.2 — corners (1.16, 0.99) and (3.90, 0.99), face 0.12, world Z 3.42..5.72, quarter-round stop to 5.82, square
   above. They were missing from `house.next.json`, which would have built square nibs.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 8 S3 is a 2-gang plate (two rockers on one 86 mm plate, v3 f_0646 / f_0648), not 3-gang.
+- 2.5 / 10 w_green_west's lower casement opens outward to 60 degrees on the west stile (house.json sash angle 60).

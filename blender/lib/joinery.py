@@ -28,7 +28,16 @@ LABEL = {'d_street': 'Front door', 'd_french': 'Garden door', 'd_back': 'Back do
          'd_understairs': 'Cupboard door', 'd_balcony': 'Balcony door', 'shed_d1': 'Workshop door',
          'shed_store_doors': 'Store door'}
 # opening id -> degrees a leaf modelled shut opens to (default 90); lower it where the open leaf would hit something
-OPEN_DEG = {'d_balcony': 85.0, 'shed_d1': 100.0, 'shed_store_doors': 95.0}
+# d_french 100 (garden.md 10: tips clear the deck chairs and planters); shed_store_doors 90: at 95 the north leaf ran
+# 10 mm into the shed front wall
+OPEN_DEG = {'d_balcony': 85.0, 'shed_d1': 100.0, 'shed_store_doors': 90.0, 'd_french': 100.0}
+# [round 4] living bay shutters: the panels could swing only 5-10 degrees clear of the tied-back curtains and the lamp
+# table, so "Open shutter" did nothing visible (IX-02). Opening a shutter now tilts its louvres open, as the owner does
+# in v2 f_0759-0766: louvres tilted open (SHUTTER_TILT[0]) as modelled, shut (SHUTTER_TILT[1], the night look of
+# living.md 2.3) in state 1.
+SHUTTER_TILT = (12.0, 75.0)
+HATCH_WEST_DEG = {'h_eaves_rear': 95.0}      # at 110 the west leaf's knob came within 10 mm of the loft TV face (x 1.292)
+DARK_HEAD = 0.18        # dark timber head board over the balcony door frame: shows 0.12 under the 2.30 pelmet (v3 f_0159)
 POCKET_OPEN = {'d_wc'}  # pocket doors modelled open, as filmed; every other one is modelled shut
 T = Matrix.Translation
 
@@ -263,12 +272,12 @@ def leaf_upvc_french(mb, gb, w, h, t=0.060, catflap=False, mat='upvc_white', rai
 
 
 def leaf_upvc_back(mb, gb, w, h, t=0.060, mat='upvc_white'):
-    """Half-glazed back door: clear light over a flat beaded panel with a square cat flap."""
+    """Half-glazed back door: obscure light over a flat beaded panel with a square cat flap."""
     st = (w - 0.56) / 2
     zp0, zp1, zg0, zg1 = 0.19, 0.91, 1.01, h - 0.09
     _frame_boxes(mb, w, h, t, mat, st, h - zg1, zp0, rails=[(zp1, zg0)], bev=0.003)
     _panel(mb, st, zp0, w - st, zp1, t, mat, 'bead_ovolo', recess=0.012, raised=0.0)
-    _glass(gb, st - 0.008, zg0 - 0.008, w - st + 0.008, zg1 + 0.008, 'glass', 0.020)
+    _glass(gb, st - 0.008, zg0 - 0.008, w - st + 0.008, zg1 + 0.008, 'glass_obscure', 0.020)
     _glazing_bead(mb, st, zg0, w - st, zg1, t, mat, 0.020, 0.014)
     mb.box((st - 0.03, t / 2, zg1 + 0.012), (w - st + 0.03, t / 2 + 0.022, zg1 + 0.037), mat, 0.004)   # drip bar
     cx = w / 2 - 0.08                                                 # cat flap (0.22 x 0.24)
@@ -382,7 +391,8 @@ DOORCASES = {
     'cornice_hood_on_consoles': dict(arch='arch_upper', frieze=0.09, shelf=(1.25, 0.10, 0.11), consoles=(0.09, 0.17, 0.075)),
     'pediment_scrolled': dict(arch='arch_100', frieze=0.23, shelf=(1.30, 0.06, 0.10), consoles=(0.09, 0.36, 0.09), apex=0.62,
                               rake=0.06, frieze_ornament=True, tympanum_ornament=0.42, volutes=True),
-    'pediment_tall_plain': dict(arch='arch_100', frieze=0.17, shelf=(1.30, 0.08, 0.10), consoles=(0.10, 0.45, 0.10), apex=0.75,
+    # bathroom face of d_green_slide: 1.30 overall with its cornice (green_bathroom.md 3.2; v4 f_0164 ~1.2), was 1.50
+    'pediment_tall_plain': dict(arch='arch_100', frieze=0.17, shelf=(1.10, 0.08, 0.10), consoles=(0.10, 0.45, 0.10), apex=0.75,
                                 rake=0.07, band=True),
     'pediment_triangular': dict(arch='arch_70', frieze=0.03, shelf=(None, 0.04, 0.045), apex=0.37, rake=0.045,
                                 tympanum_ornament=0.26),
@@ -718,19 +728,21 @@ def _door_french(ctx, oid, fr):
             _dark_screen(ctx, R, fr, MR)
         elif feat:
             _dark_recess(ctx, own, oid, fr, MR, feat, seat=False)
-    elif sur == 'dark_timber_reveal':                                 # jambs and head lined with dark-stained boards
-        s = MB().at(MR)
+    elif sur == 'dark_timber_reveal':                                 # jambs and head lined with dark-stained boards,
+        s = MB().at(MR)                                               # a head board on the wall over the frame head
         _lining(s, fr['width'] / 2, fr['top'], _ext_depth(fr, wall_t(fr))[1], 0.0, 'dark_stain')
+        s.box((-fr['width'] / 2, 0.0, fr['top']), (fr['width'] / 2, 0.012, fr['top'] + DARK_HEAD), 'dark_stain', grain=0)
         _finish(ctx, s, f'{own}.{oid}.surround', own, surround=sur)
 
 
 def _door_back(ctx, oid, fr):
-    """White uPVC back door: frame in the plaster reveal, clear toplight, half-glazed leaf with square cat flap."""
+    """White uPVC back door: frame in the plaster reveal, obscure toplight, half-glazed (obscure) leaf with a square
+    cat flap (corrections K5)."""
     def leaf(mb, gb, lw, lh, t, zb, west):
         info = leaf_upvc_back(mb, gb, lw, lh, t)
         lever_handle(mb, info['handle_x'], info['handle_z'] - zb, t, (0.030, 0.240), 0.11, cyl=True)
 
-    _upvc_doorset(ctx, oid, fr, leaf, jamb=0.045, sill=0.02, flange=0.05)
+    _upvc_doorset(ctx, oid, fr, leaf, jamb=0.045, sill=0.02, flange=0.05, fan_glass='glass_obscure')
 
 
 def _door_timber_pair(ctx, oid, fr):
@@ -792,8 +804,10 @@ def _hatch(ctx, oid, fr):
         mb.at(M0)
 
     for i, hx in enumerate((1, -1)):
+        west = (MA @ Vector((hx * (hw - fx + lap), 0, 0))).x < fr['center'].x
         hang_leaf(ctx, f'{A}.{oid}.leaf.{i}', A, MA, hx * (hw - fx + lap), t, hx, 0.0, build, yA=yf + 0.001 + t,
-                  zb=z0 + fz - lap, h=lh, hinges=False, blocks=False, label='Eaves hatch', swing=110.0, door=oid)
+                  zb=z0 + fz - lap, h=lh, hinges=False, blocks=False, label='Eaves hatch',
+                  swing=HATCH_WEST_DEG.get(oid, 110.0) if west else 110.0, door=oid)
 
 
 def _door_pocket(ctx, oid, fr):
@@ -867,7 +881,7 @@ def upvc_light(f, g, x0, x1, z0, z1, ya, yb, face=0.045, glass='glass', sash=Fal
 # "you can open the top two sections") and 2.4 (two equal fixed lights)
 SHED_WINDOWS = {'shed_w1': dict(transomBar=1.05 + 0.62, cols=(1, 2),
                                 sashes=[dict(light='fanlights', type='top_hung', swing='out', angle=30)]),
-                'shed_w2': dict(lights=2)}
+                'shed_w2': dict(lights=2, glass='glass_obscure')}   # misted (shed.md 2.4); it faces a hedge 0.8 m off
 COLS3 = (0.27, 0.46, 0.27)          # width shares of a three-light window (green bedroom bay: 0.55 | 0.92 | 0.55)
 SASH_DEG = {'top_hung': 20.0, 'side_hung': 45.0}
 UPPER, LOWER = ('upper', 'fanlight', 'fanlights', 'centre_top'), ('lower', 'main', 'west', 'east', 'centre', 'lower_w', 'lower_e')
@@ -905,7 +919,7 @@ def _window_upvc(ctx, oid, fr):
     sur, style = (fr.get('surround') or {}).get(R), fr['style']
     extra = SHED_WINDOWS.get(oid, {}) if style == 'shed_window' else {}
     get = lambda k, d=None: fr[k] if fr.get(k) is not None else extra.get(k, d)
-    glass, face, mul = ('glass_obscure' if 'obscure' in style else 'glass'), 0.050, 0.050
+    glass, face, mul = get('glass') or ('glass_obscure' if 'obscure' in style else 'glass'), 0.050, 0.050
     if sur == 'flat_white_surround':                # ponytail: the WC light keeps its phase-1 place 25 mm behind the
         ya, yb, face = -0.085, -0.025, 0.072        # tiles (wc.md 2.2), not ext_reveal; spec request: extReveal for w_wc
     else:
@@ -952,8 +966,15 @@ def _window_upvc(ctx, oid, fr):
                 at_low = h in ('west', 'south')
                 xh = a - lap if (wx[axis] > 0) == at_low else b + lap
                 xf = b + lap - sw_ / 2 if xh < xm else a - lap + sw_ / 2
-                sf.box((xf - 0.008, y1, zm - 0.06), (xf + 0.008, y1 + 0.014, zm + 0.06), 'upvc_white', 0.003)
-                sf.box((xf - 0.015, y1, zm - 0.015), (xf + 0.015, y1 + 0.024, zm + 0.015), 'upvc_white', 0.003)
+                if s.get('handle') == 'bottom':     # brass lever centred on the bottom rail (purple room, hr_v4_415)
+                    zr = ca - lap + sw_ / 2
+                    sf.box((xm - 0.016, y1, zr - 0.017), (xm + 0.016, y1 + 0.006, zr + 0.017), 'brass', 0.002)
+                    sf.box((xm - 0.006, y1 + 0.006, zr - 0.006), (xm + 0.006, y1 + 0.026, zr + 0.006), 'brass', 0.002)
+                    lx = 0.10 if xh < xm else -0.10                       # the lever points away from the hinge
+                    sf.box((min(xm, xm + lx), y1 + 0.020, zr - 0.006), (max(xm, xm + lx), y1 + 0.032, zr + 0.006), 'brass', 0.003)
+                else:
+                    sf.box((xf - 0.008, y1, zm - 0.06), (xf + 0.008, y1 + 0.014, zm + 0.06), 'upvc_white', 0.003)
+                    sf.box((xf - 0.015, y1, zm - 0.015), (xf + 0.015, y1 + 0.024, zm + 0.015), 'upvc_white', 0.003)
                 p, ax_, v = MR @ Vector((xh, y0, zm)), Vector((0, 0, 1)), MR.to_3x3() @ Vector((xm - xh, 0, 0))
             name = f'{own}.{oid}.sash.{n_sash}'
             n_sash += 1
@@ -1065,10 +1086,11 @@ def _dark_screen(ctx, R, fr, MR):
     _finish(ctx, s, f'{R}.screen', R, surround='dark_screen')
 
 
-def _shutter(sb, x0, x1, z0, z1, y0, y1, m='shutter_white'):
+def _shutter(sb, x0, x1, z0, z1, y0, y1, m='shutter_white', louvres=None):
     """Plantation shutter panel: 50 stiles, 90 rails, 63 mm elliptical louvres at ~52 pitch, shut
     (tilt 75 deg, blades sloping down toward the room, +Y): neighbours overlap by ~9 mm, so nothing
-    shows through from eye height on either side (f_0019)."""
+    shows through from eye height on either side (f_0019). louvres: [(MB, tilt deg)] - the blades go there, once per
+    tilt, instead of into sb (the bay's open / shut louvre objects)."""
     st, rl = 0.050, 0.090
     sb.box((x0, y0, z0), (x0 + st, y1, z1), m, 0.002)
     sb.box((x1 - st, y0, z0), (x1, y1, z1), m, 0.002)
@@ -1077,19 +1099,20 @@ def _shutter(sb, x0, x1, z0, z1, y0, y1, m='shutter_white'):
     n = max(1, int(round((z1 - z0 - 2 * rl) / 0.052)))
     pitch = (z1 - z0 - 2 * rl) / n
     a, b, ym = 0.0315, 0.0045, (y0 + y1) / 2
-    ca, sa = math.cos(math.radians(75)), math.sin(math.radians(75))
     hexa = [(-a, 0), (-0.6 * a, b), (0.6 * a, b), (a, 0), (0.6 * a, -b), (-0.6 * a, -b)]
-    for i in range(n):
-        zc = z0 + rl + (i + 0.5) * pitch
-        sb.prism([(x0 + st + 0.001, ym + p * ca + q * sa, zc - p * sa + q * ca) for p, q in hexa],
-                 (x1 - x0 - 2 * st - 0.002, 0, 0), m)
+    for mb, tilt in louvres or [(sb, 75.0)]:
+        ca, sa = math.cos(math.radians(tilt)), math.sin(math.radians(tilt))
+        for i in range(n):
+            zc = z0 + rl + (i + 0.5) * pitch
+            mb.prism([(x0 + st + 0.001, ym + p * ca + q * sa, zc - p * sa + q * ca) for p, q in hexa],
+                     (x1 - x0 - 2 * st - 0.002, 0, 0), m)
 
 
 def _bay_window(ctx, oid, fr):
     """Mock-Tudor bay light group (living.md 2.3): dark timber posts / mullions / transom / head and
     corner cladding, white uPVC lower lights and fanlights, white plantation shutters on the lower
-    lights (room side) - one hinged panel per light, each its own object swinging 100 degrees into the room
-    (ground_corrections L5) - and the moulded dark sill board round the bay (built with the front opening).
+    lights (room side) - one panel per light whose louvres tilt open / shut (SHUTTER_TILT) - and the moulded dark sill
+    board round the bay (built with the front opening).
     The west return also gets the vestibule-side white two-light architraves.
     ponytail: the uPVC sits 15 mm behind the outer face (the shutters need the rest of the 0.12 wall), not at
     fr['ext_reveal']; the spec should carry extReveal 0.015 for the two exterior bay openings."""
@@ -1135,8 +1158,6 @@ def _bay_window(ctx, oid, fr):
     # The return seen from the vestibule (f_0019): one architrave, a thin lining, then glass 0.43 wide
     # (68 % of the architrave's outer width), so its lights are fixed with a slim 22 mm sightline.
     slim = (fr.get('surround') or {}).get(other) == 'white_architrave_two_lights'
-    cen = sum((Vector(p) for p in ctx.room_poly(R)), Vector((0, 0))) / len(ctx.room_poly(R))
-    xc = (inv @ Vector((cen.x, cen.y, 0))).x                          # room centroid along this wall
     for i, (a, b) in enumerate(spans):
         upvc_light(u, g, a, b, z0, zt0, ya, yb, 0.022 if slim else 0.055)
         opener = not slim and (n == 1 or i in (0, n - 1))
@@ -1144,24 +1165,30 @@ def _bay_window(ctx, oid, fr):
         if opener:                                                    # white stay handle on the bottom rail
             u.box(((a + b) / 2 - 0.06, yb + 0.012, zt0 + tr + 0.045), ((a + b) / 2 + 0.06, yb + 0.026, zt0 + tr + 0.060),
                   'upvc_white', 0.003)
-        # shutter panel: hinged on the mullion between a pair (front lights), on the room end of a return light,
-        # so open panels stand clear of the bay corners and of each other
-        at_b = (i % 2 == 0) if n > 1 else abs(b - xc) < abs(a - xc)
-        sh = MB().at(MR)
-        _shutter(sh, a + 0.005, b - 0.005, z0 + 0.005, zt0 - 0.003, -0.042, -0.014)
-        xh = b - 0.005 if at_b else a + 0.005
+        # shutter panel (round 4: it no longer swings, its louvres tilt; SHUTTER_TILT)
+        sh, lo_, ls_ = MB().at(MR), MB().at(MR), MB().at(MR)
+        _shutter(sh, a + 0.005, b - 0.005, z0 + 0.005, zt0 - 0.003, -0.042, -0.014,
+                 louvres=[(lo_, SHUTTER_TILT[0]), (ls_, SHUTTER_TILT[1])])
         name = f'{R}.{oid}.shutter.{i}'
-        ob = _finish(ctx, sh, name, R, door=oid)
-        IX.tag(ob, 'hinge', g=name, label='Shutter', p=MR @ Vector((xh, 0.015, (z0 + zt0) / 2)), a=(0, 0, 1),
-               deg=-100.0 if at_b else 100.0)
+        ob = _finish(ctx, sh, name, R, door=oid)                      # the panel: clicked, stays put
+        IX.tag(ob, 'trigger', g=name, label='Shutter')
+        IX.tag(_finish(ctx, lo_, name + '.louvres', R), 'show', g=name, when=0, fx='none')
+        IX.tag(_finish(ctx, ls_, name + '.louvres_shut', R, lm='dynamic'), 'show', g=name, when=1, fx='none')
     _finish(ctx, u, f'{R}.{oid}.frame', R)
     _finish(ctx, g, f'{R}.{oid}.glass', R)
     if slim:
         v = MB().at(side_frame(fr, -sgR))
         yv = -(Tw + ya) + 0.0                                         # uPVC face seen from this side
-        for za, zb in ((zt0, zt0 + 0.17), (z1 - 0.05, z1)):           # white wall bands between / above the lights
+        # upper light head: 0.05 under the frame head, or its architrave 0.10 under a ceiling haunch on this wall
+        zu = z1 - 0.05
+        k = 0 if abs(fr['normal'][0]) > 0.5 else 1
+        face = fr['center'][k] + fr['normal'][k] * (fr['face_pos'] if -sgR > 0 else fr['face_neg'])
+        for h in ctx.features:
+            if h['type'] == 'ceiling_haunch' and h.get('room') == other and abs(h.get('wallAt', 1e9) - face) < 0.02:
+                zu = min(zu, h['z'][0] - fr['z0'] - 0.10 - mo.profile_size('arch_vest_window')[0])
+        for za, zb in ((zt0, zt0 + 0.17), (zu, z1)):                  # white wall bands between / above the lights
             v.box((-hw, yv, za), (hw, 0.001, zb), 'plaster_white')
-        for za, zb in ((z0, zt0), (zt0 + 0.17, z1 - 0.05)):
+        for za, zb in ((z0, zt0), (zt0 + 0.17, zu)):
             _lining(v, hw, zb, yv, 0.0, 'joinery_white', z0=za, sill=True)
             architrave(v, 'arch_vest_window', hw, zb, z0=za, closed=True)
         _finish(ctx, v, f'{other}.{oid}.surround', other, surround='white_architrave_two_lights')

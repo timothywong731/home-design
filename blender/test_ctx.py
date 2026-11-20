@@ -164,7 +164,7 @@ def schema2():
     assert (f['level'], f['exterior'], f['outside_room'], f['swing_sign']) == ('G', True, 'outside', -1)
     eq(tuple(f['outward']), (0, -1)), eq(f['face_out'], -0.06)
     f = h.opening_frame('w_study')                         # upper floor: same shape, center.z = floorZ + sill
-    eq(tuple(f['center']), (1.23, 17.11, 6.02 + 0.68)), eq(f['z0'], 6.02), eq(tuple(f['outward']), (0, 1))
+    eq(tuple(f['center']), (1.26, 17.11, 6.02 + 0.68)), eq(f['z0'], 6.02), eq(tuple(f['outward']), (0, 1))
     f = h.opening_frame('d_blue')
     assert (f['exterior'], f['outward'], f['face_out'], f['ext_reveal'], f['outside_room']) == (False, None, None, None, None)
     f = h.opening_frame('d_basement')                      # roomsBelow end: swing follows the wall's rooms

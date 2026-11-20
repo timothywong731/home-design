@@ -7,8 +7,9 @@
 Adds to the shell: the six "hallway" downlights and their four switch plates, sockets, thermostat, ceiling
 plate and smoke alarm, the column radiator, paintings W1-W5 and P4 (crops: landing1_art.py), the raking dado /
 skirting and carpet nosings of the split-level steps, and the top newel of the main flight (0.20, 8.13).
-The strip balustrade on v_strip_well (rail, capping, spindles) belongs to rooms/stairs2.py (MULTILEVEL.md 1):
-its level rail (top Z 4.32) enters this newel's block; the main-flight rail (rooms/stairs.py) enters the shaft.
+The strip balustrade on v_strip_well (rail, capping, fascia, spindles) belongs to rooms/stairs2.py (MULTILEVEL.md 1):
+its level rail (top Z 4.32) enters this newel's block.  The main-flight rail (rooms/stairs.py) dies into the strip
+fascia short of the newel (v6 f_0038), so the shaft takes no rail.
 
 Deviation from the spec text (v3 f_0075, f_0496-0500): the dado and skirting rake over the two steps at the
 stair pitch (0.19 / 0.25, 37 degrees) through the nosings, so the rake runs from riser B (y 7.88) to y 8.38,
@@ -27,7 +28,8 @@ XW, XPIER = -0.65, -0.55            # west (party) wall face; face of the pier y
 WEST, EAST, NORTH = (1, 0), (-1, 0), (0, 1)      # room-side normals of the west / east / south walls
 WHITE = 'joinery_white'
 Y_B, Y_A, PITCH = 7.88, 8.13, 0.19 / 0.25    # riser B (upper), riser A (lower) of the two steps; their pitch
-LANDING = [F, Q, R]
+LANDING = [F, Q, R, 'stairs']      # L1-L6 also light the main staircase, and its downlight is on this circuit
+#                                    (landing1.md 8.2 S-stair; the hall plate's left gang, rooms/hallway.py, same list)
 UPSTAIRS = ['landing2_head', 'landing2_platform', 'stairs2']     # what rooms/landing2.py's own switches light
 
 # world coords; fov spans the longer side
@@ -106,8 +108,8 @@ def _radiator(name, n=16, pitch=0.045, h=0.57):
 
 def _newel(name, z_top_block=4.34):
     """Top newel of the main flight, square mahogany (v4 f_0181-0186): foot on the main-flight string below the
-    quarter landing, chamfered shaft (the main-flight rail tenons into it at Z 3.75), block for the level strip
-    rail of rooms/stairs2.py (top Z 4.32), collar and flattened ball, top Z 4.475.  Local z = world Z."""
+    quarter landing, chamfered shaft, block for the level strip rail of rooms/stairs2.py (top Z 4.32), collar and
+    flattened ball, top Z 4.475.  Local z = world Z."""
     mb, m = mo.MB(), _wood()
     mb.box((-0.0475, -0.0475, 2.66), (0.0475, 0.0475, 3.44), m, bev=0.004)
     mb.box((-0.040, -0.040, 3.43), (0.040, 0.040, z_top_block - 0.19), m, bev=0.010)

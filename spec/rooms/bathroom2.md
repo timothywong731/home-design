@@ -279,3 +279,11 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - South wall = the arch wall line y 11.20..11.50. **North wall y 13.70..14.15** (`w_bath2_study`, 0.45): the partition
   plus an unseen 0.35 zone, modelled solid; the study's south wall face is y 14.15.
 - **Sauna heater**: control housing under the heater body added in section 5.2 [verification INV-05].
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Shower niche: 0.60 x 0.32 x 0.10 deep cut into the solid north wall (house.json bath2_niche, x 0.90..1.50,
+  Z 7.17..7.49; v5 f_0013, f_0031).
+- bath2_pipe_boxing is a full-height column from the south wall (behind the tall cabinet) to the window reveal,
+  x 2.98..3.10, y 11.50..12.16, tiled to the 1.20 dado line and painted #B9B7B1 above; the cove returns round it
+  (v5 f_0095, f_0101).
+- 2.2 w_bath2: the transom in house.json stays at 1.70 above the floor (this file says 1.62).

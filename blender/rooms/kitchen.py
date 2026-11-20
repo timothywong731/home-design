@@ -340,6 +340,11 @@ def pelmet_lip(r, u0, u1, depth=0.30):
     r.box(u0, u1, depth - .01, depth + .018, PELMET_Z, WALL_Z0 + .001, bev=.0005)
 
 
+def _circ(name):
+    """Tag kwargs of lighting circuit name (INTERACT.md, Circuits)."""
+    return {'circuit': name}
+
+
 LED_G = 'kitchen.led'                             # the LED circuit: left rocker of the 2-gang plate (corrections 1)
 
 
@@ -495,7 +500,10 @@ def hob(ctx):
 def hood(ctx):
     """900 angled chimney hood: face leans out ~25 deg, black base with two spots, telescopic chimney."""
     r = Run(ctx, WE, 'kitchen.hood')
-    SATIN = 'steel_brushed'                                   # see the uv_box at the end
+    # [round 4] metallic 0.5 and baked (Q9): fully metallic and probe-lit, the face only mirrored the probe's view of
+    # the navy units and read dark bronze; half metal keeps a diffuse share for the lightmap (light brushed steel, v1
+    # f_0364) and the streak roughness of the library map
+    SATIN = variant('steel_brushed', 'kitchen_hood_steel', Metallic=.5)
     u0, u1, zb, zt, db, dt = 1.68, 2.58, 1.572, 2.13, .155, .42
     r.mb.prism([(u0, 0, zb), (u0, -db, zb), (u0, -dt, zt), (u0, 0, zt)], (u1 - u0, 0, 0), SATIN, grain=2)
     r.box(u0 + .008, u1 - .008, .01, db - .008, 1.54, zb + .001, 'black_matt', bev=.002)
@@ -520,7 +528,7 @@ def hood(ctx):
     # Library streak maps turned vertical and stretched x16: the roughness streaks become soft 10-20 mm bands,
     # which is how the real hood and chimney read (broad vertical light / dark bands, f_0366-f_0367). At the
     # native 1 mm they alias into a woven moire, at x4 they look like scratches.
-    M.uv_box(r.done(lm='dynamic'), scale=16, rotate=True)
+    M.uv_box(r.done(lm='static'), scale=16, rotate=True)
 
 
 # ----------------------------------------------------------------------------- sink wall (y = 0)
@@ -853,8 +861,8 @@ def door_wall(ctx):
     # the room's light switch (group id kept for the viewer tests); the LED rocker is the trigger of the 'lamp'
     # group of the LED tape (LED_G), which the viewer turns off on its own.
     sw = ctx.add(WW.put(P.switch_plate(1, kind='blank', name='kitchen.switch'), 2.34, 0, 1.25), ROOM, 'fit', lm='dynamic')
-    IX.tag(sw, 'light', rooms=[ROOM], label='Lights')
-    for nm, du, tg in (('spots', .014, dict(t='light', rooms=[ROOM], label='Lights')),
+    IX.tag(sw, 'light', rooms=[ROOM], label='Lights', **_circ('main'))
+    for nm, du, tg in (('spots', .014, dict(t='light', rooms=[ROOM], label='Lights', **_circ('main'))),
                        ('led', -.014, dict(t='lamp', g=LED_G, label='Cabinet lights'))):
         mb = mo.MB().at(WW.M @ T(2.34 + du, -.009, 1.25) @ RX(6))
         mb.box((-.01, -.0045, -.017), (.01, .001, .017), 'plastic_white', bev=.0008)
@@ -1100,14 +1108,16 @@ def decor(ctx):
     # glowing white square right of the plate there is the back door's cat flap (v2 f_0434, v7 f_0041).
     ctx.add(WN.put(P.socket(2, name='kitchen.socket.pier'), U0 + .19, 0, .45), ROOM, 'fit')
 
-    r = Run(ctx, WE, 'kitchen.memo_board')                    # frameless glass board, blank (privacy)
-    r.box(.07, .87, .015, .020, .95, 1.95, 'glass_green', bev=.001)
+    # frameless glass board, blank (privacy). [round 4] opaque and baked like the wall (Q8): at alpha 0.9, probe-lit, it read
+    # as an olive-grey slab; no 'glass' in the material name, or the viewer makes it 22 % see-through
+    r = Run(ctx, WE, 'kitchen.memo_board')
+    r.box(.07, .87, .015, .020, .95, 1.95, M.solid('kitchen_memo_board', '#DFE6E0', .06), bev=.001)
     for u in (.10, .84):
         for z in (.98, 1.92):
             r.at(u, 0, z, RX(90)).lathe([(0, 0), (.006, 0), (.006, .021), (.010, .021), (.010, .026), (0, .026)], 'chrome', 12)
     r.at()
     r.box(.775, .835, .020, .034, 1.895, 1.925, 'black_matt', bev=.003)             # magnetic eraser
-    r.done(kind='decor', lm='dynamic')
+    r.done(kind='decor', lm='static')
 
     r = Run(ctx, WN, 'kitchen.bin.black')                     # black pedal bin, wide side (420) along the pier (t=765 s)
     blk = M.solid('kitchen_bin_black', '#1C1C1D', .45)

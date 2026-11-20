@@ -2,10 +2,10 @@
 
 blender -b --factory-startup --python blender/build.py -- [--house <path>] [--levels B,G,1,2,X] [--only <stage>,...]
         [--bare] [--save build/home.blend] [--preview <what>,...] [--res WxH] [--samples n] [--cam name]
-        [--tag suffix] [--pose 0|1]
+        [--tag suffix] [--pose 0|1] [--device CPU|0|1]
 Stages (build order): shell, site, envelope, then the room modules (house rooms in file order, then pseudo-rooms).
 --only takes stage names and room / pseudo-room ids. --preview takes room ids, level:<id>, plan:<level>, section,
-elev:front|rear|flank, all.
+elev:front|rear|flank, all. --cam: one camera name, or 'first' (each room's first). --device: render on the CPU or on one GPU (default every GPU) when the GPUs are busy.
 """
 import argparse
 import importlib
@@ -36,6 +36,7 @@ def parse():
     ap.add_argument('--cam', default='')
     ap.add_argument('--tag', default='')
     ap.add_argument('--pose', type=int, default=0, choices=(0, 1))
+    ap.add_argument('--device', default='', choices=('', 'CPU', 'cpu', '0', '1'))
     a = ap.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
     a.res = tuple(int(v) for v in a.res.lower().split('x'))
     return a
@@ -70,6 +71,8 @@ def pose_scene(state):
 
 TOTAL = 4_000_000
 LEVEL_BUDGET = {'G': 850_000, '1': 1_300_000, '2': 850_000, 'B': 150_000, 'X': 850_000}
+# rooms the spec gives no fitting (lit by spill / daylight only): no default fill, else its 'on' bake gets a phantom lamp
+NO_FILL = ('landing2_platform',)
 BIG_ROOMS = ('living', 'dining', 'kitchen', 'green_bedroom', 'blue_bedroom', 'loft_office', 'garden', 'front')
 SITE_SHELL = ('front', 'side_passage', 'garden', 'shed', 'neighbours')
 
@@ -192,9 +195,10 @@ def main():
         except ImportError:
             pass
 
+    lighting.DEVICE = args.device.upper() if args.device.lower() == 'cpu' else (args.device or None)
     lighting.setup(ctx, args.samples, args.res)
     for rid in house:                          # default fill where no real light fittings exist yet; never outdoors
-        if ctx.level(rid) in levels and ctx.kind(rid) in ('room', 'stairwell', 'void') \
+        if ctx.level(rid) in levels and ctx.kind(rid) in ('room', 'stairwell', 'void') and rid not in NO_FILL \
                 and not any(o.get('kind') == 'light' for o in ctx.col('room_' + rid).objects):
             (lighting.void_fill if ctx.kind(rid) == 'void' else lighting.fill)(ctx, rid)       # eaves: a dim glow
     if 'X' in levels and 'site' in only and not any(o.get('kind') == 'light' for o in ctx.col('room_shed').objects):

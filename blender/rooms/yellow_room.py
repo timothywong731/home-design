@@ -12,7 +12,7 @@ import bmesh
 import bpy
 from mathutils import Matrix
 
-from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P
 from rooms.dining_chairs import chair as dining_chair      # same family of chair, same seat tapestry
 from rooms.dining_furniture import dark_wood
 
@@ -33,7 +33,6 @@ CAMERAS = [
 
 T = Matrix.Translation
 WHITE = 'plastic_white'
-WALL = '#F0EBD6'
 
 
 def _cloth(name, profile, width, mat, repeat):
@@ -187,10 +186,6 @@ def build(ctx):
 
     def add(ob, kind, sym=None, lm=None):
         return ctx.add(ob, ROOM, kind, plan_sym=sym, lm=lm)
-
-    # ---- wall paint eased toward the frames: the spec's #EEE7C6 renders mustard in this small closed room
-    #      (ref wall #C2BDAE beside ceiling #BCB7AB in v3 f_0130)
-    shell.repaint(ROOM, '#EEE7C6', WALL)
 
     # ---- lighting: 2 x 2 downlights on the one-gang switch by the door (spec 8)
     for i, (x, y) in enumerate((x, y) for x in (x0 + .75, x0 + 2.0) for y in (y0 + .52, y0 + 1.50)):

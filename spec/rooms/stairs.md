@@ -241,3 +241,16 @@ Nothing on the stairs was removed. Hands/feet of the owner in f_0249–f_0250 ig
 - Floor: `house.json` gives the stairs polygon floor `oak_plank` with `covering: carpet_mink_grey` on
   treads, risers and half-landing only. The Z=0 floor in front of the R1 bullnose (x 0.15..0.65, from
   y 4.83 to the R1 arc, including under the newel) is the hall's oak floor, not carpet.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Foot winders fan from the newel at (0.20, 5.42): R1 bullnose quarter-ellipse centre (0.65, 5.42), semi 0.53 x 0.37;
+  R2 to (0.79, 5.19) on the diagonal; R3 to the internal corner (0.99, 5.39); R4 square at 5.60 (landing1.md 11.1,
+  v3 f_0011-f_0013). The filmed 55 / 25 degrees cannot be reached with R3 on the internal corner and R4 at 5.60.
+- The hall ceiling (Z 2.95) runs flat over the stair foot to a square edge at y 5.60 (house.json stairs ceilingZone
+  stair_foot; v1 f_0245, v6 f_0041).
+- One carpet for the flight and the first-floor landings: `carpet_silver_beige`, recoloured to #A9A397 (carpet :
+  greige band 0.66 on the tread in v3 f_0021, 0.88 on the QL in v6 f_0037).
+- Integration (circulation owner, round 3): the main-flight handrail no longer tenons into the top newel at Z 3.75. It
+  dies about 25 mm into the underside of a white fascia under the strip capping at y ~7.62 (v6 f_0038; fascia 0.10
+  deep, x 0.15..0.22, Z 3.32..3.42 by the strip, 3.13..3.23 by the step). Main spindles past the rail stop 5 mm into
+  the fascia (tread 14: stubs).

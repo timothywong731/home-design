@@ -267,3 +267,8 @@ on the tiles, the owner's feet/hand. The address lettering on the transom glass 
   near the recess centre (x 0.125). **Owner check:** coats hide this corner in every frame.
 - Behind recess A and the pier is the living room's west wall (living front line y = 0.99).
 - The inner screen is `w_screen_inner` (y 1.73..1.83); the hall starts at y = 1.83.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Bay west return light seen from the vestibule: the upper light stops 0.10 (plus its architrave) under the east
+  haunch crease, about 1.97..2.46, with a band of plain wall above it (v2 f_0927, v1 f_0019); the opening stays the
+  living bay's 2.70 on the living side.

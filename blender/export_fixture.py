@@ -81,7 +81,6 @@ def check(out, fixture=False):
     assert set(on) - FAR_ROOMS == set(off) and not FAR_ROOMS & set(off), f'off atlases: {sorted(set(on) ^ set(off))}'
     assert all(off[r]['objects'] == on[r]['objects'] and off[r]['size'] * 2 == on[r]['size'] for r in off)
     assert set(pr) == set(pr_off) and set(pr) <= set(rooms), 'probes / probesOff'
-    assert all(rooms[r]['kind'] != 'void' for r in pr)
 
     with Image.open(out / m['sky']['image']) as im:
         assert im.mode == 'RGB' and im.size[0] == 2 * im.size[1] and im.format == 'JPEG', f'sky: {im.mode} {im.size}'

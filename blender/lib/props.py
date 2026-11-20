@@ -1048,8 +1048,9 @@ def _sm(k):
     k = max(0.0, min(1.0, k)); return k * k * (3 - 2 * k)
 
 
-def _curtain(b, W, H, m, folds, depth, side, tie, gather, seed, res, tie_mat, tassel_mat, tassel_len, hardware=True):
-    """Pleated cloth W wide hanging from z=0 to -H in front of y=0.  side = -1/0/+1: tied back toward -X / not / +X."""
+def _curtain(b, W, H, m, folds, depth, side, tie, gather, seed, res, tie_mat, tassel_mat, tassel_len, hardware=True, wall=0.0):
+    """Pleated cloth W wide hanging from z=0 to -H in front of y=0.  side = -1/0/+1: tied back toward -X / not / +X.
+    wall = local y of the wall plane: the tie-back hook starts there."""
     rnd = random.Random(seed); p0, p1, p2 = (rnd.uniform(0, tau) for _ in range(3))
     n = folds or max(2, round(W / .11)); vt = tie / H if side else 2.0; g0 = gather * .8
 
@@ -1078,7 +1079,7 @@ def _curtain(b, W, H, m, folds, depth, side, tie, gather, seed, res, tie_mat, ta
                 for t in (tau * i / 16 for i in range(16))]
         b.add(_tube(loop, .007, 5, loop=True), tie_mat, True)
         hx = side * (W / 2 + .012)
-        b.add(_tube([(hx, 0, zt + .03), (hx, -.035, zt + .03)], .005, 6), 'brass', True, closed=True)
+        b.add(_tube([(hx, wall, zt + .03), (hx, -.035, zt + .03)], .005, 6), 'brass', True, closed=True)
         if tassel_len:
             tx, ty = cx - side * hw * .2, -.012 - a - .03
             b.add(_sphere(.02, 8, 5), tie_mat, True, closed=True, T=Tr(tx, ty, zt - .012))
@@ -1160,7 +1161,7 @@ def curtain_pair(b, width=1.8, height=2.4, mat='tartan_red', stack=.5, tieback=T
     for sg in (-1, 1) if cloth else ():
         with b.at(Tr(sg * (width - cw) / 2, -off, 0)):
             _curtain(b, cw, height, mat, None, depth, sg if tb else 0, tie_from_top, gather, seed + (sg > 0),
-                     fold_res, tie_mat, tassel_mat, tassel)
+                     fold_res, tie_mat, tassel_mat, tassel, wall=off)          # the hook reaches the wall behind the pole
     yc = -off - .012 - depth * .6
     if not hardware:
         return

@@ -1,97 +1,266 @@
 [
  {
+  "file": "basement_top.jpg",
+  "room": "basement",
+  "level": "B",
+  "title": "Basement plant / store room - top"
+ },
+ {
+  "file": "basement_boiler.jpg",
+  "room": "basement",
+  "level": "B",
+  "title": "Basement plant / store room - boiler"
+ },
+ {
+  "file": "basement_stair_up.jpg",
+  "room": "basement_stair",
+  "level": "B",
+  "title": "Basement stair shaft - up"
+ },
+ {
   "file": "vestibule_inner.jpg",
   "room": "vestibule",
+  "level": "G",
   "title": "Vestibule - inner doors"
  },
  {
   "file": "hallway_front.jpg",
   "room": "hallway",
+  "level": "G",
   "title": "Hallway - from the inner doors"
  },
  {
   "file": "hallway_rear.jpg",
   "room": "hallway",
+  "level": "G",
   "title": "Hallway - looking to the front"
  },
  {
   "file": "stairs_foot.jpg",
   "room": "stairs",
+  "level": "G",
   "title": "Staircase"
  },
  {
   "file": "living_door.jpg",
   "room": "living",
+  "level": "G",
   "title": "Living room - from the door"
  },
  {
   "file": "living_gallery.jpg",
   "room": "living",
+  "level": "G",
   "title": "Living room - bookcase and paintings"
  },
  {
   "file": "living_tv.jpg",
   "room": "living",
+  "level": "G",
   "title": "Living room - TV wall"
  },
  {
   "file": "living_bay.jpg",
   "room": "living",
+  "level": "G",
   "title": "Living room - bay window"
  },
  {
   "file": "kitchen_corner.jpg",
   "room": "kitchen",
+  "level": "G",
   "title": "Kitchen - from the garden door"
  },
  {
   "file": "kitchen_sink.jpg",
   "room": "kitchen",
+  "level": "G",
   "title": "Kitchen - sink, plate rack and wine rack"
  },
  {
   "file": "kitchen_nook.jpg",
   "room": "kitchen",
+  "level": "G",
   "title": "Kitchen - bar nook and garden door"
  },
  {
   "file": "kitchen_hob.jpg",
   "room": "kitchen",
+  "level": "G",
   "title": "Kitchen - hob and extractor"
+ },
+ {
+  "file": "wc_pan.jpg",
+  "room": "wc",
+  "level": "G",
+  "title": "Cloakroom"
  },
  {
   "file": "utility_door.jpg",
   "room": "utility",
+  "level": "G",
   "title": "Utility room"
  },
  {
   "file": "utility_tall.jpg",
   "room": "utility",
+  "level": "G",
   "title": "Utility room - tall unit"
- },
- {
-  "file": "wc_pan.jpg",
-  "room": "wc",
-  "title": "Cloakroom"
  },
  {
   "file": "dining_entry.jpg",
   "room": "dining",
+  "level": "G",
   "title": "Dining room - from the door"
  },
  {
   "file": "dining_fire.jpg",
   "room": "dining",
+  "level": "G",
   "title": "Dining room - fireplace"
  },
  {
   "file": "dining_north.jpg",
   "room": "dining",
+  "level": "G",
   "title": "Dining room - table and French doors"
  },
  {
   "file": "dining_west.jpg",
   "room": "dining",
+  "level": "G",
   "title": "Dining room - mirror and crest plaques"
+ },
+ {
+  "file": "green_bedroom_bed.jpg",
+  "room": "green_bedroom",
+  "level": "1",
+  "title": "Green bedroom (front) - bed"
+ },
+ {
+  "file": "green_bathroom_door.jpg",
+  "room": "green_bathroom",
+  "level": "1",
+  "title": "Green bathroom - door"
+ },
+ {
+  "file": "landing1_front_front.jpg",
+  "room": "landing1_front",
+  "level": "1",
+  "title": "First-floor front landing and upper strip - front"
+ },
+ {
+  "file": "stairs2_foot.jpg",
+  "room": "stairs2",
+  "level": "1",
+  "title": "Stair to the second floor (well) - foot"
+ },
+ {
+  "file": "landing1_rear_corridor.jpg",
+  "room": "landing1_rear",
+  "level": "1",
+  "title": "First-floor rear corridor and arch bay - corridor"
+ },
+ {
+  "file": "yellow_room_in.jpg",
+  "room": "yellow_room",
+  "level": "1",
+  "title": "Yellow room (middle) - in"
+ },
+ {
+  "file": "blue_ensuite_door.jpg",
+  "room": "blue_ensuite",
+  "level": "1",
+  "title": "Blue en-suite - door"
+ },
+ {
+  "file": "blue_bedroom_door.jpg",
+  "room": "blue_bedroom",
+  "level": "1",
+  "title": "Blue bedroom (rear) - door"
+ },
+ {
+  "file": "balcony_rear.jpg",
+  "room": "balcony",
+  "level": "1",
+  "title": "Balcony - rear"
+ },
+ {
+  "file": "landing2_head_loft.jpg",
+  "room": "landing2_head",
+  "level": "2",
+  "title": "Second-floor stair head and hallway - loft"
+ },
+ {
+  "file": "landing2_platform_sky.jpg",
+  "room": "landing2_platform",
+  "level": "2",
+  "title": "Second-floor platform - sky"
+ },
+ {
+  "file": "loft_office_west.jpg",
+  "room": "loft_office",
+  "level": "2",
+  "title": "Loft office (front) - west"
+ },
+ {
+  "file": "loft_office_desk.jpg",
+  "room": "loft_office",
+  "level": "2",
+  "title": "Loft office (front) - desk"
+ },
+ {
+  "file": "eaves_front_tunnel.jpg",
+  "room": "eaves_front",
+  "level": "2",
+  "title": "Front eaves storage (with the bay-gable void) - tunnel"
+ },
+ {
+  "file": "eaves_rear_r_in.jpg",
+  "room": "eaves_rear",
+  "level": "2",
+  "title": "Rear eaves storage - r_in"
+ },
+ {
+  "file": "purple_room_door.jpg",
+  "room": "purple_room",
+  "level": "2",
+  "title": "Purple room (unused) - door"
+ },
+ {
+  "file": "bathroom2_door.jpg",
+  "room": "bathroom2",
+  "level": "2",
+  "title": "Second-floor bathroom (shower, sauna) - door"
+ },
+ {
+  "file": "study_door.jpg",
+  "room": "study",
+  "level": "2",
+  "title": "Study (rear) - door"
+ },
+ {
+  "file": "front_street.jpg",
+  "room": "front",
+  "level": "X",
+  "title": "Front - street"
+ },
+ {
+  "file": "side_passage_passage.jpg",
+  "room": "side_passage",
+  "level": "X",
+  "title": "Side passage - passage"
+ },
+ {
+  "file": "garden_house.jpg",
+  "room": "garden",
+  "level": "X",
+  "title": "Garden - house"
+ },
+ {
+  "file": "shed_front.jpg",
+  "room": "shed",
+  "level": "X",
+  "title": "Shed - front"
  }
 ]

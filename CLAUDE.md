@@ -47,6 +47,7 @@ python spec/validate_house.py            # after editing spec/house.json; redraw
 "$B" -b --factory-startup --python blender/build.py -- --save build/home.blend
 #    foundation only (6 s): --only shell,site,envelope      one room: --only shell,living --preview living --res 540x960 --samples 64 --tag me
 #    --levels B,G,1,2,X     --preview <room>|level:<id>|plan:<level>|section|elev:front|rear|flank     --pose 1 (everything operated)
+#    --cam <name>|first (one camera per room: contact sheets)     --device CPU|0|1 (when the GPUs are busy)
 # 2. export -> docs/assets: glb/<level>.glb, lightmaps, probes, sky.jpg, manifest (schema 2), footprints, hero stills   (EXPORT OK)
 "$B" -b --factory-startup build/home.blend --python blender/export.py -- --out docs/assets --samples 1024 --renders
 #    --bake-res N (upper bound of the atlas side, default 4096)   --skip-bake (GLBs + manifest + footprints, 30 s)
@@ -104,7 +105,8 @@ The pipeline is one-directional; each stage consumes the previous stage's files:
    `blender/lib/README.md`.
 3. `blender/export.py` (+ `export_bake.py`) → `docs/assets/`: one GLB per level (flat node list,
    meshopt + WebP), one Cycles lightmap atlas per room for `lm='static'` objects (second UV set),
-   an equirect probe per room for everything else, a lights-off set, `sky.jpg`, `manifest.json`
+   an equirect probe per room for everything else, a lights-off set, one atlas per lighting circuit
+   in rooms with several (`ix` key `circuit`, INTERACT.md), `sky.jpg`, `manifest.json`
    (schema 2: levels, load order, rooms, lightmaps, probes, white balance, sky, viewpoints, first
    view), `footprints.json` (plan symbols = walk obstacles) and the hero stills in `docs/renders/`.
 4. `tools/plan/draft.py` → `plan.json` (five sheets in one world frame, drawn by

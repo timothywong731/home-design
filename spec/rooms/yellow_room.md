@@ -255,3 +255,10 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   keyed to the north wall -0.10; the door (clear y 10.15..10.91) and the window frame (y 10.00..10.95) keep their world
   positions, so the window is 0.10 from the north wall and the door architrave 0.06 from it.
 - Flank wall: inner face 3.10, outer face **3.40** (0.30) [E2].
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- East wall: one face at x 3.00 along the whole wall except a window-wide niche y 10.00..10.95, 0.10 deep, from the
+  floor to a soffit at Z 5.32 (house.json yellow_pier_e, yellow_pier_ne, yellow_niche_head; v3 f_0083, f_0085, f_0090,
+  f_0093, f_0109). The cornice runs straight at x 3.00; the skirting steps into the niche.
+- d_yellow opens 95 degrees (at 100 it ran 12 mm into the north wall and swallowed the door stop; v3 f_0130 / f_0138).
+- Wall paint #F0EBD6 (the spec's #EEE7C6 rendered mustard) is now the shell finish.

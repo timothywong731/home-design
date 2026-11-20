@@ -499,3 +499,18 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   (0.93, 7.42), 1.20 above the hall floor [verification INV-04; section 8 had x 0.98 on the pre-reconcile wall face].
 - Ground floor above: no slab over the shaft (`basement_stair_void`); the hall diagonal and winders are as
   `ground_corrections.md` HA1 / `landing1.md` 11.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- SW-B stands on the built wall face x 0.99 at (y 7.42, Z 1.20); x 0.93 is only the face below Z -0.01
+  (feature basement_strip_e).
+- 3.3 The flat soffit strip (0.25 deep at Z 2.10) and the 40 x 40 rib inside d_basement are not modelled: the carcass
+  soffit reaches Z 2.086 at y 7.58.
+- 7 The shelf ornaments D3..D8 stand about 0.40 north of the positions given (0.19 clear under the soffit at y 5.33
+  is too low for a 0.30 bottle).
+- 5.5 The smart meter is landscape, about 0.27 x 0.165, nearly filling the 0.30 niche (f_0247), not 0.22 x 0.20.
+- 4 The racks render near f_0184 at #171B3E (the spec's #22306B reads royal blue).
+- 3.1 The carcass (lib/stairs.py) now lays one uncut plank across every straight tread and riser and planks the
+  winders along their long edge; riser R9 stops at x 0.93 (it no longer runs across the pier face).
+- 5.5 The gas-meter niche is a real 0.08 recess in the south wall (house.json basement_meter_niche, x 1.55..1.85,
+  h 1.45..1.88). The sealed recess (its floor rises about 35 degrees) and the black ceiling slot / boiler notch stay
+  flat panels in rooms/basement_plant.py: a box recess cannot carry the slope or the black lining.

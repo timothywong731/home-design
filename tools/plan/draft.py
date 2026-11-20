@@ -1081,8 +1081,9 @@ def draw_symbol(P, r, sym, lay, c, u, v, w, d, labs, obst):
     elif sym == "pipe":                                          # rainwater / soil pipe at its true size, RWP / SVP
         rad = max(0.025, min(hw, hd))
         Cc(0, 0, rad)
-        s = "SVP" if "soil" in str(r.get("name", "")).lower() else "RWP"
-        for a, b in ((0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)):   # front, sides, back, corners
+        nm = str(r.get("name", "")).lower()           # other round posts (lamp column, tree, reel) get no label
+        s = "SVP" if "soil" in nm else "RWP" if "downpipe" in nm else "FLUE" if "flue" in nm else None
+        for a, b in () if s is None else ((0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)):   # front, sides, back, corners
             k = (rad + 0.6 * MM) / math.hypot(a, b)
             q = T(a * k, b * k)
             dx, dy = a * u[0] + b * v[0], a * u[1] + b * v[1]
@@ -1959,7 +1960,17 @@ if __name__ == "__main__":
     self_check(plan, checks)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    was = (out / "plan.json").stat().st_size if (out / "plan.json").exists() else None
     write_json(plan, out / "plan.json")
+    # [round 4] manifest.firstView.bytes counts plan.json as the export found it: carry the size change over, so the
+    # plan step can follow the export (export_fixture allows 64 bytes; the count's own digits may shift by one)
+    man = out / "manifest.json"
+    if was is not None and man.exists():
+        m = json.loads(man.read_text(encoding="utf-8"))
+        fv = m.get("firstView") or {}
+        if "plan.json" in fv.get("files", []) and (out / "plan.json").stat().st_size != was:
+            fv["bytes"] += (out / "plan.json").stat().st_size - was
+            man.write_text(json.dumps(m, indent=1), encoding="utf-8", newline="\n")
     write_dxf(plan, out / "house-plans.dxf")
     render_pdf(plan, out / "house-plans.pdf")
     for old in ("ground-floor-plan.dxf", "ground-floor-plan.pdf"):    # phase-1 downloads are replaced

@@ -124,8 +124,10 @@ def render(cam, path, res=(960, 540), samples=64):
 
 
 def render_room(ctx, room, cams, out_dir, res, samples, tag=None, only=None):
-    """Render every camera dict (name, pos, look, fov_deg) of a room; returns the written paths."""
+    """Render every camera dict (name, pos, look, fov_deg) of a room (only: one name, or 'first'); returns the paths."""
     out = []
+    if only == 'first':
+        cams, only = cams[:1], None
     for c in cams:
         if only and c['name'] != only:
             continue

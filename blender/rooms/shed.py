@@ -13,7 +13,7 @@ import random
 
 from mathutils import Matrix, Vector
 
-from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
+from lib import interact as IX, lighting, mouldings as mo, props as P
 from rooms import shed_workshop as W
 from rooms.shed_workshop import C, cyl, PINE, ZP, ZF, ZC, ZS
 
@@ -158,19 +158,14 @@ def veranda(ctx):
         mat = P.place(P.rug(w=w, d=d, thickness=th, corner_r=.05, color=col, name=name), (3.35, 24.62, ZP))
         ctx.add(mat, ROOM, 'decor', plan_sym='rug' if name == 'shed.mat' else None, lm='static')
 
-    # ponytail: 2 mm cover over site's soffit ('mahogany_dark' renders black under the canopy; spec #5A3229, red-brown
-    # T&G boards E-W in v2:f_0273). Drop it, and the 2 mm on the trims, once site.SOFFIT is a lighter board.
-    ob = shell.box('shed.soffit_boards', -0.36, 4.23, 23.39, 25.01, ZS - .002, ZS, 'mahogany_mid')    # edges into the walls
-    M.uv_box(ob, rotate=True)                                # grain E-W
-    ctx.add(ob, ROOM, 'fit')
-    mb, joint = mo.MB(), C('#2A1712', 0.8)                   # V-joints at 95 mm
+    mb, joint = mo.MB(), C('#2A1712', 0.8)                   # V-joints at 95 mm on site's E-W soffit boards
     for k in range(1, 17):
         y = 23.40 + .095 * k
-        mb.box((-0.36, y - .002, ZS - .0025), (4.23, y + .002, ZS - .002), joint)
+        mb.box((-0.36, y - .002, ZS - .001), (4.23, y + .002, ZS + .0005), joint)
     ctx.add(mb.finish('shed.soffit_boards.joints'), ROOM, 'fit')
     for i, (x, y) in enumerate(((0.33, 24.25), (2.03, 24.25), (3.43, 24.25), (0.13, 23.75))):      # soffit downlights
         lighting.downlight(ctx, ROOM, x, y, z=ZS - .015, watts=22, name=f'shed.veranda_light.{i}')
-        ctx.add(P.place(P.downlight(dia=.09, name=f'shed.veranda_light_trim.{i}'), (x, y, ZS - .0026)), ROOM, 'light')
+        ctx.add(P.place(P.downlight(dia=.09, name=f'shed.veranda_light_trim.{i}'), (x, y, ZS)), ROOM, 'light')
 
 
 def wisteria(ctx):
@@ -264,6 +259,11 @@ def workshop_lights(ctx):
     cyl(mb, (x, y, ZC - .05), .10, .028, P.emissive('#F4CB94', 5.0), segs=20)
     ctx.add(mb.finish('shed.ceiling_light'), ROOM, 'light')
     lighting.bulb(ctx, ROOM, (x, y, ZC - .09), watts=25, kelvin=2850, radius=.03, name='shed.ceiling_light.bulb')
+
+    # [round 4] daylight (IX-04 / Q7): with the lamps off the bake left the workshop black (lights-off probe mean 0.005)
+    # where v2 f_0279-0291 shows a daylit room; soft panels inside the glazed front and the misted rear window
+    lighting.daylight_fill(ctx, ROOM, 'shed.daylight.front', (1.79, 25.33, 0.75), (4.4, 1.6), (0, 1, 0), 45)
+    lighting.daylight_fill(ctx, ROOM, 'shed.daylight.rear', (2.3, 28.58, 1.15), (1.7, 0.9), (0, -1, 0), 14)
 
     sw = P.place(P.switch_plate(1, name='shed.switch'), (W.X1, 25.52, ZF + 1.2), facing=(-1, 0))   # inside, wing-wall side
     IX.tag(sw, 'light', rooms=[ROOM], label='Shed lights')   # one plate drives workshop, store and veranda lights

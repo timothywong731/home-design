@@ -445,30 +445,31 @@ def reframe(ob, w, h, rim=.0005, tilt=1.5):
 # ----------------------------------------------------------------------------- lobby overhead cupboard
 def cupboard(ctx):
     """Overhead storage cupboard above the basement door (corrections HA3; v2:f_0503-0507, v6:f_0290-0298).
-    The shell gives the plain block x 0.15..0.99, y 7.68..8.13, z 2.30..2.60 under the 2.60 landing soffit; here:
-    white face frame on its north face, small cornice under the soffit and moulded base board (both with a returned
-    end flush with the bulkhead face x 0.15, where the drop newel of rooms/stairs.py stands), the top-hung flap with its brass bow pull (group 'hallway.cupboard',
-    lifts 78 deg about its top front edge), the lined box behind it and the beaded boarding between the basement
-    door architrave and the cupboard."""
+    The shell gives the plain block x 0.15..0.99, y 7.68..8.13, z 2.30..2.60 under the 2.60 landing soffit, with the
+    cupboard's hole carved in it (house.json lobby_cupboard_interior); here: white face frame on its north face, small
+    cornice under the soffit and moulded base board (all three stop on the east face x 0.20 of the drop newel of
+    rooms/stairs.py, which covers the block's west end), the top-hung flap with its brass bow pull (group
+    'hallway.cupboard', lifts 78 deg about its top front edge), the lined box behind it and the beaded boarding
+    between the basement door architrave and the cupboard."""
     W, G = 'white_gloss', 'joinery_white'
     # the shell block = ceiling zone lobby_under_flight: ys = door wall, yf = cupboard face, z0 = underside. Read
     # from the spec so the cupboard follows when the face moves to about y 7.80 (v2:f_0505, v6:f_0290: shallow)
     uf = next(z for z in ctx.rooms[ROOM]['ceilingZones'] if z['id'] == 'lobby_under_flight')
     ys, yf, z0 = min(p[1] for p in uf['polygon']), max(p[1] for p in uf['polygon']), uf['z']
     x0, x1, z1 = 0.15, 0.99, 2.60
+    xp = 0.20 - 0.001                                                  # 1 mm into the drop newel's east face (stairs.POST)
     ox0, ox1, oz0, oz1 = 0.212, 0.942, 2.327, 2.587                    # opening = outside of the lined box
     yo = yf + 0.002                                                    # face frame, 2 mm proud of the plaster
     mb = mo.MB()
     zt = z0 + 0.0248                                                   # top of the base board
-    for a, b in (((x0, zt), (ox0, z1)), ((ox1, zt), (x1, z1)), ((ox0, zt), (ox1, oz0)), ((ox0, oz1), (ox1, z1))):
+    for a, b in (((xp, zt), (ox0, z1)), ((ox1, zt), (x1, z1)), ((ox0, zt), (ox1, oz0)), ((ox0, oz1), (ox1, z1))):
         mb.box((a[0], yf, a[1]), (b[0], yo, b[1]), G)
     crown = [(d * 0.75, h * 0.75) for d, h in mo.PROFILES['cornice_wc']] + [(0, 0)]      # 65 x 60 cornice
     base = [(d * 0.62, h * 0.62) for d, h in mo.PROFILES['ped_cap']]                     # 20 x 25 moulded edge
     yb = yo + 0.020
-    for prof, y, z in ((crown, yo, z1), (base, yb, z0)):               # the first leg is inside the block: returned end
-        xr = x0 + max(d for d, _ in prof)
-        mb.sweep(prof, [(xr, yf - 0.02, z), (xr, y, z), (x1, y, z)], G)
-    mb.box((x0, yf, z0), (x1, yb, zt), G)                              # the board the base moulding edges
+    for prof, y, z in ((crown, yo, z1), (base, yb, z0)):               # square ends butt the post (it is deeper)
+        mb.sweep(prof, [(xp, y, z), (x1, y, z)], G)
+    mb.box((xp, yf, z0), (x1, yb, zt), G)                              # the board the base moulding edges
     # beaded tongue-and-groove boarding on the door wall, architrave head to the cupboard: 8 boards of 105
     zb = ctx.opening_frame('d_basement')['head'] + 0.064
     mb.box((x0, ys, zb), (x1, ys + 0.002, z0), G)
@@ -488,9 +489,8 @@ def cupboard(ctx):
                            ((fx0 + fx1) / 2, yo + t, fz0 + 0.06), facing=(0, 1)), ROOM, 'fit', lm='dynamic')
     IX.tag_many([door, pull], 'hinge', g='hallway.cupboard', label='Cupboard', p=((fx0 + fx1) / 2, yo + t, fz1),
                 a=(1, 0, 0), deg=78)
-    # plain white lined box behind the flap, 0.21 deep (the top risers of the flight pass behind and above it).
-    # ponytail: it needs the hole the phase-1 shell cut for it - carve (0.212, 0.942, 7.92, 8.13) z 2.327..2.587,
-    # 'hallway' in lib/shell._ops; until that is back the box is buried and the lifted flap shows the block's face
+    # plain white lined box behind the flap, 0.21 deep (the top risers of the flight pass behind and above it), in
+    # the shell's carved hole (house.json lobby_cupboard_interior: x 0.212..0.942, y 7.92..8.13, z 2.327..2.587)
     ctx.add(P.place(P.cabinet_carcass(ox1 - ox0, .21, oz1 - oz0, W, plinth=0, open_front=True,
                                       name='hallway.cupboard_carcass'), ((ox0 + ox1) / 2, yf - 0.2095, oz0),
                     facing=(0, 1)), ROOM, 'fit', lm='dynamic')
@@ -538,12 +538,16 @@ def build(ctx):
         ctx.add(hand, ROOM, 'decor', lm='dynamic')
 
     # --- electrics and sensors. Switch circuits as the owner demonstrated them (corrections section 1): hall
-    #     3-gang, facing it: left (north) = first-floor landing, middle = the hall downlights, right (south, by the
-    #     inner doors) = porch / vestibule lights; the corridor rocker is 2-way with the middle gang
-    HALL = ['hallway', 'stairs']
+    #     3-gang, facing it: left (north) = first-floor landing / stair light (multi-way with the landing switches of
+    #     rooms/landing1.py, same room list), middle = the hall downlights, right (south, by the inner doors) = porch
+    #     lights: the lantern, the recess downlights and the canopy lights that light the forecourt (2-way with the
+    #     vestibule plate); the corridor rocker is 2-way with the middle gang.  Each room has one circuit, so every
+    #     switch of the same room list is one multi-way circuit in the viewer (INTERACT.md Circuits).
+    HALL = ['hallway']
+    LANDING = ['landing1_front', 'landing1_ql', 'landing1_rear', 'stairs']
+    PORCH = ['vestibule', 'front']
     gang_plate(ctx, 'hallway.switch.front', (0.65, 3.29, 1.27), EAST,
-               [('.landing', 'Landing lights', ['landing1_front', 'landing1_ql', 'landing1_rear']),
-                ('', 'Hall lights', HALL), ('.porch', 'Porch light', ['vestibule'])])
+               [('.landing', 'Landing lights', LANDING), ('', 'Hall lights', HALL), ('.porch', 'Porch light', PORCH)])
     sw = put(P.switch_plate(1, name='hallway.switch.rear'), (0.45, 11.32, 1.25), EAST, lm='dynamic')
     IX.tag(sw, 'light', rooms=HALL, label='Hall lights')
     put(P.socket(2, name='hallway.socket.front'), (xw, 3.715, 0.36), WEST)    # behind the console, between its two south legs (F_0236, F_0795)

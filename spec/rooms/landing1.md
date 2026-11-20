@@ -481,3 +481,20 @@ rooms: `landing1_ql`, `landing1_rear`, `landing1_front`.
 - Section 11 (main stair): accepted, except the quarter-landing size above; `stairs.landing` stays y 8.13..8.73 and the
   ground-floor lobby soffit keeps its footprint. The main flight is not shifted north.
 - Ground-floor rear hall ceiling (section 11.9): set to **2.84** from y 8.13 northward [G2].
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 3.1 The two steps: the level trim of `landing1_front` stops on the top riser (y 7.88) and that of `landing1_rear`
+  starts at the foot of the rake, y 7.88 + 0.38 / (0.19 / 0.25) = 8.38 (lib `mouldings.steps_skip`); the raking dado and
+  skirting (37 degrees through the nosings) run y 7.88..8.38 (rooms/landing1.py). The carpet nosings are rounded
+  bullnoses (v3 f_0497, f_0037, v4 f_0183), not square.
+- 3.2 Same: rounded bullnose on the QL riser.
+- 5.1 The level strip rail falls toward the south (knee about y 7.32, falling 0.70 per metre, dying into the string
+  underside near y 7.0, top Z 4.0; v4 f_0183); it does not ramp up.
+- 5.2 The radiator's TRV is at its north end.
+- 8.2 S-stair is at (0.25, 8.93, 1.25) above F1r (the reconcile moved the chamfer to y 8.83), not y 9.40.
+- The front-landing dado on the stairwell east wall (x 0.99) stops at the d_gbath architrave (y 5.96); the stairs2
+  raking rail starts there (v4 f_0190, f_0196, v6 f_0014).
+- Integration (circulation owner, round 3): the main-flight handrail no longer tenons into the top newel at Z 3.75. It
+  dies about 25 mm into the underside of a white fascia under the strip capping at y ~7.62 (v6 f_0038; fascia 0.10
+  deep, x 0.15..0.22, Z 3.32..3.42 by the strip, 3.13..3.23 by the step). Main spindles past the rail stop 5 mm into
+  the fascia (tread 14: stubs).

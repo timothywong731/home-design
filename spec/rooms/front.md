@@ -333,3 +333,8 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   y 0.19..0.67 as `front_elevation.md`.
 - Street doors swing outward (`d_street.swingInto = outside`), threshold 0.06 above the paving: unchanged.
 - Forecourt, wall, pier, cars, bins, flag: unchanged (`exterior.zones`, `boundaries`, `features`).
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 3.2 / doubt 4 The pier front_pier_w is 1.20 high (baseZ -0.14, cap top about 1.06): about 15 courses plus the cap,
+  standing 3-4 courses above the timber troughs (v2 t946 / t948, v4 t63).
+- The forecourt setts' brindle tone is #A19288 (it rendered salmon at #A98C7C), still about 20 % of the units.

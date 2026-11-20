@@ -1,7 +1,1193 @@
 [
  {
+  "name": "balcony.planter.0",
+  "room": "balcony",
+  "level": "1",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    0.12,
+    18.348
+   ],
+   [
+    0.72,
+    18.348
+   ],
+   [
+    0.72,
+    18.6
+   ],
+   [
+    0.12,
+    18.6
+   ]
+  ],
+  "zmin": 3.89,
+  "zmax": 4.104,
+  "height": 0.214
+ },
+ {
+  "name": "balcony.planter.1",
+  "room": "balcony",
+  "level": "1",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    0.85,
+    18.348
+   ],
+   [
+    1.45,
+    18.348
+   ],
+   [
+    1.45,
+    18.6
+   ],
+   [
+    0.85,
+    18.6
+   ]
+  ],
+  "zmin": 3.89,
+  "zmax": 4.104,
+  "height": 0.214
+ },
+ {
+  "name": "balcony.planter.2",
+  "room": "balcony",
+  "level": "1",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    1.58,
+    18.348
+   ],
+   [
+    2.18,
+    18.348
+   ],
+   [
+    2.18,
+    18.6
+   ],
+   [
+    1.58,
+    18.6
+   ]
+  ],
+  "zmin": 3.89,
+  "zmax": 4.104,
+  "height": 0.214
+ },
+ {
+  "name": "balcony.planter.3",
+  "room": "balcony",
+  "level": "1",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    2.238,
+    17.63
+   ],
+   [
+    2.49,
+    17.63
+   ],
+   [
+    2.49,
+    18.23
+   ],
+   [
+    2.238,
+    18.23
+   ]
+  ],
+  "zmin": 3.89,
+  "zmax": 4.104,
+  "height": 0.214
+ },
+ {
+  "name": "basement.boiler",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "boiler",
+  "obb": [
+   [
+    3.886,
+    8.17
+   ],
+   [
+    4.23,
+    8.17
+   ],
+   [
+    4.23,
+    8.61
+   ],
+   [
+    3.886,
+    8.61
+   ]
+  ],
+  "zmin": -1.41,
+  "zmax": -0.46,
+  "height": 0.95
+ },
+ {
+  "name": "basement.cylinder",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "cylinder",
+  "obb": [
+   [
+    3.62,
+    6.89
+   ],
+   [
+    4.24,
+    6.89
+   ],
+   [
+    4.24,
+    7.561
+   ],
+   [
+    3.62,
+    7.561
+   ]
+  ],
+  "zmin": -2.31,
+  "zmax": -0.52,
+  "height": 1.79
+ },
+ {
+  "name": "basement.netcab",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "cabinet",
+  "obb": [
+   [
+    1.25,
+    7.976
+   ],
+   [
+    1.7,
+    7.976
+   ],
+   [
+    1.7,
+    8.58
+   ],
+   [
+    1.25,
+    8.58
+   ]
+  ],
+  "zmin": -1.09,
+  "zmax": -0.59,
+  "height": 0.5
+ },
+ {
+  "name": "basement.rack.e",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "rack",
+  "obb": [
+   [
+    2.97,
+    5.195
+   ],
+   [
+    3.87,
+    5.195
+   ],
+   [
+    3.87,
+    5.595
+   ],
+   [
+    2.97,
+    5.595
+   ]
+  ],
+  "zmin": -2.31,
+  "zmax": -0.51,
+  "height": 1.8
+ },
+ {
+  "name": "basement.rack.w",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "rack",
+  "obb": [
+   [
+    2.07,
+    5.195
+   ],
+   [
+    2.97,
+    5.195
+   ],
+   [
+    2.97,
+    5.595
+   ],
+   [
+    2.07,
+    5.595
+   ]
+  ],
+  "zmin": -2.31,
+  "zmax": -0.51,
+  "height": 1.8
+ },
+ {
+  "name": "basement.shoe_rack.1",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "rack",
+  "obb": [
+   [
+    1.26,
+    6.45
+   ],
+   [
+    1.55,
+    6.45
+   ],
+   [
+    1.55,
+    7.45
+   ],
+   [
+    1.26,
+    7.45
+   ]
+  ],
+  "zmin": -2.31,
+  "zmax": -1.66,
+  "height": 0.65
+ },
+ {
+  "name": "basement.shoe_rack.2",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "rack",
+  "obb": [
+   [
+    1.26,
+    7.5
+   ],
+   [
+    1.55,
+    7.5
+   ],
+   [
+    1.55,
+    8.4
+   ],
+   [
+    1.26,
+    8.4
+   ]
+  ],
+  "zmin": -2.31,
+  "zmax": -1.46,
+  "height": 0.85
+ },
+ {
+  "name": "basement.stool.0",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "stool",
+  "obb": [
+   [
+    1.72,
+    5.24
+   ],
+   [
+    2.04,
+    5.24
+   ],
+   [
+    2.04,
+    5.56
+   ],
+   [
+    1.72,
+    5.56
+   ]
+  ],
+  "zmin": -2.3111,
+  "zmax": -1.8598,
+  "height": 0.4513
+ },
+ {
+  "name": "basement.stool.1",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "stool",
+  "obb": [
+   [
+    3.39,
+    6.09
+   ],
+   [
+    3.71,
+    6.09
+   ],
+   [
+    3.71,
+    6.41
+   ],
+   [
+    3.39,
+    6.41
+   ]
+  ],
+  "zmin": -2.3111,
+  "zmax": -1.8598,
+  "height": 0.4513
+ },
+ {
+  "name": "basement.vessel_heating",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "cylinder",
+  "obb": [
+   [
+    3.6099,
+    8.6591
+   ],
+   [
+    3.7259,
+    8.3549
+   ],
+   [
+    4.2553,
+    8.5568
+   ],
+   [
+    4.1393,
+    8.861
+   ]
+  ],
+  "zmin": -2.261,
+  "zmax": -1.672,
+  "height": 0.589
+ },
+ {
+  "name": "basement.vessel_potable",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "cylinder",
+  "obb": [
+   [
+    3.76,
+    7.5238
+   ],
+   [
+    4.14,
+    7.5238
+   ],
+   [
+    4.14,
+    7.7962
+   ],
+   [
+    3.76,
+    7.7962
+   ]
+  ],
+  "zmin": -2.3092,
+  "zmax": -2.0368,
+  "height": 0.2724
+ },
+ {
+  "name": "basement.wine_cooler",
+  "room": "basement",
+  "level": "B",
+  "plan_sym": "table_round",
+  "obb": [
+   [
+    3.574,
+    7.95
+   ],
+   [
+    3.75,
+    7.774
+   ],
+   [
+    3.926,
+    7.95
+   ],
+   [
+    3.75,
+    8.126
+   ]
+  ],
+  "zmin": -2.31,
+  "zmax": -1.56,
+  "height": 0.75
+ },
+ {
+  "name": "bathroom2.bath_mat",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "rug",
+  "obb": [
+   [
+    0.75,
+    12.35
+   ],
+   [
+    1.55,
+    12.35
+   ],
+   [
+    1.55,
+    12.85
+   ],
+   [
+    0.75,
+    12.85
+   ]
+  ],
+  "zmin": 6.0212,
+  "zmax": 6.032,
+  "height": 0.0108
+ },
+ {
+  "name": "bathroom2.mirror_cabinet",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "mirror",
+  "obb": [
+   [
+    1.68,
+    11.5
+   ],
+   [
+    2.26,
+    11.5
+   ],
+   [
+    2.26,
+    11.63
+   ],
+   [
+    1.68,
+    11.63
+   ]
+  ],
+  "zmin": 7.35,
+  "zmax": 8.05,
+  "height": 0.7
+ },
+ {
+  "name": "bathroom2.sauna",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "sauna",
+  "obb": [
+   [
+    1.66,
+    12.8
+   ],
+   [
+    3.03,
+    12.8
+   ],
+   [
+    3.03,
+    13.7
+   ],
+   [
+    1.66,
+    13.7
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 8.04,
+  "height": 2.02
+ },
+ {
+  "name": "bathroom2.shower.tray",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "shower",
+  "obb": [
+   [
+    0.41,
+    12.9
+   ],
+   [
+    1.62,
+    12.9
+   ],
+   [
+    1.62,
+    13.69
+   ],
+   [
+    0.41,
+    13.69
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.06,
+  "height": 0.04
+ },
+ {
+  "name": "bathroom2.tallcab",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "cabinet",
+  "obb": [
+   [
+    2.67,
+    11.5
+   ],
+   [
+    2.98,
+    11.5
+   ],
+   [
+    2.98,
+    11.85
+   ],
+   [
+    2.67,
+    11.85
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 8.06,
+  "height": 2.04
+ },
+ {
+  "name": "bathroom2.towel_rail",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "towel_rail",
+  "obb": [
+   [
+    1.17,
+    11.5
+   ],
+   [
+    1.67,
+    11.5
+   ],
+   [
+    1.67,
+    11.593
+   ],
+   [
+    1.17,
+    11.593
+   ]
+  ],
+  "zmin": 6.165,
+  "zmax": 7.82,
+  "height": 1.655
+ },
+ {
+  "name": "bathroom2.vanity",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "vanity",
+  "obb": [
+   [
+    1.68,
+    11.5
+   ],
+   [
+    2.26,
+    11.5
+   ],
+   [
+    2.26,
+    11.88
+   ],
+   [
+    1.68,
+    11.88
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.82,
+  "height": 0.8
+ },
+ {
+  "name": "bathroom2.wc",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "wc",
+  "obb": [
+   [
+    2.29,
+    11.74
+   ],
+   [
+    2.64,
+    11.74
+   ],
+   [
+    2.64,
+    12.27
+   ],
+   [
+    2.29,
+    12.27
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.446,
+  "height": 0.426,
+  "front": [
+   0.0,
+   1.0
+  ]
+ },
+ {
+  "name": "bathroom2.wc_unit",
+  "room": "bathroom2",
+  "level": "2",
+  "plan_sym": "cabinet",
+  "obb": [
+   [
+    2.26,
+    11.5
+   ],
+   [
+    2.67,
+    11.5
+   ],
+   [
+    2.67,
+    11.72
+   ],
+   [
+    2.26,
+    11.72
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.83,
+  "height": 0.81
+ },
+ {
+  "name": "blue_bedroom.bed",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "bed",
+  "obb": [
+   [
+    1.01,
+    14.62
+   ],
+   [
+    3.08,
+    14.62
+   ],
+   [
+    3.08,
+    16.1
+   ],
+   [
+    1.01,
+    16.1
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 4.489,
+  "height": 1.449,
+  "front": [
+   -1.0,
+   0.0
+  ]
+ },
+ {
+  "name": "blue_bedroom.bureau",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "bureau",
+  "obb": [
+   [
+    -0.628,
+    15.552
+   ],
+   [
+    -0.202,
+    15.552
+   ],
+   [
+    -0.202,
+    16.328
+   ],
+   [
+    -0.628,
+    16.328
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 4.045,
+  "height": 1.005,
+  "front": [
+   1.0,
+   -0.0
+  ]
+ },
+ {
+  "name": "blue_bedroom.mirror",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "mirror",
+  "obb": [
+   [
+    3.0321,
+    14.93
+   ],
+   [
+    3.1,
+    14.93
+   ],
+   [
+    3.1,
+    15.79
+   ],
+   [
+    3.0321,
+    15.79
+   ]
+  ],
+  "zmin": 4.6187,
+  "zmax": 5.3439,
+  "height": 0.7252
+ },
+ {
+  "name": "blue_bedroom.nightstand.0",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "bedside",
+  "obb": [
+   [
+    2.738,
+    14.21
+   ],
+   [
+    3.078,
+    14.21
+   ],
+   [
+    3.078,
+    14.63
+   ],
+   [
+    2.738,
+    14.63
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 3.64,
+  "height": 0.6
+ },
+ {
+  "name": "blue_bedroom.nightstand.1",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "bedside",
+  "obb": [
+   [
+    2.738,
+    16.11
+   ],
+   [
+    3.078,
+    16.11
+   ],
+   [
+    3.078,
+    16.53
+   ],
+   [
+    2.738,
+    16.53
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 3.64,
+  "height": 0.6
+ },
+ {
+  "name": "blue_bedroom.radiator",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "radiator",
+  "obb": [
+   [
+    -0.55,
+    13.531
+   ],
+   [
+    -0.4159,
+    13.531
+   ],
+   [
+    -0.4159,
+    14.976
+   ],
+   [
+    -0.55,
+    14.976
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 3.79,
+  "height": 0.75
+ },
+ {
+  "name": "blue_bedroom.stool",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "stool",
+  "obb": [
+   [
+    -0.47,
+    15.02
+   ],
+   [
+    -0.13,
+    15.02
+   ],
+   [
+    -0.13,
+    15.52
+   ],
+   [
+    -0.47,
+    15.52
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 3.54,
+  "height": 0.5
+ },
+ {
+  "name": "blue_bedroom.tv",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "tv",
+  "obb": [
+   [
+    -0.55,
+    13.635
+   ],
+   [
+    -0.4694,
+    13.635
+   ],
+   [
+    -0.4694,
+    14.865
+   ],
+   [
+    -0.55,
+    14.865
+   ]
+  ],
+  "zmin": 4.24,
+  "zmax": 4.95,
+  "height": 0.71,
+  "front": [
+   1.0,
+   -0.0
+  ]
+ },
+ {
+  "name": "blue_bedroom.tv_cabinet",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "cabinet",
+  "obb": [
+   [
+    0.418,
+    12.972
+   ],
+   [
+    1.012,
+    12.972
+   ],
+   [
+    1.012,
+    13.424
+   ],
+   [
+    0.418,
+    13.424
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 4.076,
+  "height": 1.036
+ },
+ {
+  "name": "blue_bedroom.wardrobe",
+  "room": "blue_bedroom",
+  "level": "1",
+  "plan_sym": "wardrobe",
+  "obb": [
+   [
+    2.526,
+    12.978
+   ],
+   [
+    3.078,
+    12.978
+   ],
+   [
+    3.078,
+    14.242
+   ],
+   [
+    2.526,
+    14.242
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 5.09,
+  "height": 2.05,
+  "front": [
+   -1.0,
+   0.0
+  ]
+ },
+ {
+  "name": "blue_ensuite.bath",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "bath",
+  "obb": [
+   [
+    0.5,
+    11.15
+   ],
+   [
+    1.255,
+    11.15
+   ],
+   [
+    1.255,
+    12.85
+   ],
+   [
+    0.5,
+    12.85
+   ]
+  ],
+  "zmin": 3.2,
+  "zmax": 3.6,
+  "height": 0.4
+ },
+ {
+  "name": "blue_ensuite.mat",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "rug",
+  "obb": [
+   [
+    1.5,
+    11.795
+   ],
+   [
+    2.0,
+    11.795
+   ],
+   [
+    2.0,
+    12.645
+   ],
+   [
+    1.5,
+    12.645
+   ]
+  ],
+  "zmin": 3.0412,
+  "zmax": 3.048,
+  "height": 0.0068
+ },
+ {
+  "name": "blue_ensuite.mirror",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "mirror",
+  "obb": [
+   [
+    1.33,
+    11.15
+   ],
+   [
+    1.83,
+    11.15
+   ],
+   [
+    1.83,
+    11.156
+   ],
+   [
+    1.33,
+    11.156
+   ]
+  ],
+  "zmin": 4.28,
+  "zmax": 5.0,
+  "height": 0.72
+ },
+ {
+  "name": "blue_ensuite.shelf",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "shelf",
+  "obb": [
+   [
+    0.55,
+    12.73
+   ],
+   [
+    1.1,
+    12.73
+   ],
+   [
+    1.1,
+    12.85
+   ],
+   [
+    0.55,
+    12.85
+   ]
+  ],
+  "zmin": 4.28,
+  "zmax": 4.37,
+  "height": 0.09
+ },
+ {
+  "name": "blue_ensuite.shower.tray",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "shower",
+  "obb": [
+   [
+    2.1,
+    11.75
+   ],
+   [
+    2.898,
+    11.75
+   ],
+   [
+    2.898,
+    12.848
+   ],
+   [
+    2.1,
+    12.848
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 3.08,
+  "height": 0.04
+ },
+ {
+  "name": "blue_ensuite.towel_rail",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "towel_rail",
+  "obb": [
+   [
+    1.93,
+    11.15
+   ],
+   [
+    2.43,
+    11.15
+   ],
+   [
+    2.43,
+    11.243
+   ],
+   [
+    1.93,
+    11.243
+   ]
+  ],
+  "zmin": 3.315,
+  "zmax": 4.87,
+  "height": 1.555
+ },
+ {
+  "name": "blue_ensuite.vanity",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "vanity",
+  "obb": [
+   [
+    1.28,
+    11.15
+   ],
+   [
+    1.88,
+    11.15
+   ],
+   [
+    1.88,
+    11.53
+   ],
+   [
+    1.28,
+    11.53
+   ]
+  ],
+  "zmin": 3.14,
+  "zmax": 3.74,
+  "height": 0.6
+ },
+ {
+  "name": "blue_ensuite.wc",
+  "room": "blue_ensuite",
+  "level": "1",
+  "plan_sym": "wc",
+  "obb": [
+   [
+    2.368,
+    11.3
+   ],
+   [
+    2.898,
+    11.3
+   ],
+   [
+    2.898,
+    11.66
+   ],
+   [
+    2.368,
+    11.66
+   ]
+  ],
+  "zmin": 3.1,
+  "zmax": 3.466,
+  "height": 0.366,
+  "front": [
+   -1.0,
+   0.0
+  ]
+ },
+ {
   "name": "dining.chair.0",
   "room": "dining",
+  "level": "G",
   "plan_sym": "chair",
   "obb": [
    [
@@ -28,6 +1214,7 @@
  {
   "name": "dining.chair.1",
   "room": "dining",
+  "level": "G",
   "plan_sym": "chair",
   "obb": [
    [
@@ -54,6 +1241,7 @@
  {
   "name": "dining.chair.2",
   "room": "dining",
+  "level": "G",
   "plan_sym": "chair",
   "obb": [
    [
@@ -80,6 +1268,7 @@
  {
   "name": "dining.chair.3",
   "room": "dining",
+  "level": "G",
   "plan_sym": "armchair",
   "obb": [
    [
@@ -106,6 +1295,7 @@
  {
   "name": "dining.chair.4",
   "room": "dining",
+  "level": "G",
   "plan_sym": "chair",
   "obb": [
    [
@@ -132,6 +1322,7 @@
  {
   "name": "dining.chair.5",
   "room": "dining",
+  "level": "G",
   "plan_sym": "chair",
   "obb": [
    [
@@ -158,6 +1349,7 @@
  {
   "name": "dining.chair.6",
   "room": "dining",
+  "level": "G",
   "plan_sym": "armchair",
   "obb": [
    [
@@ -184,6 +1376,7 @@
  {
   "name": "dining.chair.7",
   "room": "dining",
+  "level": "G",
   "plan_sym": "chair",
   "obb": [
    [
@@ -210,23 +1403,24 @@
  {
   "name": "dining.citrus",
   "room": "dining",
+  "level": "G",
   "plan_sym": "plant",
   "obb": [
    [
-    2.2847,
-    16.834
+    2.3047,
+    17.034
    ],
    [
-    2.185,
-    16.0725
+    2.205,
+    16.2725
    ],
    [
-    2.9433,
-    15.9733
+    2.9633,
+    16.1733
    ],
    [
-    3.043,
-    16.7348
+    3.063,
+    16.9348
    ]
   ],
   "zmin": 0.0,
@@ -236,6 +1430,7 @@
  {
   "name": "dining.fireplace",
   "room": "dining",
+  "level": "G",
   "plan_sym": "fireplace",
   "obb": [
    [
@@ -255,13 +1450,14 @@
     15.365
    ]
   ],
-  "zmin": 0.0,
-  "zmax": 1.19,
+  "zmin": 0.02,
+  "zmax": 1.21,
   "height": 1.19
  },
  {
   "name": "dining.mirror",
   "room": "dining",
+  "level": "G",
   "plan_sym": "mirror",
   "obb": [
    [
@@ -288,6 +1484,7 @@
  {
   "name": "dining.table",
   "room": "dining",
+  "level": "G",
   "plan_sym": "table",
   "obb": [
    [
@@ -314,6 +1511,7 @@
  {
   "name": "dining.tv",
   "room": "dining",
+  "level": "G",
   "plan_sym": "tv",
   "obb": [
    [
@@ -335,11 +1533,1479 @@
   ],
   "zmin": 1.15,
   "zmax": 2.23,
-  "height": 1.08
+  "height": 1.08,
+  "front": [
+   0.0,
+   1.0
+  ]
+ },
+ {
+  "name": "facade.downpipe.1",
+  "room": "facade",
+  "level": "X",
+  "plan_sym": "pipe",
+  "obb": [
+   [
+    4.3477,
+    9.046
+   ],
+   [
+    4.4123,
+    9.046
+   ],
+   [
+    4.4123,
+    9.114
+   ],
+   [
+    4.3477,
+    9.114
+   ]
+  ],
+  "zmin": -0.297,
+  "zmax": 6.577,
+  "height": 6.874
+ },
+ {
+  "name": "facade.downpipe.2",
+  "room": "facade",
+  "level": "X",
+  "plan_sym": "pipe",
+  "obb": [
+   [
+    -0.7125,
+    -0.2325
+   ],
+   [
+    -0.6475,
+    -0.2325
+   ],
+   [
+    -0.6475,
+    -0.1675
+   ],
+   [
+    -0.7125,
+    -0.1675
+   ]
+  ],
+  "zmin": -0.0613,
+  "zmax": 2.75,
+  "height": 2.8113
+ },
+ {
+  "name": "facade.soil_stack",
+  "room": "facade",
+  "level": "X",
+  "plan_sym": "pipe",
+  "obb": [
+   [
+    3.3935,
+    12.35
+   ],
+   [
+    3.485,
+    12.2585
+   ],
+   [
+    3.5765,
+    12.35
+   ],
+   [
+    3.485,
+    12.4415
+   ]
+  ],
+  "zmin": -0.3275,
+  "zmax": 9.1275,
+  "height": 9.455
+ },
+ {
+  "name": "front.bin.0",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "bin",
+  "obb": [
+   [
+    3.838,
+    -0.8061
+   ],
+   [
+    4.5925,
+    -0.8061
+   ],
+   [
+    4.5925,
+    -0.2162
+   ],
+   [
+    3.838,
+    -0.2162
+   ]
+  ],
+  "zmin": -0.0703,
+  "zmax": 1.007,
+  "height": 1.0774
+ },
+ {
+  "name": "front.bin.1",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "bin",
+  "obb": [
+   [
+    3.838,
+    -1.4161
+   ],
+   [
+    4.5925,
+    -1.4161
+   ],
+   [
+    4.5925,
+    -0.8262
+   ],
+   [
+    3.838,
+    -0.8262
+   ]
+  ],
+  "zmin": -0.0799,
+  "zmax": 0.9974,
+  "height": 1.0774
+ },
+ {
+  "name": "front.caddy",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "bin",
+  "obb": [
+   [
+    4.188,
+    -1.7845
+   ],
+   [
+    4.6025,
+    -1.7845
+   ],
+   [
+    4.6025,
+    -1.4263
+   ],
+   [
+    4.188,
+    -1.4263
+   ]
+  ],
+  "zmin": -0.0854,
+  "zmax": 0.3138,
+  "height": 0.3991
+ },
+ {
+  "name": "front.car_grey",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "car",
+  "obb": [
+   [
+    -0.0654,
+    -5.0526
+   ],
+   [
+    1.6254,
+    -5.0526
+   ],
+   [
+    1.6254,
+    -1.1631
+   ],
+   [
+    -0.0654,
+    -1.1631
+   ]
+  ],
+  "zmin": 0.0442,
+  "zmax": 1.5006,
+  "height": 1.4565,
+  "front": [
+   -0.0,
+   -1.0
+  ]
+ },
+ {
+  "name": "front.car_white",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "car",
+  "obb": [
+   [
+    2.3446,
+    -5.1689
+   ],
+   [
+    3.9554,
+    -5.1689
+   ],
+   [
+    3.9554,
+    -1.7081
+   ],
+   [
+    2.3446,
+    -1.7081
+   ]
+  ],
+  "zmin": 0.0524,
+  "zmax": 1.4784,
+  "height": 1.426,
+  "front": [
+   -0.0,
+   -1.0
+  ]
+ },
+ {
+  "name": "front.flag.bracket",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "flagpole",
+  "obb": [
+   [
+    0.9544,
+    -0.2754
+   ],
+   [
+    1.0236,
+    -0.2671
+   ],
+   [
+    1.0134,
+    -0.1821
+   ],
+   [
+    0.9442,
+    -0.1904
+   ]
+  ],
+  "zmin": 2.315,
+  "zmax": 2.4754,
+  "height": 0.1604
+ },
+ {
+  "name": "front.lamp_column",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "pipe",
+  "obb": [
+   [
+    3.2488,
+    -7.0887
+   ],
+   [
+    3.3887,
+    -7.0512
+   ],
+   [
+    3.3512,
+    -6.9113
+   ],
+   [
+    3.2113,
+    -6.9488
+   ]
+  ],
+  "zmin": -0.16,
+  "zmax": 5.79,
+  "height": 5.95
+ },
+ {
+  "name": "front.planter",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    -0.9665,
+    -4.825
+   ],
+   [
+    -0.6936,
+    -4.825
+   ],
+   [
+    -0.6936,
+    -0.255
+   ],
+   [
+    -0.9665,
+    -0.255
+   ]
+  ],
+  "zmin": 0.718,
+  "zmax": 0.9858,
+  "height": 0.2678
+ },
+ {
+  "name": "front.tree",
+  "room": "front",
+  "level": "X",
+  "plan_sym": "pipe",
+  "obb": [
+   [
+    -0.7026,
+    -6.9425
+   ],
+   [
+    -0.5575,
+    -7.0026
+   ],
+   [
+    -0.4974,
+    -6.8575
+   ],
+   [
+    -0.6425,
+    -6.7974
+   ]
+  ],
+  "zmin": -0.16,
+  "zmax": 4.54,
+  "height": 4.7
+ },
+ {
+  "name": "garden.chair.0",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "chair",
+  "obb": [
+   [
+    -0.131,
+    18.066
+   ],
+   [
+    0.521,
+    18.066
+   ],
+   [
+    0.521,
+    18.674
+   ],
+   [
+    -0.131,
+    18.674
+   ]
+  ],
+  "zmin": -0.0583,
+  "zmax": 0.9795,
+  "height": 1.0379
+ },
+ {
+  "name": "garden.chair.1",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "chair",
+  "obb": [
+   [
+    -0.131,
+    18.716
+   ],
+   [
+    0.521,
+    18.716
+   ],
+   [
+    0.521,
+    19.324
+   ],
+   [
+    -0.131,
+    19.324
+   ]
+  ],
+  "zmin": -0.0583,
+  "zmax": 0.9795,
+  "height": 1.0379
+ },
+ {
+  "name": "garden.fire_pit",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "fire_pit",
+  "obb": [
+   [
+    0.765,
+    21.755
+   ],
+   [
+    1.775,
+    21.755
+   ],
+   [
+    1.775,
+    22.765
+   ],
+   [
+    0.765,
+    22.765
+   ]
+  ],
+  "zmin": -0.45,
+  "zmax": -0.235,
+  "height": 0.215
+ },
+ {
+  "name": "garden.lavender",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    -0.755,
+    20.5656
+   ],
+   [
+    -0.2095,
+    20.5665
+   ],
+   [
+    -0.214,
+    23.3808
+   ],
+   [
+    -0.7595,
+    23.3799
+   ]
+  ],
+  "zmin": -0.45,
+  "zmax": -0.0253,
+  "height": 0.4247
+ },
+ {
+  "name": "garden.planter.corner",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    -0.706,
+    19.744
+   ],
+   [
+    -0.294,
+    19.744
+   ],
+   [
+    -0.294,
+    20.156
+   ],
+   [
+    -0.706,
+    20.156
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 0.9317,
+  "height": 0.9817
+ },
+ {
+  "name": "garden.planter.pebble",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    2.294,
+    17.384
+   ],
+   [
+    3.306,
+    17.384
+   ],
+   [
+    3.306,
+    17.826
+   ],
+   [
+    2.294,
+    17.826
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 3.0,
+  "height": 3.05
+ },
+ {
+  "name": "garden.planter.square",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    2.944,
+    20.064
+   ],
+   [
+    3.376,
+    20.064
+   ],
+   [
+    3.376,
+    20.486
+   ],
+   [
+    2.944,
+    20.486
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 1.189,
+  "height": 1.239
+ },
+ {
+  "name": "garden.planter.trough",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    2.944,
+    18.194
+   ],
+   [
+    3.376,
+    18.194
+   ],
+   [
+    3.376,
+    20.056
+   ],
+   [
+    2.944,
+    20.056
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 0.418,
+  "height": 0.468
+ },
+ {
+  "name": "garden.planter.west",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "planter",
+  "obb": [
+   [
+    -0.716,
+    17.644
+   ],
+   [
+    -0.304,
+    17.644
+   ],
+   [
+    -0.304,
+    19.656
+   ],
+   [
+    -0.716,
+    19.656
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 0.388,
+  "height": 0.438
+ },
+ {
+  "name": "garden.pot.maple",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    2.4367,
+    18.7576
+   ],
+   [
+    2.6924,
+    18.5867
+   ],
+   [
+    2.8633,
+    18.8424
+   ],
+   [
+    2.6076,
+    19.0133
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 0.6906,
+  "height": 0.7406
+ },
+ {
+  "name": "garden.pot.rosemary",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    2.5231,
+    19.6182
+   ],
+   [
+    2.5818,
+    19.3231
+   ],
+   [
+    2.8769,
+    19.3818
+   ],
+   [
+    2.8182,
+    19.6769
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 0.19,
+  "height": 0.24
+ },
+ {
+  "name": "garden.pot.spider",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    0.3224,
+    17.7156
+   ],
+   [
+    0.2244,
+    17.8624
+   ],
+   [
+    0.0776,
+    17.7644
+   ],
+   [
+    0.1756,
+    17.6176
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 0.1,
+  "height": 0.15
+ },
+ {
+  "name": "garden.pot.terracotta",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    2.4578,
+    20.3618
+   ],
+   [
+    2.5382,
+    19.9578
+   ],
+   [
+    2.9422,
+    20.0382
+   ],
+   [
+    2.8618,
+    20.4422
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 1.55,
+  "height": 1.6
+ },
+ {
+  "name": "garden.pot.thyme",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    -0.0017,
+    20.028
+   ],
+   [
+    0.072,
+    20.3983
+   ],
+   [
+    -0.2983,
+    20.472
+   ],
+   [
+    -0.372,
+    20.1017
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 0.28,
+  "height": 0.33
+ },
+ {
+  "name": "garden.trellis.0",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "trellis",
+  "obb": [
+   [
+    -0.748,
+    17.85
+   ],
+   [
+    -0.713,
+    17.85
+   ],
+   [
+    -0.713,
+    18.75
+   ],
+   [
+    -0.748,
+    18.75
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 1.45,
+  "height": 1.5
+ },
+ {
+  "name": "garden.trellis.1",
+  "room": "garden",
+  "level": "X",
+  "plan_sym": "trellis",
+  "obb": [
+   [
+    -0.748,
+    18.75
+   ],
+   [
+    -0.713,
+    18.75
+   ],
+   [
+    -0.713,
+    19.65
+   ],
+   [
+    -0.748,
+    19.65
+   ]
+  ],
+  "zmin": -0.05,
+  "zmax": 1.45,
+  "height": 1.5
+ },
+ {
+  "name": "green_bathroom.bath",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "bath",
+  "obb": [
+   [
+    3.406,
+    6.137
+   ],
+   [
+    4.154,
+    6.137
+   ],
+   [
+    4.154,
+    7.715
+   ],
+   [
+    3.406,
+    7.715
+   ]
+  ],
+  "zmin": 3.57,
+  "zmax": 4.1984,
+  "height": 0.6284
+ },
+ {
+  "name": "green_bathroom.mat.0",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "rug",
+  "obb": [
+   [
+    1.8,
+    7.2
+   ],
+   [
+    2.6,
+    7.2
+   ],
+   [
+    2.6,
+    7.7
+   ],
+   [
+    1.8,
+    7.7
+   ]
+  ],
+  "zmin": 3.4212,
+  "zmax": 3.432,
+  "height": 0.0108
+ },
+ {
+  "name": "green_bathroom.mat.1",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "rug",
+  "obb": [
+   [
+    2.8,
+    6.6
+   ],
+   [
+    3.3,
+    6.6
+   ],
+   [
+    3.3,
+    7.4
+   ],
+   [
+    2.8,
+    7.4
+   ]
+  ],
+  "zmin": 3.4212,
+  "zmax": 3.432,
+  "height": 0.0108
+ },
+ {
+  "name": "green_bathroom.mirror",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "mirror",
+  "obb": [
+   [
+    4.26,
+    6.45
+   ],
+   [
+    4.3,
+    6.45
+   ],
+   [
+    4.3,
+    7.45
+   ],
+   [
+    4.26,
+    7.45
+   ]
+  ],
+  "zmin": 4.9,
+  "zmax": 5.32,
+  "height": 0.42
+ },
+ {
+  "name": "green_bathroom.mirror_cabinet",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "wall_unit",
+  "obb": [
+   [
+    1.25,
+    6.22
+   ],
+   [
+    1.38,
+    6.22
+   ],
+   [
+    1.38,
+    7.45
+   ],
+   [
+    1.25,
+    7.45
+   ]
+  ],
+  "zmin": 4.66,
+  "zmax": 5.38,
+  "height": 0.72
+ },
+ {
+  "name": "green_bathroom.shower_tray",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "shower",
+  "obb": [
+   [
+    1.258,
+    7.83
+   ],
+   [
+    2.65,
+    7.83
+   ],
+   [
+    2.65,
+    8.722
+   ],
+   [
+    1.258,
+    8.722
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 3.4608,
+  "height": 0.0408
+ },
+ {
+  "name": "green_bathroom.towel_rail",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "towel_rail",
+  "obb": [
+   [
+    2.72,
+    8.637
+   ],
+   [
+    3.32,
+    8.637
+   ],
+   [
+    3.32,
+    8.73
+   ],
+   [
+    2.72,
+    8.73
+   ]
+  ],
+  "zmin": 3.615,
+  "zmax": 5.27,
+  "height": 1.655
+ },
+ {
+  "name": "green_bathroom.vanity",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "vanity",
+  "obb": [
+   [
+    1.252,
+    6.102
+   ],
+   [
+    1.68,
+    6.102
+   ],
+   [
+    1.68,
+    7.548
+   ],
+   [
+    1.252,
+    7.548
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 3.522,
+  "height": 0.102
+ },
+ {
+  "name": "green_bathroom.wc",
+  "room": "green_bathroom",
+  "level": "1",
+  "plan_sym": "wc",
+  "obb": [
+   [
+    3.55,
+    5.23
+   ],
+   [
+    4.08,
+    5.23
+   ],
+   [
+    4.08,
+    5.59
+   ],
+   [
+    3.55,
+    5.59
+   ]
+  ],
+  "zmin": 3.505,
+  "zmax": 3.826,
+  "height": 0.321,
+  "front": [
+   -1.0,
+   0.0
+  ]
+ },
+ {
+  "name": "green_bedroom.armchair",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "armchair",
+  "obb": [
+   [
+    3.1094,
+    0.2943
+   ],
+   [
+    3.7966,
+    0.6417
+   ],
+   [
+    3.4444,
+    1.3384
+   ],
+   [
+    2.7572,
+    0.9909
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 4.4383,
+  "height": 1.0183
+ },
+ {
+  "name": "green_bedroom.armchair.footstool",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "stool",
+  "obb": [
+   [
+    3.0523,
+    0.6535
+   ],
+   [
+    3.4369,
+    0.6321
+   ],
+   [
+    3.4606,
+    1.0601
+   ],
+   [
+    3.076,
+    1.0814
+   ]
+  ],
+  "zmin": 3.49,
+  "zmax": 3.61,
+  "height": 0.12
+ },
+ {
+  "name": "green_bedroom.bed",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "bed",
+  "obb": [
+   [
+    2.2,
+    1.47
+   ],
+   [
+    4.3,
+    1.47
+   ],
+   [
+    4.3,
+    3.11
+   ],
+   [
+    2.2,
+    3.11
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 4.71,
+  "height": 1.29,
+  "front": [
+   -1.0,
+   0.0
+  ]
+ },
+ {
+  "name": "green_bedroom.blanket_chest",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "chest",
+  "obb": [
+   [
+    1.7,
+    1.69
+   ],
+   [
+    2.16,
+    1.69
+   ],
+   [
+    2.16,
+    2.89
+   ],
+   [
+    1.7,
+    2.89
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 3.91,
+  "height": 0.49
+ },
+ {
+  "name": "green_bedroom.bureau",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "bureau",
+  "obb": [
+   [
+    0.32,
+    1.012
+   ],
+   [
+    1.08,
+    1.012
+   ],
+   [
+    1.08,
+    1.462
+   ],
+   [
+    0.32,
+    1.462
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 4.44,
+  "height": 1.02,
+  "front": [
+   0.0,
+   1.0
+  ]
+ },
+ {
+  "name": "green_bedroom.corner_chair",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "chair",
+  "obb": [
+   [
+    1.685,
+    0.495
+   ],
+   [
+    2.212,
+    0.495
+   ],
+   [
+    2.212,
+    1.022
+   ],
+   [
+    1.685,
+    1.022
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 4.24,
+  "height": 0.82
+ },
+ {
+  "name": "green_bedroom.dresser",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "chest",
+  "obb": [
+   [
+    -0.625,
+    1.538
+   ],
+   [
+    -0.112,
+    1.538
+   ],
+   [
+    -0.112,
+    3.362
+   ],
+   [
+    -0.625,
+    3.362
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 4.28,
+  "height": 0.86
+ },
+ {
+  "name": "green_bedroom.drum_table",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "table_round",
+  "obb": [
+   [
+    2.325,
+    0.405
+   ],
+   [
+    2.875,
+    0.405
+   ],
+   [
+    2.875,
+    0.955
+   ],
+   [
+    2.325,
+    0.955
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 3.9732,
+  "height": 0.5532
+ },
+ {
+  "name": "green_bedroom.mirror",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "mirror",
+  "obb": [
+   [
+    -0.65,
+    3.72
+   ],
+   [
+    -0.615,
+    3.72
+   ],
+   [
+    -0.615,
+    4.5
+   ],
+   [
+    -0.65,
+    4.5
+   ]
+  ],
+  "zmin": 3.7,
+  "zmax": 5.5,
+  "height": 1.8
+ },
+ {
+  "name": "green_bedroom.nightstand_n",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "bedside",
+  "obb": [
+   [
+    3.959,
+    3.145
+   ],
+   [
+    4.28,
+    3.145
+   ],
+   [
+    4.28,
+    3.535
+   ],
+   [
+    3.959,
+    3.535
+   ]
+  ],
+  "zmin": 3.715,
+  "zmax": 4.12,
+  "height": 0.405
+ },
+ {
+  "name": "green_bedroom.nightstand_s",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "bedside",
+  "obb": [
+   [
+    3.959,
+    1.045
+   ],
+   [
+    4.28,
+    1.045
+   ],
+   [
+    4.28,
+    1.435
+   ],
+   [
+    3.959,
+    1.435
+   ]
+  ],
+  "zmin": 3.715,
+  "zmax": 4.12,
+  "height": 0.405
+ },
+ {
+  "name": "green_bedroom.plant",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    -0.5294,
+    1.1534
+   ],
+   [
+    -0.1541,
+    1.2408
+   ],
+   [
+    -0.2252,
+    1.5462
+   ],
+   [
+    -0.6006,
+    1.4588
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 4.5474,
+  "height": 1.1274
+ },
+ {
+  "name": "green_bedroom.radiator",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "radiator",
+  "obb": [
+   [
+    1.773,
+    0.14
+   ],
+   [
+    3.304,
+    0.14
+   ],
+   [
+    3.304,
+    0.264
+   ],
+   [
+    1.773,
+    0.264
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 4.02,
+  "height": 0.6
+ },
+ {
+  "name": "green_bedroom.tv",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "tv",
+  "obb": [
+   [
+    -0.65,
+    1.5
+   ],
+   [
+    -0.5794,
+    1.5
+   ],
+   [
+    -0.5794,
+    3.4
+   ],
+   [
+    -0.65,
+    3.4
+   ]
+  ],
+  "zmin": 4.52,
+  "zmax": 5.6,
+  "height": 1.08,
+  "front": [
+   1.0,
+   -0.0
+  ]
+ },
+ {
+  "name": "green_bedroom.wardrobe_big",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "wardrobe",
+  "obb": [
+   [
+    0.8,
+    4.3
+   ],
+   [
+    2.1,
+    4.3
+   ],
+   [
+    2.1,
+    4.805
+   ],
+   [
+    0.8,
+    4.805
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 5.14,
+  "height": 1.72,
+  "front": [
+   -0.0,
+   -1.0
+  ]
+ },
+ {
+  "name": "green_bedroom.wardrobe_small",
+  "room": "green_bedroom",
+  "level": "1",
+  "plan_sym": "wardrobe",
+  "obb": [
+   [
+    3.79,
+    3.7
+   ],
+   [
+    4.275,
+    3.7
+   ],
+   [
+    4.275,
+    4.72
+   ],
+   [
+    3.79,
+    4.72
+   ]
+  ],
+  "zmin": 3.42,
+  "zmax": 5.22,
+  "height": 1.8,
+  "front": [
+   -1.0,
+   0.0
+  ]
  },
  {
   "name": "hallway.console",
   "room": "hallway",
+  "level": "G",
   "plan_sym": "console",
   "obb": [
    [
@@ -366,6 +3032,7 @@
  {
   "name": "hallway.mirror",
   "room": "hallway",
+  "level": "G",
   "plan_sym": "mirror",
   "obb": [
    [
@@ -392,6 +3059,7 @@
  {
   "name": "kitchen.base.hob",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "base_unit",
   "obb": [
    [
@@ -418,6 +3086,7 @@
  {
   "name": "kitchen.base.sink",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "base_unit",
   "obb": [
    [
@@ -444,22 +3113,23 @@
  {
   "name": "kitchen.bin.black",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "bin",
   "obb": [
    [
-    2.66,
+    2.785,
     8.31
    ],
    [
-    3.1,
+    3.225,
     8.31
    ],
    [
-    3.1,
+    3.225,
     8.708
    ],
    [
-    2.66,
+    2.785,
     8.708
    ]
   ],
@@ -470,6 +3140,7 @@
  {
   "name": "kitchen.bin.steel",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "bin",
   "obb": [
    [
@@ -496,6 +3167,7 @@
  {
   "name": "kitchen.fridge",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "fridge",
   "obb": [
    [
@@ -522,6 +3194,7 @@
  {
   "name": "kitchen.fridge_housing",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "tall_unit",
   "obb": [
    [
@@ -548,6 +3221,7 @@
  {
   "name": "kitchen.hob",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "hob",
   "obb": [
    [
@@ -574,6 +3248,7 @@
  {
   "name": "kitchen.nook.base",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "base_unit",
   "obb": [
    [
@@ -600,6 +3275,7 @@
  {
   "name": "kitchen.nook.shelves",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "shelf",
   "obb": [
    [
@@ -626,6 +3302,7 @@
  {
   "name": "kitchen.sink",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "sink",
   "obb": [
    [
@@ -652,6 +3329,7 @@
  {
   "name": "kitchen.tower",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "oven_tower",
   "obb": [
    [
@@ -678,6 +3356,7 @@
  {
   "name": "kitchen.wall.corner",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "wall_unit",
   "obb": [
    [
@@ -704,6 +3383,7 @@
  {
   "name": "kitchen.wall.sink",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "wall_unit",
   "obb": [
    [
@@ -730,6 +3410,7 @@
  {
   "name": "kitchen.wall.w1",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "wall_unit",
   "obb": [
    [
@@ -756,6 +3437,7 @@
  {
   "name": "kitchen.wall.w2",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "wall_unit",
   "obb": [
    [
@@ -782,6 +3464,7 @@
  {
   "name": "kitchen.worktop.hob",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "worktop",
   "obb": [
    [
@@ -808,6 +3491,7 @@
  {
   "name": "kitchen.worktop.nook",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "worktop",
   "obb": [
    [
@@ -834,6 +3518,7 @@
  {
   "name": "kitchen.worktop.sink",
   "room": "kitchen",
+  "level": "G",
   "plan_sym": "worktop",
   "obb": [
    [
@@ -858,25 +3543,53 @@
   "height": 0.13
  },
  {
+  "name": "landing1_rear.radiator",
+  "room": "landing1_rear",
+  "level": "1",
+  "plan_sym": "radiator",
+  "obb": [
+   [
+    -0.6015,
+    10.074
+   ],
+   [
+    -0.5365,
+    10.074
+   ],
+   [
+    -0.5365,
+    10.896
+   ],
+   [
+    -0.6015,
+    10.896
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 3.74,
+  "height": 0.7
+ },
+ {
   "name": "living.aircon",
   "room": "living",
+  "level": "G",
   "plan_sym": "radiator",
   "obb": [
    [
     4.0636,
-    3.45
+    3.805
    ],
    [
     4.3,
-    3.45
+    3.805
    ],
    [
     4.3,
-    4.2
+    4.555
    ],
    [
     4.0636,
-    4.2
+    4.555
    ]
   ],
   "zmin": 0.1,
@@ -886,6 +3599,7 @@
  {
   "name": "living.armchair.0",
   "room": "living",
+  "level": "G",
   "plan_sym": "armchair",
   "obb": [
    [
@@ -912,6 +3626,7 @@
  {
   "name": "living.armchair.1",
   "room": "living",
+  "level": "G",
   "plan_sym": "armchair",
   "obb": [
    [
@@ -938,23 +3653,24 @@
  {
   "name": "living.bench",
   "room": "living",
+  "level": "G",
   "plan_sym": "stool",
   "obb": [
    [
-    2.273,
-    3.738
+    2.323,
+    3.538
    ],
    [
-    3.427,
-    3.738
+    3.477,
+    3.538
    ],
    [
-    3.427,
-    4.162
+    3.477,
+    3.962
    ],
    [
-    2.273,
-    4.162
+    2.323,
+    3.962
    ]
   ],
   "zmin": 0.0,
@@ -964,49 +3680,55 @@
  {
   "name": "living.bookcase",
   "room": "living",
+  "level": "G",
   "plan_sym": "bookcase",
   "obb": [
    [
     1.9756,
-    4.3475
+    4.7875
    ],
    [
     3.7744,
-    4.3475
+    4.7875
    ],
    [
     3.7744,
-    4.7327
+    5.1727
    ],
    [
     1.9756,
-    4.7327
+    5.1727
    ]
   ],
   "zmin": 0.0,
   "zmax": 1.7829,
-  "height": 1.7829
+  "height": 1.7829,
+  "front": [
+   -0.0,
+   -1.0
+  ]
  },
  {
   "name": "living.coffee_table",
   "room": "living",
+  "level": "G",
   "plan_sym": "coffee_table",
   "obb": [
    [
     2.49,
-    2.01
+    1.53
    ],
    [
     3.11,
-    2.01
+    1.53
    ],
    [
     3.11,
-    3.61
+    3.13
    ],
    [
     2.49,
-    3.61
+    3.13
    ]
   ],
   "zmin": -0.0,
@@ -1016,23 +3738,24 @@
  {
   "name": "living.footstool",
   "room": "living",
+  "level": "G",
   "plan_sym": "stool",
   "obb": [
    [
-    2.8941,
-    1.4862
+    2.8773,
+    0.9567
    ],
    [
-    2.9573,
-    1.0367
+    3.4259,
+    1.0338
    ],
    [
-    3.5059,
-    1.1138
+    3.3627,
+    1.4833
    ],
    [
-    3.4427,
-    1.5633
+    2.8141,
+    1.4062
    ]
   ],
   "zmin": 0.0,
@@ -1042,6 +3765,7 @@
  {
   "name": "living.lamp_table",
   "room": "living",
+  "level": "G",
   "plan_sym": "table_round",
   "obb": [
    [
@@ -1068,23 +3792,24 @@
  {
   "name": "living.pedestal",
   "room": "living",
+  "level": "G",
   "plan_sym": "table_round",
   "obb": [
    [
-    3.8114,
-    4.4663
+    3.7614,
+    4.9163
    ],
    [
-    4.07,
-    4.2077
+    4.02,
+    4.6577
    ],
    [
-    4.3286,
-    4.4663
+    4.2786,
+    4.9163
    ],
    [
-    4.07,
-    4.7249
+    4.02,
+    5.1749
    ]
   ],
   "zmin": 0.0,
@@ -1094,49 +3819,51 @@
  {
   "name": "living.plant",
   "room": "living",
+  "level": "G",
   "plan_sym": "plant",
   "obb": [
    [
-    1.4573,
-    4.3597
+    1.2702,
+    5.1129
    ],
    [
-    1.5767,
-    3.9837
+    1.3555,
+    4.5284
    ],
    [
-    2.0585,
-    4.1367
+    2.0023,
+    4.6228
    ],
    [
-    1.939,
-    4.5127
+    1.917,
+    5.2073
    ]
   ],
   "zmin": 0.0,
-  "zmax": 1.1154,
-  "height": 1.1154
+  "zmax": 1.0477,
+  "height": 1.0477
  },
  {
   "name": "living.rug",
   "room": "living",
+  "level": "G",
   "plan_sym": "rug",
   "obb": [
    [
-    1.9,
-    1.76
+    2.1,
+    1.33
    ],
    [
-    3.3,
-    1.76
+    3.5,
+    1.33
    ],
    [
-    3.3,
-    3.76
+    3.5,
+    3.33
    ],
    [
-    1.9,
-    3.76
+    2.1,
+    3.33
    ]
   ],
   "zmin": 0.0012,
@@ -1146,23 +3873,24 @@
  {
   "name": "living.side_table",
   "room": "living",
+  "level": "G",
   "plan_sym": "table",
   "obb": [
    [
-    3.895,
-    2.97
+    3.9,
+    3.285
    ],
    [
-    4.265,
-    2.97
+    4.27,
+    3.285
    ],
    [
-    4.265,
-    3.44
+    4.27,
+    3.755
    ],
    [
-    3.895,
-    3.44
+    3.9,
+    3.755
    ]
   ],
   "zmin": 0.0,
@@ -1172,23 +3900,24 @@
  {
   "name": "living.sofa",
   "room": "living",
+  "level": "G",
   "plan_sym": "sofa",
   "obb": [
    [
     3.566,
-    1.1417
+    1.4217
    ],
    [
     4.28,
-    1.1417
+    1.4217
    ],
    [
     4.28,
-    2.9583
+    3.2383
    ],
    [
     3.566,
-    2.9583
+    3.2383
    ]
   ],
   "zmin": 0.0,
@@ -1198,49 +3927,55 @@
  {
   "name": "living.tv",
   "room": "living",
+  "level": "G",
   "plan_sym": "tv",
   "obb": [
    [
     0.8,
-    1.38
+    1.385
    ],
    [
     0.8706,
-    1.38
+    1.385
    ],
    [
     0.8706,
-    3.27
+    3.275
    ],
    [
     0.8,
-    3.27
+    3.275
    ]
   ],
   "zmin": 0.72,
   "zmax": 1.8,
-  "height": 1.08
+  "height": 1.08,
+  "front": [
+   1.0,
+   -0.0
+  ]
  },
  {
   "name": "living.tv_unit",
   "room": "living",
+  "level": "G",
   "plan_sym": "tv_unit",
   "obb": [
    [
     0.81,
-    1.315
+    1.415
    ],
    [
     1.3078,
-    1.315
+    1.415
    ],
    [
     1.3078,
-    3.145
+    3.245
    ],
    [
     0.81,
-    3.145
+    3.245
    ]
   ],
   "zmin": 0.0,
@@ -1248,60 +3983,1090 @@
   "height": 0.89
  },
  {
-  "name": "stairs.flight",
+  "name": "loft_office.bookcase",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "bookcase",
+  "obb": [
+   [
+    0.82,
+    2.575
+   ],
+   [
+    1.72,
+    2.575
+   ],
+   [
+    1.72,
+    2.875
+   ],
+   [
+    0.82,
+    2.875
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 7.35,
+  "height": 0.86,
+  "front": [
+   0.0,
+   1.0
+  ]
+ },
+ {
+  "name": "loft_office.cabinet",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "cabinet",
+  "obb": [
+   [
+    0.26,
+    5.268
+   ],
+   [
+    1.3,
+    5.268
+   ],
+   [
+    1.3,
+    6.05
+   ],
+   [
+    0.26,
+    6.05
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 8.608,
+  "height": 2.118
+ },
+ {
+  "name": "loft_office.chair",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "chair",
+  "obb": [
+   [
+    -0.2507,
+    3.021
+   ],
+   [
+    0.3507,
+    3.021
+   ],
+   [
+    0.3507,
+    3.595
+   ],
+   [
+    -0.2507,
+    3.595
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 7.468,
+  "height": 0.978
+ },
+ {
+  "name": "loft_office.coffee_table",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "coffee_table",
+  "obb": [
+   [
+    0.95,
+    3.15
+   ],
+   [
+    1.95,
+    3.15
+   ],
+   [
+    1.95,
+    3.65
+   ],
+   [
+    0.95,
+    3.65
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 6.94,
+  "height": 0.45
+ },
+ {
+  "name": "loft_office.desk",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "desk",
+  "obb": [
+   [
+    3.5,
+    3.6
+   ],
+   [
+    4.3,
+    3.6
+   ],
+   [
+    4.3,
+    5.4
+   ],
+   [
+    3.5,
+    5.4
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 7.233,
+  "height": 0.743,
+  "front": [
+   -1.0,
+   0.0
+  ]
+ },
+ {
+  "name": "loft_office.office_chair",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "office_chair",
+  "obb": [
+   [
+    2.6776,
+    4.0134
+   ],
+   [
+    3.3763,
+    4.0134
+   ],
+   [
+    3.3763,
+    4.675
+   ],
+   [
+    2.6776,
+    4.675
+   ]
+  ],
+  "zmin": 6.492,
+  "zmax": 7.7613,
+  "height": 1.2693
+ },
+ {
+  "name": "loft_office.pc_tower",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "cabinet",
+  "obb": [
+   [
+    3.935,
+    5.42
+   ],
+   [
+    4.165,
+    5.42
+   ],
+   [
+    4.165,
+    5.92
+   ],
+   [
+    3.935,
+    5.92
+   ]
+  ],
+  "zmin": 6.5,
+  "zmax": 7.0,
+  "height": 0.5
+ },
+ {
+  "name": "loft_office.plant",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    3.9145,
+    6.0131
+   ],
+   [
+    4.3483,
+    6.1143
+   ],
+   [
+    4.2364,
+    6.5937
+   ],
+   [
+    3.8026,
+    6.4925
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 7.1041,
+  "height": 0.6141
+ },
+ {
+  "name": "loft_office.radiator",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "radiator",
+  "obb": [
+   [
+    -0.61,
+    3.195
+   ],
+   [
+    -0.51,
+    3.195
+   ],
+   [
+    -0.51,
+    4.555
+   ],
+   [
+    -0.61,
+    4.555
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 7.141,
+  "height": 0.651
+ },
+ {
+  "name": "loft_office.stool",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "stool",
+  "obb": [
+   [
+    2.975,
+    5.075
+   ],
+   [
+    3.325,
+    5.075
+   ],
+   [
+    3.325,
+    5.625
+   ],
+   [
+    2.975,
+    5.625
+   ]
+  ],
+  "zmin": 6.4882,
+  "zmax": 6.982,
+  "height": 0.4938
+ },
+ {
+  "name": "loft_office.trolley",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "chest",
+  "obb": [
+   [
+    3.72,
+    2.75
+   ],
+   [
+    4.26,
+    2.75
+   ],
+   [
+    4.26,
+    3.2
+   ],
+   [
+    3.72,
+    3.2
+   ]
+  ],
+  "zmin": 6.49,
+  "zmax": 7.34,
+  "height": 0.85
+ },
+ {
+  "name": "loft_office.tv",
+  "room": "loft_office",
+  "level": "2",
+  "plan_sym": "tv",
+  "obb": [
+   [
+    1.25,
+    5.46
+   ],
+   [
+    1.2926,
+    5.46
+   ],
+   [
+    1.2926,
+    6.57
+   ],
+   [
+    1.25,
+    6.57
+   ]
+  ],
+  "zmin": 7.24,
+  "zmax": 7.88,
+  "height": 0.64,
+  "front": [
+   1.0,
+   -0.0
+  ]
+ },
+ {
+  "name": "purple_room.chair",
+  "room": "purple_room",
+  "level": "2",
+  "plan_sym": "chair",
+  "obb": [
+   [
+    1.5693,
+    9.311
+   ],
+   [
+    2.1707,
+    9.311
+   ],
+   [
+    2.1707,
+    9.8919
+   ],
+   [
+    1.5693,
+    9.8919
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.998,
+  "height": 0.978
+ },
+ {
+  "name": "purple_room.radiator",
+  "room": "purple_room",
+  "level": "2",
+  "plan_sym": "radiator",
+  "obb": [
+   [
+    3.0001,
+    9.952
+   ],
+   [
+    3.0699,
+    9.952
+   ],
+   [
+    3.0699,
+    10.5
+   ],
+   [
+    3.0001,
+    10.5
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.73,
+  "height": 0.71
+ },
+ {
+  "name": "shed.bench_back",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "workbench",
+  "obb": [
+   [
+    0.71,
+    28.0
+   ],
+   [
+    3.52,
+    28.0
+   ],
+   [
+    3.52,
+    28.62
+   ],
+   [
+    0.71,
+    28.62
+   ]
+  ],
+  "zmin": -0.32,
+  "zmax": 0.6,
+  "height": 0.92
+ },
+ {
+  "name": "shed.bench_east",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "workbench",
+  "obb": [
+   [
+    3.56,
+    26.53
+   ],
+   [
+    4.18,
+    26.53
+   ],
+   [
+    4.18,
+    28.62
+   ],
+   [
+    3.56,
+    28.62
+   ]
+  ],
+  "zmin": -0.32,
+  "zmax": 0.58,
+  "height": 0.9
+ },
+ {
+  "name": "shed.chest",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "chest",
+  "obb": [
+   [
+    2.04,
+    24.47
+   ],
+   [
+    2.61,
+    24.47
+   ],
+   [
+    2.61,
+    24.838
+   ],
+   [
+    2.04,
+    24.838
+   ]
+  ],
+  "zmin": -0.42,
+  "zmax": -0.088,
+  "height": 0.332
+ },
+ {
+  "name": "shed.garden_furniture",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "console",
+  "obb": [
+   [
+    2.5755,
+    24.6571
+   ],
+   [
+    2.5728,
+    24.9816
+   ],
+   [
+    1.0179,
+    24.969
+   ],
+   [
+    1.0205,
+    24.6445
+   ]
+  ],
+  "zmin": -0.42,
+  "zmax": 0.509,
+  "height": 0.929
+ },
+ {
+  "name": "shed.island",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "workbench",
+  "obb": [
+   [
+    0.31,
+    26.28
+   ],
+   [
+    2.75,
+    26.28
+   ],
+   [
+    2.75,
+    27.52
+   ],
+   [
+    0.31,
+    27.52
+   ]
+  ],
+  "zmin": -0.32,
+  "zmax": 0.58,
+  "height": 0.9
+ },
+ {
+  "name": "shed.mat",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "rug",
+  "obb": [
+   [
+    2.99,
+    24.385
+   ],
+   [
+    3.71,
+    24.385
+   ],
+   [
+    3.71,
+    24.855
+   ],
+   [
+    2.99,
+    24.855
+   ]
+  ],
+  "zmin": -0.4188,
+  "zmax": -0.409,
+  "height": 0.0098
+ },
+ {
+  "name": "shed.racking",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "rack",
+  "obb": [
+   [
+    -0.52,
+    28.15
+   ],
+   [
+    0.38,
+    28.15
+   ],
+   [
+    0.38,
+    28.6
+   ],
+   [
+    -0.52,
+    28.6
+   ]
+  ],
+  "zmin": -0.32,
+  "zmax": 1.48,
+  "height": 1.8
+ },
+ {
+  "name": "shed.veranda_rack",
+  "room": "shed",
+  "level": "X",
+  "plan_sym": "rack",
+  "obb": [
+   [
+    3.8,
+    23.42
+   ],
+   [
+    4.2,
+    23.42
+   ],
+   [
+    4.2,
+    24.37
+   ],
+   [
+    3.8,
+    24.37
+   ]
+  ],
+  "zmin": -0.42,
+  "zmax": 0.58,
+  "height": 1.0
+ },
+ {
+  "name": "side_passage.condenser.east",
+  "room": "side_passage",
+  "level": "X",
+  "plan_sym": "condenser",
+  "obb": [
+   [
+    4.53,
+    8.0
+   ],
+   [
+    4.97,
+    8.0
+   ],
+   [
+    4.97,
+    8.8
+   ],
+   [
+    4.53,
+    8.8
+   ]
+  ],
+  "zmin": 1.87,
+  "zmax": 2.85,
+  "height": 0.98
+ },
+ {
+  "name": "side_passage.condenser.flank",
+  "room": "side_passage",
+  "level": "X",
+  "plan_sym": "condenser",
+  "obb": [
+   [
+    3.4,
+    14.9
+   ],
+   [
+    3.84,
+    14.9
+   ],
+   [
+    3.84,
+    15.7
+   ],
+   [
+    3.4,
+    15.7
+   ]
+  ],
+  "zmin": 2.92,
+  "zmax": 3.9,
+  "height": 0.98
+ },
+ {
+  "name": "side_passage.flue",
+  "room": "side_passage",
+  "level": "X",
+  "plan_sym": "pipe",
+  "obb": [
+   [
+    4.52,
+    7.6992
+   ],
+   [
+    4.69,
+    7.6992
+   ],
+   [
+    4.69,
+    7.8608
+   ],
+   [
+    4.52,
+    7.8608
+   ]
+  ],
+  "zmin": -0.2553,
+  "zmax": 3.04,
+  "height": 3.2953
+ },
+ {
+  "name": "side_passage.hose_reel",
+  "room": "side_passage",
+  "level": "X",
+  "plan_sym": "pipe",
+  "obb": [
+   [
+    3.4,
+    16.58
+   ],
+   [
+    3.637,
+    16.58
+   ],
+   [
+    3.637,
+    17.198
+   ],
+   [
+    3.4,
+    17.198
+   ]
+  ],
+  "zmin": 0.739,
+  "zmax": 1.219,
+  "height": 0.48
+ },
+ {
+  "name": "stairs.carpet",
   "room": "stairs",
+  "level": "G",
   "plan_sym": "stair",
   "obb": [
    [
-    0.0848,
-    4.835
+    0.0835,
+    5.0414
    ],
    [
-    0.9804,
-    4.835
+    0.9585,
+    5.0156
    ],
    [
-    0.9804,
-    7.67
+    1.0509,
+    8.1474
    ],
    [
-    0.0848,
-    7.67
+    0.1759,
+    8.1732
    ]
   ],
-  "zmin": 0.0,
-  "zmax": 3.1865,
-  "height": 3.1865
+  "zmin": -0.03,
+  "zmax": 2.851,
+  "height": 2.881
+ },
+ {
+  "name": "study.bookcase",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "bookcase",
+  "obb": [
+   [
+    -0.65,
+    14.84
+   ],
+   [
+    -0.34,
+    14.84
+   ],
+   [
+    -0.34,
+    15.86
+   ],
+   [
+    -0.65,
+    15.86
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.82,
+  "height": 0.8,
+  "front": [
+   1.0,
+   -0.0
+  ]
+ },
+ {
+  "name": "study.corner_cabinet",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "cabinet",
+  "obb": [
+   [
+    2.4895,
+    14.1443
+   ],
+   [
+    3.1057,
+    14.1443
+   ],
+   [
+    3.1057,
+    14.7605
+   ],
+   [
+    2.4895,
+    14.7605
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 7.84,
+  "height": 1.82
+ },
+ {
+  "name": "study.desk_a",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "desk",
+  "obb": [
+   [
+    1.5,
+    14.75
+   ],
+   [
+    2.3,
+    14.75
+   ],
+   [
+    2.3,
+    16.35
+   ],
+   [
+    1.5,
+    16.35
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.76,
+  "height": 0.74,
+  "front": [
+   1.0,
+   -0.0
+  ]
+ },
+ {
+  "name": "study.desk_b",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "desk",
+  "obb": [
+   [
+    0.3,
+    15.5
+   ],
+   [
+    1.5,
+    15.5
+   ],
+   [
+    1.5,
+    16.2
+   ],
+   [
+    0.3,
+    16.2
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.76,
+  "height": 0.74,
+  "front": [
+   -0.0,
+   -1.0
+  ]
+ },
+ {
+  "name": "study.drawers",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "chest",
+  "obb": [
+   [
+    -0.45,
+    16.08
+   ],
+   [
+    -0.09,
+    16.08
+   ],
+   [
+    -0.09,
+    16.66
+   ],
+   [
+    -0.45,
+    16.66
+   ]
+  ],
+  "zmin": 6.08,
+  "zmax": 6.72,
+  "height": 0.64
+ },
+ {
+  "name": "study.kneeling_chair",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "stool",
+  "obb": [
+   [
+    0.5162,
+    14.8262
+   ],
+   [
+    0.9297,
+    14.6757
+   ],
+   [
+    1.1841,
+    15.3746
+   ],
+   [
+    0.7706,
+    15.5251
+   ]
+  ],
+  "zmin": 6.021,
+  "zmax": 6.5806,
+  "height": 0.5597
+ },
+ {
+  "name": "study.office_chair",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "office_chair",
+  "obb": [
+   [
+    2.3699,
+    15.15
+   ],
+   [
+    3.0639,
+    15.15
+   ],
+   [
+    3.0639,
+    15.85
+   ],
+   [
+    2.3699,
+    15.85
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 7.2852,
+  "height": 1.2652
+ },
+ {
+  "name": "study.plant",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "plant",
+  "obb": [
+   [
+    1.143,
+    16.8436
+   ],
+   [
+    0.8166,
+    16.5587
+   ],
+   [
+    1.1377,
+    16.1909
+   ],
+   [
+    1.4641,
+    16.4759
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 7.1173,
+  "height": 1.0973
+ },
+ {
+  "name": "study.radiator",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "radiator",
+  "obb": [
+   [
+    -0.3475,
+    16.7018
+   ],
+   [
+    0.1875,
+    16.7018
+   ],
+   [
+    0.1875,
+    16.86
+   ],
+   [
+    -0.3475,
+    16.86
+   ]
+  ],
+  "zmin": 6.1,
+  "zmax": 7.97,
+  "height": 1.87
+ },
+ {
+  "name": "study.settee",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "sofa",
+  "obb": [
+   [
+    0.38,
+    14.163
+   ],
+   [
+    1.43,
+    14.163
+   ],
+   [
+    1.43,
+    14.6736
+   ],
+   [
+    0.38,
+    14.6736
+   ]
+  ],
+  "zmin": 6.02,
+  "zmax": 6.953,
+  "height": 0.933
+ },
+ {
+  "name": "study.tv",
+  "room": "study",
+  "level": "2",
+  "plan_sym": "tv",
+  "obb": [
+   [
+    -0.65,
+    14.625
+   ],
+   [
+    -0.5994,
+    14.625
+   ],
+   [
+    -0.5994,
+    16.075
+   ],
+   [
+    -0.65,
+    16.075
+   ]
+  ],
+  "zmin": 7.16,
+  "zmax": 7.99,
+  "height": 0.83,
+  "front": [
+   1.0,
+   -0.0
+  ]
  },
  {
   "name": "utility.airer",
   "room": "utility",
+  "level": "G",
   "plan_sym": "airer",
   "obb": [
    [
-    0.9,
-    11.35
+    0.6,
+    11.23
    ],
    [
-    2.8,
-    11.35
+    3.1,
+    11.23
    ],
    [
-    2.8,
-    11.41
+    3.1,
+    11.29
    ],
    [
-    0.9,
-    11.41
+    0.6,
+    11.29
    ]
   ],
-  "zmin": 2.0835,
+  "zmin": 2.07,
   "zmax": 2.4,
-  "height": 0.3165
+  "height": 0.33
  },
  {
   "name": "utility.base.ext",
   "room": "utility",
+  "level": "G",
   "plan_sym": "base_unit",
   "obb": [
    [
@@ -1328,6 +5093,7 @@
  {
   "name": "utility.base.sink_unit",
   "room": "utility",
+  "level": "G",
   "plan_sym": "base_unit",
   "obb": [
    [
@@ -1354,6 +5120,7 @@
  {
   "name": "utility.dryer",
   "room": "utility",
+  "level": "G",
   "plan_sym": "dryer",
   "obb": [
    [
@@ -1380,6 +5147,7 @@
  {
   "name": "utility.sink",
   "room": "utility",
+  "level": "G",
   "plan_sym": "sink_belfast",
   "obb": [
    [
@@ -1406,6 +5174,7 @@
  {
   "name": "utility.tall",
   "room": "utility",
+  "level": "G",
   "plan_sym": "tall_unit",
   "obb": [
    [
@@ -1432,6 +5201,7 @@
  {
   "name": "utility.wall_units",
   "room": "utility",
+  "level": "G",
   "plan_sym": "wall_unit",
   "obb": [
    [
@@ -1439,11 +5209,11 @@
     11.8625
    ],
    [
-    2.56,
+    2.84,
     11.8625
    ],
    [
-    2.56,
+    2.84,
     12.23
    ],
    [
@@ -1458,6 +5228,7 @@
  {
   "name": "utility.washer",
   "room": "utility",
+  "level": "G",
   "plan_sym": "washer",
   "obb": [
    [
@@ -1484,6 +5255,7 @@
  {
   "name": "utility.worktop.ext",
   "room": "utility",
+  "level": "G",
   "plan_sym": "worktop",
   "obb": [
    [
@@ -1510,6 +5282,7 @@
  {
   "name": "utility.worktop.rear",
   "room": "utility",
+  "level": "G",
   "plan_sym": "worktop",
   "obb": [
    [
@@ -1536,6 +5309,7 @@
  {
   "name": "vestibule.rug",
   "room": "vestibule",
+  "level": "G",
   "plan_sym": "rug",
   "obb": [
    [
@@ -1562,6 +5336,7 @@
  {
   "name": "vestibule.stool",
   "room": "vestibule",
+  "level": "G",
   "plan_sym": "stool",
   "obb": [
    [
@@ -1588,6 +5363,7 @@
  {
   "name": "wc.basin",
   "room": "wc",
+  "level": "G",
   "plan_sym": "basin",
   "obb": [
    [
@@ -1614,6 +5390,7 @@
  {
   "name": "wc.mirror",
   "room": "wc",
+  "level": "G",
   "plan_sym": "mirror",
   "obb": [
    [
@@ -1640,6 +5417,7 @@
  {
   "name": "wc.pan",
   "room": "wc",
+  "level": "G",
   "plan_sym": "wc",
   "obb": [
    [
@@ -1661,11 +5439,16 @@
   ],
   "zmin": 0.085,
   "zmax": 0.423,
-  "height": 0.338
+  "height": 0.338,
+  "front": [
+   -1.0,
+   0.0
+  ]
  },
  {
   "name": "wc.plant",
   "room": "wc",
+  "level": "G",
   "plan_sym": "plant",
   "obb": [
    [
@@ -1692,6 +5475,7 @@
  {
   "name": "wc.towel_rail",
   "room": "wc",
+  "level": "G",
   "plan_sym": "towel_rail",
   "obb": [
    [
@@ -1714,5 +5498,113 @@
   "zmin": 0.125,
   "zmax": 1.38,
   "height": 1.255
+ },
+ {
+  "name": "yellow_room.cabinet",
+  "room": "yellow_room",
+  "level": "1",
+  "plan_sym": "console",
+  "obb": [
+   [
+    0.372,
+    9.18
+   ],
+   [
+    0.732,
+    9.18
+   ],
+   [
+    0.732,
+    9.73
+   ],
+   [
+    0.372,
+    9.73
+   ]
+  ],
+  "zmin": 3.28,
+  "zmax": 4.012,
+  "height": 0.732
+ },
+ {
+  "name": "yellow_room.chair",
+  "room": "yellow_room",
+  "level": "1",
+  "plan_sym": "chair",
+  "obb": [
+   [
+    1.1993,
+    10.46
+   ],
+   [
+    1.8007,
+    10.46
+   ],
+   [
+    1.8007,
+    11.039
+   ],
+   [
+    1.1993,
+    11.039
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 4.018,
+  "height": 0.978
+ },
+ {
+  "name": "yellow_room.ottoman",
+  "room": "yellow_room",
+  "level": "1",
+  "plan_sym": "stool",
+  "obb": [
+   [
+    2.165,
+    10.635
+   ],
+   [
+    2.935,
+    10.635
+   ],
+   [
+    2.935,
+    11.025
+   ],
+   [
+    2.165,
+    11.025
+   ]
+  ],
+  "zmin": 3.04,
+  "zmax": 3.409,
+  "height": 0.369
+ },
+ {
+  "name": "yellow_room.radiator",
+  "room": "yellow_room",
+  "level": "1",
+  "plan_sym": "radiator",
+  "obb": [
+   [
+    2.995,
+    10.127
+   ],
+   [
+    3.1,
+    10.127
+   ],
+   [
+    3.1,
+    10.781
+   ],
+   [
+    2.995,
+    10.781
+   ]
+  ],
+  "zmin": 3.17,
+  "zmax": 3.79,
+  "height": 0.62
  }
 ]

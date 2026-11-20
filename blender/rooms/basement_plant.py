@@ -364,30 +364,36 @@ def _racks(ctx):
 
 def _gas(ctx):
     galv, cu = C('galv', '#8C8C88', 0.5, 0.7), C('copper', '#A86F45', 0.32, 1.0)
-    y = Y0
+    y, yb = Y0, Y0 - 0.08                        # wall face; back of the niche (house.json basement_meter_niche)
     mb = mo.MB()
-    # ponytail: the 80 mm niche is a galvanised back plate on the wall face (a real recess needs a shell feature)
-    mb.box((1.55, y, Z(1.45)), (1.85, y + 0.002, Z(1.88)), galv)
-    # landscape smart meter nearly filling the niche width (f_0247); facing south, west (low x) is on the right
-    mb.box((1.565, y + 0.002, Z(1.47)), (1.835, y + 0.072, Z(1.635)), C('meter', '#DAD9D6', 0.4), bev=0.012)
-    mb.box((1.651, y + 0.072, Z(1.578)), (1.724, y + 0.0728, Z(1.605)), C('lcd', '#7E9A6A', 0.3))         # blank LCD
-    mb.box((1.585, y + 0.072, Z(1.50)), (1.630, y + 0.0728, Z(1.565)), C('warn_yellow', '#E6C82A', 0.5))  # plain label
+    for lo, hi in (((1.55, yb, 1.45), (1.85, yb + 0.002, 1.88)), ((1.55, yb, 1.45), (1.552, y, 1.88)),
+                   ((1.848, yb, 1.45), (1.85, y, 1.88)), ((1.55, yb, 1.878), (1.85, y, 1.88)),
+                   ((1.55, yb, 1.45), (1.85, y, 1.452))):                                     # galvanised niche lining
+        mb.box((lo[0], lo[1], Z(lo[2])), (hi[0], hi[1], Z(hi[2])), galv)
+    # landscape smart meter on the niche floor, its face 7 mm proud of the wall (f_0247); facing south, west (low x)
+    # is on the right
+    mb.box((1.565, yb + 0.002, Z(1.453)), (1.835, y + 0.007, Z(1.615)), C('meter', '#DAD9D6', 0.4), bev=0.012)
+    f = y + 0.007
+    mb.box((1.651, f, Z(1.558)), (1.724, f + 0.0008, Z(1.585)), C('lcd', '#7E9A6A', 0.3))                 # blank LCD
+    mb.box((1.585, f, Z(1.48)), (1.630, f + 0.0008, Z(1.545)), C('warn_yellow', '#E6C82A', 0.5))          # plain label
     for x in (1.603, 1.625):
-        mb.at(T(x, y + 0.072, 1.592) @ RX(-90))
+        mb.at(T(x, f, 1.572) @ RX(-90))
         mb.lathe([(0, 0), (0.008, 0), (0.008, 0.003), (0, 0.003)], galv, 8)
     mb.at()
-    mb.box((1.60, y + 0.012, Z(1.66)), (1.80, y + 0.05, Z(1.68)), BRASS, bev=0.003)           # meter bar on two unions
+    yp = yb + 0.035                                                                           # pipe line in the niche
+    mb.box((1.60, yp - 0.019, Z(1.64)), (1.80, yp + 0.019, Z(1.66)), BRASS, bev=0.003)       # meter bar on two unions
     for x in (1.63, 1.77):
-        pipe(mb, [(x, y + 0.031, 1.634), (x, y + 0.031, 1.665)], 0.016, BRASS)
-    pipe(mb, [(1.63, y + 0.031, 1.675), (1.63, y + 0.031, 1.878)], 0.011, cu)                 # copper tail, west side
-    pipe(mb, [(1.77, y + 0.031, 1.675), (1.77, y + 0.031, 1.76)], 0.012, BRASS)
-    mb.at(T(1.77, y + 0.031, 1.755))                                                          # regulator, east side
+        pipe(mb, [(x, yp, 1.614), (x, yp, 1.645)], 0.016, BRASS)
+    pipe(mb, [(1.63, yp, 1.655), (1.63, yp, 1.90)], 0.011, cu)                 # copper tail up through the niche head
+    pipe(mb, [(1.77, yp, 1.655), (1.77, yp, 1.74)], 0.012, BRASS)
+    mb.at(T(1.77, yp, 1.735))                                                                 # regulator, east side
     mb.lathe([(0, 0), (0.03, 0), (0.034, 0.012), (0.034, 0.03), (0.02, 0.045)], C('reg_grey', '#8E9494', 0.5), 12)
     mb.lathe([(0.02, 0.045), (0.02, 0.07), (0, 0.072)], C('reg_green', '#4F8F5A', 0.5), 10)
     mb.at()
+    # flexible connector out of the niche's west side to the valve on the wall face
     flex = [(1.745, 1.775), (1.70, 1.765), (1.64, 1.762), (1.58, 1.785), (1.53, 1.825), (1.49, 1.84)]
-    mb.tube([(x, y + 0.045, Z(h)) for x, h in flex], 0.0125, 'silver_satin', 8, up=(0, 1, 0))  # flexible connector
-    mb.tube([(x, y + 0.045, Z(h)) for x, h in ((1.545, 1.812), (1.52, 1.83))], 0.0135,
+    mb.tube([(x, yb + 0.06 if x > 1.56 else y + 0.05, Z(h)) for x, h in flex], 0.0125, 'silver_satin', 8, up=(0, 1, 0))
+    mb.tube([(x, y + 0.05, Z(h)) for x, h in ((1.545, 1.812), (1.52, 1.83))], 0.0135,
             C('warn_yellow', '#E6C82A', 0.5), 8, up=(0, 1, 0))                                # yellow tape band
     mb.box((1.43, y + 0.025, Z(1.82)), (1.49, y + 0.065, Z(1.86)), BRASS, bev=0.005)          # lever ball valve
     mb.box((1.40, y + 0.066, Z(1.80)), (1.51, y + 0.072, Z(1.814)), C('valve_C2261C', '#C2261C', 0.4))

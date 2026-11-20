@@ -460,7 +460,16 @@ probe at export as today. New constants:
   floor_z(room) + min(ceil_z(room) - floor_z(room), ceilingDefault)`, lowered at each rectangle centre to
   `ceil_z(room, x, y)`; lamps hang 0.35 below that. (Today `min(ceil_z, ceilingDefault)` puts every upper-floor fill
   at Z 2.6, inside the ground floor.) `lighting.downlight`'s default z = `ceil_z(room, x, y) - 0.015`.
-- Lights-off set: unchanged rules (sun + sky + `AMBIENT_OFF`).
+- Lights-off set: sun + sky + `AMBIENT_OFF`; **[round 4]** per room, with the lamps of the rooms that no switch
+  shares with it still lit, and a neutral ambient tint (section 10).
+- **[round 4] Exterior daylight.** The exterior rooms (`ctx.is_exterior`) bake their lightmaps and probes, and render
+  their stills, with the light sky x `EXTERIOR_SKY_GAIN` 3.5 and the sun x `EXTERIOR_SUN_GAIN` 0.6
+  (`export_bake.exterior_daylight`; the light Background node is named `sky_light`, the camera's `sky_show`): the
+  overcast footage outdoors is exposed some 2 stops brighter than the lamp-lit rooms, and at the one exposure the
+  garden and the side passage read as night (480 px views: garden 62 -> 103, passage 27 -> 65, sunlit front path 159
+  -> 193; v2 f_0195-0205 measure 148). Interiors keep `SKY_STRENGTH`. Still one white balance.
+- **[round 4] Daylight fills**: `lighting.daylight_fill` (area light in the open-shade colour, `obj['daylight']`) for a
+  room the footage shows daylit but whose openings the bake starves: the shed workshop (veranda, hedge 0.8 m off).
 - **Viewer sky**: export renders the world alone (every object hidden) through the scene's view transform (AgX, look,
   exposure, the 3000 K balance) with a 2048 x 1024 equirect camera, centre +X like the probes, and saves the
   **displayed 8-bit image** `docs/assets/sky.jpg`. `manifest.sky = {image, color, sunDir}` (`color` = mean displayed
@@ -490,7 +499,30 @@ blender -b build/home.blend --python blender/export.py -- --out docs/assets [--l
   missing off atlas is 12 % of the on atlas, far darker than the real lights-off bake. export asserts that no `ix`
   `light` / `lamp` `rooms` list names `facade`, `roof` or `neighbours`.
 - **Probes**: one per kind `room` / `exterior` / `stairwell` room and per `front`, `side_passage`, `garden`, `shed`
-  (polygon = the largest walkable zone / the workshop), at floor + 1.5.
+  (polygon = the largest walkable zone / the workshop), at floor + 1.5. **[round 3]** Kind `void` rooms (the eaves) get
+  one too, at floor + min(1.5, half their height), so their probe-lit switches and bulkhead bases follow their own
+  light instead of the neighbouring bedroom's.
+- **[round 4] Lights-off per room**: the off atlas and probe of a room have the lamps of that room and of every room a
+  switch names together with it hidden (`partners`), every other lamp lit: the landing switch had left the main
+  flight at 6 % of its lit level beside the lit hall. `AMBIENT_TINT` (0.9, 0.95, 1.0). Off probe brighter than on:
+  `WARNING`. **Circuits** are then scaled per texel so that off + their sum = the lights-on bake
+  (`export_bake.normalise_circuits`; IX-01). **Probe spots**: `export.PROBE_AT` overrides `probe_point` (basement_stair,
+  eaves_front). **Room-jump views**: `export.VIEWPOINT` for rooms whose first still does not stand on their floor.
+  **Bake visibility**: closed cabinet doors, drawers, lids and seats stay out of the lightmap bakes (`BAKE_KEEP`).
+- **[round 3] Circuits** (INTERACT.md, Circuits): `export_bake.circuits(tagged, CIRCUIT)` splits the Cycles lamps of
+  each room into circuits; a room with two or more gets, in step 6 (inside `lights_off` + `daylight_off`, i.e. no sun,
+  black world, every emission 0), one atlas per circuit with only that circuit's lamps unhidden:
+  `lightmaps_circuits/<room>.<circuit>.jpg`, same UVs at half the size, own intensity, denoised. Rebaking a room drops
+  its old circuit atlases (like its off atlas); `--skip-off` skips them. Measured on the current build: dining (main
+  8 downlights 1040 W, chandelier 13 lamps 96 W, wall 4 bulbs 56 W), living (main, chandelier, sconces, table_lamp),
+  kitchen (main, led), green_bedroom (main, pineapple.n, pineapple.s), blue_bedroom (main, two bedside lamps), study
+  (main, desk_lamp), bathroom2 (main, sauna): 19 atlases, at the full bake each about a quarter of the room's on-bake
+  time; they load with the lights-off set (not in the first view). Bytes: 42-96 kB each at 512 px in the scratch
+  export (`build/int3/expv/assets`, 1.0 MB for 13), so about 1-1.5 MB each at 2048 px: 20-30 MB of the 300 MB.
+- **[round 3] Colour maps** in the GLBs are capped at 1024 px (`COLOUR_MAX`), except the hero art: images loaded from
+  `blender/textures/art` (paintings, tapestry, rugs; `hero_names()`), which keep up to 2048. Names stay as they are,
+  so the viewer still shares an image across the level GLBs. On `build/export_int` this touched seven 2048 px library
+  maps (oak floor, marble, porcelain, wood tiles): about 70 of the 470 MB decoded on the desktop.
 - **White balance**: the one matrix, as today, for every atlas and probe.
 - **[integration] Encoding**: `intensity` = the 99.5th percentile of the lit texels, capped at 6 x the median of the
   texels brighter than 2 % of that percentile (faintly lit cabinet backs must not drag the median down: the kitchen
@@ -523,6 +555,9 @@ on entries, `rooms[].level/kind`, `sky` object, `firstView`):
  "lightmapsOff": [{"room": "living", "level": "G", "image": "lightmaps_off/living.jpg", "size": 2048, "intensity": 0.61, "bytes": 420000, "objects": ["living.walls"]}],
  "probes": [{"room": "living", "level": "G", "image": "probes/living.jpg", "pos": [2.6, 2.8, 1.5], "intensity": 2.4, "bytes": 90000}],
  "probesOff": [{"room": "living", "level": "G", "image": "probes_off/living.jpg", "pos": [2.6, 2.8, 1.5], "intensity": 0.5, "bytes": 30000}],
+ "circuits": [{"room": "dining", "level": "G", "name": "wall", "image": "lightmaps_circuits/dining.wall.jpg", "size": 2048,
+               "intensity": 0.9, "bytes": 250000, "share": 0.06, "groups": ["dining.sconce.0", "dining.sconce.1", "dining.switch.wall_lights"],
+               "lights": ["dining.sconce.0.bulb.0"], "emissive": []}],
  "viewpoints": {"living": {"pos": [1.05, 4.3], "look": [3.6, 1.6]}}, "spawn": {"pos": [0.0, 3.0], "yaw": 0, "level": "G"},
  "toneMapping": "agx", "exposure": 0.6598, "whiteBalance": [[1,0,0],[0,1,0],[0,0,1]],
  "sky": {"image": "sky.jpg", "color": "#8fb4d9", "sunDir": [0.429, -0.807, 0.407]},
@@ -546,11 +581,23 @@ on entries, `rooms[].level/kind`, `sky` object, `firstView`):
 ```
 Readers (plan, viewer) accept records without `level` (today's file has none): the level is that of `room` in
 house.json; pseudo-rooms and building rooms -> `X`; an unknown room -> `G`.
+- `circuits[]` (only rooms with two or more): `share` = the circuit's part of the sum of the room's circuit means
+  (linear radiance over the atlas), `groups` = the ix groups that switch only it (any other switch of the room
+  switches every circuit), `lights` = its Cycles lamps (information), `emissive` = untagged emissive meshes that glow
+  with it (the viewer puts every other untagged emissive mesh of the room on `main`).
+
+**[round 3] `front`** (optional on a footprint record): the unit plan vector [x, y] the thing faces, for the plan's
+symbols. `obj['front']` when a module sets one (2- or 3-vector), else `export.front_of()`: `bed`, `wc`, `car` along
+their long axis away from the end whose outer 30 % stands at least 8 cm taller (headboard, cistern, a car's roof and
+hatch against the bonnet); `wardrobe`, `desk`, `tv`, `bureau`, `bookcase` across their short axis away from the long
+side whose middle is nearer the room outline (none when both are over 0.4 m away), a desk first toward the nearest
+seat (`office_chair`, `chair`, `stool`) within 1.2 m of its centre. No key when it cannot be told.
 
 **Plan symbols** (`plan_sym`), old list plus: `bed bedside wardrobe chest bureau desk office_chair bath shower vanity
 sauna boiler cylinder rack cabinet workbench bench car planter fire_pit trellis flagpole condenser`. Viewer classes:
-non-blocking `rug mirror tv wall_unit airer shelf towel_rail radiator stair trellis flagpole condenser`; soft (walk
-through, slowed, when under 1.3 m) `chair armchair stool bin plant office_chair bedside`; everything else blocks.
+non-blocking `rug mirror tv wall_unit airer shelf towel_rail radiator stair trellis flagpole condenser shower` (the
+owner walks into the shower: **[round 3]** `shower`); soft (walk through, slowed, when under 1.3 m) `chair armchair
+stool bin plant office_chair bedside`; everything else blocks.
 
 ## 11. Plan (agent f: `tools/plan/`) and viewer (agent g: `docs/`)
 
@@ -765,6 +812,18 @@ walls) are not obstacles: jambs intrude <= 0.10 m.
   list, on its first use (`ensureOff`; the fade waits for them), whatever level they are on; until then a room's
   materials sample its lights-on atlas in the off slot (no extra texture). Rooms of a level that arrives after the
   switch was used pick up the current state (shared `lmOn` uniform, emissives registered at `engine.add`).
+- **[round 3] Circuits** (manifest `circuits`, INTERACT.md): `roomLight(id).circuits` = the room's circuits, each with
+  its own `on` / `target` / `x` (eased by `interact.js`), atlas uniform and emissive list. A group named in a
+  circuit's `groups` switches that circuit only (its state = the first such circuit); any other switch of the room
+  switches every circuit; the room's `target` is 1 while any circuit is lit. Lightmapped materials of such a room
+  compile `lmChunk(K)`: `lmMix * mix(off * kOff + sum_i lmCiOn * lmCiK * circuit_i, on * kOn, lmOn)` with `lmOn` = the
+  product of the circuit states, so all lit = exactly the lights-on atlas, all off = the lights-off atlas, anything
+  between = lights-off + the lit circuits' light (`customProgramCacheKey` keeps the K-circuit programs apart, and
+  `interact.js` copies it with the material). Probe light: `L.bright()` = r + (1 - r) x sum(share x on). `ensureOff`
+  loads the circuit atlases with the off set; `texStats` counts them. Rooms of kind `void` start with their lights off
+  (`startOff` before their level is lit; eaves.md 8) and their switches work through an open hatch (`via`).
+- **[round 3] Reach**: `reachTo` and the 35-degree test of `best()` use each member's own box (`memberBoxes`), not the
+  group's union box (living.chandelier with its wall knob spans most of the room).
 - **Light uniforms of a lightmapped material** (`specOnly` in `main.js`): `lmOn` (the room's light state, 1 = lights
   on), `lightMapOff` / `lightMapOffIntensity` (the room's lights-off atlas), `lmMix` (1 = bake; `interact.js` fades a
   baked door leaf or front toward 0 as it leaves its modelled pose, because the bake only fits that pose) and

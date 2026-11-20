@@ -33,7 +33,6 @@ CAMERAS = [
 ]
 
 CHARCOAL = '#2B2D30'                                # vanity, bath panel (satin)
-WALL = '#AEB6CE'                                    # light grey-blue paint above the tiles
 
 
 def _charcoal():
@@ -120,8 +119,6 @@ def build(ctx):
 def _walls(ctx):
     """Calacatta slab cladding (east wall, shower back wall, window recess) + steel trims; the dado tile trim."""
     S = 'porcelain_calacatta_slab'
-    # spec #B3BEC8 renders teal under the 2850 K lamps; the frames read neutral light grey-blue (f_0359, f_0409)
-    shell.repaint(ROOM, '#B3BEC8', WALL)
     pieces = [('e.n', 2.898, X1, WIN_Y1, Y1, FZ, CZ), ('e.s', 2.898, X1, Y0, WIN_Y0, FZ, CZ),
               ('e.lo', 2.898, X1, WIN_Y0, WIN_Y1, FZ, WIN_Z0), ('e.hi', 2.898, X1, WIN_Y0, WIN_Y1, WIN_Z1, CZ),
               ('n', SH_X, X1, Y1 - .002, Y1, FZ, CZ)]

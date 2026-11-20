@@ -57,7 +57,12 @@ CONST = {
     # caustics and three.js gets plain alpha blending with reflections - no transmission pass.
     'glass_clear':      dict(hex='#F2F7F5', rough=0.0, metal=1, alpha=0.10),
     'glass_frosted':    dict(hex='#E4EAE8', rough=0.55, alpha=0.78),                        # etched transom, kitchen door lights
-    'glass_obscure':    dict(hex='#DDE5E3', rough=0.12, alpha=0.60, tex='_stipple', nrm=1.0),  # stippled street-door / WC glazing
+    # obscure: at alpha 0.60 / rough 0.12 rooms read sharply through it from outside (en-suite, dining E, back door).
+    # [round 4] opaque and baked (key 'glass_obscure' resolves here, ALIAS): at alpha 0.85 the panes were probe-lit and
+    # read mid grey in the viewer against pale frosted white in the stills (Q8, kitchen back door); baked, each face
+    # takes the light of its own side like the wall beside it. No 'glass' in the name: the viewer would make it 22 %
+    # see-through.
+    'obscure_pane':     dict(hex='#DDE5E3', rough=0.40, tex='_stipple', nrm=1.0),             # stippled street-door / WC glazing
     'glass_green':      dict(hex='#DFE6E0', rough=0.06, alpha=0.90),                        # kitchen memo board
     'glass_dark':       dict(hex='#101214', rough=0.03, alpha=0.85),                        # washer / dryer door bowls
     'whisky':           dict(hex='#8A4A12', rough=0.05, alpha=0.85),                        # decanter contents
@@ -79,7 +84,8 @@ CONST = {
 ALIAS = {'oak_plank': 'oak_floor', 'victorian_geometric_tile': 'victorian_tile',
          'wood_effect_porcelain_plank': 'wood_tile_floor', 'carpet_mink_grey': 'carpet_mink',
          'wood_effect_porcelain_plank_dark': 'wood_tile_floor_dark', 'concrete_or_flags': 'concrete_flags',
-         'chipboard': 'vinyl_grey_sheet'}    # eaves floor: grey sheet flooring laid over the boards (eaves.md 4)
+         'chipboard': 'vinyl_grey_sheet',    # eaves floor: grey sheet flooring laid over the boards (eaves.md 4)
+         'glass_obscure': 'obscure_pane'}
 
 # every finish / material key of blender/MULTILEVEL.md section 8 (mat() resolves each; test_joinery.py asserts it)
 SPEC_KEYS = (
@@ -194,11 +200,11 @@ def mat(key):
     return m
 
 
-def solid(name, hex, roughness, metallic=0):
-    """Plain constant-colour material, cached by name."""
+def solid(name, hex, roughness, metallic=0, alpha=1.0):
+    """Plain constant-colour material, cached by name. alpha < 1: alpha-blended (dark car glass)."""
     k = ('solid', name)
     if k not in _cache:
-        _cache[k] = _build(name, hex=hex, rough=roughness, metal=metallic)
+        _cache[k] = _build(name, hex=hex, rough=roughness, metal=metallic, alpha=alpha)
     return _cache[k]
 
 

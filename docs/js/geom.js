@@ -302,12 +302,12 @@ export function isFree(walk, L, x, y) {
   for (let i = 0; i < obs.length; i++) {
     const b = bx[i];
     if (x < b[0] - r || y < b[1] - r || x > b[2] + r || y > b[3] + r) continue;
-    if (pointInPoly(x, y, obs[i]) || edgeDist(x, y, obs[i]) < r) return false;
+    if (pointInPoly(x, y, obs[i]) || edgeDist(x, y, obs[i]) < r - 1e-4) return false;     // exactly tangent is free
   }
   for (const o of walk.dynamic || []) {
     const b = o.bb;
     if (x < b[0] - r || y < b[1] - r || x > b[2] + r || y > b[3] + r || !o.layers.includes(L)) continue;
-    if (pointInPoly(x, y, o.poly) || edgeDist(x, y, o.poly) < r) return false;
+    if (pointInPoly(x, y, o.poly) || edgeDist(x, y, o.poly) < r - 1e-4) return false;
   }
   for (const p of I.portals.get(L) || []) if (p.open !== false && pointInPoly(x, y, p.poly)) return true;
   for (const c of I.cells.get(L) || []) if (cellFree(walk, c, x, y)) return true;
@@ -343,15 +343,29 @@ function funnel(walk, L, x, y, sx, sy) {
   return best;
 }
 // Move with wall sliding; sub-stepped so a fast step cannot tunnel through a thin wall. pos = {x, y, layer}.
+// Blocked on both axes (the corner of a post, a pipe, a table leg): the step turned 30, 60 or 80 deg (shortened by the
+// cosine, as a slide along the surface would be), taken only when one side is free and the other not - a push square
+// into a flat wall is symmetric and stays put instead of drifting along it.
+const TURNS = [0.52, 1.05, 1.4].map((a) => [Math.cos(a), Math.sin(a)]);
 export function move(walk, pos, x1, y1) {
   let { x, y, layer: L } = pos, l, f;
   const n = Math.max(1, Math.ceil(Math.hypot(x1 - x, y1 - y) / (walk.radius * 0.5)));
   const sx = (x1 - x) / n, sy = (y1 - y) / n;
-  for (let i = 0; i < n; i++) {
+  const turned = () => {
+    for (const [c, s] of TURNS) {
+      const t = [1, -1].map((g) => [(sx * c - g * sy * s) * c, (g * sx * s + sy * c) * c]).map(([dx, dy]) => [dx, dy, stepLayer(walk, L, x, y, x + dx, y + dy)]);
+      const ok = t.filter((q) => q[2] !== null);
+      if (ok.length === 1) return ok[0];
+      if (ok.length === 2) return null;
+    }
+    return null;
+  };
+  for (let i = 0, q; i < n; i++) {
     if ((l = stepLayer(walk, L, x, y, x + sx, y + sy)) !== null) { x += sx; y += sy; L = l; }
     else if ((f = funnel(walk, L, x, y, sx, sy)) && (l = stepLayer(walk, L, x, y, x + f[0], y + f[1])) !== null) { x += f[0]; y += f[1]; L = l; }
     else if (sx && (l = stepLayer(walk, L, x, y, x + sx, y)) !== null) { x += sx; L = l; }
     else if (sy && (l = stepLayer(walk, L, x, y, x, y + sy)) !== null) { y += sy; L = l; }
+    else if ((q = turned())) { x += q[0]; y += q[1]; L = q[2]; }
     else break;
   }
   return { x, y, layer: L };
@@ -541,11 +555,104 @@ export function viewpoints(walk, spawn) {
   return out;
 }
 
+// ---- sight graph: which rooms can be seen from the walker's room (walk-mode culling in main.js) ----
+// Nodes are the `room` tags the meshes carry: house rooms, the exterior zone rooms (front, side_passage, garden, shed:
+// a building's rooms are its room), the balcony. Edges are what the view has to pass through, each with a plan box
+// [x0, y0, z0, x1, y1, z1]: wall openings (sill to head; a door's edge names it, `door`), floor voids of the stairwells, step risers, the shared edge of
+// two zones (up to the sky), a roof window (to the roof). 'outside' is the zone the opening looks onto. `ends` maps an
+// opening id to its two nodes (door linings, frames and leaves are named <room>.<opening>.* and belong to both).
+const ALWAYS_OUT = ['facade', 'roof', 'neighbours'];          // drawn with any outdoor node
+export function sightGraph(house) {
+  const ext = house.exterior || {}, zones = (ext.zones || []).filter((z) => z.room && z.polygon), rooms = house.rooms || [];
+  const bRoom = new Map((ext.buildings || []).flatMap((b) => (b.rooms || []).map((r) => [r.id, b.room || b.id])));
+  const zoneOf = (x, y, zid) => zones.find((z) => z.id === zid)?.room
+    || zones.reduce((a, z) => (!a || polyDist(x, y, z.polygon) < polyDist(x, y, a.polygon) ? z : a), null)?.room;
+  const node = (id, x, y, zid) => (id === 'outside' ? zoneOf(x, y, zid) : bRoom.get(id) || id);
+  const walls = new Map([...(house.walls || []), ...(ext.buildings || []).flatMap((b) => b.walls || [])].map((w) => [w.id, w]));
+  const datum = (lv) => house.levels?.find((l) => l.id === lv)?.datumZ ?? 0;
+  const edges = [], ends = new Map(), adj = new Map(), outside = new Set(zones.map((z) => z.room));
+  const add = (a, b, box, door) => { if (a && b && a !== b) for (const [p, q] of [[a, b], [b, a]]) (adj.get(p) || adj.set(p, []).get(p)).push({ to: q, box, ...(door ? { door } : {}) }); };
+  for (const o of [...(house.openings || []), ...(ext.buildings || []).flatMap((b) => b.openings || [])]) {
+    if (o.connects?.length !== 2 || !o.center) continue;
+    const w = walls.get(o.wall), [cx, cy] = o.center, fz = o.floorZ ?? datum(o.level);
+    const L = w ? Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]) || 1 : 1, ux = w ? Math.abs(w.b[0] - w.a[0]) / L : 1, uy = w ? Math.abs(w.b[1] - w.a[1]) / L : 0;
+    const hw = (o.width || 0.9) / 2, ht = (w?.thickness ?? 0.3) / 2 + (o.type === 'bay_window' ? 1.2 : 0.05);   // a bay stands out of its wall
+    const ex = ux * hw + uy * ht, ey = uy * hw + ux * ht, sill = o.sill ?? 0;
+    const [a, b] = o.connects.map((id) => node(id, cx, cy, o.outsideZone));
+    ends.set(o.id, [a, b]);
+    if (/obscure/.test(o.style) && !o.sashes) continue;        // a fixed obscure pane is opaque (baked, materials.py)
+    const ra = rooms.find((r) => r.id === a), rb = rooms.find((r) => r.id === b);
+    if (w?.virtual && ra && rb) {        // no wall (a stair mouth, a landing over the well): their whole shared edge, floor to ceiling
+      const pts = [...ra.polygon.filter((p) => polyDist(p[0], p[1], rb.polygon) < 0.05), ...rb.polygon.filter((p) => polyDist(p[0], p[1], ra.polygon) < 0.05), [cx - ex, cy - ey], [cx + ex, cy + ey]];
+      const [x0, y0, x1, y1] = bbox(pts), z0 = Math.min(ra.floorZ ?? fz, rb.floorZ ?? fz), z1 = Math.max(ra.ceilingZ ?? fz + 3, rb.ceilingZ ?? fz + 3);
+      add(a, b, [x0 - 0.05, y0 - 0.05, z0 - 0.05, x1 + 0.05, y1 + 0.05, z1 + 0.05]);
+    } else add(a, b, [cx - ex, cy - ey, fz + sill - 0.05, cx + ex, cy + ey, fz + Math.max(sill + (o.height || 2.1), o.transom?.height ?? 0) + 0.05], /door/.test(o.type) ? o.id : null);
+  }
+  for (const f of house.features || []) {
+    if (!f.polygon || !f.room) continue;
+    const [x0, y0, x1, y1] = bbox(f.polygon), c = centroid(f.polygon);
+    if (f.type === 'floor_void') {                 // a hole in level f.level's floor: the rooms over and under it
+      const lv = house.levels?.map((l) => l.id) || [], i = lv.indexOf(f.level), z = datum(f.level);
+      for (const r of rooms) if ((r.level === f.level || r.level === lv[i - 1]) && pointInPoly(c[0], c[1], r.polygon)) add(f.room, r.id, [x0, y0, z - 0.6, x1, y1, z + 0.3]);
+    } else if (f.type === 'roof_window' || f.type === 'roof_opening') {
+      const r = rooms.find((q) => q.id === f.room), z = Array.isArray(f.z) ? f.z : [(r?.floorZ ?? datum(f.level)) + 1.2, (r?.floorZ ?? datum(f.level)) + 4];
+      add(f.room, 'roof', [x0, y0, z[0] - 0.4, x1, y1, z[1] + 0.4]);
+    }
+  }
+  // a stairwell is open to every room beside it where their heights overlap (balustrades, the flight arriving on a
+  // landing): their shared edge, over the common height
+  const zr0 = (r) => r.floorZ ?? datum(r.level), zr1 = (r) => r.ceilingZ ?? zr0(r) + 3;
+  for (const s of rooms) if (kindOf(s) === 'stairwell') for (const r of rooms) {
+    if (r === s || kindOf(r) === 'exterior' || zr0(r) >= zr1(s) || zr0(s) >= zr1(r)) continue;
+    const pts = [...s.polygon.filter((p) => polyDist(p[0], p[1], r.polygon) < 0.05), ...r.polygon.filter((p) => polyDist(p[0], p[1], s.polygon) < 0.05)];
+    if (pts.length < 2) continue;
+    const [x0, y0, x1, y1] = bbox(pts);
+    add(s.id, r.id, [x0 - 0.05, y0 - 0.05, Math.max(zr0(r), zr0(s)) - 0.05, x1 + 0.05, y1 + 0.05, Math.min(zr1(r), zr1(s)) + 0.05]);
+  }
+  for (const s of stairsOf(house)) {               // steps between split floors of one landing: the riser line, a body high
+    const p = s.kind === 'steps' && s.riserLines?.[0];
+    if (p) { const [x0, y0, x1, y1] = bbox(p), z = Math.min(s.fromZ, s.toZ); add(s.fromRoom, s.toRoom, [x0 - 0.05, y0 - 0.05, z - 0.05, x1 + 0.05, y1 + 0.05, z + 2.6]); }
+  }
+  for (const r of rooms) if (kindOf(r) === 'exterior') {     // the balcony: seen from the zone it overlooks, as a volume
+    const [x0, y0, x1, y1] = bbox(r.polygon), c = centroid(r.polygon), z = r.floorZ ?? datum(r.level);
+    outside.add(r.id); add(r.id, zoneOf(...c), [x0, y0, z - 0.3, x1, y1, z + 2.6]);
+  }
+  const zr = [...new Set(zones.map((z) => z.room))];         // neighbouring zones: their shared edge, up to the sky
+  for (let i = 0; i < zr.length; i++) for (let j = i + 1; j < zr.length; j++) {
+    const A = zones.filter((z) => z.room === zr[i]), B = zones.filter((z) => z.room === zr[j]), pts = [], zs = [];
+    for (const [P, Q] of [[A, B], [B, A]]) for (const z of P) for (const p of z.polygon) if (Q.some((q) => polyDist(p[0], p[1], q.polygon) < 0.15)) { pts.push(p); zs.push(zoneZ(z, ...p)); }
+    if (pts.length) { const [x0, y0, x1, y1] = bbox(pts); add(zr[i], zr[j], [x0 - 0.1, y0 - 0.1, Math.min(...zs) - 0.5, x1 + 0.1, y1 + 0.1, Math.max(...zs) + 12]); }
+  }
+  return { adj, ends, outside, always: ALWAYS_OUT, nodes: new Set([...adj.keys(), ...ALWAYS_OUT]) };
+}
+// The rooms seen from room `from`: depth-first through the edges whose box shows inside the view rectangle so far.
+// project(box, rect, edge) -> the part of rect [x0, x1, y0, y1] (NDC) the box covers, rect itself when unsure (the
+// box reaches behind the eye), null when it is out of view (or a shut door). A room reached again through a rectangle inside one it was
+// already reached through is not walked again. -> Map room -> the rectangles it is seen through (the outdoor extras:
+// the whole view). ponytail: rectangles, no clipping polygons; conservative, never a hole.
+export function seenRooms(graph, from, project, maxDepth = 8) {
+  const rects = new Map([[from, [[-1, 1, -1, 1]]]]), stack = [[from, [-1, 1, -1, 1], 0]];
+  while (stack.length) {
+    const [r, rect, d] = stack.pop();
+    if (d >= maxDepth) continue;
+    for (const e of graph.adj.get(r) || []) {
+      const nr = project(e.box, rect, e);
+      if (!nr) continue;
+      const list = rects.get(e.to) || rects.set(e.to, []).get(e.to);
+      if (list.some((q) => q[0] <= nr[0] && q[1] >= nr[1] && q[2] <= nr[2] && q[3] >= nr[3])) continue;
+      list.push(nr); stack.push([e.to, nr, d + 1]);
+    }
+  }
+  if ([...rects.keys()].some((r) => graph.outside.has(r))) for (const x of graph.always) rects.set(x, [[-1, 1, -1, 1]]);
+  return rects;
+}
+
 // footprints.json -> obstacle polygons per layer {layer: [poly]}. Accepts {items|footprints|objects:[...]} or a bare
 // array; each entry gives a polygon ("poly"|"pts"|"corners"|"obb") or center+size+rot(deg). Level = f.level, else the
 // level of f.room in house.json (pseudo / building rooms X, unknown G); level X -> layer G. Non-blocking symbols are
 // skipped; soft = true returns the small furniture instead (chairs, stools, bins, plants under 1.3 m): walkable, slowed.
-const NONBLOCKING = new Set(['rug', 'mirror', 'tv', 'wall_unit', 'airer', 'shelf', 'towel_rail', 'radiator', 'stair', 'trellis', 'flagpole', 'condenser']);
+// A shower tray is walked into (owner: "you can enter the shower"); its screen is glass the walker passes like a curtain.
+const NONBLOCKING = new Set(['rug', 'mirror', 'tv', 'wall_unit', 'airer', 'shelf', 'towel_rail', 'radiator', 'stair', 'trellis', 'flagpole', 'condenser', 'shower']);
 const SMALL = new Set(['chair', 'armchair', 'stool', 'bin', 'plant', 'office_chair', 'bedside']);
 export function obstaclesFrom(fp, soft = false, house = null) {
   const list = Array.isArray(fp) ? fp : (fp && (fp.items || fp.footprints || fp.objects)) || [];

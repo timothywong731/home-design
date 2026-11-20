@@ -277,6 +277,7 @@ function schema2(house) {
   // review additions are tolerated: the plan symbol `pipe` blocks; feature types ceiling_cove (ignored) and boxing
   // (blocks when it stands on the floor); floor_void.bottom (ignored); a neighbour given by `parts` alone still blocks
   assert.equal(G.obstaclesFrom([{ room: 'bathroom2', plan_sym: 'pipe', obb: sq }], false, house)['2']?.length, 1, 'pipe blocks');
+  assert.equal(G.obstaclesFrom([{ room: 'green_bathroom', plan_sym: 'shower', obb: sq, height: 2 }], false, house)['1'], undefined, 'the shower is walked into');
   const h2 = structuredClone(house), nb = h2.exterior.neighbours[0];
   h2.features.push({ id: 't_cove', type: 'ceiling_cove', room: 'hallway', polygon: [[0.2, 3], [0.6, 3], [0.6, 3.4], [0.2, 3.4]], z: [2.4, 2.6] },
     { id: 't_box', type: 'boxing', room: 'hallway', polygon: [[0.2, 3], [0.6, 3], [0.6, 3.4], [0.2, 3.4]], z: [0, 2.4] },
@@ -285,6 +286,34 @@ function schema2(house) {
   const W2 = G.buildWalk(h2), gr = W2.cells.find((c) => c.kind === 'ground');
   assert.ok(!G.isFree(W2, 'G', 0.4, 3.2) && G.isFree(W, 'G', 0.4, 3.2), 'a floor-standing boxing blocks, a ceiling cove does not');
   assert.ok(nb.parts.every((p) => p.polygon.every(([x, y]) => gr.blockers.some((b) => Math.hypot(b.a[0] - x, b.a[1] - y) < 1e-9))), 'neighbour parts block');
+  // walking round small obstacles (NAV-W-SNAG-CORNER): exactly tangent to a post is free; a step blocked on both axes at
+  // its corner turns and slides round it; a push square into a wall or a post's face stays put (no drift)
+  const box = { rooms: [{ id: 'r', polygon: [[-2, -2], [2, -2], [2, 2], [-2, 2]], floorZ: 0 }], openings: [], walls: [] };
+  const WB = G.buildWalk(box, { obstacles: { G: [[[0, 0], [0.2, 0], [0.2, 0.2], [0, 0.2]]] } }), walkS = (x, y, dx, dy, k = 40) => { let q = at('G', x, y); for (let i = 0; i < k; i++) q = G.move(WB, q, q.x + dx, q.y + dy); return q; };
+  assert.ok(G.isFree(WB, 'G', 0.2 + G.BODY, 0.1), 'tangent to the post is free');
+  let q = walkS(0.35, 0.6, 0, -0.05); assert.ok(q.y < -1 && Math.abs(q.x - 0.35) < 1e-9, `tangent walk past the post (${q.x.toFixed(3)}, ${q.y.toFixed(3)})`);
+  q = walkS(0.25, 0.6, 0, -0.05); assert.ok(q.y < -1, `slides round the post's corner (${q.x.toFixed(3)}, ${q.y.toFixed(3)})`);
+  q = walkS(0.9, 1.7, 0, 0.05); assert.ok(Math.abs(q.x - 0.9) < 1e-9 && q.y < 1.86, `square into a wall: no drift (${q.x.toFixed(3)})`);
+  q = walkS(0.1, 0.6, 0, -0.05); assert.ok(Math.abs(q.x - 0.1) < 1e-9 && q.y > 0.34, `square into the post's face: stays (${q.x.toFixed(3)}, ${q.y.toFixed(3)})`);
+
+  // sight graph (walk-mode culling): openings join their rooms, 'outside' resolves to the zone looked onto; door edges
+  // name their door; a fixed obscure pane is no edge; the stairwells open onto the landings beside them; zones join zones
+  const SG = G.sightGraph(house), to = (a) => (SG.adj.get(a) || []).map((e) => e.to), edge = (a, b) => (SG.adj.get(a) || []).find((e) => e.to === b);
+  assert.deepEqual(SG.ends.get('d_kitchen'), ['hallway', 'kitchen']); assert.deepEqual(SG.ends.get('w_bay_front'), ['living', 'front']);
+  assert.deepEqual(SG.ends.get('d_french'), ['dining', 'garden']); assert.deepEqual(SG.ends.get('shed_d1'), ['shed', 'shed']);
+  assert.equal(edge('hallway', 'kitchen').door, 'd_kitchen');
+  assert.ok(!to('wc').includes('side_passage') && SG.ends.get('w_wc')[1] === 'side_passage', 'fixed obscure WC pane: no sight edge');
+  assert.ok(to('stairs2').includes('landing2_platform') && to('stairs').includes('basement_stair'), 'stairwells open onto the rooms beside them (and down their floor voids)');
+  assert.ok(to('front').includes('side_passage') && to('side_passage').includes('garden') && to('garden').includes('shed') && to('loft_office').includes('roof'), 'zones, roof window');
+  const vb = edge('landing1_front', 'stairs2').box;                         // a stair mouth in no wall: the shared edge, floor to ceiling
+  assert.ok(vb[2] < 3.42 && vb[5] > 8.6, `virtual opening box spans the well (${vb})`);
+  // seenRooms: everything in view walks the graph (outdoor extras come with any outdoor node); a shut door stops it
+  const all = G.seenRooms(SG, 'hallway', (b, r) => r), shutK = G.seenRooms(SG, 'kitchen', (b, r, e) => (e.door === 'd_kitchen' || e.door === 'd_back' ? null : r));
+  assert.ok(all.has('kitchen') && all.has('garden') && all.has('facade') && all.has('neighbours') && all.get('hallway')[0].join() === '-1,1,-1,1', 'seen through open views');
+  assert.ok(shutK.size === 1 && shutK.has('kitchen'), `kitchen with its doors shut sees only itself (${[...shutK.keys()]})`);
+  const right = G.seenRooms(SG, 'hallway', (b, r) => [0, 1, r[2], r[3]]);   // a projector that keeps the right half
+  assert.ok([...right.values()].every((l) => l.every((x) => x[0] >= 0 || x[0] === -1)), 'rectangles narrow along the path');
+
   console.log(`geom ok (schema 2): ${W.cells.length} cells on ${W.layers.length} layers, ${W.portals.length} portals, ${n} portal grid points with finite Z, ${Object.keys(vp).length} viewpoints`);
   for (const s of out) console.log('  route', s);
 }

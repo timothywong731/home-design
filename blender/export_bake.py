@@ -3,6 +3,7 @@ Documented in blender/lib/README.md. Everything is driven by the custom props
 obj['lm'] / obj['room'] / obj['no_export'] / obj['ix'] (blender/INTERACT.md), never by object names."""
 import json
 import math
+import re
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -23,12 +24,18 @@ HEADROOM = 6.0         # ... but never more than this many times the median: 8 b
 FLOOR = 0.02           # ... the median of the texels brighter than this fraction of the PERCENTILE value (see encode)
 EYE = 1.5              # probe height above the floor
 MOVING = {'hinge', 'slide', 'clock'}   # ix types that move in the viewer: probe-lit, except door leaves
+# [round 4] closed fronts, drawers, lids and seats stay out of the lightmap bakes (bake()): baked shut, the carcass
+# interiors and WC bowls they reveal came out black (green bathroom mirror cabinet, the vanities, all four pans).
+# Movers whose group id matches this keep shading the bake: window sashes and roof lights, chairs, footstools, A/C flaps.
+BAKE_KEEP = re.compile(r'\.w_|velux|chair|footstool|aircon')
 # Lights-off set (lights_off, bake_off): the dusk sky alone leaves windowless rooms black (median 0.0003, lit: 0.9)
 # and the far end of the living room at 1 % of its lit level. So that a dark room stays readable, a cool
 # ambient-occlusion term is added: AMBIENT_OFF of radiance on an open wall, falling off into corners and under
 # furniture within AMBIENT_DIST metres. (Cycles' own "fast GI, add" does this in renders but not in bakes: measured.)
 AMBIENT_OFF = 0.15
-AMBIENT_TINT = (0.62, 0.8, 1.0)   # its colour as displayed, i.e. after the white balance (the sky itself shows deep blue)
+# [round 4] was (0.62, 0.8, 1.0): blue / red 1.6 turned white plaster navy with a switch off in daylight (IX-05); now
+# the blue / red of open shade under the one balance (1.11, MULTILEVEL 9)
+AMBIENT_TINT = (0.9, 0.95, 1.0)   # its colour as displayed, i.e. after the white balance
 AMBIENT_DIST = 1.0
 PEAK_OFF = 12 * AMBIENT_OFF   # most that 255 stands for in the off set: sunlit patches (0.9) fit and the ambient level
                               # sits at pixel value 77 or higher (one 8-bit step = 2.5 %). The median is no guide
@@ -72,32 +79,214 @@ def prepare_tagged():
     return tagged, [o for o in tagged if state1(o)]
 
 
+def lamps():
+    """The Cycles lamps of the bakes: every light object except suns, portals, daylight fills (obj['daylight']: light
+    that stands in for daylight a room gets in the footage but not in the bake, kept on with the lamps off) and lights
+    hidden from the render."""
+    return [o for o in bpy.context.scene.objects if o.type == 'LIGHT' and o.data.type != 'SUN'
+            and not o.data.cycles.is_portal and not o.get('daylight') and not o.hide_render]
+
+
+def emission_sockets(mats):
+    """Unlinked, non-zero emission strength sockets of these materials."""
+    return [s for m in mats if m and m.node_tree for n in m.node_tree.nodes
+            for s in [n.inputs.get('Emission Strength' if n.type == 'BSDF_PRINCIPLED' else 'Strength')]
+            if n.type in {'BSDF_PRINCIPLED', 'EMISSION'} and s is not None and not s.is_linked and s.default_value]
+
+
 @contextmanager
 def lights_off():
     """The scene with every lamp switched off, for the lights-off lightmaps and probes: all light objects except
     suns and portals hidden, every emission strength 0 (AO distance set for bake_off). Restored on exit.
     Yields (lights hidden, emission sockets zeroed)."""
     sc = bpy.context.scene
-    lamps = [o for o in sc.objects if o.type == 'LIGHT' and o.data.type != 'SUN' and not o.data.cycles.is_portal
-             and not o.hide_render]
-    glow = [(s, s.default_value) for m in bpy.data.materials if m.node_tree for n in m.node_tree.nodes
-            for s in [n.inputs.get('Emission Strength' if n.type == 'BSDF_PRINCIPLED' else 'Strength')]
-            if n.type in {'BSDF_PRINCIPLED', 'EMISSION'} and not s.is_linked and s.default_value]
+    lamps_ = lamps()
+    glow = [(s, s.default_value) for s in emission_sockets(bpy.data.materials)]
     ws = sc.world.light_settings
     keep = ws.distance
     try:
-        for o in lamps:
+        for o in lamps_:
             o.hide_render = True
         for s, _ in glow:
             s.default_value = 0
         ws.distance = AMBIENT_DIST
-        yield len(lamps), len(glow)
+        yield len(lamps_), len(glow)
     finally:
-        for o in lamps:
+        for o in lamps_:
             o.hide_render = False
         for s, v in glow:
             s.default_value = v
         ws.distance = keep
+
+
+@contextmanager
+def daylight_off():
+    """Inside lights_off(): no sun and a black world as well, so that a bake sees only the lamps unhidden meanwhile
+    (the circuit bakes). Restored on exit."""
+    sc = bpy.context.scene
+    suns = [o for o in sc.objects if o.type == 'LIGHT' and (o.data.type == 'SUN' or o.get('daylight')) and not o.hide_render]
+    bg = [(s, s.default_value) for n in (sc.world.node_tree.nodes if sc.world and sc.world.node_tree else [])
+          if n.type == 'BACKGROUND' for s in [n.inputs['Strength']] if not s.is_linked]
+    try:
+        for o in suns:
+            o.hide_render = True
+        for s, _ in bg:
+            s.default_value = 0
+        yield
+    finally:
+        for o in suns:
+            o.hide_render = False
+        for s, v in bg:
+            s.default_value = v
+
+
+@contextmanager
+def exterior_daylight(on=True):
+    """The daylight of the exterior rooms while open: the light sky (Background 'sky_light', not the camera's display
+    sky) x lighting.EXTERIOR_SKY_GAIN and the sun lamp x EXTERIOR_SUN_GAIN. on=False: a no-op."""
+    from lib import lighting
+    sc = bpy.context.scene
+    sky = [n.inputs['Strength'] for n in (sc.world.node_tree.nodes if on and sc.world and sc.world.node_tree else [])
+           if n.type == 'BACKGROUND' and n.name == 'sky_light']
+    suns = [o.data for o in (sc.objects if on else []) if o.type == 'LIGHT' and o.data.type == 'SUN']
+    if on and not sky:
+        print('[export_bake] WARNING: no sky_light Background node (old build?): exterior sky not raised')
+    keep = [s.default_value for s in sky], [d.energy for d in suns]
+    try:
+        for s in sky:
+            s.default_value *= lighting.EXTERIOR_SKY_GAIN
+        for d in suns:
+            d.energy *= lighting.EXTERIOR_SUN_GAIN
+        yield
+    finally:
+        for s, v in zip(sky, keep[0]):
+            s.default_value = v
+        for d, v in zip(suns, keep[1]):
+            d.energy = v
+
+
+# ------------------------------------------------------------------ circuits (blender/INTERACT.md, "Circuits")
+NEAR = 0.08      # m: a lamp within this of a lamp-group member's box belongs to that lamp (LED tapes and their strips)
+
+
+def _box(o):
+    c = np.array([o.matrix_world @ Vector(v) for v in o.bound_box])
+    return c.min(0), c.max(0)
+
+
+def circuits(tagged, names):
+    """Lighting circuits of the rooms whose lamps fall into two or more of them -> {room: {circuit: dict(lights=[light
+    objects], emissive=[untagged mesh names], groups=[ix group ids that switch it])}}; every other room is one circuit
+    (no entry) and its switches keep switching the whole room. names: {group id: circuit} for groups whose tag has no
+    'circuit' key yet (export.CIRCUIT). Rules:
+    - a lamp belongs to the lamp group (t 'lamp') one of whose members its name extends ('dining.chandelier.bulb.3' ->
+      member 'dining.chandelier'), else whose member box it lies within NEAR of (an LED strip at its tape);
+    - its circuit: the group's 'circuit' (tag key, else names); else the group id without its room prefix when the
+      lamp group has no rooms (a lamp on its own switch or plug); else 'main' (lamps of no group, and those of a
+      lamp group with rooms but no circuit, which switches the whole room as before);
+    - untagged emissive meshes follow the same name rule (tagged ones follow their group's state in the viewer)."""
+    groups = {}
+    for o in tagged:
+        d = ix(o)
+        if d.get('t') in {'light', 'lamp'}:
+            gid = d.get('g', o.name)
+            g = groups.setdefault(gid, dict(t=d['t'], rooms=list(d.get('rooms') or []), members=[], circuit=None))
+            g['members'].append(o)
+            g['circuit'] = g['circuit'] or d.get('circuit') or names.get(gid)
+    members = sorted(((m.name, gid) for gid, g in groups.items() if g['t'] == 'lamp' for m in g['members']),
+                     key=lambda p: -len(p[0]))
+    boxes = [(gid, *_box(m)) for gid, g in groups.items() if g['t'] == 'lamp' for m in g['members'] if m.type == 'MESH']
+
+    def owner(o, near):
+        gid = next((gid for name, gid in members if o.name.startswith(name + '.')), None)
+        if gid is None and near:
+            p = np.array(o.matrix_world.translation)
+            gid = next((gid for gid, lo, hi in boxes if np.all(p >= lo - NEAR) and np.all(p <= hi + NEAR)), None)
+        return gid
+
+    def name_of(gid, room):
+        g = groups.get(gid)
+        if g is None or (g['rooms'] and not g['circuit']):
+            return 'main'
+        if g['circuit']:
+            return g['circuit']
+        return gid[len(room) + 1:] if gid.startswith(room + '.') else gid
+
+    out = {}
+    for o in lamps():
+        room = o.get('room')
+        if room:
+            gid = owner(o, True)
+            c = out.setdefault(room, {}).setdefault(name_of(gid, room), dict(lights=[], emissive=[], groups=set()))
+            c['lights'].append(o)
+            if gid and (groups[gid]['circuit'] or not groups[gid]['rooms']):
+                c['groups'].add(gid)
+    out = {r: cs for r, cs in out.items() if len(cs) > 1}
+    for gid, g in groups.items():                    # switches with a circuit (the knobs of a multi-gang dimmer)
+        for r in (g['rooms'] if g['circuit'] else []):
+            if g['circuit'] in out.get(r, {}):
+                out[r][g['circuit']]['groups'].add(gid)
+    for o in bpy.context.scene.objects:
+        room = o.get('room')
+        if room in out and o.type == 'MESH' and 'ix' not in o.keys() and \
+                emission_sockets([s.material for s in o.material_slots]):
+            c = out[room].get(name_of(owner(o, False), room))
+            if c is not None:
+                c['emissive'].append(o.name)
+    for cs in out.values():
+        for c in cs.values():
+            c['groups'] = sorted(c['groups'])
+    return out
+
+
+def clip_like(px, k, M):
+    """Scene-linear pixels (n, 3) scaled down where encode() with intensity k and balance M clips them (its brightest
+    channel after M above k): the radiance the viewer will actually show."""
+    peak = np.maximum(px @ M.T, 0).max(axis=1)
+    return px * np.minimum(1.0, k / np.maximum(peak, 1e-9))[:, None]
+
+
+def half(px, res):
+    """A res x res atlas (n, 4+) drawn down to res/2 by 2 x 2 means -> (n/4, 3), RGB only."""
+    return px[:, :3].reshape(res // 2, 2, res // 2, 2, 3).mean(axis=(1, 3)).reshape(-1, 3)
+
+
+def normalise_circuits(cs, on, off):
+    """Scale the circuit atlases of one room in place so that lights-off + their sum = the lights-on bake, which is what
+    the viewer composes (IX-01: the lights-off atlas carries the ambient term on top of the daylight, so off + the raw
+    circuits overshot the lights-on atlas by 5-16 % and switching one lamp off brightened the room).
+    cs: {circuit: (n, 4) scene-linear}; on, off: (n, 3) at the same size (on drawn down by half()). One scale per texel
+    for all circuits, luminance (on - off) / luminance (sum), clamped to [0, 1.5]; where the circuits are dark it is 1.
+    -> (median scale over the lit texels, (off + sum) / on before, after: sums over the texels the lamps really light)."""
+    Y = np.array([0.2126, 0.7152, 0.0722], np.float32)
+    tot = sum(np.maximum(c[:, :3], 0) for c in cs.values()) @ Y
+    want = np.maximum(on - off, 0) @ Y
+    lit = tot > 1e-5                                      # absolute: a relative floor left most of a room unscaled
+                                                          # next to a circuit's hot spots (round 4, living: 1.26 decoded)
+    s = np.ones_like(tot)
+    s[lit] = np.clip(want[lit] / tot[lit], 0, 1.5)
+    o, n = np.maximum(off, 0) @ Y, np.maximum(on, 0) @ Y
+
+    seen = lit & (n > 1e-3)
+
+    def ratio(t):                                         # light-weighted over the lit texels: dark cabinet backs
+        return float((o + t)[seen].sum() / max(float(n[seen].sum()), 1e-9))   # would dominate a mean of ratios
+    before = ratio(tot)
+    for c in cs.values():
+        c[:, :3] *= s[:, None]
+    return float(np.median(s[lit])) if lit.any() else 1.0, before, ratio(tot * s)
+
+
+@contextmanager
+def only(lights):
+    """Inside lights_off() + daylight_off(): these lamps lit again."""
+    try:
+        for o in lights:
+            o.hide_render = False
+        yield
+    finally:
+        for o in lights:
+            o.hide_render = True
 
 
 def _signature(m):
@@ -310,8 +499,11 @@ def bake(name, objs, res, kind='DIFFUSE'):
     the originals are hidden from the render meanwhile so the copy does not shadow itself."""
     sc = bpy.context.scene
     img = bpy.data.images.new('lm_' + name, res, res, alpha=False, float_buffer=True)
-    # leaves modelled standing open are probe-lit and stay out of the bake: no shadow is left behind when they close
-    ghosts = [o for o in sc.objects if not o.hide_render and ix(o).get('t') in MOVING and ix(o).get('on')]
+    # leaves modelled standing open are probe-lit and stay out of the bake: no shadow is left behind when they close;
+    # so are closed fronts, drawers, lids and seats (BAKE_KEEP), or what they reveal is baked black
+    ghosts = [o for o in sc.objects if not o.hide_render and ix(o).get('t') in MOVING and
+              (ix(o).get('on') or (ix(o).get('t') != 'clock' and not (o.get('door') or 'blocks' in ix(o))
+                                   and not BAKE_KEEP.search(ix(o).get('g', o.name))))]
     for o in ghosts:
         o.hide_render = True
     dup = []
@@ -350,11 +542,20 @@ def bake(name, objs, res, kind='DIFFUSE'):
     return px.reshape(-1, 4)
 
 
-def bake_off(name, objs, res, ambient):
-    """Lights-off lightmap of one atlas; call inside lights_off(). Daylight bake + ambient (rgb) x occlusion."""
-    px = bake(name, objs, res)
-    px[:, :3] += bake(name, objs, res, 'AO')[:, :1] * np.asarray(ambient, np.float32)
-    return px
+def with_ambient(px, ao, ambient, on=None):
+    """Lights-off radiance px (n, 4+) + ambient (rgb) x occlusion ao (n, 1+), but never above the lights-on radiance on
+    ((n, 3) at the same size, or None) where that is brighter than px itself: with the other rooms' lamps lit (round 4),
+    a room whose own lamps add less than the ambient there came out brighter with its lights off (stairs2 probe +28 %)."""
+    out = px.copy()
+    out[:, :3] += ao[:, :1] * np.asarray(ambient, np.float32)
+    if on is not None:
+        out[:, :3] = np.minimum(out[:, :3], np.maximum(np.asarray(on, np.float32), px[:, :3]))
+    return out
+
+
+def bake_off(name, objs, res, ambient, on=None):
+    """Lights-off lightmap of one atlas; call inside lights_off(). Daylight bake + ambient x occlusion (with_ambient)."""
+    return with_ambient(bake(name, objs, res), bake(name, objs, res, 'AO'), ambient, on)
 
 
 # ------------------------------------------------------------------ encoding
@@ -385,15 +586,19 @@ def wb_matrix():
     return out.reshape(3, 4)[:, :3].T.astype(np.float64) @ np.linalg.inv(P.T)
 
 
-def encode(px, w, h, path, M, quality=93, cap=None):
+def encode(px, w, h, path, M, quality=93, cap=None, top_floor=None):
     """Scene-linear float pixels (n, 3+) -> 8-bit sRGB JPEG with the white balance M applied.
     Returns the intensity k of the encoding:  linear = srgb_decode(pixel / 255) * k.
     k is the PERCENTILE of the lit texels, at most cap (default: HEADROOM x the median of the really lit ones), so hot spots next to lamps clip
     instead of costing everything else its precision (one 8-bit step is ~2 % at the median); +-1 LSB triangular
-    dither before quantising hides the banding on smooth ceilings."""
+    dither before quantising hides the banding on smooth ceilings. top_floor (circuit atlases): the percentile is taken
+    over the texels brighter than that fraction of the brightest only - a desk lamp's pool covers ~1 % of its atlas and
+    clipped at the level of the bounce light around it (round 4: loft desk lamp intensity 0.02, pool ~0.5)."""
     rgb = np.maximum(px[:, :3].astype(np.float64) @ M.T, 0)
     peak = rgb.max(axis=1)
     lit = peak[peak > 0]
+    if top_floor and lit.size:
+        lit = lit[lit >= top_floor * float(np.percentile(lit, 99.99))]
     if lit.size:
         top = float(np.percentile(lit, PERCENTILE))
         # the median is taken over the texels that are really lit (above FLOOR x top): cabinet backs and the wall behind

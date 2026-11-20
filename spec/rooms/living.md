@@ -512,3 +512,17 @@ All lamps are warm white (≈ 2700 K); the room reads distinctly warm/amber in t
   bay); the room side does not move. Floor direction re-checked and **kept along Y**: the full-res still
   t=114 (f_0115) shows long board edges receding toward the bay with short end joints across, and
   f_0234/f_0235 show long edges parallel to the door line, continuous with the hall boards.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- L6: rose and chandelier at (2.55, 2.73). L3: brass rod x 1.33..4.255 on the north wall, east run to y 1.40, 4 brackets
+  north and 5 east.
+- L5 shutters: the outer front panels hinge at the corner posts, away from the brass catch (v1 f_0127); with the
+  curtains tied back the panels may only swing 10 (return lights) and 5 degrees (front lights) before they touch the
+  cloth, the tie-backs or the bay lamp table; drawn curtains open first.
+- **Round 4 (IX-02):** that swing was invisible, so "open / close the shutters" now tilts the louvres, as the owner does
+  in v2 f_0759-0766: the panels stay put (`trigger`), the louvres are modelled tilted open (12 degrees, the daytime
+  look) and shut (75 degrees, the night look of 2.3) in state 1 (`lib/joinery.py SHUTTER_TILT`).
+- L-02 (east-wall chain) is NOT changed: the filmed chain (A/C 0.75 about 0.15 off the NE corner, side table 0.46,
+  sofa 1.8-2.0, sofa scroll about 0.1 off the nib, B5 and the sofa sharing a centre at about y 2.04) is about 3.3-3.6 m
+  long against the 4.20 m wall, while L1 (north wall at y 5.19 from the chamfer and door) and L6 (axis 2.33) are
+  each supported by their own frames. Until a re-survey settles the north wall, the room keeps L1 and L6.

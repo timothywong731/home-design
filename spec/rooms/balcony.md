@@ -167,3 +167,10 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - It is a bolt-on platform: nothing of the ground floor projects beneath it.
 - **Railing bars at 0.165 centres: 5 per side return, 6 per 1.15 front bay** (`railing.barCentres`, `barsPerSide`,
   `barsPerFrontBay`) [verification V2]; posts stay at x 0 / 1.15 / 2.30, depth 1.05.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 7 Planters: three along the front and ONE on the EAST side rail only; the west side rail is bare (v3 f_0269, f_0287,
+  f_0299). The west-end ivy seen from the garden hangs from the front trough round the north-west corner.
+- 7 In the frontal v2 f_0251 the lowest ivy at the centre hangs about 0.5 m below the deck top (modelled 0.6-1.0 m,
+  longer at the north-west corner).
+- 5 The lantern stands on top of its S-scroll bracket (f_0295). The envelope no longer builds a placeholder lantern.

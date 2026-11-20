@@ -35,6 +35,14 @@ SUN_ANGLE = 1.0                      # degrees
 SKY_TINT = (1.0, 0.281, 0.073)
 SKY_STRENGTH = 0.6                   # integration: 0.25 (card 0.30) left the garden, passage and shed near black beside the
                                      # lamp-lit rooms; 0.6 -> card luminance 0.72 (target 0.72 +- 0.07), same tint
+# [round 4] The footage outdoors is bright overcast daylight (the phone exposed for it, some 2 stops brighter than the
+# lamp-lit rooms); at the one exposure the garden and the side passage (house shadow, sky only) read as night (view luminance 39-41 against
+# 110-148 in v2 f_0195-0205 / f_0335-0345). So the exterior rooms (ctx.is_exterior: level X and the balcony) bake their
+# lightmaps and probes, and render their stills, under a stronger sky and a softer sun (export_bake.exterior_daylight);
+# interiors keep SKY_STRENGTH / SUN_STRENGTH. Measured (480 px Cycles views, mean display luminance): garden 62 -> 103,
+# passage 27 -> 65, the sunlit front path 159 -> 193.
+EXTERIOR_SKY_GAIN = 3.5
+EXTERIOR_SUN_GAIN = 0.6
 # What the camera sees (integration decision on MULTILEVEL open question 1): the lamp-coloured sky above stays the
 # LIGHT, but camera rays get the same physical sky taken back through the inverse of the balance, so that previews,
 # stills, probes and the viewer's sky.jpg show a daylight sky instead of the salmon one. Shown colour (scene linear,
@@ -53,8 +61,12 @@ FILL_UP_W_PER_M2 = 2.5               # ... plus one soft point light per rectang
 FILL_PITCH = 1.3
 
 
+DEVICE = None        # build.py --device: None = every GPU, 'CPU', or one GPU by index ('0', '1') when the GPUs are busy
+
+
 def setup_cycles(samples=64, res=(960, 540)):
-    """Cycles on every non-CPU OptiX device (falls back to CUDA, then CPU), AgX, denoised."""
+    """Cycles on every non-CPU OptiX device (falls back to CUDA, then CPU), AgX, denoised. DEVICE narrows it to the
+    CPU or to one GPU."""
     sc = bpy.context.scene
     sc.render.engine = 'CYCLES'
     c = sc.cycles
@@ -64,15 +76,17 @@ def setup_cycles(samples=64, res=(960, 540)):
     c.use_denoising = True
     prefs = bpy.context.preferences.addons['cycles'].preferences
     gpu = False
-    for t in ('OPTIX', 'CUDA'):
+    for t in ('OPTIX', 'CUDA') if str(DEVICE).upper() != 'CPU' else ():
         try:
             prefs.compute_device_type = t
             prefs.get_devices()
         except Exception:
             continue
+        gpus = [d for d in prefs.devices if d.type != 'CPU']
+        pick = gpus if DEVICE is None else gpus[int(DEVICE):int(DEVICE) + 1]
         for d in prefs.devices:
-            d.use = d.type != 'CPU'
-        gpu = any(d.use for d in prefs.devices)
+            d.use = d in pick
+        gpu = bool(pick)
         if gpu:
             break
     c.device = 'GPU' if gpu else 'CPU'
@@ -126,6 +140,7 @@ def setup_sky(tint=None, strength=None, rotation=None, display=True):
     mul.operation = 'MULTIPLY'
     mul.inputs[1].default_value = SKY_TINT if tint is None else tint
     bg = new('ShaderNodeBackground')
+    bg.name = 'sky_light'                                     # export_bake.exterior_daylight scales this one
     bg.inputs['Strength'].default_value = SKY_STRENGTH if strength is None else strength
     out = new('ShaderNodeOutputWorld')
     link(sky.outputs[0], mul.inputs[0])
@@ -158,6 +173,7 @@ def setup_sky(tint=None, strength=None, rotation=None, display=True):
         link(pick.outputs['Result'], dot.inputs[0])
         link(dot.outputs['Value'], comb.inputs[i])
     seen = new('ShaderNodeBackground')
+    seen.name = 'sky_show'
     seen.inputs['Strength'].default_value = SKY_SHOW
     link(comb.outputs[0], seen.inputs['Color'])
     mix = new('ShaderNodeMixShader')
@@ -284,6 +300,24 @@ def fill(ctx, room):
         ob['fill'] = True
         ob.visible_camera = ob.visible_glossy = False          # no white discs through glazing / in mirrors and glass
     return out
+
+
+DAYLIGHT_RGB = (1.0, 0.466, 0.206)   # the open-shade card of SKY_TINT normalised: reads neutral under the one balance
+
+
+def daylight_fill(ctx, room, name, centre, size, toward, watts):
+    """[round 4] A soft rectangle of daylight for a room that the footage shows daylit but whose openings the bake
+    starves (the shed workshop: shaded veranda, a hedge 0.8 m off). Tagged obj['daylight']: export_bake keeps it on in the
+    lights-off bakes (it is not a lamp) and off in the circuit bakes; invisible to the camera and in reflections."""
+    l = bpy.data.lights.new(name, 'AREA')
+    l.shape, l.size, l.size_y, l.energy, l.color = 'RECTANGLE', size[0], size[1], watts, DAYLIGHT_RGB
+    ob = bpy.data.objects.new(name, l)
+    ob.location = centre
+    ob.rotation_euler = Vector(toward).to_track_quat('-Z', 'Y').to_euler()
+    ctx.add(ob, room, 'light')
+    ob['daylight'] = True
+    ob.visible_camera = ob.visible_glossy = False
+    return ob
 
 
 def void_fill(ctx, room):

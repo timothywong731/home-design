@@ -16,7 +16,7 @@ import os
 import bpy
 from mathutils import Matrix, Vector
 
-from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P
 from rooms.dining_chairs import chair as chippendale_chair
 
 ROOM = 'loft_office'
@@ -66,11 +66,9 @@ def quad(b, mat, x0, x1, z0, z1, y):
 # ------------------------------------------------------------------ built-in cabinet (spec 5.1)
 def cabinet(ctx):
     """White joinery on the south face of the block: pilasters, frieze, cornice, open shelves over four deep
-    drawers. ponytail: the block is solid mass in the shell, so the cabinet stands 0.30 proud of it; once
-    house.json gives the block a recess behind it (see the report) it drops back to 30 mm automatically."""
-    deep = ctx.grid is not None and not shell.is_solid(ctx, 0.78, 5.60, FZ + 1.3)
-    proud = 0.03 if deep else 0.30
-    D = proud if not deep else .52 if shell.is_solid(ctx, 0.78, 6.02, FZ + 1.3) else .70   # clear depth behind the front
+    drawers, 30 mm proud of the block, in front of its 0.70 deep hollow (house.json loft_cabinet_recess: x 0.44..1.12,
+    y 5.38..6.08, h 0.09..1.89, the opening between the pilasters)."""
+    proud, D = 0.03, .70                                 # D: clear depth behind the front
     yf, wh = 5.38 - proud, 'white_gloss'
     here = T((0.78, yf, FZ))                             # local: x across the front, +y into the cabinet
     b = mo.MB().at(here)
@@ -201,7 +199,9 @@ def desk(ctx):
         b.box((3.55, y - .035, 0), (4.25, y + .035, .03), 'black_matt', bev=.003)
     b.box((3.88, 3.90, .63), (3.92, 5.10, .69), 'black_matt')
     b.box((3.56, 3.98, .74), (3.96, 4.88, .743), col('felt', '#1D1D20', 1.0))
-    ctx.add(b.finish('loft_office.desk'), ROOM, 'furn', plan_sym='desk')
+    # [round 4] baked (furniture is probe-lit by default): the desk lamp's pool falls on this top, and a probe-lit top
+    # showed nothing when the lamp was switched (IX-07)
+    ctx.add(b.finish('loft_office.desk'), ROOM, 'furn', plan_sym='desk', lm='static')
 
     b, blk, scr, grey = mb(), 'black_matt', 'screen_black', col('alu', '#8D9096', .45, 1)
     # 49-inch curved ultrawide: 8 facets on a 1.8 m radius, centre y 4.17, 0.15 off the wall; both screens top out
@@ -249,6 +249,9 @@ def desk(ctx):
     lamp = b.finish('loft_office.desk_lamp')
     IX.tag(lamp, 'lamp', label='Desk lamp')
     ctx.add(lamp, ROOM, 'light')
+    # [round 4] its Cycles lamp, just under the bulb disc inside the shade (IX-07: without one the export made no circuit
+    # and the switch changed nothing); the name extends the fitting's, so it bakes as circuit 'desk_lamp' (INTERACT.md)
+    lighting.bulb(ctx, ROOM, (3.70, 5.065, FZ + 1.20), watts=5, kelvin=3000, radius=.02, name='loft_office.desk_lamp.bulb')
 
 
 def office_chair(ctx):
@@ -366,7 +369,7 @@ def aircon(ctx):
 
 def tv(ctx):
     """50-inch TV on the block's east face, medal rail under it, two small frames over it (spec 5.4, 7).
-    Everything here stays within 42 mm of the wall: the rear hatch's west leaf swings to x 1.30 (110 degrees)."""
+    Everything here stays within 42 mm of the wall (the rear hatch's west leaf swings to x 1.43, 95 degrees)."""
     set_ = P.place(P.tv_panel(1.11, .64, standoff=.012, name='loft_office.tv'), (1.25, 6.015, FZ + 1.07), facing=W)
     pic = P.tv_screen(1.10, .63, name='loft_office.tv.picture')
     pic.location, pic.rotation_euler = set_.matrix_basis @ Vector((0, -.0436, 0)), set_.rotation_euler

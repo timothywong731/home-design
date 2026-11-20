@@ -163,3 +163,8 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   (1.25) and its north limit the old rear wall of the main house; the roof plane is still 0.18 above the floor there.
 - The green bathroom ceiling below is at Z 6.17, 0.20 under the lower part of the rear void's floor [L3].
 - Roof planes: `house.next.json` `roof.planes` (`main_front`, `main_rear`, `bay_gable_w/e`).
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Rear lining: 1.36 above the floor at the knee wall (y 6.69, Z 7.85), not 1.42 - the roof slab underside is at
+  Z 7.864 there (main_rear c0 12.0267, slab 0.30).
+- 'Reconciled dimensions': the rear void is x 1.35..4.30 (house.json eaves_rear), not 1.25..4.30.

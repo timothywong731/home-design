@@ -31,7 +31,8 @@ RECS = [
     R("garden", "planter", 2.95, 18.2, 3.37, 20.05), R("garden", "fire_pit", 0.77, 21.76, 1.77, 22.76),
     R("garden", "trellis", -0.76, 17.85, -0.72, 19.65), R("front", "flagpole", 0.94, -0.3, 1.02, -0.22),
     R("garden", "condenser", 3.42, 15.0, 3.72, 15.8, "X"), R("garden", "bench", 2.0, 23.0, 3.2, 23.45, "X"),
-    R("facade", "pipe", 3.43, 12.3, 3.54, 12.41, "X"), R("front", "bin", 3.9, -1.0, 4.5, -0.3, "X"),
+    dict(R("facade", "pipe", 3.43, 12.3, 3.54, 12.41, "X"), name="facade.downpipe.1"), R("front", "bin", 3.9, -1.0, 4.5, -0.3, "X"),
+    R("front", "pipe", 2.0, -0.6, 2.1, -0.5, "X"),             # a round post (lamp column): drawn, not labelled RWP
 ]
 SKEW = dict(R("green_bedroom", "bed", 0, 0, 1, 1), name="green_bedroom.skewed",
             obb=[[1.0, 1.0], [2.0, 1.0], [2.9, 1.5], [1.9, 1.5]])           # valid, not a rectangle: symbols cannot read it
@@ -53,7 +54,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert n >= 1, (r["name"], lvl, n)
     assert {D.rec_level(dict(r)) for r in RECS} == {"B", "1", "2", "X"}
     X = sheets["X"]
-    assert any(e["type"] == "text" and e["text"] == "RWP" for e in X["entities"]), "pipe label"
+    assert sum(e["type"] == "text" and e["text"] == "RWP" for e in X["entities"]) == 1, "pipe label: the downpipe only"
 
     # spec fallback vs export: an exported site item filed under another room replaces the spec item it covers
     fp.write_text(json.dumps([R("facade", "bin", 3.92, -0.74, 4.5, -0.16, "X")]), encoding="utf-8")

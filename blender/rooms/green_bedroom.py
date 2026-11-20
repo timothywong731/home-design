@@ -68,6 +68,25 @@ def _wall(ctx, ob, x, y, z, facing, kind='fit', sym=None, lm=None):
     return _add(ctx, P.place(ob, (x, y, FZ + z), facing=facing), kind, sym, lm)
 
 
+def _circ(name):
+    """Tag kwargs of lighting circuit name (INTERACT.md, Circuits)."""
+    return {'circuit': name}
+
+
+def _gangs(ctx, names, x, y, z, facing, dimmer, pitch, width=0.02):
+    """One object per gang of a blank plate (rotary knob or rocker, as P.switch_plate draws them), in plate-local
+    +x order (facing (0, -1): west to east, facing (-1, 0): north to south), so each gang can carry its own tag."""
+    out = []
+    for i, nm in enumerate(names):
+        mb = mo.MB().at(Tr(((i - (len(names) - 1) / 2) * pitch, -0.009, 0)) @ Rx(90 if dimmer else 6))
+        if dimmer:
+            mb.lathe([(0, 0), (0.0135, 0), (0.0125, 0.012), (0.011, 0.014), (0, 0.014)], 'plastic_white', 12)
+        else:
+            mb.box((-width / 2, -0.0045, -0.017), (width / 2, 0.001, 0.017), 'plastic_white', bev=0.0008)
+        out.append(_wall(ctx, mb.finish(nm), x, y, z, facing, lm='dynamic'))
+    return out
+
+
 # ------------------------------------------------------------------------------------ sills, pelmets, rose
 def sills(ctx):
     """Stained hardwood sill boards: a 5 mm slab on each reveal bottom and a 25 mm nosing proud of the plaster."""
@@ -167,9 +186,15 @@ def electrics(ctx):
     mb.box((3.165, Y1 - 0.02, FZ + 1.22), (3.215, Y1, FZ + 1.33), 'plastic_white', bev=0.003)
     mb.box((3.168, Y1 - 0.016, FZ + 1.25), (3.212, Y1 - 0.004, FZ + 1.40), solid('ac_remote', '#E9E9E6', 0.4), bev=0.004)
     _add(ctx, mb.finish('green_bedroom.remote'), 'fit')
-    # S1: three rotary dimmers (chandelier / downlights / wall sconce) beside door 1
-    s1 = _wall(ctx, P.switch_plate(3, 'dimmer', name='green_bedroom.switch.s1'), -0.50, Y1, 1.20, (0, -1))
-    IX.tag(s1, 'light', rooms=[ROOM], label='Bedroom lights')
+    # S1: three rotary dimmers beside door 1, one knob per circuit (spec 8, INTERACT.md Circuits). Facing it: left
+    # (west) = chandelier, middle = downlights (with the plate), right = wall sconce
+    s1 = _wall(ctx, P.switch_plate(1, 'blank', wide=True, name='green_bedroom.switch.s1'), -0.50, Y1, 1.20, (0, -1),
+               lm='dynamic')
+    k_ch, k_dn, k_sc = _gangs(ctx, [f'green_bedroom.switch.s1.{w}' for w in ('chandelier', 'downlights', 'sconce')],
+                              -0.50, Y1, 1.20, (0, -1), True, 0.036)
+    IX.tag_many([s1, k_dn], 'light', g='green_bedroom.switch.s1', rooms=[ROOM], label='Spotlights', **_circ('main'))
+    IX.tag(k_ch, 'lamp', g='green_bedroom.chandelier', label='Chandelier')
+    IX.tag(k_sc, 'lamp', g='green_bedroom.sconce', label='Wall light')
     # S4: bathroom lights, right of the sliding door
     s4 = _wall(ctx, P.switch_plate(1, 'rocker', name='green_bedroom.switch.s4'), 3.29, Y1, 1.25, (0, -1))
     IX.tag(s4, 'light', rooms=['green_bathroom'], label='Bathroom lights')
@@ -234,6 +259,7 @@ def chandelier(ctx, x, y):
     cry.location = body.location
     cry.visible_shadow = False                       # the lamp inside lights the room through the beads
     _add(ctx, cry, 'light')
+    IX.tag_many([body, cry], 'lamp', g='green_bedroom.chandelier', label='Chandelier', reach=0.7)   # S1 left knob
     lighting.bulb(ctx, ROOM, (x, y, FZ + CEIL - 0.36), watts=W_CHAND, kelvin=3000, radius=0.05, name='green_bedroom.chandelier.lamp')
 
 
@@ -325,9 +351,17 @@ def pineapple(ctx, tag, y):
     shade.visible_shadow = False
     for f in shade.data.polygons:
         f.use_smooth = f.material_index > 0          # facets flat, bulb smooth
-    sw = P.switch_plate(1 if tag == 'n' else 2, 'rocker', name=f'{pc.name}.switch')      # S3: 2 rockers on one 86 mm plate (v3 f_0646)
-    _wall(ctx, sw, X1, y, 0.98, (-1, 0))
-    IX.tag_many([body, shade, sw], 'lamp', g=pc.name, label='Bedside light')
+    if tag == 'n':                                   # S2: its own 1-gang plate
+        sw = [_wall(ctx, P.switch_plate(1, 'rocker', name=f'{pc.name}.switch'), X1, y, 0.98, (-1, 0))]
+    else:                                            # S3: 2 rockers on one 86 mm plate (v3 f_0646): facing it, left
+        plate = _wall(ctx, P.switch_plate(1, 'blank', name='green_bedroom.switch.s3'), X1, y, 0.98, (-1, 0),
+                      lm='dynamic')
+        sw, two_way = _gangs(ctx, ['green_bedroom.switch.s3.pineapple', 'green_bedroom.switch.s3.downlights'],
+                             X1, y, 0.98, (-1, 0), False, 0.028)                            # (north) = this light,
+        sw = [sw]                                    # right = the downlights, two-way with S1 (spec 8 assumption)
+        IX.tag_many([plate, two_way], 'light', g='green_bedroom.switch.s3', rooms=[ROOM], label='Spotlights',
+                    **_circ('main'))
+    IX.tag_many([body, shade] + sw, 'lamp', g=pc.name, label='Bedside light')
     lighting.bulb(ctx, ROOM, pc.pt((0, -0.21, -0.19)), watts=W_PINE, kelvin=2800, radius=0.03, name=pc.name + '.lamp')
 
 
@@ -335,7 +369,7 @@ def sconce(ctx):
     sc = P.sconce(3, 0.36, 0.33, 0.16, mat='brass_antique', shade=(0.05, 0.115, 0.10, 'scalloped', '#F4CB94'),
                   name='green_bedroom.sconce')
     _wall(ctx, sc, 0.70, Y0, 1.90, (0, 1), kind='light')
-    IX.tag_many(P.family(sc), 'lamp', g='green_bedroom.sconce', label='Wall light', rooms=[ROOM])   # on the S1 plate
+    IX.tag_many(P.family(sc), 'lamp', g='green_bedroom.sconce', label='Wall light')   # own circuit: S1 right knob
     bpy.context.view_layer.update()
     for j, p in enumerate(P.bulb_points(sc)):
         lighting.bulb(ctx, ROOM, p, watts=W_SCONCE, kelvin=2800, name=f'green_bedroom.sconce.lamp.{j}')

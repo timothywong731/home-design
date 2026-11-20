@@ -85,7 +85,8 @@ cover it with `shell.box` (splashbacks, nook lining, black soffit) or with your 
   loft_office, garden, front; 150 k for other rooms; per level G 0.85 M, 1 1.3 M, 2 0.85 M, B 0.15 M, X 0.85 M.
   build.py prints the table (`[build] tris  G living ...`).
 - A module that builds its own flight calls `shell.remove(<stairwell room>, 'flight')` first (the shell always
-  builds a plain carcass). `rooms/stairs.py` does not yet, so two flights overlap there.
+  builds a plain carcass), or keeps the carcass and deletes only its tread / riser faces, as `rooms/stairs.py` does
+  (the soffit and sides stay).
 
 ## build.py
 
@@ -95,9 +96,13 @@ Contract: `blender/MULTILEVEL.md` section 5.
 B="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
 "$B" -b --factory-startup --python blender/build.py -- [--house <path>] [--levels B,G,1,2,X] [--only <stage>,...]
     [--bare] [--save build/home.blend] [--preview <what>,...] [--res WxH] [--samples n] [--cam name]
-    [--tag suffix] [--pose 0|1]
+    [--tag suffix] [--pose 0|1] [--device CPU|0|1]
 ```
 - `--house`: default `spec/house.json` (schema `house/2`).
+- `--device`: render previews on the CPU or on one GPU (by index) instead of every GPU, when other jobs hold the
+  GPUs (`lighting.DEVICE`).
+- `--levels X` alone (no house level) builds no grid: the shell only fits the garden building's joinery.
+- `NO_FILL` (build.py): rooms the spec gives no fitting get no default fill light (`landing2_platform`).
 - Stages, in order: `shell` (grid, pieces, flight carcasses, thresholds, then joinery and trim), `site`, `envelope`
   (`lib/site.py`, `lib/envelope.py`: skipped with one log line when the module does not exist; an exception is an
   error and the build goes on), then the room modules: house rooms in file order, then pseudo-rooms. A module that
@@ -248,7 +253,9 @@ gives them only tread and riser faces. `stair_basement` is solid (`shell.SOLID_F
 - `kitchen_nook` recess with its soffit at 2.03; WC and utility bulkheads; WC cistern duct (tiled,
   ledge at 1.20); dining chimney breast and hearth slab (20 mm, `hearth_marble`); hall pilasters
   and nib.
-- Stairs: a plain carcass per flight (`<stairwell>.flight`: treads, risers, raked soffit; `stair_basement` solid),
+- Stairs: a plain carcass per flight (`<stairwell>.flight`: treads, risers, raked soffit; `stair_basement` solid,
+  tiled one uncut plank per straight tread / riser (`stairs.PLANK_UV`), each riser only as wide as the treads on both
+  its sides, a back face where another room's open space lies behind a riser (stair_second R10 over the QL)),
   the two-step sets cut into the upper floor, the wells and the skylight shaft. **Not built** (room modules
   `stairs`, `stairs2`, `basement`): strings, balustrades, newels, nosings, the spandrel panel on x 0.15 (until it
   exists the basement shaft shows from the hall), raking dado and skirting beside flights.
@@ -256,7 +263,13 @@ gives them only tread and riser faces. `stair_basement` is solid (`shell.SOLID_F
   `porcelain_calacatta_slab`.
 - **Not built anywhere** (room modules): kitchen and utility splashback tiles, the nook tiles and
   black soffit lining, the kitchen cornice notch round the hood chimney, brass door stops / cabin
-  hooks, the lamb's-tongue chamfers on the living bay nibs.
+  hooks. (The bay-nib splays and their stops are core's `<room>.chamfer.<id>` pieces; the stop is a plain wedge, not
+  the filmed concave lamb's-tongue.)
+- Arches: `a_hall` is three-centred when its feature has `haunch` (radius of the two haunch circles, rising vertically
+  off the springing; the crown circle touches both), else one segmental arc.
+- A door between two rooms with the same floor finish gets that floor through its opening (no white sill liner).
+- Ceiling zones are matched with `poly_contains` (as `ctx.ceil_z`), so a cell centred on a zone's diagonal edge
+  (stairs `stair_foot`) takes the zone.
 
 **Finishes** — `shell.FINISHES[room]` (also `shell.finish(room)`):
 ```python
@@ -387,7 +400,7 @@ preview.DEFAULT_CAMERAS[room] -> [dict(name, pos, look, fov_deg, ref), ...]   # 
 preview.default_cameras(ctx, room)                                  # the same list
 preview.camera(name, pos, look, fov_deg=75) -> camera Object        # fov_deg spans the longer image side
 preview.render(cam_obj, path, res=(960, 540), samples=64)           # JPEG; path must be absolute
-preview.render_room(ctx, room, cams, out_dir, res, samples, tag=None, only=None) -> [paths]
+preview.render_room(ctx, room, cams, out_dir, res, samples, tag=None, only=None) -> [paths]   # only: a name | 'first'
 preview.render_plan(ctx, level, path, res, samples)                 # 'B' 'G' '1' '2', or 'X' = the site / roof plan
 preview.render_section(ctx, path, res, samples, x=-0.25)
 preview.render_elev(ctx, 'front'|'rear'|'flank', path, res, samples)
@@ -480,7 +493,7 @@ the mesh and its material slots are final (it works on the base mesh, not on mod
 `black_gloss` `screen_black` `cast_iron` `anthracite` `slate_black`; whites `white_gloss`
 (joinery) `white_satin` (shutters) `plaster_white` `upvc_white` `plastic_white` `ceramic_white`;
 `pot_jade` `pot_olive` `alabaster` `cork`; `mirror`; glass `glass_clear` `glass_frosted`
-`glass_obscure` (stipple nrm, 0.15 m) `glass_green` `glass_dark` `whisky` (decanter contents)
+`glass_obscure` (stipple nrm, 0.15 m; alpha 0.85, rough 0.40: frosted, the room behind does not read) `glass_green` `glass_dark` `whisky` (decanter contents)
 `water` (running tap stream, alpha 0.45).
 `mat()` raises `KeyError` for an unknown key and `FileNotFoundError` for a missing texture — nothing
 falls back silently.
@@ -519,7 +532,7 @@ reference pixels), 512 or 1024 px. Texture payload now 19 MB of the 90 MB budget
 
 | spec key | library key | repeat (m) | notes |
 |---|---|---|---|
-| `carpet_grey`, `carpet_grey_twist`, `carpet_pale`, `carpet_silver_beige` | same | 1.0 | #CFC9BC, #B9B4AB, #CFCAC3, #C9C2B3; share `carpet_mink_nrm`, sheen 0.3 |
+| `carpet_grey`, `carpet_grey_twist`, `carpet_pale`, `carpet_silver_beige` | same | 1.0 | #CFC9BC, #B9B4AB, #CFCAC3, #A9A397 (the main flight and first-floor landings); share `carpet_mink_nrm`, sheen 0.3 |
 | `chipboard` | `vinyl_grey_sheet` | 1.5 | eaves floors: grey sheet flooring over the boards (#8C8A85, eaves.md 4) |
 | `porcelain_grey` | same | 1.81 x 0.91 | 300 x 600, long side along U, third bond (bathroom2) |
 | `porcelain_pale` | same | 1.21 x 2.41 | 400 x 800, long side along V (green bathroom; also the en-suite) |
@@ -527,7 +540,8 @@ reference pixels), 512 or 1024 px. Texture payload now 19 MB of the 90 MB budget
 | `wood_effect_porcelain_plank_dark` | `wood_tile_floor_dark` | 1.22 x 3.61 | the ground-floor plank recoloured #7B6F5C (basement) |
 | `marble_metro` | same (existing) | | 300 x 100 |
 | `metro_carrara_100x400` | same | 0.80 x 0.61 | 400 x 100 half bond, with nrm + orm |
-| `porcelain_calacatta_slab` | same | 1.2 | grey + ochre veins, 2 mm joint on the repeat edge, rough 0.06 |
+| `porcelain_calacatta_slab` | same | 1.2 | bold gold-beige #B9A06A bands and patches, grey #9C9A93 veins, 2 mm joint on the repeat edge, rough 0.06 |
+| `wood_tile_floor_grey` | same | 1.22 x 3.61 | the ground-floor plank recoloured dark grey #6B6A66 (shed workshop floor) |
 | `asphalt`, `grass`, `soil_lavender` | same | 2.0, 2.0, 1.5 | |
 | `concrete_setts_grey_buff` | same | 1.97 | tumbled 160 mm setts, three tones |
 | `concrete_flags`, `concrete_or_flags` | `concrete_flags` | 1.82 x 1.22 | 900 x 600 flags |
@@ -964,7 +978,14 @@ mo.surround_of(o, room), mo.surround_reach(oid, sur, room), mo.architrave_key(oi
   floor), `mat`, `rooms` (outline of several rooms), `zone` (cornice of one `ceilingZones` id, at that zone's z,
   clipped to its polygon), `solids` (boxes or polygons), `skip`, `only` (plan boxes), `clip`, `open_above`
   (set by `install_room_trim` to ceiling - cornice height: a lower ceiling zone whose step is shallower than the
-  cornice is open, not a wall — no cornice across the hall where the ceiling drops 0.11 at y 8.13).
+  cornice is open, not a wall — no cornice across the hall where the ceiling drops 0.11 at y 8.13), `returns`
+  ([((corner xy), (end xy))]: an open run ending on the corner turns into a reveal the outline does not follow -
+  the kitchen skirting into the back-door reveal).
+- **Steps** (`mo.steps_skip(ctx, room)`): beside a kind-`steps` set with a `going`, level skirting and dado are cut
+  from its top riser line back down the climb for `(toZ - fromZ) / pitch` (landing1: y 7.88..8.38); the room module's
+  raking trim fills that band.
+- A `recess` feature is solid for an outline only ABOVE its top (a wall over a nook); under a raised recess (the hall
+  cupboard interior) the room stays open.
 - **`install_room_trim`** works at any `floorZ`: skirting at `floor_z(room)`, dado at `floor + top`, cornice at
   `ceil_z(room)` or the zone's z. Rooms not in `ctx.rooms` are skipped.
 
@@ -1103,7 +1124,8 @@ J.validate(ctx) -> [str]         # unknown style / surround keys ([] on spec/hou
 `upper` / `fanlight` / `fanlights`, `west` / `east` / `centre` (lower row), `lower_w` / `lower_e`, `centre_top`;
 `type` `fixed` | `top_hung` | `side_hung` with `hinge` `west|east|south|north`; `angle` defaults 20 (top hung) / 45
 (side hung); all swing out. Every non-fixed sash is its own object `<room>.<id>.sash.<n>` (+ `.glass`), 12 mm
-proud of the frame outside, handle inside. `operated: false` leaves it untagged. The shed windows carry none of
+proud of the frame outside, handle inside (white, on the stile / bottom rail; a side-hung sash with `handle:
+"bottom"` gets a brass lever centred on its bottom rail - w_purple). `operated: false` leaves it untagged. The shed windows carry none of
 this in the spec; `J.SHED_WINDOWS` supplies it from `shed.md` (shed_w1: two top-hung fanlights over one pane,
 shed_w2: two fixed lights). `'obscure'` in the style name selects `glass_obscure`.
 
@@ -1126,11 +1148,11 @@ shed_w2: two fixed lights). `'obscure'` in the style name selects `glass_obscure
 #### Interaction tags (INTERACT.md; room modules never tag these)
 | part | tag | notes |
 |---|---|---|
-| door leaf (+ glass) | `hinge`, `blocks` = opening id, group = leaf name | shut leaves open `J.OPEN_DEG.get(id, 90)` (`d_balcony` 85, `shed_d1` 100, `shed_store_doors` 95); leaves modelled open carry `on` |
+| door leaf (+ glass) | `hinge`, `blocks` = opening id, group = leaf name | shut leaves open `J.OPEN_DEG.get(id, 90)` (`d_balcony` 85, `shed_d1` 100, `shed_store_doors` 90, `d_french` 100); leaves modelled open carry `on` |
 | pocket door | `slide`, `blocks` | `on` only for `POCKET_OPEN` |
-| hatch leaf | `hinge` 110, label "Eaves hatch", **no** `blocks` (hatches are no portals) | prop `door` keeps it in the static lightmap |
+| hatch leaf | `hinge` 110 (`J.HATCH_WEST_DEG`: the west leaf of `h_eaves_rear` 95, clear of the loft TV), label "Eaves hatch", **no** `blocks` (hatches are no portals) | prop `door` keeps it in the static lightmap |
 | window sash (+ glass) | `hinge` about the head (top hung) or the hinge stile, label "Window", no `blocks` | prop `door` = opening id, so `export_bake.classify` keeps the shut sash static like a door leaf |
-| bay shutter panel | `hinge` +-100 into the room, label "Shutter" | front panels hinge on the mullion between each pair, return panels on their room end, so open panels clear the bay corners and each other |
+| bay shutter panel | `hinge` into the room by `J.SHUTTER_DEG` (return 10, front 5 degrees: what clears the tied-back curtains, tie-backs and lamp table), `excl` `<room>.curtains`, label "Shutter" | the outer front panels hinge at the corner posts (away from the catch, v1 f_0127), the inner pair on their outer mullions, return panels on their room end |
 
 `LABEL`: `d_basement` 'Basement door' (the phase-1 `d_understairs` key stays for the schema-1 file), `d_balcony`,
 `shed_d1`, `shed_store_doors` added.
@@ -1156,7 +1178,8 @@ IX.pose(objs, state=1)                 # check renders: hinge / slide move in st
 ```
 - `t` and its required keys: `hinge` (`p`, `deg`; `a` default +Z), `slide` (`d`), `show` (`when`;
   `fx` `none water flame tv glow`), `trigger`, `clock` (`hand`, `p`, `a`), `light` (`rooms`), `lamp`.
-  Optional on any: `g label on reach blocks dur`. A wrong / missing key raises `ValueError`.
+  Optional on any: `g label on reach blocks a dur fx rooms excl circuit needs` (INTERACT.md). A wrong / missing key
+  raises `ValueError`.
 - Points and vectors are **world** metres of the object as modelled. A prop is unlinked when you tag
   it, so take them from `obj.matrix_basis` (always current), not `matrix_world`:
   `p = obj.matrix_basis @ Vector(local_point)`, `a = obj.matrix_basis.to_3x3() @ Vector(local_axis)`.
@@ -1178,7 +1201,7 @@ IX.pose([o for o in bpy.data.objects if 'ix' in o.keys()], 1)`.
 
 | group `g` | type | state 0 → 1 | label |
 |---|---|---|---|
-| `vestibule.d_street.leaf.0` / `.1` | hinge ∓90 | shut → open into the vestibule | Front door |
+| `vestibule.d_street.leaf.0` / `.1` | hinge ∓90 | shut → open outward over the forecourt (`swingInto` outside) | Front door |
 | `hallway.d_inner.leaf.0` (east) | hinge −90 | shut → open into the hall | Door |
 | `hallway.d_inner.leaf.1` (west) | hinge −85, `on` | open → shut | Door |
 | `living.d_living.leaf` | hinge −95, `on` | open → shut | Door |
@@ -1310,7 +1333,13 @@ What the first review of the multi-level foundation changed, by module. Asserted
   at every doorway of levels 1 and 2, none at doors to an exterior room.
 - **lighting**: glossy rays see the display sky like camera rays (`setup_sky`); `void_fill(ctx, room)` puts 3 W bulbs in
   spaces that are only looked into (eaves, the shed store) until a room module gives them a fitting: `build.py` calls
-  it, so they no longer bake black behind their doors.
+  it, so they no longer bake black behind their doors. **[round 4]** `daylight_fill(ctx, room, name, centre, size,
+  toward, watts)`: a soft area light in the open-shade colour (`DAYLIGHT_RGB`) for a room the footage shows daylit
+  but the bake starves (the shed workshop), tagged `obj['daylight']` (kept on in the lights-off bakes, off in the
+  circuit bakes, invisible to the camera); `EXTERIOR_SKY_GAIN` / `EXTERIOR_SUN_GAIN` (export, Exterior daylight).
+- **[round 4] joinery**: the living bay shutters no longer swing (5-10 degrees was all the curtains and the lamp table
+  allowed): the panel is a `trigger`, its louvres exist twice, tilted open (`SHUTTER_TILT[0]`, `show when=0`, as
+  modelled) and shut (`show when=1`). `glass_obscure` resolves to the opaque, baked `obscure_pane` (materials ALIAS).
 - **envelope**: mitred sweeps (`_Mesh.rings`) for the bay cornice and the first-floor sill ledge, the bay transom runs
   light by light (no coplanar boxes); `PIER_PANELS` (sunk panels, cut out of the skin); gable struts lean outward at 60
   degrees to the bargeboards; `EDGE_TRIM` on fascia boards; gutters close on each other at a valley corner; the soil
@@ -1375,7 +1404,7 @@ An unknown material key logs `[site] WARNING` once, renders grey and is listed i
 ### Knobs
 
 `THICK`, `ZONE_MAT`, `EDGE_MAT`, `ROT`, `KERB`, `DRAINS`, `FENCE` (rails side, trellis), `BAY`, `GATE_DEG`,
-`SHED_FIN`, `SOFFIT`, `ROOF_FALL`, `EXT_DEPTH`, `EXPORT_BACKDROP` (True drops `no_export` from the backdrop).
+`SHED_FIN` (workshop floor `wood_tile_floor_grey`), `SOFFIT` (`mahogany_mid`, boards E-W), `ROOF_FALL`, `EXT_DEPTH`, `EXPORT_BACKDROP` (True drops `no_export` from the backdrop).
 
 ### Not here
 
@@ -1473,7 +1502,7 @@ interactions per level as each GLB arrives) or when a `light` / `lamp` tag names
 |---|---|
 | `glb/<level>.glb` | the objects of level B, G, 1, 2 or X, except `no_export`; a level without objects gets no file. +Y up; flat node list; node `extras` = the custom props (`ix` byte for byte); `TEXCOORD_0` tiling UVs, `TEXCOORD_1` lightmap UVs on lightmapped objects; no lights / cameras; meshopt + `KHR_mesh_quantization`, colour textures WebP, normal / ORM maps JPEG. Node names are unique across the files |
 | `lightmaps/<room>.jpg` | one atlas per room (house rooms, `balcony`, `front`, `side_passage`, `garden`, `shed`, `facade`, `roof`, `neighbours`) |
-| `probes/<room>.jpg` | equirect panorama per room of kind `room` / `stairwell` / `exterior` and per `front`, `side_passage`, `garden`, `shed` |
+| `probes/<room>.jpg` | equirect panorama per room of kind `room` / `stairwell` / `exterior` / `void` (the eaves, at floor + min(1.5, half their height)) and per `front`, `side_passage`, `garden`, `shed` |
 | `lightmaps_off/<room>.jpg`, `probes_off/<room>.jpg` | the same with every lamp and emissive off: same `TEXCOORD_1`, atlas at half the size, same probe positions. Every atlas except `facade`, `roof`, `neighbours`; every probe |
 | `sky.jpg` | 2048 x 1024 equirect of the world alone, **as displayed** (view transform, look, exposure, white balance in the pixels), orientation of the probes |
 | `manifest.json` | schema 2, below |
@@ -1494,7 +1523,9 @@ are deleted at the end of a run, and so is a schema-1 `home.glb`.
   room: forecourt, side_passage, deck, shed workshop). `facade`, `roof`, `neighbours` are only in `levels[X].rooms`.
 - `lightmaps [{room, level, image, size, pxPerM, intensity, bytes, objects[]}]`, `lightmapsOff` (same shape, same
   `objects`), `probes [{room, level, image, pos [x, y, z], intensity, bytes}]`, `probesOff`.
-- `viewpoints {room: {pos [x, y], look [x, y]}}` (first hero still of the room), `spawn {pos, yaw, level}`.
+- `viewpoints {room: {pos [x, y], look [x, y]}}` (`export.VIEWPOINT`, else the first hero still of the room; a
+  view outside its room's polygon logs a `WARNING`: the viewer drops it), `spawn {pos, yaw, level}`.
+- `circuits [{room, level, name, image, size, intensity, bytes, share, groups, lights, emissive}]` (INTERACT.md).
 - `toneMapping`, `exposure` (2^EV of the view settings), `whiteBalance` (3x3 rows, for emissive colours).
 - `sky {image, color, sunDir}`: `color` = mean displayed colour of the upper half of `sky.jpg`, `sunDir` = unit
   vector to the sun (x, y, z up), read from the scene's sun lamp.
@@ -1530,14 +1561,35 @@ or made only of metal / glass become `dynamic` (probe-lit, instancing kept); sta
 single-user; modifiers are applied first. Interaction tags: `hinge` / `slide` / `clock` objects and `show when=1`
 objects become `dynamic`, except door leaves (`obj['door']` or a `blocks` tag) modelled closed. `show when=1`
 objects are hidden from every bake, probe and still, exported visible, never a footprint. Leaves modelled standing
-open (`on`) are hidden while baking. `check_glb` fails the export unless every tagged object is a named childless
+open (`on`) are hidden while baking, and **[round 4]** so are closed `hinge` / `slide` movers that are not door
+leaves (cabinet doors, drawers, lids, seats, fall fronts: what they reveal must not bake black), except groups
+matching `export_bake.BAKE_KEEP` (window sashes, roof lights, chairs, footstools, A/C flaps). `check_glb` fails the export unless every tagged object is a named childless
 root node of its level's GLB with the identical `ix` string and its geometry in place (1 mm).
 
-**Lights-off set** (`export_bake.lights_off`, `bake_off`): all non-sun, non-portal lights hidden, every unlinked
-emission strength zeroed. Indoors the off lightmap is the DIFFUSE bake plus an AO bake (1 m) times a cool ambient
-term (`AMBIENT_OFF`, `AMBIENT_TINT`), `intensity` capped at `PEAK_OFF`; off probes get the same radiance added
-uniformly. **Outdoors** (exterior rooms) nothing is added and nothing capped: sun and sky are still there, so the
-off atlas is the on atlas minus the lamps.
+**Lights-off set** (`export_bake.lights_off`, `bake_off`): **[round 4] per room**: the lamps of the room and of every
+room a switch names together with it hidden (the landing switch darkens the three landings and the main flight, the
+porch switch the vestibule and `front`), every other lamp still lit, so a switch never takes away the light the next
+room throws in; daylight fills (`obj['daylight']`, `lighting.daylight_fill`) stay on; every unlinked emission
+strength zeroed. Indoors the off lightmap is the DIFFUSE bake plus an AO bake (1 m) times a neutral ambient term
+(`AMBIENT_OFF`, `AMBIENT_TINT`: blue / red 1.11, round 3's 1.6 turned plaster navy), `intensity` capped at
+`PEAK_OFF`; off probes get the same radiance added uniformly. **Outdoors** (exterior rooms) nothing is added and
+nothing capped: sun and sky are still there, so the off atlas is the on atlas minus the lamps. A lights-off probe
+brighter than its lights-on one (in a room with lamps) logs a `WARNING` (probe spot, `PROBE_AT`).
+
+**Circuits** (`export_bake.circuits`, `normalise_circuits`): per circuit of a room with several, its lamps alone (no
+sun, sky, ambient or daylight fill) at half size, then **[round 4]** scaled per texel (one scale for all circuits of
+the room, luminance, clamped 0..1.5) until lights-off + their sum = the lights-on bake drawn down to that size, which
+is what the viewer composes: the raw sum overshot by the ambient term (5-16 %), so switching one lamp off brightened
+the room. The target is the lights-on bake as encoded (`clip_like`: scaled down where its JPEG clips), and the
+lights-off ambient is capped at the lights-on bake (`with_ambient`). The log prints `(off + sum) / on` before and
+after. Circuit atlases take their percentile over the texels above 2 % of their brightest (`encode(top_floor=)`): a
+desk lamp's pool on 1 % of the atlas otherwise clipped at the level of the bounce light around it.
+
+**Exterior daylight** (`export_bake.exterior_daylight`, **[round 4]**): the lightmaps, off lightmaps, probes and
+stills of exterior rooms (`ctx.is_exterior`: level X and the balcony) are made with the light sky (Background node
+`sky_light`) x `lighting.EXTERIOR_SKY_GAIN` (3.5) and the sun x `EXTERIOR_SUN_GAIN` (0.6): the overcast footage
+outdoors was exposed some 2 stops brighter than the lamp-lit rooms, and at the one exposure the garden and the side
+passage read as night. Interiors keep the calibrated sky.
 
 **Lightmap UVs** (`export_bake.unwrap`): layer `Lightmap`, always the second one. Smart-project at 66 deg on welded
 temporary copies, ring-shaped islands cut into strips, equal texel density, AABB packing with a gap of 1/512 of the
@@ -1546,8 +1598,9 @@ atlas. The layout does not depend on the bake resolution and is deterministic, w
 
 **Probes** (`export_bake.probe_point`): floor + 1.5 m, at the 0.2 m grid point with the largest mean free distance
 (16 horizontal directions + up, capped at 4 m), at least 0.2 m clear of everything; on open ground the point
-nearest the middle of the polygon. `void` rooms (eaves) get none. A room without a free spot is skipped with a log
-line.
+nearest the middle of the polygon; `void` rooms (eaves) at floor + min(1.5, half their height). `export.PROBE_AT`
+(`{room: (x, y, z)}`) overrides the spot where that picks a bad one (basement_stair: under the treads; eaves_front:
+outside the void). A room without a free spot is skipped with a log line.
 
 **Sky** (`export_bake.render_sky`): every object hidden, the world rendered through the scene's view settings with
 the probes' panorama camera. Rendered in full runs and whenever `sky.jpg` is missing; kept in partial runs.
@@ -1558,8 +1611,11 @@ the probes' panorama camera. Rendered in full runs and whenever `sky.jpg` is mis
    (landscape; `title`, `fov_deg`, `room` optional; a module that furnishes several rooms names `room`, else the
    camera belongs to the room it stands in);
 2. its rows in the `HEROES` table of `export.py` (the hand-framed phase-1 ground floor);
-3. the module's `CAMERAS` (the reference matches; fov capped at 90).
-File `<room>_<name>.jpg`. Keep cameras >= 0.25 m clear of furniture.
+3. the first of the module's `CAMERAS` (the reference matches; fov capped at 90; also the room's viewpoint unless
+   `export.VIEWPOINT` names one), plus the one named in `export.HERO_EXTRA` (`{room: camera name}`) where the first
+   misses the room's main feature. Exterior rooms render under the exterior daylight.
+File `<room>_<name>.jpg`. Keep cameras >= 0.25 m clear of furniture. `index.json` lists every row whose still exists;
+stills of no row are deleted.
 
 **Checks**
 ```
@@ -1635,7 +1691,7 @@ bath.add(ctx, room, parts, plan_sym=None, kind='fit') -> parts
 
 | function | `at` (origin) and facing | objects `<name>…` | interaction |
 |---|---|---|---|
-| `wc` | point on the wall / duct / furniture front the pan backs onto, **at floor level**, on the pan's centre line; nose toward `facing` | `<name>` pan (bowl, water, hinge caps), `.seat`, `.lid`, `.flush` | group `<name>.seat`: lid and seat ring `hinge` `lift` deg together about the hinge line 32 mm off the wall (as `rooms/wc.py`; becomes `<name>.lid` + `<name>.seat` once `interact` has `needs`). The flush is not tagged (neither is the ground-floor one) |
+| `wc` | point on the wall / duct / furniture front the pan backs onto, **at floor level**, on the pan's centre line; nose toward `facing` | `<name>` pan (bowl, water, hinge caps), `.seat`, `.lid`, `.flush` | groups `<name>.lid` and `<name>.seat` (`needs` the lid): `hinge` `lift` deg about the hinge line 32 mm off the wall (as `rooms/wc.py`). The flush is not tagged (neither is the ground-floor one) |
 | `basin_mixer` | centre of the tap base on the basin deck; spout toward `facing` | `<name>` body, `.lever`, `.water` | group `<name>`: body `trigger`, lever `hinge` 20 deg up, stream `show` / `fx water` |
 | `bath_filler` | centre of the base on the floor; swan neck arches `reach` toward `facing` | `<name>` (column, neck, hand shower + hose), `.lever`, `.water` | group `<name>`: body `trigger`, side lever `hinge` 25 deg, stream `show` |
 | `bath_mixer` | centre between the two pillars on the bath rim; spout toward `facing` | `<name>`, `.water` | group `<name>`: body (both heads) `trigger`, stream `show` |

@@ -20,8 +20,9 @@ ART = Path(__file__).resolve().parents[1] / 'textures' / 'art'
 CAMERAS = [
     dict(name='loft', pos=(-0.3, 9.1, 7.6), look=(-0.1, 6.3, 8.0), fov_deg=100, ref='v4 f_0361'),
     dict(name='step', pos=(-0.3, 9.0, 7.6), look=(0.1, 7.6, 6.7), fov_deg=100, ref='v5 f_0140'),
-    dict(name='west', pos=(0.05, 7.3, 7.75), look=(-0.65, 6.75, 7.7), fov_deg=100, ref='v5 f_0146'),
+    # [round 4] 'sky' before 'west': the platform's first camera is its hero still and 'west' was a close-up of a frame
     dict(name='sky', pos=(-0.15, 6.45, 7.55), look=(0.1, 8.6, 8.5), fov_deg=100, ref='v5 f_0153'),
+    dict(name='west', pos=(0.05, 7.3, 7.75), look=(-0.65, 6.75, 7.7), fov_deg=100, ref='v5 f_0146'),
     dict(name='hall', pos=(-0.2, 7.0, 7.75), look=(-0.2, 11.0, 7.4), fov_deg=100, ref='v4 f_0369'),
     dict(name='arch', pos=(-0.25, 9.3, 7.53), look=(-0.2, 11.5, 7.5), fov_deg=100, ref='v4 f_0383'),
     dict(name='east', pos=(-0.62, 9.6, 7.45), look=(0.22, 9.64, 7.4), fov_deg=100, ref='v5 f_0135'),
@@ -40,10 +41,9 @@ def build(ctx):
     y_step = max(y for _, y in ctx.room_poly(PL))                    # platform riser 8.13
     xe, xe2 = 0.22, 0.30                                             # east wall south / north of the arch
 
-    # ---- downlights L1-L5 (landing2.md 8) and the fitting north of the arch, read as a sixth spot (doubt 8) ----
-    # ponytail: L1 (0.27 m past the platform step) is tagged landing2_platform, whose only light it is (the spill
-    # landing2.md 8 describes), so build.py adds no invisible fill there; a core room flag would be the clean fix.
-    for i, (room, x, y) in enumerate([(PL, -0.25, 8.40), ('stairs2', 0.57, 8.45), (H, -0.22, 9.30), (H, -0.22, 10.20),
+    # ---- downlights L1-L5 (landing2.md 8) and the fitting north of the arch, read as a sixth spot (doubt 8).  The
+    # platform has no fitting (lit by the skylight and L1's spill); build.py NO_FILL keeps the default fill out of it.
+    for i, (room, x, y) in enumerate([(H, -0.25, 8.40), ('stairs2', 0.57, 8.45), (H, -0.22, 9.30), (H, -0.22, 10.20),
                                       (H, -0.22, 10.90), (H, -0.18, 12.25)], 1):
         lighting.downlight(ctx, room, x, y, z=cz - 0.015, watts=45, name=f'{room}.downlight.{i}')
         ctx.add(P.place(P.downlight(name=f'{room}.downlight_trim.{i}'), (x, y, cz)), room, 'light')

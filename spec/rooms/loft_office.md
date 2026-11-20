@@ -340,3 +340,14 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   polygon is unchanged.
 - Hall levels: second-floor hall 6.02, platform 6.22 (this spec had 6.00 / 6.19).
 - East wall is external (side alley). Stair dormer: flat roof Z 8.87 over x -0.88..1.35 from y 5.47.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 3 There is no capping rail on the front knee wall (v5 f_0249, hr_246: a plain arris).
+- 6 The bookshelf is 0.90 high, its top level with the 0.92 knee wall (hr_172, hr_252).
+- 7 Delete the row 'W-east certificate with a red seal, y 5.98..6.30': it duplicates the rear knee wall's fourth upper
+  certificate (x 3.84..4.18, with seal), seen across the corner in hr_183 / f_0240. The dark east wall is bare there.
+- The 'very deep cabinet' has its hollow in loft_block now (house.json loft_cabinet_recess, x 0.44..1.12,
+  y 5.38..6.08, Z 6.58..8.38): the 0.70 m drawers run north to y 6.05 (v5 f_0214-f_0216, hr_229).
+- The roof window's frame and sash are white below the roof plane, with an operating bar on the low rail (hr_313,
+  hr_194); its sash and the blackout blind exclude each other. The eaves-rear hatch's west leaf opens 95 degrees (its
+  knob clears the TV).

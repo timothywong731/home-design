@@ -450,3 +450,13 @@ Camera positions are local (x, y) in mm, eye height ≈ 1450–1550; "looking" i
   (3.725, 8.88) in the 0.30 m external wall; it opens onto the side return east of the flank wall.
 - Behind the sink wall is a 0.58 m unseen zone, then the living room. Behind the door wall are the stairs
   (y < 7.58) and the lobby.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 2.2 Back door: the frame is built 0.84 wide at x 3.40..4.24 (the house.json notes said 0.86 at 3.37..4.23; outside,
+  its west edge is on the flank-wall corner, x 3.40) in a reveal x 3.39..4.25; the leaf is 0.744. Obscure glass in
+  the leaf's upper light and the toplight (corrections K5; v6 f_0073, v2 f_0366). The nook-wall pier stays about 0.77
+  wide (the frames suggest 0.58-0.62): a reveal starting at x 3.24 would put the door into the flank wall outside.
+- 3.2 The nook-wall skirting runs to the back-door reveal and returns into it along x 3.39.
+- 6 The plaque centre is about 70 mm right of the pier centre (v1 f_0766, v6 f_0073); the nook-pier socket is a DOUBLE
+  switched socket under the left part of the tread plate, behind the black bin (v2 f_0434, v7 f_0039-0041), not the
+  single at 0.60 (that is the cat flap); the tread plate is 0.54 wide, centred on the pier.

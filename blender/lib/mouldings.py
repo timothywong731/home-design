@@ -952,7 +952,10 @@ def _masses(ctx, rooms, z, extra=()):
         if t in SOLID_TYPES and isinstance(zz, list) and zz[0] - 1e-6 <= z <= zz[1] + 1e-6:
             sol.append(rc)
         elif t == 'recess' and isinstance(zz, list):
-            (voids if zz[0] <= z <= zz[1] else sol).append(rc)
+            if zz[0] <= z <= zz[1]:
+                voids.append(rc)
+            elif z > zz[1]:                         # wall above a nook; under a raised recess (cupboard) the room is open
+                sol.append(rc)
         elif t == 'soffit' and isinstance(zz, (int, float)) and z > zz:
             sol.append(rc)
     for r in rooms:
@@ -1173,21 +1176,26 @@ TRIM = {
         skirting=dict(profile='sk_hall', skip=[(0.14, 7.57, 0.16, 7.69)]),      # end of the understairs wall
         dado=dict(profile='dado_hall', top=0.965, skip=[(0.14, 7.57, 0.16, 7.69)]),
         cornice=[                                           # front hall + the diagonal; not along the stair flank
+            # x 0.15 from the understairs wall to the drop post is the open top of the flight, not a wall (stairs S5)
             dict(profile='cornice_hall', rooms=('hallway', 'stairs'),
-                 skip=[(0.98, 5.38, 1.00, 7.59), (0.14, 7.57, 1.00, 7.59), (-0.70, 1.82, 0.70, 1.84)]),
-            dict(profile='cornice_hall', zone='rear_hall',   # lobby west + rear corridor (ceiling 2.84), not on the arch wall
-                 skip=[(-0.70, 8.72, 1.00, 8.74), (-0.70, 9.02, 1.00, 9.04)])]),
+                 skip=[(0.98, 5.38, 1.00, 7.59), (0.14, 7.57, 1.00, 7.59), (-0.70, 1.82, 0.70, 1.84),
+                       (0.14, 7.57, 0.16, 8.14)]),
+            dict(profile='cornice_hall', zone='rear_hall',   # lobby west + rear corridor (ceiling 2.84), not on the arch wall;
+                 skip=[(-0.70, 8.72, 1.00, 8.74), (-0.70, 9.02, 1.00, 9.04),      # the lobby-edge run starts at the
+                       (0.14, 8.10, 0.16, 8.18)])]),                              # drop post's north face (basement.md 3.6)
     'living': dict(skirting=dict(profile='sk_living'), cornice=dict(profile='cornice_living')),
-    'kitchen': dict(skirting=dict(profile='sk_kitchen', only=[(4.29, 7.82, 4.31, 8.74), (1.24, 8.72, 3.25, 8.74),
-                                                               (1.24, 7.54, 1.26, 7.76)]),
+    # ponytail: the return follows kitchen_backdoor_reveal (west side x 3.39) by hand; move it with the reveal
+    'kitchen': dict(skirting=dict(profile='sk_kitchen', only=[(4.29, 7.82, 4.31, 8.74), (1.24, 8.72, 3.40, 8.74),
+                                                               (1.24, 7.54, 1.26, 7.76)],
+                                  returns=[((3.39, 8.73), (3.39, 8.85))]),
                     cornice=dict(profile='cornice_kitchen')),
     'utility': dict(skirting=dict(profile='sk_utility', only=[(0.59, 10.25, 2.53, 10.27)]),
                     cornice=dict(profile='cornice_utility')),
     'wc': dict(cornice=dict(profile='cornice_wc')),
     'dining': dict(skirting=dict(profile='sk_dining', mat='dark_stain'), dado=dict(profile='dado_dining', top=1.05),
-                   cornice=dict(profile='cornice_dining', solids=[(-0.65, 16.74, 3.10, 16.86)])),
+                   cornice=dict(profile='cornice_dining', solids=[(-0.65, 16.68, 3.10, 16.86)])),
     # ---- first floor (spec/rooms/landing1.md 3.5, green_bedroom.md 3.1, blue_bedroom.md 3, ...)
-    'landing1_front': dict(skirting=_UP, dado=_DADO1, cornice=dict(profile='cove_70')),
+    'landing1_front': dict(skirting=_UP, dado=dict(_DADO1, skip=[(0.98, 5.96, 1.00, 6.08)]), cornice=dict(profile='cove_70')),
     'landing1_rear': dict(skirting=_UP, dado=_DADO1, cornice=dict(profile='cove_70')),
     # the rail runs level with the rear corridor's (floor 3.04): 0.975 + 0.19 above the quarter landing
     'landing1_ql': dict(skirting=_UP, dado=dict(profile='dado_landing', top=1.165), cornice=dict(profile='cove_70')),
@@ -1204,7 +1212,7 @@ TRIM = {
     'bathroom2': dict(cornice=dict(profile='cove_80')),
     'loft_office': dict(skirting=dict(profile='sk_loft')),   # sloped ceilings: no cornice
 }
-ROSE_AT = {'living': (2.55, 2.86), 'dining': (1.225, 14.61)}       # world xy of the rose centres
+ROSE_AT = {'living': (2.55, 2.73), 'dining': (1.225, 14.61)}       # world xy of the rose centres
 
 
 def _extras_vestibule(ctx):
@@ -1249,8 +1257,8 @@ def _extras_living(ctx):
     rose = ceiling_rose(ROSES['living']['style'], 'living.rose')
     rose.location = (*ROSE_AT['living'], cz)
     zr = cz - 0.25                                          # 2.70: hangs 100 mm below the cornice (f_0133, f_0785)
-    rail = brass_rail([(x0 + 0.95, y1 - 0.045, zr), (x1 - 0.045, y1 - 0.045, zr),
-                       (x1 - 0.045, 1.44, zr)], 'living.picture_rail')
+    rail = brass_rail([(1.33, y1 - 0.045, zr), (x1 - 0.045, y1 - 0.045, zr),      # L3: 4 brackets N, 5 E
+                       (x1 - 0.045, 1.40, zr)], 'living.picture_rail', spacing=0.98)
     return [ctx.add(rose, 'living', 'trim'), ctx.add(rail, 'living', 'trim')]
 
 
@@ -1260,7 +1268,7 @@ def _extras_dining(ctx):
     rose.location = (*ROSE_AT['dining'], cz)
     x0, y0, x1, y1 = _bounds(ctx.room_poly('dining'))
     mb = MB()                                               # white boxed pelmet over the N screen
-    mb.box((x0, y1 - 0.12, 2.50), (x1, y1 + 0.001, cz), 'plaster_white')
+    mb.box((x0, y1 - 0.18, 2.50), (x1, y1 + 0.001, cz), 'plaster_white')      # projects 0.18 (D5, v2 f_0111)
     return [ctx.add(rose, 'dining', 'trim'), ctx.add(mb.finish('dining.pelmet'), 'dining', 'trim')]
 
 
@@ -1282,6 +1290,44 @@ EXTRAS = {'vestibule': _extras_vestibule, 'hallway': _extras_hallway, 'living': 
           'utility': lambda ctx: _extras_tile_trim(ctx, 'utility')}
 
 
+def steps_skip(ctx, room):
+    """Plan boxes (x0, y0, x1, y1) where a kind-'steps' set with a going rakes past `room`: from its top riser line
+    back down the climb for (toZ - fromZ) / pitch, across the risers. Level skirting / dado stop there - the upper
+    room's on the top riser, the lower room's at the foot of the rake - and the room module's plumb-cut raking trim
+    fills the band (landing1.md 3.1: the two steps up). Axis-aligned riser lines only."""
+    out = []
+    for s in ctx.stairs:
+        if s.get('kind') != 'steps' or not s.get('going') or not s.get('direction') or room not in (s['fromRoom'], s['toRoom']):
+            continue
+        dx, dy = s['direction']
+        if min(abs(dx), abs(dy)) > 1e-6:
+            continue
+        pts = [p for line in s['riserLines'] for p in line]
+        top = max(p[0] * dx + p[1] * dy for p in pts)                 # the riser line furthest up the climb
+        run = abs(s['toZ'] - s['fromZ']) * s['going'] / s['rise']
+        ax = 0 if abs(dx) > abs(dy) else 1
+        a, b = sorted((top * (dx + dy), (top - run) * (dx + dy)))     # band along the climb axis (world coords)
+        lo, hi = min(p[1 - ax] for p in pts) - 0.02, max(p[1 - ax] for p in pts) + 0.02
+        out.append((a, lo, b, hi) if ax == 0 else (lo, a, hi, b))
+    return out
+
+
+def _returns(runs, rets):
+    """Extend open runs that end on a `returns` corner by the return leg (corner, end): the trim turns into a
+    reveal the outline does not follow (kitchen back door)."""
+    near = lambda p, q: abs(p[0] - q[0]) < 2e-3 and abs(p[1] - q[1]) < 2e-3
+    out = []
+    for run, closed in runs:
+        run = list(run)
+        for corner, end in rets:
+            if not closed and near(run[-1], corner):
+                run.append(tuple(end))
+            elif not closed and near(run[0], corner):
+                run.insert(0, tuple(end))
+        out.append((run, closed))
+    return out
+
+
 def install_room_trim(ctx, room_id):
     """Fit skirting, dado rail and cornice round a room (TRIM table, heights above the room's own floorZ) plus the
     room's fixed plaster ornaments (EXTRAS: vestibule imposts + archivolt, hall arch corbels, living rose + brass
@@ -1290,11 +1336,14 @@ def install_room_trim(ctx, room_id):
     obs = []
     if cfg and room_id in ctx.rooms:
         fz, top = ctx.floor_z(room_id), ctx.ceil_z(room_id)
+        rake = steps_skip(ctx, room_id)
         for kind in ('skirting', 'dado', 'cornice'):
             entries = cfg.get(kind) or []
             mb = MB()
             for c in ([entries] if isinstance(entries, dict) else entries):
                 rooms, c = c.get('rooms', cfg.get('rooms', (room_id,))), dict(c)
+                if kind != 'cornice' and rake:
+                    c['skip'] = list(c.get('skip', ())) + rake
                 if kind == 'skirting':
                     zb, zq, m = fz, fz + 0.05, 'joinery_white'
                 elif kind == 'dado':
@@ -1310,7 +1359,7 @@ def install_room_trim(ctx, room_id):
                     zq, m = zb - 0.03, 'plaster_white'
                     c['open_above'] = zb - profile_size(c['profile'])[1]    # a shallower ceiling step is no wall
                 m = c.get('mat', m)
-                for run, closed in trim_runs(ctx, rooms, zq, c):
+                for run, closed in _returns(trim_runs(ctx, rooms, zq, c), c.get('returns', ())):
                     path = [(x, y, zb) for x, y in run]
                     if kind == 'cornice':
                         cornice(mb, c['profile'], path, closed, m)

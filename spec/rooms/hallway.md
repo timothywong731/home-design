@@ -361,3 +361,14 @@ Local to global: x unchanged. For y, add the offset of the element the item is k
 - Dining door 0.838 wide, centre x = -0.056; the clock is centred over it.
 - The stainless pedal bin seen through the kitchen door is owner-named and kept; it stands inside the
   kitchen and belongs to `kitchen.md` §6.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Overhead cupboard: the box behind the flap is hollow (house.json lobby_cupboard_interior, x 0.212..0.942,
+  y 7.92..8.13, Z 2.327..2.587, under tread R14).
+- Kept: the cupboard face stays at y 8.13. A face at y 7.80 with the interior to the south (v2 f_0505, v6 f_0290) would
+  put a 0.30 box at Z 2.30..2.60 into treads R12 / R13 (Z 2.28 / 2.47 over y 7.44..7.90) of the spec flight; it needs
+  a re-survey of the top of the flight first.
+- Hall arch a_hall: three-centred, springing 2.40, crown 2.75, haunch radius 0.32 (crown radius 0.71): the soffit rises
+  vertically off the corbel caps (v1 f_0283, v2 f_0512-f_0516).
+- The hall cornice does not run along x 0.15 over the open top of the flight (y 7.58..8.13); the 2.84 run along the
+  lobby edge starts at the drop post's north face (y 8.18).

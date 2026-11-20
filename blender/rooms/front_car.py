@@ -129,7 +129,7 @@ def _cell_mat(S, tm, j):
 
 
 def _mats(S):
-    return dict(paint=M.solid(*S['paint']), glass=M.solid('car_glass', '#14161A', 0.04),
+    return dict(paint=M.solid(*S['paint']), glass=M.solid('car_glass', '#14161A', 0.04, alpha=0.9),     # alpha-blended: the viewer turns OPAQUE glass 22 % clear (Q3)
                 trim=M.solid('car_trim_black', '#101012', 0.32), under=M.solid('car_underbody', '#0E0E0F', 0.9),
                 lamp=M.solid('car_lamp_clear', '#BFC3C8', 0.14, 0.65), lens=M.solid('car_lamp_dark', '#2A2D31', 0.05, 0.7),
                 red=M.solid('car_lamp_red', '#B01E1A', 0.08), red_dark=M.solid('car_lamp_red_dark', '#7E1612', 0.05),

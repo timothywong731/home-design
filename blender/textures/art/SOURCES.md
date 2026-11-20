@@ -32,3 +32,23 @@ git-ignored `reference/work/` tree).
 ornaments. They show no people, writing or documents, but they are not literally "paintings / tapestry /
 rug patterns". If that reading of the rule is too generous, delete the three files and swap the
 `plaque()` builders in `rooms/kitchen.py` / `rooms/utility.py` for a plain bronze slab.
+
+### Phase-2 rooms (round-3 integration: all 48 files opened and looked at; nothing removed)
+
+| file(s) | kind | content |
+|---|---|---|
+| `bathroom2_watercolour.jpg` | crop (v5 f_0119) | watercolour, snowy farm lane with a gate |
+| `blue_bedroom_landscape.jpg` | crop (v3 t 254.5 s; `rooms/blue_bedroom_tex.py`) | oil landscape over the bureau, rider and horses painted out |
+| `blue_bedroom_curtain.jpg`, `duvet`, `band`, `flame` | synthetic (`rooms/blue_bedroom_tex.py`) | fabrics and flame veneer |
+| `green_bedroom_curtain.jpg`, `duvet`, `tapestry`, `sheet`, `inlay`, `marble`, `needlepoint` | synthetic (`rooms/green_bedroom_tex.py`) | fabrics, veneer inlay, marble |
+| `landing1_w1`-`w5.jpg`, `landing1_p4.jpg` | crop (`rooms/landing1_art.py`) | landscape paintings; the strollers on the Venice bridge and the angler of P4 painted out |
+| `stairs_p1`-`p3.jpg` | crop (`rooms/stairs_art.py`) | staircase watercolours; P3's angler painted out |
+| `stairs2_cat1`-`cat5.jpg` | crop (spec/rooms/stairs2.md 7) | cat drawings, no people or text |
+| `landing2_cottage.jpg`, `harbour`, `tree` | crop (spec/rooms/landing2.md 7) | paintings |
+| `landing2_cats.jpg` | crop, heavily blurred | three cat photographs in one mount (cats only) |
+| `landing2_papyrus.jpg` | synthetic | generic papyrus, pattern bands only (the real sheet has figures: not cropped) |
+| `loft_office_carving.jpg`, `cat1`, `cat2` | crop (`rooms/loft_office_art.py`) | bird relief carving, two cat paintings |
+| `loft_office_union.jpg`, `ensign`, `periodic` | synthetic (`rooms/loft_office_art.py`) | Union flag, plain blue ensign, colour-block periodic grid (no text) |
+| `study_cottage.jpg`, `cat`, `cats`, `rooster`, `foliage`, `green_small`, `octagon` | crop (spec/rooms/study.md 7) | paintings and cat photographs (cats only; the document in front of W5 excluded) |
+| `front_flag.jpg` | synthetic | Union flag |
+| `purple_room_curtain.jpg`, `yellow_room_blind.jpg` | fabric pattern (the modules do not record crop or drawn) | floral curtain, sprig blind |

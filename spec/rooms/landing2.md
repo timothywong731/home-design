@@ -329,3 +329,9 @@ the landing is two rooms: `landing2_platform` and `landing2_head`.
 - **W2 (Egyptian papyrus): no crop** [verification INV-07] — see the note under section 7.
 - Polygon of `landing2_head`: (-0.65, 8.13) (0.15, 8.13) (0.15, 8.73) (0.22, 8.73) (0.22, 11.50) (0.30, 11.50)
   (0.30, 12.94) (-0.65, 12.94).
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Stairs2 deviations are recorded in stairs2.md (round 3). build.py gives landing2_platform no default fill (NO_FILL),
+  so L1 (-0.25, 8.40) can be tagged landing2_head again.
+- d_loft stays modelled open (openAngle 90): the walk layer (docs/js/geom.js, route test 3) treats a door modelled
+  shut as closed, and the owner opens it in v5 f_0158-f_0166.

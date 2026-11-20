@@ -14,7 +14,6 @@ from rooms import bathroom2_sauna as SA
 ROOM = 'bathroom2'
 X0, X1, Y0, Y1 = 0.40, 3.10, 11.50, 13.70
 FZ, CZ = 6.02, 8.49
-WALL = '#B9B7B1'
 DOWN_W = 55                       # per downlight (4 in 5.9 m2)
 ART = os.path.join(os.path.dirname(__file__), '..', 'textures', 'art', 'bathroom2_watercolour.jpg')
 
@@ -69,16 +68,13 @@ def build(ctx):
     slab(f'{ROOM}.slab.n1', X0 + .01, 1.66, yn, Y1, nz1, top)
     slab(f'{ROOM}.slab.n2', X0 + .01, nx0, yn, Y1, nz0, nz1)
     slab(f'{ROOM}.slab.n3', nx1, 1.66, yn, Y1, nz0, nz1)
-    carved = not shell.is_solid(ctx, (nx0 + nx1) / 2, Y1 + .05, (nz0 + nz1) / 2)
-    # the wall stays solid until house.json cuts the recess: then only a 9 mm sinking in the slab lining is possible
-    back, bt = (Y1 + .10, .01) if carved else (Y1 - .0005, .0005)
+    back, bt = Y1 + .10, .01                                              # the recess: house.json bath2_niche
     yb = back - bt
     slab(f'{ROOM}.niche.back', nx0, nx1, yb, back, nz0, nz1)
     slab(f'{ROOM}.niche.bottom', nx0, nx1, yn, yb, nz0, nz0 + .01)
     slab(f'{ROOM}.niche.top', nx0, nx1, yn, yb, nz1 - .01, nz1)
     slab(f'{ROOM}.niche.l', nx0, nx0 + .01, yn, yb, nz0 + .01, nz1 - .01)
     slab(f'{ROOM}.niche.r', nx1 - .01, nx1, yn, yb, nz0 + .01, nz1 - .01)
-    print(f'[bathroom2] shower niche: {"recess cut in the wall" if carved else "wall solid -> 9 mm sinking only"}')
     mb = mo.MB()                                                          # brushed stainless edge trim round it
     for a, b in (((nx0 - .012, yn - .004, nz0 - .012), (nx1 + .012, yn, nz0)),
                  ((nx0 - .012, yn - .004, nz1), (nx1 + .012, yn, nz1 + .012)),
@@ -86,14 +82,7 @@ def build(ctx):
         mb.box(a, b, 'steel_brushed', bev=.001)
     _mb_add(ctx, mb, f'{ROOM}.niche.trim')
 
-    # pipe boxing: the footage (v5 f_0095, f_0101) shows it running up to the ceiling as a plastered column, tiled only
-    # below 1.20, and continuing behind the tall cabinet; house.json stops it at 1.20 -> paint the rest here
-    for i, (ya, yb_, za) in enumerate(((Y0, 11.85, FZ), (11.85, 12.16, z(1.20)))):
-        if shell.is_solid(ctx, 3.04, (ya + yb_) / 2, za + .3):           # house.json already carries the full boxing
-            continue
-        ob = shell.box(f'{ROOM}.boxing_col.{i}', 2.98, X1, ya, yb_, za, CZ, WALL)
-        ctx.add(ob, ROOM, 'fit')
-
+    # pipe boxing: a full-height plastered column in house.json (bath2_pipe_boxing, v5 f_0095, f_0101)
     # chrome-look trim on top of the metro dado (1.20) and down the boxing's external corner
     mb = mo.MB()
     t0, t1, e = z(1.195), z(1.207), .006

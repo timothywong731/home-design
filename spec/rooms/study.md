@@ -245,3 +245,7 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - **Window x 0.48..1.98** (1.50 wide, centre 1.23; was 0.76..1.76) [E7]; sill 0.68, head 2.08 unchanged.
 - Rear wall outer face y **17.36** (0.50), flank outer face x **3.40**.
 - Floor Z 6.02, ceiling 2.60: unchanged. Roof above: flat, Z 8.87.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 2.2 w_study is 1.00 wide (x 0.76..1.76) again: the interior frames v4 f_0560 / hr_v4_559 show the whole two-light frame
+  taller than wide; the rear-elevation 1.55 was measured over the surround.

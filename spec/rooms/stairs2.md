@@ -266,3 +266,21 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   platform. R1 (y 6.06) and the first 0.17 of tread 1 are therefore under the landing ceiling (headroom 2.15). West side:
   the platform balustrade for y 6.23..8.13 (its handrail dies into the south face), the top nosing R13 for y 8.13..8.73.
 - Headroom over the main flight 2.2-2.3 (validator).
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Stair carpet: `carpet_silver_beige` #A9A397, the key of the main flight and first-floor landings (stairs S2;
+  v4 f_0192 / v6 f_0024 show it nearly as light as the landing carpet). One carpet drops the grey/beige join at
+  the bullnose (v6 f_0022-0024); R13 top nosing and the platform step nosing stay `carpet_grey_twist` with the
+  landing2 floors. Newel and rails `stairs_mahogany` #2E211C (was #3B211A). Rails on x 0.19, spindles on x 0.185.
+- The turning newel (0.20, 8.13) has no drop below the string: it would hang 0.37 below the QL ceiling (5.35)
+  (v6 f_0033, v3 f_0029).
+- Bullnose R1 stands 70 mm proud of the newel's south face with a 0.07 quarter round (a radius 0.14 about
+  (0.30, 6.20) passes through the newel centre). Foot newel 1.40 high. Spindles 38 mm.
+- W1 is at y 6.90 (not 7.62); C1 at y 6.24, Z 5.34 (v4 f_0196).
+- The stairwell east wall carries an 18 mm shadow-bead cove at the ceiling (Z 8.62, y 6.23..8.73).
+- The level strip rail falls toward the south (see landing1.md, round 3).
+- Kept: the flight handrail dies into the platform apron about 0.57 m short of the turning newel (apron underside
+  Z 5.75 crosses the 0.90 rail line at y ~7.5); v4 f_0171 shows it reaching the newel, so the apron depth or the
+  stair's rise are still to be re-surveyed.
+- Riser R10 (y 8.13) now has a back face where the quarter landing lies behind it (lib/stairs.py), so the gap between
+  the T9 top and the QL ceiling is closed from both sides.

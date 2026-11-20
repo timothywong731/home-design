@@ -42,6 +42,11 @@ CAMERAS = [
 ]
 
 
+def _circ(name):
+    """Tag kwargs of lighting circuit name (INTERACT.md, Circuits)."""
+    return {'circuit': name}
+
+
 def _add(ctx, ob, kind, plan_sym=None, lm=None):
     return ctx.add(ob, ROOM, kind, plan_sym=plan_sym, lm=lm)
 
@@ -132,9 +137,20 @@ def wall_fittings(ctx):
 
 def electrics(ctx):
     """Switch plates (each a `light` tag for what it really controls), sockets, fan isolator."""
-    # S1 three-gang on the recess wall: wall light / downlights / chandelier of this room
-    sw = P.place(P.switch_plate(3, 'rocker', wide=True, name='blue_bedroom.switch'), (0.40, 12.69, Z0 + 1.30), facing=(-1, 0))
-    IX.tag(_add(ctx, sw, 'fit'), 'light', rooms=[ROOM], label='Bedroom lights')
+    # S1 three-gang on the recess wall, one rocker per circuit (spec 8, INTERACT.md Circuits). Facing it (east):
+    # left (north) = the wall light, middle = the downlights (with the plate), right (south) = the chandelier
+    loc, f = (0.40, 12.69, Z0 + 1.30), (-1, 0)
+    sw = P.place(P.switch_plate(1, 'blank', wide=True, name='blue_bedroom.switch'), loc, facing=f)
+    IX.tag(_add(ctx, sw, 'fit', lm='dynamic'), 'light', rooms=[ROOM], label='Spotlights', **_circ('main'))
+    for i, (what, label) in enumerate((('wall_light', 'Wall light'), ('downlights', 'Spotlights'),
+                                       ('chandelier', 'Chandelier'))):
+        mb = mo.MB().at(T((i - 1) * 0.036, -0.009, 0) @ R('X', 6))           # local +x = south
+        mb.box((-0.011, -0.0045, -0.017), (0.011, 0.001, 0.017), 'plastic_white', bev=0.0008)
+        ro = _add(ctx, P.place(mb.finish(f'blue_bedroom.switch.{what}'), loc, facing=f), 'fit', lm='dynamic')
+        if what == 'downlights':
+            IX.tag(ro, 'light', g='blue_bedroom.switch', rooms=[ROOM], label=label, **_circ('main'))
+        else:
+            IX.tag(ro, 'lamp', g=f'blue_bedroom.{what}', label=label)              # the fitting's own circuit
     # S2 beside the en-suite door: the en-suite lights
     sw = P.place(P.switch_plate(1, 'rocker', name='blue_bedroom.switch.ensuite'), (1.08, Y0, Z0 + 1.30), facing=(0, 1))
     IX.tag(_add(ctx, sw, 'fit'), 'light', rooms=['blue_ensuite'], label='En-suite light')
@@ -390,8 +406,8 @@ def chandelier(ctx):
         ob = mb.finish('blue_bedroom.chandelier' + ('.' + sub if sub else ''))
         ob.matrix_basis = Mc
         objs.append(_add(ctx, ob, 'light'))
-    # clickable like the switch plate (the bake only knows the whole room on / off); short reach, as in the dining room
-    IX.tag_many(objs, 'lamp', g='blue_bedroom.chandelier', label='Chandelier', rooms=[ROOM], reach=0.5)
+    # its own circuit with the south rocker of S1 (INTERACT.md, Circuits); clickable, short reach
+    IX.tag_many(objs, 'lamp', g='blue_bedroom.chandelier', label='Chandelier', reach=0.5)
     for i, c in enumerate(cands):
         lighting.bulb(ctx, ROOM, Mc @ Vector((c[0], c[1], c[2] + 0.095)), watts=W_CANDLE, name=f'blue_bedroom.chandelier.bulb.{i}')
 
@@ -436,7 +452,7 @@ def wall_light(ctx):
     b = pc.add('', body)
     shade = P.lampshade(0.07, 0.17, 0.15, 'scalloped', '#F2C58E', lit=True, name='blue_bedroom.wall_light.shade')
     s = pc.add('shade', shade, L=T(0, -0.235, 0.24))
-    IX.tag_many([b, s], 'lamp', g='blue_bedroom.wall_light', label='Wall light', rooms=[ROOM])
+    IX.tag_many([b, s], 'lamp', g='blue_bedroom.wall_light', label='Wall light')      # own circuit: S1 north rocker
     lighting.bulb(ctx, ROOM, pc.pt((0, -0.235, 0.31)), watts=W_SCONCE, kelvin=2800, radius=0.03, name='blue_bedroom.wall_light.bulb')
 
 

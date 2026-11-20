@@ -27,7 +27,6 @@ DX, DY0, DY1 = 4.08, 4.95, 5.87                      # WC duct face and its exte
 NY0, NY1, ND = 5.11, 5.71, 0.12                      # niches: y range and depth
 NICHES = ((1.20, 1.50), (1.60, 1.95), (2.02, 2.45))  # z above the floor
 CHARCOAL = '#2A2D2E'
-WALL = '#AAACA7'      # spec #9AA59E rendered teal; normalised to the tile, v4 f_0106 / f_0164 / f_0246 want R ~ G, B ~ G - 4
 RELIEF = (.46, .92)   # B2 / B3 as measured in v4 f_0164 (spec 0.50 x 1.00): tops under the pediment cornice line
 BRASS = 'gold_champagne'   # brushed brass: 'brass_antique' rendered copper beside the pale champagne of v4 f_0106 / f_0150
 
@@ -278,7 +277,6 @@ def _window(ctx):
 
 
 def build(ctx):
-    shell.repaint(ROOM, shell.finish(ROOM)['upper'], WALL)
     _duct(ctx)
     _vanity(ctx)
     _shower(ctx)
@@ -295,7 +293,7 @@ def build(ctx):
     # art, mirror, clock, plants
     _add(ctx, P.place(P.mirror_framed(1.0, .42, 'gilt_swept', frame_w=.06, name=f'{ROOM}.mirror'), (X1, 6.95, FZ + 1.69),
                       facing=(-1, 0)), 'decor', sym='mirror')
-    # B2 / B3 at z 1.32..2.24, 35 mm clear of the pediment cornice ends (x 1.935..3.435 from Z 5.70)
+    # B2 / B3 at z 1.32..2.24, about 0.22 clear of the pediment consoles as in v4 f_0164 (not the spec x 3.60 / 1.75)
     for k, (x, flip) in enumerate(((3.70, False), (1.67, True)), 1):
         _add(ctx, P.place(GP.relief_panel(f'{ROOM}.relief.{k}', flip=flip, size=RELIEF), (x, Y0, FZ + 1.78),
                           facing=(0, 1)), 'decor')

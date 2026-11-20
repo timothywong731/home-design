@@ -9,6 +9,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as G from './geom.js';
 import { PlanView } from './plan2d.js';
 import { initInteract } from './interact.js';
@@ -37,7 +38,8 @@ if (qs.get('look') !== 'none') {
 // ---------- renderer / scene ----------
 const canvas = $('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const phone = touch || Math.min(screen.width, screen.height) < 600;      // phones: 1.5x pixels at most (fill rate, memory)
+renderer.setPixelRatio(Math.min(devicePixelRatio, phone ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight, false);
 const scene = new THREE.Scene();
 // walk: the sky as Cycles shows it (manifest.sky: an equirect image, or a colour); dollhouse: neutral
@@ -52,12 +54,17 @@ const texLoader = new THREE.TextureLoader();
 
 // ---------- loading screen ----------
 const bar = $('#bar'), msg = $('#loader-msg'), chip = $('#chip');
-function progress(loaded, total) {
-  const mb = (loaded / 1048576).toFixed(1);
-  const known = total > 0 && loaded <= total;          // gzip on Pages can make loaded > total
+// Over the first view (manifest.firstView: the first GLB, its level's lightmaps and probes, the json): the GLB's bytes as
+// they stream, then each baked image as it arrives ("Loading lighting"). No firstView: the GLB alone.
+const load = { glb: 0, glbTotal: 0, tex: 0, done: false };
+function progress(loaded = load.glb, total = load.glbTotal) {
+  Object.assign(load, { glb: loaded, glbTotal: total });
+  const all = load.first || total, got = loaded + load.tex, mb = (got / 1048576).toFixed(1);
+  const known = all > 0 && got <= all * 1.02;           // gzip on Pages can make loaded > total
   bar.parentElement.classList.toggle('indet', !known);
-  if (known) bar.style.width = `${(100 * loaded) / total}%`;
-  msg.textContent = known ? `Loading model ${Math.round((100 * loaded) / total)}% · ${mb} MB` : `Loading model · ${mb} MB`;
+  if (known) bar.style.width = `${Math.min(100, (100 * got) / all)}%`;
+  const what = total > 0 && loaded >= total && load.first ? 'Loading lighting' : 'Loading model';
+  msg.textContent = known ? `${what} ${Math.round(Math.min(100, (100 * got) / all))}% · ${mb} MB` : `${what} · ${mb} MB`;
 }
 
 msg.textContent = 'Loading plan…';
@@ -69,6 +76,12 @@ const level = (id) => LEVELS.find((l) => l.id === id);
 const ORDER = [...new Set([...(schema2 && manifest.loadOrder || []), ...LEVELS.map((l) => l.id)])].filter(level);
 const levelName = (id) => level(id)?.name || house?.levels?.find((l) => l.id === id)?.name || (id === 'X' ? 'Outside' : id);
 const realtime = qs.get('lighting') === 'realtime' || !manifest?.lightmaps?.length;
+const bakedBytes = new Map([...(manifest?.lightmaps || []), ...(manifest?.probes || [])].map((e) => [e.image, e.bytes || 0]));
+if (!realtime && manifest?.firstView?.bytes && schema2) {   // what is not the GLB or a baked image (the json) is already here
+  const fv = manifest.firstView, glb = LEVELS.find((l) => fv.files?.includes(l.glb));
+  load.first = fv.bytes; load.tex = Math.max(0, fv.bytes - (glb?.bytes || 0) - (fv.files || []).reduce((n, f) => n + (bakedBytes.get(f) || 0), 0));
+}
+const CIRCUITS = realtime ? [] : manifest?.circuits || [];       // rooms with several lighting circuits (INTERACT.md)
 const sky = manifest?.sky;
 if (typeof sky === 'string') SKY.set(sky); else if (sky?.color) SKY.set(sky.color);    // schema 1: a hex string
 if (sky?.image) texLoader.loadAsync('assets/' + sky.image).then((t) => {   // displayed 8-bit image: not tone-mapped
@@ -123,7 +136,7 @@ const drawDown = (im, max) => {        // an image drawn down to `max` px on its
 // times; one THREE.Texture per image name + size (+ sampling) serves every level. Phones (coarse pointer or a small
 // screen) get colour maps over 512 px drawn down before upload. Unnamed images are never merged.
 const TEX_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'];
-const sharedTex = new Map(), phone = touch || Math.min(screen.width, screen.height) < 600;
+const sharedTex = new Map();
 function shareTextures(m) {
   for (const k of TEX_SLOTS) {
     const t = m[k], im = t?.image;
@@ -155,15 +168,131 @@ function prepare(model) {
   model.traverse((o) => { for (const n of [o.userData.name, o.name]) if (n && !byName.has(n)) byName.set(n, o); });   // names are unique across levels
   meshes.push(...mine);
   model.updateMatrixWorld(true);
-  for (const o of mine) {               // what the dollhouse may hide (never a tagged object: interact.js owns their visibility)
-    if (o.userData.ix || o.parent?.userData.ix) continue;
+  for (const o of mine) {
+    if (o.userData.glass) glazed.add((o.userData.name || o.parent?.userData.name || '').split('.')[1]);   // <room>.<door>.leaf.glass, .frame.glass
+    const rs = cullRooms(o);
+    if (rs) cullList.push({ o, rs });
+    if (o.userData.ix || o.parent?.userData.ix) continue;     // what the dollhouse may hide (never a tagged object: interact.js owns their visibility)
     const room = o.userData.room ?? o.parent?.userData.room, name = o.userData.name || o.parent?.userData.name || '';
     dhBox.setFromObject(o);
-    dhMeshes.push({ o, room, minY: dhBox.min.y, maxY: dhBox.max.y, ceil: /\.ceiling$/.test(name) ? rooms.find((r) => r.id === room)?.level ?? null : null });
+    dhMeshes.push(dhEntry(o, room, dhBox.min.y, dhBox.max.y, /\.ceiling$/.test(name) ? rooms.find((r) => r.id === room)?.level ?? null : null));
   }
+  cullKey = null;
   return mine;
 }
+// the dollhouse levels whose cut hides a mesh: wholly above the cut, roof rising over the level, a ceiling of the level
 const dhMeshes = [], dhBox = new THREE.Box3();
+const dhEntry = (o, room, minY, maxY, ceil) => ({ o, room, minY, maxY, hide: new Set(LEVELS.filter((l) => minY > (l.cutZ ?? CUT) || (room === 'roof' && maxY > (l.datumZ ?? 0) + 1.2) || ceil === l.id).map((l) => l.id)) });
+
+// ---------- static batching: the untagged, opaque, non-emissive meshes of one room sharing one (baked) material and
+// one dollhouse rule are drawn as one world-space mesh. The originals stay for rays and names, never drawn (layer mask 0).
+let nBatch = 0;
+function batch(model, mine) {
+  const tagged = (o) => { for (; o; o = o.parent) if (typeof o.userData.ix === 'string') return true; return false; };
+  const dh = new Map(dhMeshes.map((d) => [d.o, d])), cu = new Map(cullList.map((c) => [c.o, c])), groups = new Map();
+  for (const o of mine) {
+    const m = o.material, g = o.geometry, d = dh.get(o);
+    if (Array.isArray(m) || m.transparent || o.userData.glass || !d || tagged(o) || (m.emissive && m.emissive.r + m.emissive.g + m.emissive.b > 0 && m.emissiveIntensity > 0)) continue;
+    const key = [d.room, m.uuid, Object.keys(g.attributes).sort().join(), !!g.index, [...d.hide].join(''), cu.has(o)].join('|');
+    (groups.get(key) || groups.set(key, []).get(key)).push(o);
+  }
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const geos = list.map((o) => {
+      const g = o.geometry, out = new THREE.BufferGeometry(), n = g.attributes.position.count;
+      for (const [k, a] of Object.entries(g.attributes)) {
+        const arr = new Float32Array(n * a.itemSize);
+        for (let i = 0; i < n; i++) for (let j = 0; j < a.itemSize; j++) arr[i * a.itemSize + j] = a.getComponent(i, j);
+        out.setAttribute(k, new THREE.BufferAttribute(arr, a.itemSize));
+      }
+      if (g.index) {                    // a mirrored object: flip the winding, the world matrix will no longer do it
+        const ix = Array.from(g.index.array);
+        if (o.matrixWorld.determinant() < 0) for (let t = 0; t < ix.length; t += 3) [ix[t + 1], ix[t + 2]] = [ix[t + 2], ix[t + 1]];
+        out.setIndex(ix);
+      }
+      return out.applyMatrix4(o.matrixWorld);
+    });
+    const o0 = list[0], d0 = dh.get(o0), b = new THREE.Mesh(mergeGeometries(geos), o0.material);
+    b.name = `batch_${nBatch}`; Object.assign(b.userData, { name: `${d0.room}.batch.${nBatch++}`, room: d0.room, baked: o0.userData.baked, lm: 'static', batch: list.length });
+    b.castShadow = o0.castShadow; b.receiveShadow = o0.receiveShadow;
+    model.add(b); b.updateMatrixWorld(true);
+    const rs = new Set(list.flatMap((o) => cu.get(o)?.rs || []));
+    for (const o of list) { o.layers.mask = 0; const c = cu.get(o); if (c) cullList.splice(cullList.indexOf(c), 1); }
+    if (cu.has(o0)) cullList.push({ o: b, rs: [...rs] });
+    const bb = new THREE.Box3().setFromObject(b); dhMeshes.push({ o: b, room: d0.room, minY: bb.min.y, maxY: bb.max.y, hide: d0.hide });
+  }
+  cullKey = null;
+}
+
+// ---------- walk-mode culling: only the rooms seen through the openings in view are drawn (geom.js sightGraph) ----------
+// A mesh belongs to its room, to both rooms of the opening its name names (<room>.<opening>.lining / .leaf / .frame), to
+// every room its centre stands in, else (outside every room) to the outdoors. Culled meshes leave camera layer 0 only:
+// `visible` stays the dollhouse's and interact.js's, and rays (castRay calls raycast directly) still hit them.
+const sight = walk && G.sightGraph(house), cullList = [], glazed = new Set();
+let cullKey = null, CULL = qs.get('cull') !== 'off';
+const cc = new THREE.Vector3();
+function cullRooms(o) {
+  const room = o.userData.room ?? o.parent?.userData.room, name = o.userData.name || o.parent?.userData.name || '';
+  if (!sight?.nodes.has(room)) return null;                      // no room / not in the graph: always drawn
+  const rs = new Set([room, ...(sight.ends.get(name.split('.')[1]) || [])]);
+  dhBox.setFromObject(o).getCenter(cc);
+  const [x, y] = G.threeToPlan(cc), top = (r) => (r.kind === 'room' || r.kind === 'stairwell' || r.kind === 'void' ? Math.max(r.ceilZ, r.floorZ + 2.2) : r.floorZ + 15);
+  // rooms its box (3 cm in) reaches into: a corner or the centre in the room, or a room corner in the box
+  const b = dhBox.expandByScalar(-0.03), X0 = b.min.x, X1 = b.max.x, Y0 = -b.max.z, Y1 = -b.min.z;
+  const pts = [[x, y], [X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]];
+  const meets = (r) => r.polygon && b.max.y > r.floorZ - 0.3 && b.min.y < top(r) + 0.3
+    && (pts.some((p) => G.pointInPoly(p[0], p[1], r.polygon)) || r.polygon.some((p) => p[0] > X0 && p[0] < X1 && p[1] > Y0 && p[1] < Y1));
+  const inside = rooms.filter(meets);
+  const near = inside.length ? inside : rooms.filter((r) => r.polygon && cc.y > r.floorZ - 0.3 && cc.y < top(r) + 0.3 && G.edgeDist(x, y, r.polygon) < 0.35);
+  for (const r of near) rs.add(r.id);
+  if (!near.length) rs.add('facade');
+  return [...rs].every((r) => sight.nodes.has(r)) ? [...rs] : null;
+}
+const pj = new THREE.Vector3();
+function viewRect(b, rect) {           // plan box -> its NDC rectangle inside rect; rect when it reaches behind the eye
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, behind = 0;
+  for (let k = 0; k < 8; k++) {
+    pj.set(k & 1 ? b[3] : b[0], k & 4 ? b[5] : b[2], -(k & 2 ? b[4] : b[1])).applyMatrix4(camera.matrixWorldInverse);
+    if (pj.z > -camera.near) { behind++; continue; }
+    pj.applyMatrix4(camera.projectionMatrix);
+    x0 = Math.min(x0, pj.x); x1 = Math.max(x1, pj.x); y0 = Math.min(y0, pj.y); y1 = Math.max(y1, pj.y);
+  }
+  if (behind === 8) return null;
+  if (behind) return rect;
+  const r = [Math.max(rect[0], x0), Math.min(rect[1], x1), Math.max(rect[2], y0), Math.min(rect[3], y1)];
+  return r[0] < r[1] && r[2] < r[3] ? r : null;
+}
+// Every frame in walk mode: the rooms seen and the rectangles they are seen through; a mesh is drawn when its bounding
+// sphere's screen box meets a rectangle of one of its rooms and covers more than a pixel. Off (dollhouse, ?cull=off):
+// everything on layer 0 again.
+let seen = null;
+const csph = new THREE.Sphere(), vc = new THREE.Vector3();
+function cull() {
+  const shut = CULL && ix.shut();      // a shut solid door is opaque; glazing (a leaf or its transom) is not
+  seen = CULL && S.mode === 'walk' && sight && S.room
+    ? (camera.updateMatrixWorld(), G.seenRooms(sight, S.room.id, (b, r, e) => (e.door && shut.has(e.door) && !glazed.has(e.door) ? null : viewRect(b, r)))) : null;
+  if (!seen) {
+    if (cullKey !== '') { cullKey = ''; for (const c of cullList) c.o.layers.mask = 1; }
+    return;
+  }
+  cullKey = 'on';
+  // NDC radius of 0.75 px; 1.5 px for what is seen through an opening (a knob across the hall, a pot in the garden)
+  const P = camera.projectionMatrix.elements, V = camera.matrixWorldInverse, px = 2 / renderer.domElement.height, here = S.room.id;
+  for (const c of cullList) {
+    const g = c.o.geometry;
+    if (!g.boundingSphere) g.computeBoundingSphere();
+    csph.copy(g.boundingSphere).applyMatrix4(c.o.matrixWorld); vc.copy(csph.center).applyMatrix4(V);
+    const r = csph.radius, d = -vc.z, across = d - r < camera.near;
+    let x0 = -1, x1 = 1, y0 = -1, y1 = 1, vis = false;
+    if (!across) {                      // screen box of the sphere's view-space box (depths d - r .. d + r)
+      if ((r / d) * P[5] < (c.rs.includes(here) ? 0.75 : 1.5) * px) { c.o.layers.mask = 0; continue; }
+      const lo = (a) => (a >= 0 ? a / (d + r) : a / (d - r)), hi = (a) => (a >= 0 ? a / (d - r) : a / (d + r));
+      x0 = P[0] * lo(vc.x - r); x1 = P[0] * hi(vc.x + r); y0 = P[5] * lo(vc.y - r); y1 = P[5] * hi(vc.y + r);
+    }
+    for (let i = 0; i < c.rs.length && !vis; i++) for (const q of seen.get(c.rs[i]) || []) if (q[0] < x1 && q[1] > x0 && q[2] < y1 && q[3] > y0) { vis = true; break; }
+    c.o.layers.mask = vis ? 1 : 0;
+  }
+}
 const findNode = (n) => byName.get(n) || byName.get(THREE.PropertyBinding.sanitizeNodeName(n));
 
 // ---------- lighting ----------
@@ -178,22 +307,42 @@ const findNode = (n) => byName.get(n) || byName.get(THREE.PropertyBinding.saniti
 //  - lmMix (1 = bake): a baked door leaf / front that moves away from its modelled pose fades from its lightmap to the
 //    probe's diffuse light (interact.js), since the bake only fits the pose it was baked in; lmProbe scales that probe
 //    light to the brightness the bake gave the leaf (an exterior leaf would jump to its room's brighter probe).
+//  - circuits (rooms with several, manifest.circuits): one atlas per circuit holding its lamps' light alone; with some
+//    circuits lit the off slot shows lights-off + the lit circuits, and lmOn = the product of the circuit states, so the
+//    lights-on atlas shows only while every circuit is lit (INTERACT.md, Circuits).
 const IBL_DIFFUSE = 'iblIrradiance += getIBLIrradiance( geometryNormal );', LM_LINE = 'vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;';
-const SPEC_ONLY_CHUNK = THREE.ShaderChunk.lights_fragment_maps.replace(IBL_DIFFUSE, 'iblIrradiance += ( 1.0 - lmMix ) * lmProbe * getIBLIrradiance( geometryNormal );')
-  .replace(LM_LINE, 'vec3 lightMapIrradiance = lmMix * mix( texture2D( lightMapOff, vLightMapUv ).rgb * lightMapOffIntensity, lightMapTexel.rgb * lightMapIntensity, lmOn );');
+// A room partly lit (circuits): A = lights-off + the lit circuits (darker than their share where the bake's circuits sum
+// short of the lights-on bake), B = lights-on less the unlit circuits (exactly their share); the lit share s moves A -> B,
+// so all off is the lights-off bake, all on the lights-on one, and switching anything off never brightens (B >= A, the
+// lights-on bake caps it) - IX-01's safety net, whatever the bake.
+const lmChunk = (K) => THREE.ShaderChunk.lights_fragment_maps.replace(IBL_DIFFUSE, 'iblIrradiance += ( 1.0 - lmMix ) * lmProbe * getIBLIrradiance( geometryNormal );')
+  .replace(LM_LINE, !K ? 'vec3 lightMapIrradiance = lmMix * mix( texture2D( lightMapOff, vLightMapUv ).rgb * lightMapOffIntensity, lightMapTexel.rgb * lightMapIntensity, lmOn );'
+    : 'vec3 lmOnT = lightMapTexel.rgb * lightMapIntensity, lmOff = texture2D( lightMapOff, vLightMapUv ).rgb * lightMapOffIntensity, lmA = lmOff, lmB = lmOnT; float lmS = 0.0;\n'
+    + Array.from({ length: K }, (_, i) => `{ vec3 c = lmC${i}K * texture2D( lmC${i}, vLightMapUv ).rgb; lmA += lmC${i}On * c; lmB -= ( 1.0 - lmC${i}On ) * c; lmS += lmC${i}On * lmC${i}S; }\n`).join('')
+    + 'vec3 lightMapIrradiance = lmMix * mix( min( mix( lmA, max( lmA, lmB ), clamp( lmS, 0.0, 1.0 ) ), max( lmOnT, lmOff ) ), lmOnT, lmOn );');
+const SPEC_ONLY_CHUNK = lmChunk(0);
 if (SPEC_ONLY_CHUNK.includes(IBL_DIFFUSE)) console.warn('three.js shader changed: lightmapped surfaces are lit twice');
 if (!SPEC_ONLY_CHUNK.includes('lmOn')) console.warn('three.js shader changed: light switches cannot dim the bake');
-const specOnly = (sh) => {
-  sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_maps>', SPEC_ONLY_CHUNK)
-    .replace('#include <lightmap_pars_fragment>', '#include <lightmap_pars_fragment>\nuniform sampler2D lightMapOff;\nuniform float lightMapOffIntensity;\nuniform float lmOn;\nuniform float lmMix;\nuniform float lmProbe;');
+const specOnly = (sh, K = 0) => {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_maps>', K ? lmChunk(K) : SPEC_ONLY_CHUNK)
+    .replace('#include <lightmap_pars_fragment>', '#include <lightmap_pars_fragment>\nuniform sampler2D lightMapOff;\nuniform float lightMapOffIntensity;\nuniform float lmOn;\nuniform float lmMix;\nuniform float lmProbe;'
+      + Array.from({ length: K }, (_, i) => `\nuniform sampler2D lmC${i};\nuniform float lmC${i}K;\nuniform float lmC${i}On;\nuniform float lmC${i}S;`).join(''));
 };
 // Per-room light state shared by the bake materials (lmOn, the lights-off map), probe reflections, realtime lamps and
 // lamp emissives; interact.js eases `on` toward `target`. ratio / pratio = brightness of the lights-off lightmap /
-// probe relative to the lights-on one; wait > 0 holds the fade while the lights-off images load.
+// probe relative to the lights-on one; wait > 0 holds the fade while the lights-off images load. A room with several
+// circuits has `circuits` [{name, groups, share, emissive, on, target, x, tex, k, ems}], each eased on its own; then
+// `target` = 1 while any circuit is lit and `on` = the product of the circuit states.
 const roomLights = new Map();
 const roomLight = (id) => roomLights.get(id) || roomLights.set(id, { on: { value: 1 }, target: 1, ratio: 0.12, mats: [], lamps: [], ems: [],
-  uOff: { value: null }, uOffK: { value: 0 } }).get(id);
-const lightF = (L) => { const r = L.pratio ?? L.ratio; return r + (1 - r) * L.on.value; };
+  uOff: { value: null }, uOffK: { value: 0 }, bright,
+  circuits: CIRCUITS.filter((c) => c.room === id).map((c) => ({ ...c, emissive: new Set(c.emissive || []), on: { value: 1 }, target: 1, x: 1, tex: { value: null }, k: { value: 0 }, ems: [] })) }).get(id);
+// light of a room relative to all lamps on, for its probe-lit objects: lights-off probe + the lit share of the lamps
+function bright() {
+  const r = this.pratio ?? this.ratio, cs = this.circuits;
+  return r + (1 - r) * (cs.length ? cs.reduce((s, c) => s + (c.share ?? 1 / cs.length) * c.on.value, 0) : this.on.value);
+}
+const lightF = (L) => L.bright();
 function meanLinear(img) {             // mean linear value of an 8-bit sRGB image, from a 32x32 thumbnail
   const c = Object.assign(document.createElement('canvas'), { width: 32, height: 32 }), g = c.getContext('2d', { willReadFrequently: true });
   g.drawImage(img, 0, 0, 32, 32);
@@ -203,9 +352,13 @@ function meanLinear(img) {             // mean linear value of an 8-bit sRGB ima
 }
 const ratioOf = (a, ka, b, kb) => Math.min(1, Math.max(0.01, (meanLinear(a.image) * ka) / Math.max(1e-6, meanLinear(b.image) * kb)));
 const texCache = new Map();
-function loadTex(u, atlas = false) {   // once per file; on phones an atlas over 2048 px is drawn down to 2048 on load
+// once per file. Phones (or under 4 GB of memory) draw an atlas down to 1024 px and a probe to 512 on load: a quarter
+// of the decoded memory each (its PMREM copy too), which is what keeps the WebGL context alive there.
+const smallTex = phone || navigator.deviceMemory <= 4;
+function loadTex(u, atlas = false) {
   if (!texCache.has(u)) texCache.set(u, texLoader.loadAsync('assets/' + u).then((t) => {
-    if (touch && atlas) t.image = drawDown(t.image, 2048);
+    if (!load.done) { load.tex += bakedBytes.get(u) || 0; progress(); }
+    if (smallTex) t.image = drawDown(t.image, atlas ? 1024 : 512);
     if (atlas) Object.assign(t, { channel: 1, flipY: false, colorSpace: THREE.SRGBColorSpace, anisotropy: maxAniso });
     else Object.assign(t, { mapping: THREE.EquirectangularReflectionMapping, colorSpace: THREE.SRGBColorSpace });
     return t;
@@ -219,7 +372,8 @@ function syncOff(L) {                  // lights-off map + ratios from whatever 
   }
   if (L.probe && L.probeOff) L.pratio = ratioOf(L.probeOff.tex, L.probeOff.k, L.probe.tex, L.probe.k);
 }
-// first use of a switch: load the lights-off lightmap and probe of the rooms it controls; the fade waits for them
+// first use of a switch: load the lights-off lightmap and probe (and the circuit atlases) of the rooms it controls; the
+// fade waits for them
 function ensureOff(ids) {
   if (realtime) return;
   for (const id of ids) {
@@ -227,12 +381,21 @@ function ensureOff(ids) {
     if (L.offP) continue;
     const lmo = (manifest.lightmapsOff || []).find((q) => q.room === id), pro = (manifest.probesOff || []).find((q) => q.room === id);
     L.wait = (L.wait || 0) + 1;
-    L.offP = Promise.all([lmo && loadTex(lmo.image, true), pro && loadTex(pro.image)]).then(([t, pt]) => {
+    L.offP = Promise.all([lmo && loadTex(lmo.image, true), pro && loadTex(pro.image), ...L.circuits.map((c) => loadTex(c.image, true))]).then(([t, pt, ...cs]) => {
       if (t) L.off = { tex: t, k: Math.PI * (lmo.intensity ?? 1) };
       if (pt) L.probeOff = { tex: pt, k: pro.intensity ?? 1 };
+      cs.forEach((ct, i) => { const c = L.circuits[i]; if (ct) { c.tex.value = ct; c.k.value = Math.PI * (c.intensity ?? 1); } });
       syncOff(L);
     }).finally(() => { L.wait--; });
   }
+}
+// rooms that start with their lights off (the eaves: kind void, looked into through a hatch; eaves.md 8), set before
+// their level is lit. The lights-off images still load on the first switch use: until then the off slot shows the
+// lights-on atlas at 12 % (syncOff), dark enough for a void seen through a hatch.
+function startOff(id) {
+  const L = roomLight(id);
+  L.target = L.x = L.on.value = 0;
+  for (const c of L.circuits) c.target = c.x = c.on.value = 0;
 }
 // probe of a mesh: its room's; else the nearest of the same exterior-ness (level X and kind-exterior rooms choose
 // among front / side_passage / garden / shed / balcony, all others among the interior probes)
@@ -279,9 +442,12 @@ async function applyBake(lv, mine) {
       if (!matCache.has(key)) {
         const c = Object.assign(m.clone(), { envMap: env, envMapIntensity: Lp ? k * lightF(Lp) : k });
         if (lm) {
-          const u = { lightMapOff: lm.L.uOff, lightMapOffIntensity: lm.L.uOffK, lmOn: lm.L.on, lmMix: { value: 1 }, lmProbe: { value: 1 } };
-          Object.assign(c, { lightMap: lm.tex, lightMapIntensity: lm.k, onBeforeCompile: (sh) => { specOnly(sh); Object.assign(sh.uniforms, u); } });
+          const u = { lightMapOff: lm.L.uOff, lightMapOffIntensity: lm.L.uOffK, lmOn: lm.L.on, lmMix: { value: 1 }, lmProbe: { value: 1 } }, K = lm.L.circuits.length;
+          lm.L.circuits.forEach((cc, i) => Object.assign(u, { [`lmC${i}`]: cc.tex, [`lmC${i}K`]: cc.k, [`lmC${i}On`]: cc.on, [`lmC${i}S`]: { value: cc.share ?? 1 / K } }));
+          Object.assign(c, { lightMap: lm.tex, lightMapIntensity: lm.k, onBeforeCompile: (sh) => { specOnly(sh, K); Object.assign(sh.uniforms, u); } });
+          if (K) c.customProgramCacheKey = () => `lm-circuits-${K}`;    // same function text, other shader: keep programs apart
         }
+        if (m.name === 'mirror' && ptex && p.rm?.polygon && qs.get('box') !== 'off') boxProject(c, p);
         if (Lp) Lp.mats.push({ m: c, k });
         matCache.set(key, c);
       }
@@ -289,6 +455,47 @@ async function applyBake(lv, mine) {
     });
     o.userData.baked = !!lm;        // not "lm": the GLB extras already use userData.lm = 'static' | 'dynamic'
   }
+}
+
+// Mirrors: the room probe, parallax-corrected - a reflected ray is followed to the room's box (plan bounds, floor to
+// ceiling) and the probe is read toward that point from where it was taken, so the hall mirror shows the stair and the
+// newel where they are instead of a magnified blur of whatever lies that way from the middle of the hall.
+const BOX_LINE = 'reflectVec = inverseTransformDirection( reflectVec, viewMatrix );';
+const BOX_GLSL = `
+{ vec3 bA = ( boxMax - vBoxWorld ) / reflectVec, bB = ( boxMin - vBoxWorld ) / reflectVec, bF = max( bA, bB );
+  reflectVec = vBoxWorld + reflectVec * max( 0.0, min( min( bF.x, bF.y ), bF.z ) ) - boxProbe; }`;
+if (!THREE.ShaderChunk.envmap_physical_pars_fragment.includes(BOX_LINE)) console.warn('three.js shader changed: mirrors are not box-projected');
+// The box: the room's extent through the probe along x and along y (an L-shaped hall: the hall itself, not its bounds).
+function spanAt(poly, k, at, c) {      // interval of the polygon along axis k on the line (other axis) = at, holding c
+  const xs = [];
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[j], b = poly[i];
+    if ((a[1 - k] > at) !== (b[1 - k] > at)) xs.push(a[k] + ((at - a[1 - k]) / (b[1 - k] - a[1 - k])) * (b[k] - a[k]));
+  }
+  xs.sort((p, q) => p - q);
+  for (let i = 0; i + 1 < xs.length; i += 2) if (c >= xs[i] - 1e-6 && c <= xs[i + 1] + 1e-6) return [xs[i], xs[i + 1]];
+  const all = poly.map((q) => q[k]);
+  return [Math.min(...all), Math.max(...all)];
+}
+// A face within 0.5 m of the probe (a probe taken in a doorway) goes out to the room's bounds: seen from that close, it
+// would magnify a strip of jamb into the whole mirror.
+function boxProject(c, p) {
+  const pl = p.rm.polygon, ext = (k, s, [a, b]) => { const all = pl.map((q) => q[k]); return [s - a < 0.5 ? Math.min(...all) : a, b - s < 0.5 ? Math.max(...all) : b]; };
+  const [x0, x1] = ext(0, p.pos[0], spanAt(pl, 0, p.pos[1], p.pos[0])), [y0, y1] = ext(1, p.pos[1], spanAt(pl, 1, p.pos[0], p.pos[1]));
+  const top = p.rm.ceilZ > p.rm.floorZ ? p.rm.ceilZ : p.rm.floorZ + 2.6;
+  const u = { boxMin: { value: new THREE.Vector3(x0, p.rm.floorZ, -y1) }, boxMax: { value: new THREE.Vector3(x1, top, -y0) },
+    boxProbe: { value: new THREE.Vector3(p.pos[0], p.pos[2] ?? p.rm.floorZ + 1.5, -p.pos[1]) } };
+  const ob = c.onBeforeCompile, key = c.customProgramCacheKey;
+  c.onBeforeCompile = (sh, r) => {
+    ob.call(c, sh, r);
+    sh.vertexShader = sh.vertexShader.replace('void main() {', 'varying vec3 vBoxWorld;\nvoid main() {')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvBoxWorld = worldPosition.xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <envmap_physical_pars_fragment>',
+      `uniform vec3 boxMin;\nuniform vec3 boxMax;\nuniform vec3 boxProbe;\nvarying vec3 vBoxWorld;\n${THREE.ShaderChunk.envmap_physical_pars_fragment.replace(BOX_LINE, BOX_LINE + BOX_GLSL)}`);
+    Object.assign(sh.uniforms, u);
+  };
+  c.customProgramCacheKey = () => `boxenv-${key.call(c)}`;
+  c.userData.boxProbe = true;
 }
 
 // a baked leaf's probe scale: the light its bake gave the face that looks the way it swings (that face's surroundings
@@ -354,7 +561,7 @@ if (realtime) realtimeRig();
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), sph = new THREE.Sphere(), hitAt = new THREE.Vector3(), hits = [];
 const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
 let ix = null, cutY = Infinity;
-function castRay(origin, dir, far = 60) {
+function castRay(origin, dir, far = 60, glass = false) {     // glass: untagged glass stops the ray (reach, not sight)
   ray.set(origin, dir); ray.far = far;
   const cand = [];
   for (const o of meshes) {
@@ -367,7 +574,7 @@ function castRay(origin, dir, far = 60) {
   let best = null;
   for (const [d, o] of cand) {
     if (best && d > best.distance) break;
-    if (!shown(o) || (o.userData.glass && !ix?.tagged(o))) continue;
+    if (!shown(o) || (o.userData.glass && !glass && !ix?.tagged(o))) continue;
     hits.length = 0; o.raycast(ray, hits);
     for (const h of hits) if (h.distance <= far && (!best || h.distance < best.distance) && !(S.mode === 'orbit' && h.point.y > cutY)) best = h;
   }
@@ -420,7 +627,17 @@ function glide(dt) {
   S.x = m.x; S.y = m.y; S.layer = m.layer;
   if (Math.hypot(ax - x, ay - y) > 0.3) S.yaw += wrap(G.dirYaw(ax - x, ay - y) - S.yaw) * Math.min(1, dt * 2.2);
   S.pitch -= S.pitch * Math.min(1, dt * 1.5);
-  if (gl.s >= gl.L) S.glide = null;
+  if (gl.s >= gl.L) { S.glide = null; arrive(gl.path[gl.path.length - 1]); }
+}
+// End of a walk: inside a stair mouth both layers are free and the glide keeps the one it came on - take the target's.
+// On a flight, turn to face along it (up from its lower half, down from its upper half), not at the wall the path ran to.
+function arrive(end) {
+  if (end.layer !== S.layer && G.isFree(walk, end.layer, S.x, S.y)) S.layer = end.layer;
+  const c = walk.cells.find((q) => q.kind === 'flight' && q.layer === S.layer);
+  if (!c?.risers?.length) return;
+  const [a, b] = c.risers.reduce((m, r) => (G.segDist(S.x, S.y, ...r[0], ...r[1]) < G.segDist(S.x, S.y, ...m[0], ...m[1]) ? r : m));
+  const z = floorAt(S.layer, S.x, S.y) ?? c.fromZ, up = Math.abs(z - c.fromZ) < Math.abs(c.toZ - z) ? 1 : -1;   // passed a riser = left of a->b
+  goTo(S.x, S.y, G.dirYaw(-(b[1] - a[1]) * up, (b[0] - a[0]) * up));
 }
 // floor point a double-click on this hit walks to: the floor itself, or the floor in front of a wall / object. The
 // layer is the one whose floor height is nearest the hit (floor hits within 0.3 m, wall hits within floor..floor+2.6).
@@ -450,7 +667,10 @@ function targetOf(hit) {
 // The interaction engine (GLB node extras `ix`, blender/INTERACT.md), fed one level scene at a time as they arrive.
 // Emissives are white-balanced in the shader (above), so the hover tint goes in through the inverse matrix.
 const wbInv = !realtime && manifest?.whiteBalance && new THREE.Matrix3().set(...manifest.whiteBalance.flat()).invert();
+// the openings of each void room (eaves): its switch, behind the knee wall, is used through an open hatch
+const via = Object.fromEntries(rooms.filter((r) => r.kind === 'void').map((r) => [r.id, (house?.openings || []).filter((o) => (o.connects || []).includes(r.id)).map((o) => o.id)]));
 ix = initInteract({ walk, roomLight, castRay, emissiveToView: (c) => (wbInv ? c.applyMatrix3(wbInv) : c), feetY: () => S.z, onLights: ensureOff, lmProbe: lmProbeScale,
+  circuitRooms: [...new Set(CIRCUITS.map((c) => c.room))], via,
   onClone: (m, c) => { for (const L of roomLights.values()) for (const x of L.mats) if (x.m === m) { L.mats.push({ m: c, k: x.k }); return; } },
   onPortals: () => {                    // a door shut on the walker standing in its doorway: step out of it
     if (!walk || G.isFree(walk, S.layer, S.x, S.y)) return;
@@ -649,8 +869,8 @@ const dollLevelOf = (lv) => (HOUSE_LEVELS.includes(lv) ? lv : schema2 ? 'all' : 
 // over the level (the loft slopes sit below the level-2 cut; a porch roof below the floor stays) and no ceiling of the
 // level; "All" = house, roof and plot.
 function dollVis() {
-  const on = S.mode === 'orbit', cut = on && dhLevel !== 'all', dz = level(dhLevel)?.datumZ ?? 0;
-  for (const d of dhMeshes) d.o.visible = !on || (d.room !== 'neighbours' && !(cut && (d.minY > cutY || (d.room === 'roof' && d.maxY > dz + 1.2) || d.ceil === dhLevel)));
+  const on = S.mode === 'orbit', cut = on && dhLevel !== 'all';
+  for (const d of dhMeshes) d.o.visible = !on || (d.room !== 'neighbours' && !(cut && d.hide.has(dhLevel)));
   const out = levelScenes.get('X');
   if (out) out.visible = !(on && dhLevel === 'B');                  // the lawn and shed would float beside the basement
 }
@@ -787,6 +1007,7 @@ const planView = plan ? new PlanView(planCanvas, plan, {
   onHover: (x, y) => { $('#plan-xy').textContent = `X ${Math.round(x * 1000)}  Y ${Math.round(y * 1000)}`; },
 }) : null;
 if (!planView) $('.plan-empty').hidden = false;
+planCanvas.addEventListener('pointerleave', () => { $('#plan-xy').textContent = ''; });   // no stale readout
 function showSheet(id) {               // switch the drawing (tab click, or the visitor changed level)
   planView?.setSheet(id);
   const s = planView?.sheet?.title ? planView.sheet : plan?.sheet;            // schema 1: plan.sheet
@@ -871,13 +1092,19 @@ function onLevel(lv) {
   for (const g of nav.children) g.classList.toggle('cur', g.dataset.level === lv);
   openGroup(lv);
 }
+// a flight is named for the floors it joins (its stairwell rooms span both: "Stair to the second floor (well)" read
+// wrongly half-way up the main stair)
+const flightName = (c) => house?.stairs?.find?.((s) => s.id === c.id)?.name
+  || `Stairs, ${c.level.map((l) => levelName(l).split(/ \(| \//)[0].toLowerCase()).join(' to ')}`;
 function updateRoom(x, y) {
   const L = S.mode === 'walk' || dhLevel === 'all' ? S.layer : G.layerOfLevel(dhLevel);
-  const h = walk && (G.cellAt(walk, L, x, y) || (S.mode === 'orbit' ? G.cellAt(walk, 'G', x, y) : null));
+  // the dollhouse target over a stairwell or the eaves of the level shown: no room (not the ground floor's under it)
+  const h = walk && (G.cellAt(walk, L, x, y) || (S.mode === 'orbit' && (dhLevel === 'all' || dhLevel === 'G') ? G.cellAt(walk, 'G', x, y) : null));
   onLevel(S.mode === 'orbit' && dhLevel !== 'all' ? dhLevel : h?.level || S.level || 'G');
   const r = h ? rooms.find((q) => q.id === h.room) || null : walk ? null : G.roomAt(rooms, x, y);
-  if (r?.id === S.room?.id) return;
-  S.room = r; $('#plan-room').textContent = r ? r.name : '';
+  const name = h?.cell.kind === 'flight' ? flightName(h.cell) : r?.name || '';
+  if (r?.id === S.room?.id && name === S.roomName) return;
+  S.room = r; S.roomName = name; $('#plan-room').textContent = name;
   for (const b of nav.querySelectorAll('button[data-room]')) b.setAttribute('aria-current', b.dataset.room === r?.id);
   showCurrent();
 }
@@ -923,7 +1150,11 @@ async function loadLevel(id, onProgress) {
   model.name = `level_${id}`; model.userData.level = id;
   const mine = prepare(model);
   if (realtime) for (const o of mine) { o.castShadow = !o.userData.glass; o.receiveShadow = true; }
-  else await applyBake(id, mine);
+  else {
+    for (const r of rooms) if (r.kind === 'void' && r.level === id) startOff(r.id);
+    await applyBake(id, mine);
+  }
+  if (qs.get('batch') !== 'off') batch(model, mine);
   root.add(model); levelScenes.set(id, model);
   dollVis();                            // arriving while the dollhouse is open: its rules apply at once
   ix.add(model); ixLevels.push(id);     // its doors, switches and lamps work from now on
@@ -953,6 +1184,7 @@ function frame(now) {
     const mark = !multi || sl === S.level ? 'full' : planView.sheetId === 'X' ? 'hollow' : null;
     planView.setViewer({ x: px, y: py, dir, hfov: G.hfov(camera.fov, camera.aspect), mark }, S.room);
   }
+  cull();
   if (S.mode === 'orbit') {
     scene.overrideMaterial = capMat; renderer.render(scene, camera); scene.overrideMaterial = null;
     // a Color background forces a clear even with autoClear off (WebGLBackground), so drop it for pass 2
@@ -963,6 +1195,7 @@ stepWalk(0);
 await renderer.compileAsync(scene, camera).catch(() => {});
 renderer.setAnimationLoop(frame);
 requestAnimationFrame(() => $('#loader').classList.add('done'));
+load.done = true;
 
 // the other levels, one after another, behind a small progress chip
 const streaming = (async () => {
@@ -982,15 +1215,15 @@ const streaming = (async () => {
 function texStats() {
   const seen = new Map(), add = (t) => t?.image && !seen.has(t.source) && seen.set(t.source, t);
   scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) for (const k of [...TEX_SLOTS, 'lightMap']) add(m[k]); });
-  for (const L of roomLights.values()) add(L.off?.tex);
+  for (const L of roomLights.values()) for (const t of [L.off?.tex, ...L.circuits.map((c) => c.tex.value)]) add(t);
   let bytes = 0;
   for (const t of seen.values()) { renderer.initTexture(t); bytes += (t.image.width || 0) * (t.image.height || 0) * 4 * (t.generateMipmaps ? 4 / 3 : 1); }
   return { gpuTextures: renderer.info.memory.textures, sources: seen.size, MB: +(bytes / 1048576).toFixed(1) };
 }
 
 // debug / test handle
-window.viewer = { texStats, sharedTex, dhMeshes, levelBox, openGroup, THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump, ix, walkTo, castAt, castRay, ring, roomLights,
+window.viewer = { viewRect, texStats, sharedTex, cullList, seen: () => seen, setCull: (v) => { CULL = v; cullKey = null; cull(); }, dhMeshes, levelBox, openGroup, THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump, ix, walkTo, castAt, castRay, ring, roomLights,
   FOV, FOV_MIN, FOV_MAX, LEVELS, ORDER, levelScenes, ixLevels, setDollLevel, streaming, schema2, targetOf, lmProbeScale,
   info: () => ({ mode: S.mode, x: S.x, y: S.y, z: S.z, layer: S.layer, level: S.level, yaw: S.yaw, room: S.room?.id ?? null, sheet: planView?.sheetId ?? null,
     realtime, meshes: meshes.length, lightmapped: meshes.filter((m) => m.userData.baked).length, probed: meshes.filter((m) => !realtime && !m.userData.baked).length,
-    glass: meshes.filter((m) => m.userData.glass).length, eye: camera.position.y - S.z }) };
+    glass: meshes.filter((m) => m.userData.glass).length, eye: camera.position.y - S.z, batches: nBatch, roomName: S.roomName ?? null }) };

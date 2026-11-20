@@ -183,3 +183,12 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - Floor Z 6.02, ceiling 2.60: unchanged.
 - South of it, y 8.73..9.29, is an unseen solid zone on the old rear wall of the main house.
 - Flank wall outer face x **3.40** (0.30 thick; reveal 0.22 fits).
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- 2.2 w_purple: transom bar at 1.60 (top light 0.58, casement 0.78; hr_v4_389 / hr_v4_415); the side-hung lower casement
+  opens 80 degrees outward on the south jamb and has a brass lever centred on its bottom rail (sash handle 'bottom').
+- 7 The curtain pole is 1.30 long (axis y 9.60..10.90, finial tips 9.528..10.972), not 1.50: the spec's 1.50 pole and
+  its A/C overlapped by about 7 cm and the footage shows the finial clear of the A/C. Stacks 0.29, inner edges at
+  YW +/- 0.39.
+- The view out: the east neighbour's back addition is massing up to the eaves line in yellow stock brick
+  (house.json exterior.neighbours east), about 2 m beyond the flank.

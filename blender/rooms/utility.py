@@ -27,6 +27,11 @@ from mathutils import Matrix, Vector
 from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
 
 ROOM = 'utility'
+
+
+def _circ(name):
+    """Tag kwargs of lighting circuit name (INTERACT.md, Circuits)."""
+    return {'circuit': name}
 ART = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'textures', 'art', ROOM)
 
 X0, X1, Y0, Y1 = 0.60, 3.10, 10.26, 12.23
@@ -45,6 +50,7 @@ A_Y0, A_W = 11.2465, 0.340
 # corner boxing, the corner socket is under D5): door edges D1 | D2 || D3 | D4 || D5, then a 20 mm end panel.
 WALL_EDGES = (0.64, 0.985, 1.33, 1.92, 2.51, 2.82)
 WALL_END = 2.84             # outer face of the end panel
+LED_G = 'utility.led'       # the under-cabinet LED tape and rocker 2 of the grid plate: a circuit of its own
 BOX_X = 2.95                # -x face of the NE corner boxing = face of the shell's utility_bulkhead (x 2.95..3.10)
 
 CAMERAS = [
@@ -557,8 +563,12 @@ def build(ctx):
     mb = mo.MB()
     mb.box((X0, yw - 0.02, WALL_Z0), (e[0], Y1, WALL_Z1), GREY, bev=0.001)                 # scribe filler
     mb.box((e[0], yw - 0.02, WALL_Z0 - 0.016), (WALL_END, yw - 0.002, WALL_Z0), GREY, bev=0.001)   # light pelmet
-    mb.box((e[0] + 0.02, 12.150, WALL_Z0 - 0.006), (WALL_END - 0.02, 12.166, WALL_Z0), P.emissive('#FFC489', 6.0))   # LED strip body: ~3400 K, reads neutral under the 3000 K view white balance
     wall = mb.finish('utility.wall_units')
+    mb = mo.MB()                                   # LED tape body: ~3400 K, reads neutral under the 3000 K view WB
+    mb.box((e[0] + 0.02, 12.150, WALL_Z0 - 0.006), (WALL_END - 0.02, 12.166, WALL_Z0), P.emissive('#FFC489', 6.0))
+    tape = mb.finish(LED_G)
+    IX.tag(tape, 'lamp', g=LED_G, label='Cabinet lights')     # own circuit: rocker 2 of the grid plate
+    ctx.add(tape, ROOM, 'light', lm='dynamic')
     mb = mo.MB()
     yp = yw - 0.02 + REC                                                                   # panel face of the doors
     xv = (e[4] + e[5]) / 2                                                                 # D5 vent slots, on its panel
@@ -595,10 +605,7 @@ def build(ctx):
     fr = ctx.opening_frame('w_utility')
     ya_w, yb_w = fr['center'].y - fr['width'] / 2, fr['center'].y + fr['width'] / 2
     x_frame = fr['center'].x + fr['normal'].x * fr['face_out'] - fr['outward'].x * (fr['ext_reveal'] + 0.06)  # 3.24
-    z_board, z_tile = fr['center'].z + 0.012, 1.39
-    z_bulk = 2.15                                                                            # bulkhead underside (house.json)
-    ob = shell.box('utility.corner_boxing', BOX_X, X1 - 0.001, yb_w, Y1 - 0.001, TOP, z_bulk, '#F1F0EB')
-    ctx.add(ob, ROOM, 'fit')
+    z_board, z_tile = fr['center'].z + 0.012, 1.39                   # the boxing: house.json utility_corner_boxing
 
     # ---- marble metro splashbacks, 2 mm proud: W-rear up to the boxing, W-ext cut round the window reveal and wrapped
     #      into its -y side up to the tile line (v2 f_0567, f_0578), the boxing and the +y reveal side as one tiled face;
@@ -633,12 +640,6 @@ def build(ctx):
     M.uv_box(trims)
     ctx.add(trims, ROOM, 'fit')
 
-    # ---- the pocket doorway floor: the shell leaves the white opening liner between the two tile floors; the
-    #      tile runs straight through (utility.md 2.2), so cover it 1.5 mm proud, registered with the room floors
-    ob = shell.box('utility.d_wc.floor', 1.47, 2.08, Y0 - 0.12, Y0, 0.0, 0.0015, 'wood_tile_floor')
-    M.uv_box(ob)
-    ctx.add(ob, ROOM, 'fit')
-
     # ---- electrical (ground_corrections section 1 / 9): the 3-rocker grid by the hall door is this room's lights
     #      (spots + under-cabinet strip, third rocker inert); the plate under the plaque is the WC light (the WC has
     #      no switch inside); the high plate is the WC fan isolator - nothing to show, not tagged. Two doubles on the
@@ -647,13 +648,25 @@ def build(ctx):
     for name, prop, loc, n, lit in (
             ('utility.socket.rear', P.socket(2), (1.00, Y1 - 0.002, 1.10), S, None),
             ('utility.socket.corner', P.socket(2), (WALL_END - 0.22, Y1 - 0.002, 1.10), S, None),
-            ('utility.switch.grid', P.switch_plate(3, 'rocker', wide=False), (X0, 11.30, 1.27), (1, 0), 'utility'),
+            ('utility.switch.grid', P.switch_plate(1, 'blank'), (X0, 11.30, 1.27), (1, 0), 'utility'),
             ('utility.switch.fan', P.switch_plate(1, 'rocker'), (2.34, Y0, 2.02), (0, 1), None),
             ('utility.switch.light', P.switch_plate(1, 'rocker'), (2.32, Y0, 1.22), (0, 1), 'wc')):
         prop.name = name
         ctx.add(P.place(prop, loc, facing=n), ROOM, 'fit')
         if lit:
-            IX.tag(prop, 'light', rooms=[lit], label='Lights' if lit == ROOM else 'WC light')
+            IX.tag(prop, 'light', rooms=[lit], label='Lights' if lit == ROOM else 'WC light',
+                   **(_circ('main') if lit == ROOM else {}))
+    # the grid's three rockers (86 mm plate, 18.7 mm pitch): 1 = the two downlights (with the plate), 2 = the LED
+    # tape under the wall units, 3 = inert
+    for i, g in enumerate(('utility.switch.grid', LED_G, None)):
+        mb = mo.MB().at(Matrix.Translation(((i - 1) * 0.0187, -0.009, 0)) @ Matrix.Rotation(math.radians(6), 4, 'X'))
+        mb.box((-0.0067, -0.0045, -0.017), (0.0067, 0.001, 0.017), 'plastic_white', bev=0.0008)
+        ro = P.place(mb.finish(f'utility.switch.grid.r{i + 1}'), (X0, 11.30, 1.27), facing=(1, 0))
+        if g == LED_G:
+            IX.tag(ro, 'lamp', g=g, label='Cabinet lights')
+        elif g:
+            IX.tag(ro, 'light', g=g, rooms=[ROOM], label='Lights', **_circ('main'))
+        ctx.add(ro, ROOM, 'fit', lm='dynamic' if g else None)
 
     # ---- bronze horse relief plaque on W-wc (rectified crop, no people): metallic face in a pale champagne frame.
     #      The library's metallic golds render orange under the lamps (f_0495 frame: #A39665), so the frame of this
@@ -680,7 +693,7 @@ def build(ctx):
         lighting.downlight(ctx, ROOM, x, 11.12, watts=DOWN_W, kelvin=3000, spot_deg=160, name=f'utility.downlight.{i}')
         ctx.add(P.place(P.downlight(name=f'utility.downlight_trim.{i}'), (x, 11.12, cz)), ROOM, 'light')
     lighting.strip(ctx, ROOM, (WALL_EDGES[0] + 0.04, 12.158, WALL_Z0 - 0.03), (WALL_END - 0.04, 12.158, WALL_Z0 - 0.03),
-                   watts_per_m=STRIP_W, kelvin=3200, name='utility.strip')
+                   watts_per_m=STRIP_W, kelvin=3200, name=LED_G + '.strip')   # name extends the tape's: its circuit
     for i, (ya, yb) in enumerate(((10.40, 11.20), (11.32, 11.85))):        # two upward panels either side of the rail
         up = lighting.strip(ctx, ROOM, (0.9, (ya + yb) / 2, cz - 0.30), (2.4, (ya + yb) / 2, cz - 0.30),
                             watts_per_m=UP_W_M2 * (yb - ya), kelvin=3000, width=yb - ya, direction=(0, 0, 1),

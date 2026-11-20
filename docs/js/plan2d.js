@@ -67,10 +67,19 @@ export class PlanView {
   setTheme(t) { this.theme = t; this.dirty = true; this.draw(); }
   // viewer = { x, y, dir:[dx,dy] (plan frame), hfov (rad), mark: 'full' (default) | 'hollow' | null (not drawn) };
   // room = room object or null (highlighted with this sheet's polygon for it; a plan without rooms uses room.polygon)
+  // A zoomed-in plan follows the marker: when it leaves the middle 76 % of the canvas (and no finger or button is on the
+  // plan), the view recentres on it. At the fitted scale the whole sheet shows, so nothing moves.
   setViewer(viewer, room) {
     const k = `${viewer.x.toFixed(3)},${viewer.y.toFixed(3)},${viewer.dir[0].toFixed(3)},${viewer.dir[1].toFixed(3)},${viewer.hfov.toFixed(3)},${room?.id},${viewer.mark}`;
     this.viewer = viewer; this.room = room;
-    if (k !== this.key) { this.key = k; this.draw(); }
+    if (k === this.key) return;
+    this.key = k;
+    const W = this.c.width, H = this.c.height, b = this.bounds;
+    if (viewer.mark && !this.ptr.size && W && b && this.v.s > 1.05 * Math.min((W - 28 * this.dpr) / (b.maxX - b.minX), (H - 28 * this.dpr) / (b.maxY - b.minY))) {
+      const [X, Y] = this.toScreen(viewer.x, viewer.y);
+      if (X < 0.12 * W || X > 0.88 * W || Y < 0.12 * H || Y > 0.88 * H) { this.v.cx = viewer.x; this.v.cy = viewer.y; this.dirty = true; }
+    }
+    this.draw();
   }
 
   // ---- drawing ----

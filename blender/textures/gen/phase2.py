@@ -181,17 +181,19 @@ def chequer():
 
 
 def calacatta():
-    """Polished Calacatta-gold porcelain slabs 1.2 x 1.2: grey-taupe and ochre veins, 2 mm joint on the repeat edge."""
+    """Polished Calacatta-gold porcelain slabs 1.2 x 1.2: bold gold-beige bands and patches with grey veins (blue
+    en-suite, v3 f_0387 / f_0391 / f_0405), 2 mm joint on the repeat edge."""
     N, P = 1024, 1.2
-    a = 0.85 * tiles.veins(N, N, 321, n=6, angle=38, length=(0.5, 1.2), width=5.0)
-    g = 0.75 * tiles.veins(N, N, 322, n=4, angle=30, length=(0.4, 1.0), width=7.0)
-    base = lin(hex3('#F1EEE6')) * (1 + 0.012 * noise(N, N, 60, 500, 323))[..., None]
-    col = base * (1 - a[..., None]) + lin(hex3('#8E8A82')) * a[..., None]
-    col = col * (1 - g[..., None]) + lin(hex3('#B79A55')) * g[..., None]
+    a = 0.80 * tiles.veins(N, N, 321, n=7, angle=38, length=(0.5, 1.2), width=8.0)
+    g = 0.85 * tiles.veins(N, N, 322, n=5, angle=30, length=(0.5, 1.1), width=18.0)
+    g = np.maximum(g, 0.45 * blur(np.clip(tiles.veins(N, N, 324, n=4, angle=34, length=(0.3, 0.6), width=60.0), 0, 1), 25))
+    base = lin(hex3('#EDE9E0')) * (1 + 0.012 * noise(N, N, 60, 500, 323))[..., None]
+    col = base * (1 - a[..., None]) + lin(hex3('#9C9A93')) * a[..., None]
+    col = col * (1 - g[..., None]) + lin(hex3('#B9A06A')) * g[..., None]
     e = max(1, int(round(0.001 * N / P)))
     col[:e], col[-e:], col[:, :e], col[:, -e:] = (lin(hex3('#D9D6CE')),) * 4
     b = save('porcelain_calacatta_slab_col', srgb(np.clip(col, 0, 1)), SYN)
-    reg('porcelain_calacatta_slab', b, (P, P), rough=0.06, target='#F1EEE6', note='1.2 m slabs, veins #8E8A82 / #B79A55')
+    reg('porcelain_calacatta_slab', b, (P, P), rough=0.06, target='#EDE9E0', note='1.2 m slabs, gold bands #B9A06A, veins #9C9A93')
 
 
 def underside():
@@ -214,9 +216,17 @@ def plank_dark():
     reg('wood_tile_floor_dark', b, e['size_m'], nrm=e['nrm'], orm=e['orm'], rough=0.5, target='#7B6F5C', note='planks 200x1200 along V')
 
 
+def plank_grey():
+    """Shed workshop floor: the wood-effect plank in dark grey (#6B6A66, shed.md 4; v2 f_0281 / f_0287)."""
+    im = cv2.cvtColor(cv2.imread(os.path.join(TEX, 'wood_tile_floor_col.jpg')), cv2.COLOR_BGR2RGB).astype(np.float32) / 255
+    b = save('wood_tile_floor_grey_col', recolor(im, '#6B6A66', contrast=1.2, sat=0.2), 'wood_tile_floor_col.jpg recoloured by gen/phase2.py')
+    e = dict(reg.__globals__['_manifest']['wood_tile_floor'])
+    reg('wood_tile_floor_grey', b, e['size_m'], nrm=e['nrm'], orm=e['orm'], rough=0.5, target='#6B6A66', note='planks 200x1200 along V')
+
+
 def main():
     # ---- upper-floor carpets (one shared pile normal map: carpet_mink_nrm)
-    for key, hx, seed in (('carpet_silver_beige', '#C9C2B3', 201), ('carpet_pale', '#CFCAC3', 203),
+    for key, hx, seed in (('carpet_silver_beige', '#A9A397', 201), ('carpet_pale', '#CFCAC3', 203),
                           ('carpet_grey_twist', '#B9B4AB', 205), ('carpet_grey', '#CFC9BC', 207)):
         speckle(key, hx, 1.0, 1024, seed, amp=0.09, lo=2, hi=7, mott=0.05, rough=1.0, sheen=0.3, nrm_file='carpet_mink_nrm.jpg')
     speckle('vinyl_grey_sheet', '#8C8A85', 1.5, 512, 211, amp=0.02, lo=2, hi=8, mott=0.07, relief=0.00005, rough=0.6)
@@ -230,9 +240,10 @@ def main():
     calacatta()
     chequer()
     plank_dark()
+    plank_grey()
     # ---- site paving
     speckle('asphalt', '#55565A', 2.0, 1024, 231, amp=0.16, lo=1.5, hi=4, mott=0.06, relief=0.0012, rough=0.95)
-    bond('concrete_setts_grey_buff', (0.16, 0.16), 0.004, 12, 12, (1024, 1024), [('#B3AE9F', 5), ('#8C887C', 3), ('#A98C7C', 2)],
+    bond('concrete_setts_grey_buff', (0.16, 0.16), 0.004, 12, 12, (1024, 1024), [('#B3AE9F', 5), ('#8C887C', 3), ('#A19288', 2)],
          '#4B4A40', 233, shift=0.5, var=0.05, speck=0.05, depth=0.003, soft=0.006, note='tumbled 160 mm setts, three tones')
     bond('concrete_flags', (0.9, 0.6), 0.008, 2, 2, (1024, 683), [('#A9A59B', 3), ('#8E8B86', 2)], '#5E5C56', 235, var=0.04,
          speck=0.05, depth=0.003, blotch=0.06, note='900x600 footway flags')

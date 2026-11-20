@@ -116,5 +116,6 @@ here: whoever adds a crop records its source frame in `art/SOURCES.md`.
 | wood_sapele_veneer_02_nrm.jpg | Poly Haven CC0: sapele_veneer_02 nor_gl, resized | CC0 1.0 (Poly Haven), derivative |
 | wood_tile_floor_col.jpg | Poly Haven CC0: smoked_walnut_veneer + washed_grey_oak_veneer Diffuse, desaturated, weathered (synthesised streaks / patches), cut into 200x1200 tiles with grout by gen/woods.py | CC0 1.0 (Poly Haven), derivative |
 | wood_tile_floor_dark_col.jpg | wood_tile_floor_col.jpg recoloured by gen/phase2.py | project-generated, no third-party content |
+| wood_tile_floor_grey_col.jpg | wood_tile_floor_col.jpg recoloured by gen/phase2.py | project-generated, no third-party content |
 | wood_tile_floor_nrm.jpg | synthesised (grout joints) gen/woods.py | project-generated, no third-party content |
 | wood_tile_floor_orm.jpg | synthesised gen/woods.py | project-generated, no third-party content |

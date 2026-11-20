@@ -158,12 +158,13 @@ def check(ctx, objs):
         assert ray(0.0) is None, f'{oid}: the hole is blocked'
         assert any(ray(sg * (fr['width'] / 2 + 0.06)) for sg in (1, -1)), f'{oid}: no wall beside the hole'
 
-    # side gate: tagged, leaf bottom 20 mm over the tread, both poses clear of everything
+    # side gate: tagged, leaf bottom 20 mm over the tread corner it sweeps, both poses clear of everything
     g = next(b for b in ext['boundaries'] if b['type'] == 'gate')
     leaf = by[f"{g['room']}.{g['id']}"]
     ix = json.loads(leaf['ix'])
     assert ix['t'] == 'hinge' and ix['blocks'] == g['id'] and abs(ix['deg']) == 50 and ix['a'] == [0, 0, 1], ix
-    assert abs(min(v.co.z for v in leaf.data.vertices) - (-0.14)) < 1e-6, 'leaf bottom is not at Z -0.14'
+    zl = min(v.co.z for v in leaf.data.vertices)
+    assert abs(zl - (-0.14)) < 1e-6, f'leaf bottom {zl:.3f} is not 20 mm over the lower kitchen tread it sweeps (-0.16)'
     others = bvh([o for o in objs if o is not leaf])
     assert not bvh([leaf]).overlap(others), 'closed gate leaf intersects something'
     keep = leaf.matrix_world.copy()

@@ -30,6 +30,7 @@ CAMERAS = [
 ]
 
 CANOPY_Z = 2.62                                 # flat soffit of the porch lean-to (lib/envelope.PORCH_SOFFIT_Z)
+PORCH = ['vestibule', 'front']                  # porch circuit: the canopy lights light the forecourt (front atlas)
 
 RX = Matrix.Rotation(pi / 2, 4, 'X')            # local +Z -> -Y: lathes that face out of a wall
 
@@ -197,7 +198,7 @@ def build(ctx):
     kp = P.place(keypad('vestibule.keypad'), (0.65, 1.52, 1.48), facing=(-1, 0))
     ctx.add(kp, ROOM, 'fit', lm='dynamic')
     sw = P.place(P.switch_plate(1, name='vestibule.switch'), (0.65, 1.52, 1.22), facing=(-1, 0))
-    IX.tag(sw, 'light', rooms=['vestibule'], label='Porch light')        # lantern, 2-way with the hall plate (v2:f_0903-0906)
+    IX.tag(sw, 'light', rooms=PORCH, label='Porch light')                # 2-way with the hall plate (v2:f_0903-0906)
     ctx.add(sw, ROOM, 'fit', lm='dynamic')
 
     # --- box stool in the corner of the east wall and the inner screen (drawers face west)
@@ -222,7 +223,7 @@ def build(ctx):
     ch = lantern('vestibule.lantern')
     ch.location = (0.0, 1.48, cz)
     ctx.add(ch, ROOM, 'light')
-    IX.tag_many(P.family(ch), 'lamp', g='vestibule.lantern', label='Lantern', rooms=['vestibule'])
+    IX.tag_many(P.family(ch), 'lamp', g='vestibule.lantern', label='Lantern', rooms=PORCH)
     for i, p in enumerate(P.bulb_points(ch)):
         lighting.bulb(ctx, ROOM, p, watts=10.5, kelvin=2800, radius=.012, name=f'vestibule.lantern.bulb.{i}')
 

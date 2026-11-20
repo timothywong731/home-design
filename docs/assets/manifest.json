@@ -1,675 +1,171 @@
 {
- "lightmaps": [
+ "schema": 2,
+ "levels": [
   {
-   "room": "dining",
-   "image": "lightmaps/dining.jpg",
-   "intensity": 3.10421,
-   "size": 4096,
-   "pxPerM": 215,
-   "objects": [
-    "dining.ceiling",
-    "dining.floor",
-    "dining.walls",
-    "dining.d_dining.lining",
-    "dining.d_dining.surround",
-    "dining.d_french.frame",
-    "dining.d_french.leaf.0",
-    "dining.d_french.leaf.1",
-    "dining.screen",
-    "dining.w_dining_n_w.frame",
-    "dining.w_dining_n_e.frame",
-    "dining.w_dining_e_s.frame",
-    "dining.w_dining_e_s.surround",
-    "dining.w_dining_e_n.frame",
-    "dining.w_dining_e_n.surround",
-    "dining.skirting",
-    "dining.dado",
-    "dining.cornice",
-    "dining.rose",
-    "dining.pelmet",
-    "dining.tv"
-   ]
+   "id": "B",
+   "name": "Basement",
+   "datumZ": -2.31,
+   "cutZ": -0.38,
+   "rooms": [
+    "basement",
+    "basement_stair"
+   ],
+   "glb": "glb/B.glb",
+   "bytes": 777696,
+   "triangles": 16032,
+   "nodes": 53,
+   "interactive": 3
   },
   {
-   "room": "hallway",
-   "image": "lightmaps/hallway.jpg",
-   "intensity": 2.41195,
-   "size": 4096,
-   "pxPerM": 212,
-   "objects": [
-    "hallway.ceiling",
-    "hallway.floor",
-    "hallway.walls",
-    "hallway.arch_fill",
-    "hallway.d_inner.frame",
-    "hallway.d_inner.leaf.0",
-    "hallway.d_living.surround",
-    "hallway.d_understairs.lining",
-    "hallway.d_understairs.surround",
-    "hallway.d_understairs.leaf",
-    "hallway.d_kitchen.lining",
-    "hallway.d_kitchen.surround",
-    "hallway.d_utility.surround",
-    "hallway.d_dining.surround",
-    "hallway.skirting",
-    "hallway.dado",
-    "hallway.cornice",
-    "hallway.arch_corbels"
-   ]
+   "id": "G",
+   "name": "Ground floor",
+   "datumZ": 0.0,
+   "cutZ": 2.33,
+   "rooms": [
+    "vestibule",
+    "hallway",
+    "stairs",
+    "living",
+    "kitchen",
+    "wc",
+    "utility",
+    "dining"
+   ],
+   "glb": "glb/G.glb",
+   "bytes": 17115120,
+   "triangles": 754362,
+   "nodes": 887,
+   "interactive": 299
   },
   {
-   "room": "kitchen",
-   "image": "lightmaps/kitchen.jpg",
-   "intensity": 3.05993,
-   "size": 4096,
-   "pxPerM": 180,
-   "objects": [
-    "kitchen.ceiling",
-    "kitchen.floor",
-    "kitchen.walls",
-    "kitchen.d_kitchen.surround",
-    "kitchen.d_back.frame",
-    "kitchen.d_back.leaf",
-    "kitchen.skirting",
-    "kitchen.cornice",
-    "kitchen.base.hob",
-    "kitchen.worktop.hob",
-    "kitchen.wall.w1",
-    "kitchen.wall.w2",
-    "kitchen.splash.hob.a",
-    "kitchen.splash.hob.b",
-    "kitchen.splash.hob.c",
-    "kitchen.base.sink",
-    "kitchen.worktop.sink",
-    "kitchen.wall.sink",
-    "kitchen.splash.sink",
-    "kitchen.splash.return",
-    "kitchen.wall.corner",
-    "kitchen.tower",
-    "kitchen.fridge_housing",
-    "kitchen.fridge",
-    "kitchen.nook.base",
-    "kitchen.worktop.nook",
-    "kitchen.splash.nook",
-    "kitchen.splash.nook.l",
-    "kitchen.splash.nook.r",
-    "kitchen.nook.soffit",
-    "kitchen.nook.shelves",
-    "kitchen.nook.cornice"
-   ]
+   "id": "1",
+   "name": "First floor (split level)",
+   "datumZ": 3.04,
+   "cutZ": 5.28,
+   "rooms": [
+    "green_bedroom",
+    "green_bathroom",
+    "landing1_front",
+    "stairs2",
+    "landing1_ql",
+    "landing1_rear",
+    "yellow_room",
+    "blue_ensuite",
+    "blue_bedroom",
+    "balcony"
+   ],
+   "glb": "glb/1.glb",
+   "bytes": 12455704,
+   "triangles": 393110,
+   "nodes": 592,
+   "interactive": 177
   },
   {
-   "room": "living",
-   "image": "lightmaps/living.jpg",
-   "intensity": 3.51931,
-   "size": 4096,
-   "pxPerM": 184,
-   "objects": [
-    "living.ceiling",
-    "living.floor",
-    "living.walls",
-    "living.d_living.lining",
-    "living.d_living.surround",
-    "living.w_bay_front.timber",
-    "living.w_bay_front.frame",
-    "living.w_bay_front.shutters",
-    "living.bay.sill",
-    "living.w_bay_cheek_w.timber",
-    "living.w_bay_cheek_w.frame",
-    "living.w_bay_cheek_w.shutters",
-    "living.w_bay_cheek_e.timber",
-    "living.w_bay_cheek_e.frame",
-    "living.w_bay_cheek_e.shutters",
-    "living.skirting",
-    "living.cornice",
-    "living.rose",
-    "living.nib_chamfers",
-    "living.tv",
-    "living.tv_unit",
-    "living.amplifier",
-    "living.disc_player",
-    "living.speaker.0",
-    "living.speaker.0.grille",
-    "living.speaker.1",
-    "living.speaker.1.grille",
-    "living.xiangqi",
-    "living.wall_controls",
-    "living.aircon",
-    "living.rug",
-    "living.curtain_track",
-    "living.tapestry"
-   ]
+   "id": "2",
+   "name": "Second floor / loft (split level)",
+   "datumZ": 6.02,
+   "cutZ": 8.42,
+   "rooms": [
+    "landing2_head",
+    "landing2_platform",
+    "loft_office",
+    "eaves_front",
+    "eaves_rear",
+    "purple_room",
+    "bathroom2",
+    "study"
+   ],
+   "glb": "glb/2.glb",
+   "bytes": 6496208,
+   "triangles": 148167,
+   "nodes": 415,
+   "interactive": 104
   },
   {
-   "room": "shell",
-   "image": "lightmaps/shell.jpg",
-   "intensity": 1.24231,
-   "size": 1024,
-   "pxPerM": 57,
-   "objects": [
-    "shell.exterior",
-    "shell.wall_tops",
-    "shell.threshold.d_inner",
-    "shell.threshold.d_kitchen",
-    "shell.threshold.d_utility"
-   ]
-  },
-  {
-   "room": "stairs",
-   "image": "lightmaps/stairs.jpg",
-   "intensity": 6.53422,
-   "size": 2048,
-   "pxPerM": 184,
-   "objects": [
-    "stairs.ceiling",
-    "stairs.floor",
-    "stairs.walls",
-    "stairs.foot_ceiling",
-    "stairs.well_upstand",
-    "stairs.flight",
-    "stairs.spandrel",
-    "stairs.flight_upper",
-    "stairs.wall_string",
-    "stairs.dado_band",
-    "stairs.foot_cornice"
-   ]
-  },
-  {
-   "room": "utility",
-   "image": "lightmaps/utility.jpg",
-   "intensity": 3.55997,
-   "size": 2048,
-   "pxPerM": 191,
-   "objects": [
-    "utility.ceiling",
-    "utility.floor",
-    "utility.walls",
-    "utility.d_utility.lining",
-    "utility.d_utility.surround",
-    "utility.d_wc.lining",
-    "utility.d_wc.surround",
-    "utility.w_utility.frame",
-    "utility.skirting",
-    "utility.cornice",
-    "utility.base.filler",
-    "utility.washer",
-    "utility.dryer",
-    "utility.base.sink_unit",
-    "utility.sink",
-    "utility.tap",
-    "utility.worktop.rear",
-    "utility.worktop.ext",
-    "utility.tall",
-    "utility.wall_units",
-    "utility.splash.rear",
-    "utility.splash.ext.0",
-    "utility.splash.ext.1",
-    "utility.splash.ext.2"
-   ]
-  },
-  {
-   "room": "vestibule",
-   "image": "lightmaps/vestibule.jpg",
-   "intensity": 3.03701,
-   "size": 2048,
-   "pxPerM": 209,
-   "objects": [
-    "vestibule.ceiling",
-    "vestibule.floor",
-    "vestibule.walls",
-    "vestibule.vault_fill",
-    "vestibule.d_street.frame",
-    "vestibule.d_street.leaf.0",
-    "vestibule.d_street.leaf.1",
-    "vestibule.w_bay_cheek_w.surround",
-    "vestibule.skirting",
-    "vestibule.dado",
-    "vestibule.arch_mouldings",
-    "vestibule.canopy"
-   ]
-  },
-  {
-   "room": "wc",
-   "image": "lightmaps/wc.jpg",
-   "intensity": 3.1444,
-   "size": 1024,
-   "pxPerM": 151,
-   "objects": [
-    "wc.ceiling",
-    "wc.floor",
-    "wc.walls",
-    "wc.d_wc.surround",
-    "wc.w_wc.frame",
-    "wc.cornice",
-    "wc.tile_trim",
-    "wc.pan",
-    "wc.flush_plate",
-    "wc.basin",
-    "wc.basin.fittings",
-    "wc.fan",
-    "wc.towel_rail"
-   ]
+   "id": "X",
+   "name": "Outside",
+   "datumZ": -0.32,
+   "cutZ": null,
+   "rooms": [
+    "front",
+    "side_passage",
+    "garden",
+    "shed",
+    "facade",
+    "roof",
+    "neighbours"
+   ],
+   "glb": "glb/X.glb",
+   "bytes": 9061172,
+   "triangles": 215473,
+   "nodes": 245,
+   "interactive": 31
   }
  ],
- "probes": [
-  {
-   "room": "vestibule",
-   "image": "probes/vestibule.jpg",
-   "pos": [
-    -0.25,
-    1.6,
-    1.5
-   ],
-   "intensity": 2.88433
-  },
-  {
-   "room": "hallway",
-   "image": "probes/hallway.jpg",
-   "pos": [
-    0.55,
-    4.03,
-    1.5
-   ],
-   "intensity": 3.55678
-  },
-  {
-   "room": "stairs",
-   "image": "probes/stairs.jpg",
-   "pos": [
-    0.35,
-    5.03,
-    1.5
-   ],
-   "intensity": 2.92858
-  },
-  {
-   "room": "living",
-   "image": "probes/living.jpg",
-   "pos": [
-    2.4,
-    2.6,
-    1.5
-   ],
-   "intensity": 4.14199
-  },
-  {
-   "room": "kitchen",
-   "image": "probes/kitchen.jpg",
-   "pos": [
-    3.25,
-    7.11,
-    1.5
-   ],
-   "intensity": 2.27737
-  },
-  {
-   "room": "wc",
-   "image": "probes/wc.jpg",
-   "pos": [
-    1.8,
-    9.76,
-    1.5
-   ],
-   "intensity": 1.92801
-  },
-  {
-   "room": "utility",
-   "image": "probes/utility.jpg",
-   "pos": [
-    2.0,
-    11.06,
-    1.5
-   ],
-   "intensity": 2.88044
-  },
-  {
-   "room": "dining",
-   "image": "probes/dining.jpg",
-   "pos": [
-    1.15,
-    14.36,
-    1.5
-   ],
-   "intensity": 2.98036
-  }
- ],
- "lightmapsOff": [
-  {
-   "room": "dining",
-   "image": "lightmaps_off/dining.jpg",
-   "intensity": 1.19364,
-   "size": 2048,
-   "pxPerM": 108,
-   "objects": [
-    "dining.ceiling",
-    "dining.floor",
-    "dining.walls",
-    "dining.d_dining.lining",
-    "dining.d_dining.surround",
-    "dining.d_french.frame",
-    "dining.d_french.leaf.0",
-    "dining.d_french.leaf.1",
-    "dining.screen",
-    "dining.w_dining_n_w.frame",
-    "dining.w_dining_n_e.frame",
-    "dining.w_dining_e_s.frame",
-    "dining.w_dining_e_s.surround",
-    "dining.w_dining_e_n.frame",
-    "dining.w_dining_e_n.surround",
-    "dining.skirting",
-    "dining.dado",
-    "dining.cornice",
-    "dining.rose",
-    "dining.pelmet",
-    "dining.tv"
-   ]
-  },
-  {
-   "room": "hallway",
-   "image": "lightmaps_off/hallway.jpg",
-   "intensity": 1.17595,
-   "size": 2048,
-   "pxPerM": 106,
-   "objects": [
-    "hallway.ceiling",
-    "hallway.floor",
-    "hallway.walls",
-    "hallway.arch_fill",
-    "hallway.d_inner.frame",
-    "hallway.d_inner.leaf.0",
-    "hallway.d_living.surround",
-    "hallway.d_understairs.lining",
-    "hallway.d_understairs.surround",
-    "hallway.d_understairs.leaf",
-    "hallway.d_kitchen.lining",
-    "hallway.d_kitchen.surround",
-    "hallway.d_utility.surround",
-    "hallway.d_dining.surround",
-    "hallway.skirting",
-    "hallway.dado",
-    "hallway.cornice",
-    "hallway.arch_corbels"
-   ]
-  },
-  {
-   "room": "kitchen",
-   "image": "lightmaps_off/kitchen.jpg",
-   "intensity": 1.15941,
-   "size": 2048,
-   "pxPerM": 90,
-   "objects": [
-    "kitchen.ceiling",
-    "kitchen.floor",
-    "kitchen.walls",
-    "kitchen.d_kitchen.surround",
-    "kitchen.d_back.frame",
-    "kitchen.d_back.leaf",
-    "kitchen.skirting",
-    "kitchen.cornice",
-    "kitchen.base.hob",
-    "kitchen.worktop.hob",
-    "kitchen.wall.w1",
-    "kitchen.wall.w2",
-    "kitchen.splash.hob.a",
-    "kitchen.splash.hob.b",
-    "kitchen.splash.hob.c",
-    "kitchen.base.sink",
-    "kitchen.worktop.sink",
-    "kitchen.wall.sink",
-    "kitchen.splash.sink",
-    "kitchen.splash.return",
-    "kitchen.wall.corner",
-    "kitchen.tower",
-    "kitchen.fridge_housing",
-    "kitchen.fridge",
-    "kitchen.nook.base",
-    "kitchen.worktop.nook",
-    "kitchen.splash.nook",
-    "kitchen.splash.nook.l",
-    "kitchen.splash.nook.r",
-    "kitchen.nook.soffit",
-    "kitchen.nook.shelves",
-    "kitchen.nook.cornice"
-   ]
-  },
-  {
-   "room": "living",
-   "image": "lightmaps_off/living.jpg",
-   "intensity": 1.2917,
-   "size": 2048,
-   "pxPerM": 92,
-   "objects": [
-    "living.ceiling",
-    "living.floor",
-    "living.walls",
-    "living.d_living.lining",
-    "living.d_living.surround",
-    "living.w_bay_front.timber",
-    "living.w_bay_front.frame",
-    "living.w_bay_front.shutters",
-    "living.bay.sill",
-    "living.w_bay_cheek_w.timber",
-    "living.w_bay_cheek_w.frame",
-    "living.w_bay_cheek_w.shutters",
-    "living.w_bay_cheek_e.timber",
-    "living.w_bay_cheek_e.frame",
-    "living.w_bay_cheek_e.shutters",
-    "living.skirting",
-    "living.cornice",
-    "living.rose",
-    "living.nib_chamfers",
-    "living.tv",
-    "living.tv_unit",
-    "living.amplifier",
-    "living.disc_player",
-    "living.speaker.0",
-    "living.speaker.0.grille",
-    "living.speaker.1",
-    "living.speaker.1.grille",
-    "living.xiangqi",
-    "living.wall_controls",
-    "living.aircon",
-    "living.rug",
-    "living.curtain_track",
-    "living.tapestry"
-   ]
-  },
-  {
-   "room": "shell",
-   "image": "lightmaps_off/shell.jpg",
-   "intensity": 1.22867,
-   "size": 512,
-   "pxPerM": 28,
-   "objects": [
-    "shell.exterior",
-    "shell.wall_tops",
-    "shell.threshold.d_inner",
-    "shell.threshold.d_kitchen",
-    "shell.threshold.d_utility"
-   ]
-  },
-  {
-   "room": "stairs",
-   "image": "lightmaps_off/stairs.jpg",
-   "intensity": 1.19563,
-   "size": 1024,
-   "pxPerM": 92,
-   "objects": [
-    "stairs.ceiling",
-    "stairs.floor",
-    "stairs.walls",
-    "stairs.foot_ceiling",
-    "stairs.well_upstand",
-    "stairs.flight",
-    "stairs.spandrel",
-    "stairs.flight_upper",
-    "stairs.wall_string",
-    "stairs.dado_band",
-    "stairs.foot_cornice"
-   ]
-  },
-  {
-   "room": "utility",
-   "image": "lightmaps_off/utility.jpg",
-   "intensity": 1.16072,
-   "size": 1024,
-   "pxPerM": 96,
-   "objects": [
-    "utility.ceiling",
-    "utility.floor",
-    "utility.walls",
-    "utility.d_utility.lining",
-    "utility.d_utility.surround",
-    "utility.d_wc.lining",
-    "utility.d_wc.surround",
-    "utility.w_utility.frame",
-    "utility.skirting",
-    "utility.cornice",
-    "utility.base.filler",
-    "utility.washer",
-    "utility.dryer",
-    "utility.base.sink_unit",
-    "utility.sink",
-    "utility.tap",
-    "utility.worktop.rear",
-    "utility.worktop.ext",
-    "utility.tall",
-    "utility.wall_units",
-    "utility.splash.rear",
-    "utility.splash.ext.0",
-    "utility.splash.ext.1",
-    "utility.splash.ext.2"
-   ]
-  },
-  {
-   "room": "vestibule",
-   "image": "lightmaps_off/vestibule.jpg",
-   "intensity": 1.46615,
-   "size": 1024,
-   "pxPerM": 104,
-   "objects": [
-    "vestibule.ceiling",
-    "vestibule.floor",
-    "vestibule.walls",
-    "vestibule.vault_fill",
-    "vestibule.d_street.frame",
-    "vestibule.d_street.leaf.0",
-    "vestibule.d_street.leaf.1",
-    "vestibule.w_bay_cheek_w.surround",
-    "vestibule.skirting",
-    "vestibule.dado",
-    "vestibule.arch_mouldings",
-    "vestibule.canopy"
-   ]
-  },
-  {
-   "room": "wc",
-   "image": "lightmaps_off/wc.jpg",
-   "intensity": 1.11751,
-   "size": 512,
-   "pxPerM": 76,
-   "objects": [
-    "wc.ceiling",
-    "wc.floor",
-    "wc.walls",
-    "wc.d_wc.surround",
-    "wc.w_wc.frame",
-    "wc.cornice",
-    "wc.tile_trim",
-    "wc.pan",
-    "wc.flush_plate",
-    "wc.basin",
-    "wc.basin.fittings",
-    "wc.fan",
-    "wc.towel_rail"
-   ]
-  }
- ],
- "probesOff": [
-  {
-   "room": "vestibule",
-   "image": "probes_off/vestibule.jpg",
-   "pos": [
-    -0.25,
-    1.6,
-    1.5
-   ],
-   "intensity": 0.24022
-  },
-  {
-   "room": "hallway",
-   "image": "probes_off/hallway.jpg",
-   "pos": [
-    0.55,
-    4.03,
-    1.5
-   ],
-   "intensity": 0.17882
-  },
-  {
-   "room": "stairs",
-   "image": "probes_off/stairs.jpg",
-   "pos": [
-    0.35,
-    5.03,
-    1.5
-   ],
-   "intensity": 0.16059
-  },
-  {
-   "room": "living",
-   "image": "probes_off/living.jpg",
-   "pos": [
-    2.4,
-    2.6,
-    1.5
-   ],
-   "intensity": 0.458
-  },
-  {
-   "room": "kitchen",
-   "image": "probes_off/kitchen.jpg",
-   "pos": [
-    3.25,
-    7.11,
-    1.5
-   ],
-   "intensity": 0.5157
-  },
-  {
-   "room": "wc",
-   "image": "probes_off/wc.jpg",
-   "pos": [
-    1.8,
-    9.76,
-    1.5
-   ],
-   "intensity": 0.163
-  },
-  {
-   "room": "utility",
-   "image": "probes_off/utility.jpg",
-   "pos": [
-    2.0,
-    11.06,
-    1.5
-   ],
-   "intensity": 0.44773
-  },
-  {
-   "room": "dining",
-   "image": "probes_off/dining.jpg",
-   "pos": [
-    1.15,
-    14.36,
-    1.5
-   ],
-   "intensity": 0.51189
-  }
+ "loadOrder": [
+  "G",
+  "X",
+  "1",
+  "2",
+  "B"
  ],
  "rooms": [
   {
+   "id": "basement",
+   "level": "B",
+   "kind": "room",
+   "name": "Basement plant / store room",
+   "polygon": [
+    [
+     1.25,
+     5.19
+    ],
+    [
+     4.25,
+     5.19
+    ],
+    [
+     4.25,
+     8.73
+    ],
+    [
+     1.25,
+     8.73
+    ]
+   ],
+   "floorZ": -2.31,
+   "ceilZ": -0.31
+  },
+  {
+   "id": "basement_stair",
+   "level": "B",
+   "kind": "stairwell",
+   "name": "Basement stair shaft",
+   "polygon": [
+    [
+     0.265,
+     5.19
+    ],
+    [
+     0.93,
+     5.19
+    ],
+    [
+     0.93,
+     7.6
+    ],
+    [
+     0.265,
+     7.6
+    ]
+   ],
+   "floorZ": -2.1,
+   "ceilZ": 2.1
+  },
+  {
    "id": "vestibule",
+   "level": "G",
+   "kind": "room",
    "name": "Vestibule / porch",
    "polygon": [
     [
@@ -697,11 +193,13 @@
      1.73
     ]
    ],
-   "ceilZ": 2.85,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 2.85
   },
   {
    "id": "hallway",
+   "level": "G",
+   "kind": "room",
    "name": "Hallway",
    "polygon": [
     [
@@ -714,11 +212,11 @@
     ],
     [
      0.65,
-     4.83
+     5.05
     ],
     [
      0.15,
-     4.83
+     5.05
     ],
     [
      0.15,
@@ -745,20 +243,26 @@
      12.23
     ]
    ],
-   "ceilZ": 2.95,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 2.95
   },
   {
    "id": "stairs",
+   "level": "G",
+   "kind": "stairwell",
    "name": "Staircase",
    "polygon": [
     [
      0.15,
-     4.83
+     5.05
+    ],
+    [
+     0.65,
+     5.05
     ],
     [
      0.99,
-     4.83
+     5.39
     ],
     [
      0.99,
@@ -769,11 +273,13 @@
      7.58
     ]
    ],
-   "ceilZ": 5.6,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 3.17
   },
   {
    "id": "living",
+   "level": "G",
+   "kind": "room",
    "name": "Living room",
    "polygon": [
     [
@@ -802,18 +308,24 @@
     ],
     [
      4.3,
-     4.73
+     5.19
+    ],
+    [
+     1.21,
+     5.19
     ],
     [
      0.8,
-     4.73
+     4.78
     ]
    ],
-   "ceilZ": 2.95,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 2.95
   },
   {
    "id": "kitchen",
+   "level": "G",
+   "kind": "room",
    "name": "Kitchen",
    "polygon": [
     [
@@ -849,11 +361,13 @@
      8.73
     ]
    ],
-   "ceilZ": 2.95,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 2.95
   },
   {
    "id": "wc",
+   "level": "G",
+   "kind": "room",
    "name": "Cloakroom WC",
    "polygon": [
     [
@@ -873,11 +387,13 @@
      10.14
     ]
    ],
-   "ceilZ": 2.4,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 2.4
   },
   {
    "id": "utility",
+   "level": "G",
+   "kind": "room",
    "name": "Utility / laundry",
    "polygon": [
     [
@@ -897,11 +413,13 @@
      12.23
     ]
    ],
-   "ceilZ": 2.4,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 2.4
   },
   {
    "id": "dining",
+   "level": "G",
+   "kind": "room",
    "name": "Dining room",
    "polygon": [
     [
@@ -921,47 +439,4174 @@
      16.86
     ]
    ],
-   "ceilZ": 2.8,
-   "floorZ": 0
+   "floorZ": 0,
+   "ceilZ": 2.8
+  },
+  {
+   "id": "green_bedroom",
+   "level": "1",
+   "kind": "room",
+   "name": "Green bedroom (front)",
+   "polygon": [
+    [
+     -0.65,
+     0.99
+    ],
+    [
+     1.16,
+     0.99
+    ],
+    [
+     1.16,
+     0.14
+    ],
+    [
+     3.9,
+     0.14
+    ],
+    [
+     3.9,
+     0.99
+    ],
+    [
+     4.3,
+     0.99
+    ],
+    [
+     4.3,
+     4.83
+    ],
+    [
+     -0.65,
+     4.83
+    ]
+   ],
+   "floorZ": 3.42,
+   "ceilZ": 6.27
+  },
+  {
+   "id": "green_bathroom",
+   "level": "1",
+   "kind": "room",
+   "name": "Green bathroom",
+   "polygon": [
+    [
+     1.25,
+     4.95
+    ],
+    [
+     4.3,
+     4.95
+    ],
+    [
+     4.3,
+     8.73
+    ],
+    [
+     1.25,
+     8.73
+    ]
+   ],
+   "floorZ": 3.42,
+   "ceilZ": 6.17
+  },
+  {
+   "id": "landing1_front",
+   "level": "1",
+   "kind": "room",
+   "name": "First-floor front landing and upper strip",
+   "polygon": [
+    [
+     -0.65,
+     4.95
+    ],
+    [
+     0.99,
+     4.95
+    ],
+    [
+     0.99,
+     6.06
+    ],
+    [
+     0.15,
+     6.06
+    ],
+    [
+     0.15,
+     8.13
+    ],
+    [
+     -0.65,
+     8.13
+    ]
+   ],
+   "floorZ": 3.42,
+   "ceilZ": 5.77
+  },
+  {
+   "id": "stairs2",
+   "level": "1",
+   "kind": "stairwell",
+   "name": "Stair to the second floor (well)",
+   "polygon": [
+    [
+     0.15,
+     6.06
+    ],
+    [
+     0.99,
+     6.06
+    ],
+    [
+     0.99,
+     8.13
+    ],
+    [
+     0.15,
+     8.13
+    ]
+   ],
+   "floorZ": 3.42,
+   "ceilZ": 8.62
+  },
+  {
+   "id": "landing1_ql",
+   "level": "1",
+   "kind": "room",
+   "name": "Quarter landing",
+   "polygon": [
+    [
+     0.15,
+     8.13
+    ],
+    [
+     0.99,
+     8.13
+    ],
+    [
+     0.99,
+     8.73
+    ],
+    [
+     0.15,
+     8.73
+    ]
+   ],
+   "floorZ": 2.85,
+   "ceilZ": 5.35
+  },
+  {
+   "id": "landing1_rear",
+   "level": "1",
+   "kind": "room",
+   "name": "First-floor rear corridor and arch bay",
+   "polygon": [
+    [
+     -0.65,
+     8.13
+    ],
+    [
+     0.15,
+     8.13
+    ],
+    [
+     0.15,
+     8.73
+    ],
+    [
+     0.35,
+     8.73
+    ],
+    [
+     0.25,
+     8.83
+    ],
+    [
+     0.25,
+     11.5
+    ],
+    [
+     0.4,
+     11.5
+    ],
+    [
+     0.4,
+     12.39
+    ],
+    [
+     -0.65,
+     12.39
+    ]
+   ],
+   "floorZ": 3.04,
+   "ceilZ": 5.49
+  },
+  {
+   "id": "yellow_room",
+   "level": "1",
+   "kind": "room",
+   "name": "Yellow room (middle)",
+   "polygon": [
+    [
+     0.35,
+     9.03
+    ],
+    [
+     3.1,
+     9.03
+    ],
+    [
+     3.1,
+     11.05
+    ],
+    [
+     0.35,
+     11.05
+    ]
+   ],
+   "floorZ": 3.04,
+   "ceilZ": 5.49
+  },
+  {
+   "id": "blue_ensuite",
+   "level": "1",
+   "kind": "room",
+   "name": "Blue en-suite",
+   "polygon": [
+    [
+     0.5,
+     11.15
+    ],
+    [
+     2.9,
+     11.15
+    ],
+    [
+     2.9,
+     12.85
+    ],
+    [
+     0.5,
+     12.85
+    ]
+   ],
+   "floorZ": 3.04,
+   "ceilZ": 5.54
+  },
+  {
+   "id": "blue_bedroom",
+   "level": "1",
+   "kind": "room",
+   "name": "Blue bedroom (rear)",
+   "polygon": [
+    [
+     -0.65,
+     12.52
+    ],
+    [
+     0.4,
+     12.52
+    ],
+    [
+     0.4,
+     12.95
+    ],
+    [
+     3.1,
+     12.95
+    ],
+    [
+     3.1,
+     16.86
+    ],
+    [
+     -0.65,
+     16.86
+    ]
+   ],
+   "floorZ": 3.04,
+   "ceilZ": 5.64
+  },
+  {
+   "id": "balcony",
+   "level": "1",
+   "kind": "exterior",
+   "name": "Balcony",
+   "polygon": [
+    [
+     0.0,
+     17.36
+    ],
+    [
+     2.3,
+     17.36
+    ],
+    [
+     2.3,
+     18.41
+    ],
+    [
+     0.0,
+     18.41
+    ]
+   ],
+   "floorZ": 3.0,
+   "ceilZ": null
+  },
+  {
+   "id": "landing2_head",
+   "level": "2",
+   "kind": "room",
+   "name": "Second-floor stair head and hallway",
+   "polygon": [
+    [
+     -0.65,
+     8.13
+    ],
+    [
+     0.15,
+     8.13
+    ],
+    [
+     0.15,
+     8.73
+    ],
+    [
+     0.22,
+     8.73
+    ],
+    [
+     0.22,
+     11.5
+    ],
+    [
+     0.3,
+     11.5
+    ],
+    [
+     0.3,
+     12.94
+    ],
+    [
+     -0.65,
+     12.94
+    ]
+   ],
+   "floorZ": 6.02,
+   "ceilZ": 8.62
+  },
+  {
+   "id": "landing2_platform",
+   "level": "2",
+   "kind": "room",
+   "name": "Second-floor platform",
+   "polygon": [
+    [
+     -0.65,
+     6.23
+    ],
+    [
+     0.15,
+     6.23
+    ],
+    [
+     0.15,
+     8.13
+    ],
+    [
+     -0.65,
+     8.13
+    ]
+   ],
+   "floorZ": 6.22,
+   "ceilZ": 8.62
+  },
+  {
+   "id": "loft_office",
+   "level": "2",
+   "kind": "room",
+   "name": "Loft office (front)",
+   "polygon": [
+    [
+     -0.65,
+     2.54
+    ],
+    [
+     4.3,
+     2.54
+    ],
+    [
+     4.3,
+     6.59
+    ],
+    [
+     1.25,
+     6.59
+    ],
+    [
+     1.25,
+     5.38
+    ],
+    [
+     0.31,
+     5.38
+    ],
+    [
+     0.31,
+     6.13
+    ],
+    [
+     -0.65,
+     6.13
+    ]
+   ],
+   "floorZ": 6.49,
+   "ceilZ": 8.61
+  },
+  {
+   "id": "eaves_front",
+   "level": "2",
+   "kind": "void",
+   "name": "Front eaves storage (with the bay-gable void)",
+   "polygon": [
+    [
+     -0.65,
+     0.95
+    ],
+    [
+     1.43,
+     0.95
+    ],
+    [
+     1.43,
+     0.14
+    ],
+    [
+     3.63,
+     0.14
+    ],
+    [
+     3.63,
+     0.95
+    ],
+    [
+     4.3,
+     0.95
+    ],
+    [
+     4.3,
+     2.44
+    ],
+    [
+     -0.65,
+     2.44
+    ]
+   ],
+   "floorZ": 6.49,
+   "ceilZ": 8.0
+  },
+  {
+   "id": "eaves_rear",
+   "level": "2",
+   "kind": "void",
+   "name": "Rear eaves storage",
+   "polygon": [
+    [
+     1.35,
+     6.69
+    ],
+    [
+     4.3,
+     6.69
+    ],
+    [
+     4.3,
+     8.73
+    ],
+    [
+     1.35,
+     8.73
+    ]
+   ],
+   "floorZ": 6.49,
+   "ceilZ": 7.91
+  },
+  {
+   "id": "purple_room",
+   "level": "2",
+   "kind": "room",
+   "name": "Purple room (unused)",
+   "polygon": [
+    [
+     0.32,
+     9.29
+    ],
+    [
+     3.1,
+     9.29
+    ],
+    [
+     3.1,
+     11.2
+    ],
+    [
+     0.32,
+     11.2
+    ]
+   ],
+   "floorZ": 6.02,
+   "ceilZ": 8.62
+  },
+  {
+   "id": "bathroom2",
+   "level": "2",
+   "kind": "room",
+   "name": "Second-floor bathroom (shower, sauna)",
+   "polygon": [
+    [
+     0.4,
+     11.5
+    ],
+    [
+     3.1,
+     11.5
+    ],
+    [
+     3.1,
+     13.7
+    ],
+    [
+     0.4,
+     13.7
+    ]
+   ],
+   "floorZ": 6.02,
+   "ceilZ": 8.49
+  },
+  {
+   "id": "study",
+   "level": "2",
+   "kind": "room",
+   "name": "Study (rear)",
+   "polygon": [
+    [
+     -0.65,
+     13.04
+    ],
+    [
+     0.3,
+     13.04
+    ],
+    [
+     0.3,
+     14.15
+    ],
+    [
+     3.1,
+     14.15
+    ],
+    [
+     3.1,
+     16.86
+    ],
+    [
+     -0.65,
+     16.86
+    ]
+   ],
+   "floorZ": 6.02,
+   "ceilZ": 8.62
+  },
+  {
+   "id": "front",
+   "level": "X",
+   "kind": "site",
+   "name": "Front",
+   "polygon": [
+    [
+     -0.72,
+     -5.2
+    ],
+    [
+     4.53,
+     -5.2
+    ],
+    [
+     4.53,
+     -0.12
+    ],
+    [
+     -0.72,
+     -0.12
+    ]
+   ],
+   "floorZ": -0.06,
+   "ceilZ": null
+  },
+  {
+   "id": "side_passage",
+   "level": "X",
+   "kind": "site",
+   "name": "Side passage",
+   "polygon": [
+    [
+     3.4,
+     9.03
+    ],
+    [
+     4.5,
+     9.03
+    ],
+    [
+     4.9,
+     9.88
+    ],
+    [
+     4.652,
+     17.55
+    ],
+    [
+     3.4,
+     17.55
+    ]
+   ],
+   "floorZ": -0.3,
+   "ceilZ": null
+  },
+  {
+   "id": "garden",
+   "level": "X",
+   "kind": "site",
+   "name": "Garden",
+   "polygon": [
+    [
+     -0.75,
+     17.36
+    ],
+    [
+     3.4,
+     17.36
+    ],
+    [
+     3.4,
+     20.5
+    ],
+    [
+     -0.75,
+     20.5
+    ]
+   ],
+   "floorZ": -0.05,
+   "ceilZ": null
+  },
+  {
+   "id": "shed",
+   "level": "X",
+   "kind": "site",
+   "name": "Shed",
+   "polygon": [
+    [
+     -0.6,
+     25.28
+    ],
+    [
+     4.18,
+     25.28
+    ],
+    [
+     4.18,
+     28.62
+    ],
+    [
+     -0.6,
+     28.62
+    ]
+   ],
+   "floorZ": -0.32,
+   "ceilZ": null
   }
  ],
- "spawn": {
-  "pos": [
-   0.0,
-   3.0
-  ],
-  "yaw": 0
- },
- "toneMapping": "agx",
- "exposure": 0.6598,
- "whiteBalance": [
-  [
-   0.72829,
-   -0.30193,
-   -0.12443
-  ],
-  [
-   0.02075,
-   1.16914,
-   -0.02916
-  ],
-  [
-   0.03676,
-   0.13243,
-   2.54723
-  ]
+ "lightmaps": [
+  {
+   "room": "balcony",
+   "level": "1",
+   "image": "lightmaps/balcony.jpg",
+   "size": 512,
+   "pxPerM": 93,
+   "intensity": 1.44,
+   "bytes": 58106,
+   "objects": [
+    "balcony.floor",
+    "balcony.structure",
+    "balcony.rainpipe"
+   ]
+  },
+  {
+   "room": "basement",
+   "level": "B",
+   "image": "lightmaps/basement.jpg",
+   "size": 2048,
+   "pxPerM": 189,
+   "intensity": 6.80051,
+   "bytes": 515767,
+   "objects": [
+    "basement.ceiling",
+    "basement.floor",
+    "basement.walls",
+    "basement.backboard",
+    "basement.pipework",
+    "basement.boiler",
+    "basement.vessel_heating",
+    "basement.vessel_potable",
+    "basement.cylinder",
+    "basement.electrics",
+    "basement.netcab",
+    "basement.gas_meter",
+    "basement.hatch"
+   ]
+  },
+  {
+   "room": "basement_stair",
+   "level": "B",
+   "image": "lightmaps/basement_stair.jpg",
+   "size": 1024,
+   "pxPerM": 176,
+   "intensity": 4.62437,
+   "bytes": 146251,
+   "objects": [
+    "basement_stair.walls",
+    "basement_stair.flight",
+    "basement_stair.d_basement.surround",
+    "basement_stair.lining",
+    "basement_stair.shelf_cap",
+    "basement_stair.beads",
+    "basement_stair.extinguisher"
+   ]
+  },
+  {
+   "room": "bathroom2",
+   "level": "2",
+   "image": "lightmaps/bathroom2.jpg",
+   "size": 2048,
+   "pxPerM": 116,
+   "intensity": 2.26038,
+   "bytes": 657015,
+   "objects": [
+    "bathroom2.ceiling",
+    "bathroom2.floor",
+    "bathroom2.walls",
+    "bathroom2.d_bath2.lining",
+    "bathroom2.d_bath2.surround",
+    "bathroom2.w_bath2.sash.0",
+    "bathroom2.w_bath2.frame",
+    "bathroom2.w_bath2.glass",
+    "bathroom2.cornice",
+    "bathroom2.slab.w",
+    "bathroom2.slab.n0",
+    "bathroom2.slab.n1",
+    "bathroom2.slab.n2",
+    "bathroom2.slab.n3",
+    "bathroom2.niche.back",
+    "bathroom2.niche.bottom",
+    "bathroom2.niche.top",
+    "bathroom2.niche.l",
+    "bathroom2.niche.r",
+    "bathroom2.niche.trim",
+    "bathroom2.sill",
+    "bathroom2.shower.tray",
+    "bathroom2.towel_rail",
+    "bathroom2.vanity",
+    "bathroom2.vanity.ends",
+    "bathroom2.basin",
+    "bathroom2.mirror_cabinet",
+    "bathroom2.wc_unit",
+    "bathroom2.wc_unit.front",
+    "bathroom2.wc_unit.top",
+    "bathroom2.wc",
+    "bathroom2.tallcab",
+    "bathroom2.roll_holder",
+    "bathroom2.extractor",
+    "bathroom2.sauna",
+    "bathroom2.sauna.heater",
+    "bathroom2.sauna.seat",
+    "bathroom2.sauna.vent"
+   ]
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "image": "lightmaps/blue_bedroom.jpg",
+   "size": 4096,
+   "pxPerM": 204,
+   "intensity": 2.55554,
+   "bytes": 2769659,
+   "objects": [
+    "blue_bedroom.ceiling",
+    "blue_bedroom.floor",
+    "blue_bedroom.walls",
+    "blue_bedroom.d_blue.lining",
+    "blue_bedroom.d_blue.surround",
+    "blue_bedroom.d_ensuite.lining",
+    "blue_bedroom.d_ensuite.surround",
+    "blue_bedroom.d_ensuite.leaf",
+    "blue_bedroom.d_balcony.frame",
+    "blue_bedroom.d_balcony.leaf.0",
+    "blue_bedroom.d_balcony.leaf.1",
+    "blue_bedroom.d_balcony.surround",
+    "blue_bedroom.skirting",
+    "blue_bedroom.cornice",
+    "blue_bedroom.wardrobe",
+    "blue_bedroom.bed",
+    "blue_bedroom.bed.bedding",
+    "blue_bedroom.bureau",
+    "blue_bedroom.tv_cabinet",
+    "blue_bedroom.radiator",
+    "blue_bedroom.tv",
+    "blue_bedroom.wall_fittings",
+    "blue_bedroom.pelmet",
+    "blue_bedroom.rose"
+   ]
+  },
+  {
+   "room": "blue_ensuite",
+   "level": "1",
+   "image": "lightmaps/blue_ensuite.jpg",
+   "size": 2048,
+   "pxPerM": 222,
+   "intensity": 1.54421,
+   "bytes": 553428,
+   "objects": [
+    "blue_ensuite.ceiling",
+    "blue_ensuite.floor",
+    "blue_ensuite.walls",
+    "blue_ensuite.d_ensuite.surround",
+    "blue_ensuite.w_ensuite.sash.0",
+    "blue_ensuite.w_ensuite.frame",
+    "blue_ensuite.cornice",
+    "blue_ensuite.cladding.e.n",
+    "blue_ensuite.cladding.e.s",
+    "blue_ensuite.cladding.e.lo",
+    "blue_ensuite.cladding.e.hi",
+    "blue_ensuite.cladding.n",
+    "blue_ensuite.cladding.r.s",
+    "blue_ensuite.cladding.r.n",
+    "blue_ensuite.cladding.r.lo",
+    "blue_ensuite.cladding.r.hi",
+    "blue_ensuite.tile_trim",
+    "blue_ensuite.bath",
+    "blue_ensuite.bath.panel",
+    "blue_ensuite.bath.plinth",
+    "blue_ensuite.vanity",
+    "blue_ensuite.vanity.rail",
+    "blue_ensuite.basin",
+    "blue_ensuite.towel_rail",
+    "blue_ensuite.wc",
+    "blue_ensuite.wc.flush",
+    "blue_ensuite.shower.tray",
+    "blue_ensuite.shelf",
+    "blue_ensuite.fan"
+   ]
+  },
+  {
+   "room": "dining",
+   "level": "G",
+   "image": "lightmaps/dining.jpg",
+   "size": 4096,
+   "pxPerM": 210,
+   "intensity": 2.99913,
+   "bytes": 2701124,
+   "objects": [
+    "dining.ceiling",
+    "dining.floor",
+    "dining.walls",
+    "dining.d_dining.lining",
+    "dining.d_dining.surround",
+    "dining.d_french.frame",
+    "dining.d_french.leaf.0",
+    "dining.d_french.leaf.1",
+    "dining.d_french.surround",
+    "dining.w_dining_n_w.sash.0",
+    "dining.w_dining_n_w.frame",
+    "dining.w_dining_n_w.surround",
+    "dining.w_dining_n_e.frame",
+    "dining.w_dining_n_e.surround",
+    "dining.w_dining_e_s.frame",
+    "dining.w_dining_e_s.glass",
+    "dining.w_dining_e_s.surround",
+    "dining.w_dining_e_n.frame",
+    "dining.w_dining_e_n.glass",
+    "dining.w_dining_e_n.surround",
+    "dining.skirting",
+    "dining.dado",
+    "dining.cornice",
+    "dining.rose",
+    "dining.pelmet",
+    "dining.tv"
+   ]
+  },
+  {
+   "room": "eaves_front",
+   "level": "2",
+   "image": "lightmaps/eaves_front.jpg",
+   "size": 1024,
+   "pxPerM": 152,
+   "intensity": 2.4661,
+   "bytes": 110717,
+   "objects": [
+    "eaves_front.floor",
+    "eaves_front.walls",
+    "eaves_front.ceiling",
+    "eaves_front.kneecap",
+    "eaves_front.carton.0",
+    "eaves_front.carton.1",
+    "eaves_front.carton.2",
+    "eaves_front.carton.3",
+    "eaves_front.suitcase.0",
+    "eaves_front.suitcase.1"
+   ]
+  },
+  {
+   "room": "eaves_rear",
+   "level": "2",
+   "image": "lightmaps/eaves_rear.jpg",
+   "size": 1024,
+   "pxPerM": 164,
+   "intensity": 3.28313,
+   "bytes": 87609,
+   "objects": [
+    "eaves_rear.floor",
+    "eaves_rear.walls",
+    "eaves_rear.ceiling",
+    "eaves_rear.floor_low",
+    "eaves_rear.nosing.2",
+    "eaves_rear.nosing.3",
+    "eaves_rear.carton.0",
+    "eaves_rear.carton.1",
+    "eaves_rear.suitcase.0"
+   ]
+  },
+  {
+   "room": "facade",
+   "level": "X",
+   "image": "lightmaps/facade.jpg",
+   "size": 1024,
+   "pxPerM": 48,
+   "intensity": 4.16019,
+   "bytes": 197494,
+   "objects": [
+    "facade.front_A",
+    "facade.bay_cheek_e",
+    "facade.returns",
+    "facade.east_E",
+    "facade.kitchen_K",
+    "facade.front_B",
+    "facade.bay_cheek_w",
+    "facade.flank_F",
+    "facade.rear_R",
+    "facade.front_A.trim",
+    "facade.front_B.kneeler",
+    "facade.rear_R.sills",
+    "facade.flank_F.sills",
+    "facade.front_A.sills",
+    "facade.bay_cheek_e.sills",
+    "facade.front_B.sills",
+    "facade.kitchen_K.sills",
+    "facade.soil_stack",
+    "facade.downpipe.1",
+    "facade.downpipe.2",
+    "facade.pipes.pipe_black",
+    "facade.pipes.pipe_old",
+    "facade.pipes.upvc_white"
+   ]
+  },
+  {
+   "room": "front",
+   "level": "X",
+   "image": "lightmaps/front.jpg",
+   "size": 2048,
+   "pxPerM": 101,
+   "intensity": 2.45068,
+   "bytes": 467734,
+   "objects": [
+    "front.forecourt",
+    "front.forecourt_alley_mouth",
+    "front.footway",
+    "front.footway.kerb",
+    "front.road",
+    "front.front_wall_w",
+    "front.front_pier_w",
+    "front.front_pier_w.cap",
+    "front.planter",
+    "front.cover.0",
+    "front.cover.1",
+    "front.cover.2",
+    "front.road_line"
+   ]
+  },
+  {
+   "room": "garden",
+   "level": "X",
+   "image": "lightmaps/garden.jpg",
+   "size": 1024,
+   "pxPerM": 66,
+   "intensity": 1.78929,
+   "bytes": 211885,
+   "objects": [
+    "garden.garden_path",
+    "garden.deck",
+    "garden.deck_step_n",
+    "garden.deck_step_e",
+    "garden.lawn",
+    "garden.lavender_bed",
+    "garden.passage_step.drain",
+    "garden.west_fence",
+    "garden.west_fence.posts",
+    "garden.east_fence",
+    "garden.east_fence.posts",
+    "garden.east_fence.trellis"
+   ]
+  },
+  {
+   "room": "green_bathroom",
+   "level": "1",
+   "image": "lightmaps/green_bathroom.jpg",
+   "size": 2048,
+   "pxPerM": 142,
+   "intensity": 1.83939,
+   "bytes": 744739,
+   "objects": [
+    "green_bathroom.ceiling",
+    "green_bathroom.floor",
+    "green_bathroom.walls",
+    "green_bathroom.d_green_slide.lining",
+    "green_bathroom.d_green_slide.surround",
+    "green_bathroom.d_green_slide.leaf",
+    "green_bathroom.d_gbath.lining",
+    "green_bathroom.d_gbath.surround",
+    "green_bathroom.w_gbath.sash.0",
+    "green_bathroom.w_gbath.frame",
+    "green_bathroom.w_gbath.glass",
+    "green_bathroom.cornice",
+    "green_bathroom.duct",
+    "green_bathroom.vanity",
+    "green_bathroom.vanity.0",
+    "green_bathroom.vanity.1",
+    "green_bathroom.vanity.1.divider",
+    "green_bathroom.vanity.top",
+    "green_bathroom.vanity.2",
+    "green_bathroom.basin.0",
+    "green_bathroom.basin.1",
+    "green_bathroom.mirror_cabinet",
+    "green_bathroom.slab.w",
+    "green_bathroom.slab.n",
+    "green_bathroom.shower_tray",
+    "green_bathroom.screen",
+    "green_bathroom.bath",
+    "green_bathroom.window_sill",
+    "green_bathroom.reveal_tile.341",
+    "green_bathroom.reveal_tile.421",
+    "green_bathroom.wc",
+    "green_bathroom.wc.flush",
+    "green_bathroom.towel_rail",
+    "green_bathroom.roll_holder",
+    "green_bathroom.fan"
+   ]
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "image": "lightmaps/green_bedroom.jpg",
+   "size": 2048,
+   "pxPerM": 118,
+   "intensity": 3.56927,
+   "bytes": 798213,
+   "objects": [
+    "green_bedroom.ceiling",
+    "green_bedroom.floor",
+    "green_bedroom.walls",
+    "green_bedroom.chamfer.green_bay.0",
+    "green_bedroom.chamfer.green_bay.1",
+    "green_bedroom.d_green.lining",
+    "green_bedroom.d_green.surround",
+    "green_bedroom.d_green_slide.surround",
+    "green_bedroom.w_green_bay.sash.0",
+    "green_bedroom.w_green_bay.sash.1",
+    "green_bedroom.w_green_bay.sash.2",
+    "green_bedroom.w_green_bay.frame",
+    "green_bedroom.w_green_cheek_w.frame",
+    "green_bedroom.w_green_cheek_e.frame",
+    "green_bedroom.w_green_west.sash.0",
+    "green_bedroom.w_green_west.frame",
+    "green_bedroom.skirting",
+    "green_bedroom.cornice",
+    "green_bedroom.sills",
+    "green_bedroom.pelmets",
+    "green_bedroom.rose",
+    "green_bedroom.radiator",
+    "green_bedroom.aircon",
+    "green_bedroom.coat_rail",
+    "green_bedroom.tv"
+   ]
+  },
+  {
+   "room": "hallway",
+   "level": "G",
+   "image": "lightmaps/hallway.jpg",
+   "size": 4096,
+   "pxPerM": 223,
+   "intensity": 2.19386,
+   "bytes": 2857246,
+   "objects": [
+    "hallway.ceiling",
+    "hallway.floor",
+    "hallway.walls",
+    "hallway.arch_fill",
+    "hallway.threshold.d_kitchen",
+    "hallway.threshold.d_utility",
+    "hallway.d_inner.frame",
+    "hallway.d_inner.leaf.0",
+    "hallway.d_living.surround",
+    "hallway.d_kitchen.lining",
+    "hallway.d_kitchen.surround",
+    "hallway.d_utility.surround",
+    "hallway.d_dining.surround",
+    "hallway.d_basement.lining",
+    "hallway.d_basement.surround",
+    "hallway.d_basement.leaf",
+    "hallway.skirting",
+    "hallway.dado",
+    "hallway.cornice",
+    "hallway.arch_corbels",
+    "hallway.cupboard_trim"
+   ]
+  },
+  {
+   "room": "kitchen",
+   "level": "G",
+   "image": "lightmaps/kitchen.jpg",
+   "size": 4096,
+   "pxPerM": 193,
+   "intensity": 3.09926,
+   "bytes": 1687542,
+   "objects": [
+    "kitchen.ceiling",
+    "kitchen.floor",
+    "kitchen.walls",
+    "kitchen.d_kitchen.surround",
+    "kitchen.d_back.frame",
+    "kitchen.d_back.frame.glass",
+    "kitchen.d_back.leaf",
+    "kitchen.d_back.leaf.glass",
+    "kitchen.skirting",
+    "kitchen.cornice",
+    "kitchen.base.hob",
+    "kitchen.worktop.hob",
+    "kitchen.wall.w1",
+    "kitchen.wall.w2",
+    "kitchen.splash.hob.a",
+    "kitchen.splash.hob.b",
+    "kitchen.splash.hob.c",
+    "kitchen.hood",
+    "kitchen.base.sink",
+    "kitchen.worktop.sink",
+    "kitchen.wall.sink",
+    "kitchen.splash.sink",
+    "kitchen.splash.return",
+    "kitchen.wall.corner",
+    "kitchen.tower",
+    "kitchen.fridge_housing",
+    "kitchen.fridge",
+    "kitchen.nook.base",
+    "kitchen.worktop.nook",
+    "kitchen.splash.nook",
+    "kitchen.splash.nook.l",
+    "kitchen.splash.nook.r",
+    "kitchen.nook.soffit",
+    "kitchen.nook.shelves",
+    "kitchen.nook.cornice",
+    "kitchen.memo_board"
+   ]
+  },
+  {
+   "room": "landing1_front",
+   "level": "1",
+   "image": "lightmaps/landing1_front.jpg",
+   "size": 1024,
+   "pxPerM": 153,
+   "intensity": 1.85659,
+   "bytes": 143107,
+   "objects": [
+    "landing1_front.ceiling",
+    "landing1_front.floor",
+    "landing1_front.walls",
+    "landing1_front.d_green.surround",
+    "landing1_front.d_gbath.surround",
+    "landing1_front.skirting",
+    "landing1_front.dado",
+    "landing1_front.cornice",
+    "landing1_front.rake_trim",
+    "landing1_front.nosing.b",
+    "landing1_front.nosing.a"
+   ]
+  },
+  {
+   "room": "landing1_ql",
+   "level": "1",
+   "image": "lightmaps/landing1_ql.jpg",
+   "size": 512,
+   "pxPerM": 193,
+   "intensity": 1.50947,
+   "bytes": 39387,
+   "objects": [
+    "landing1_ql.ceiling",
+    "landing1_ql.floor",
+    "landing1_ql.walls",
+    "landing1_ql.cove.ql_vault",
+    "landing1_ql.skirting",
+    "landing1_ql.dado",
+    "landing1_ql.cornice"
+   ]
+  },
+  {
+   "room": "landing1_rear",
+   "level": "1",
+   "image": "lightmaps/landing1_rear.jpg",
+   "size": 1024,
+   "pxPerM": 128,
+   "intensity": 1.89002,
+   "bytes": 205098,
+   "objects": [
+    "landing1_rear.ceiling",
+    "landing1_rear.floor",
+    "landing1_rear.walls",
+    "landing1_rear.chamfer.landing1_chamfer",
+    "landing1_rear.arch_fill",
+    "landing1_rear.d_yellow.surround",
+    "landing1_rear.d_blue.surround",
+    "landing1_rear.skirting",
+    "landing1_rear.dado",
+    "landing1_rear.cornice",
+    "landing1_rear.radiator",
+    "landing1_rear.nosing.ql"
+   ]
+  },
+  {
+   "room": "landing2_head",
+   "level": "2",
+   "image": "lightmaps/landing2_head.jpg",
+   "size": 1024,
+   "pxPerM": 116,
+   "intensity": 1.95555,
+   "bytes": 154747,
+   "objects": [
+    "landing2_head.ceiling",
+    "landing2_head.floor",
+    "landing2_head.walls",
+    "landing2_head.arch_fill",
+    "landing2_head.d_purple.surround",
+    "landing2_head.d_bath2.surround",
+    "landing2_head.d_study.surround",
+    "landing2_head.skirting",
+    "landing2_head.dado",
+    "landing2_head.cornice"
+   ]
+  },
+  {
+   "room": "landing2_platform",
+   "level": "2",
+   "image": "lightmaps/landing2_platform.jpg",
+   "size": 512,
+   "pxPerM": 113,
+   "intensity": 1.5425,
+   "bytes": 47166,
+   "objects": [
+    "landing2_platform.ceiling",
+    "landing2_platform.floor",
+    "landing2_platform.walls",
+    "landing2_platform.d_loft.surround",
+    "landing2_platform.skirting",
+    "landing2_platform.dado",
+    "landing2_platform.cornice",
+    "landing2_platform.apron",
+    "landing2_platform.step_nosing"
+   ]
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "image": "lightmaps/living.jpg",
+   "size": 4096,
+   "pxPerM": 218,
+   "intensity": 4.97774,
+   "bytes": 2377271,
+   "objects": [
+    "living.ceiling",
+    "living.floor",
+    "living.walls",
+    "living.chamfer.living_nw_chamfer",
+    "living.chamfer.living_bay.0",
+    "living.chamfer.living_bay.1",
+    "living.d_living.lining",
+    "living.d_living.surround",
+    "living.w_bay_front.timber",
+    "living.w_bay_front.shutter.0",
+    "living.w_bay_front.shutter.0.louvres",
+    "living.w_bay_front.shutter.1",
+    "living.w_bay_front.shutter.1.louvres",
+    "living.w_bay_front.shutter.2",
+    "living.w_bay_front.shutter.2.louvres",
+    "living.w_bay_front.shutter.3",
+    "living.w_bay_front.shutter.3.louvres",
+    "living.w_bay_front.frame",
+    "living.bay.sill",
+    "living.w_bay_cheek_w.timber",
+    "living.w_bay_cheek_w.shutter.0",
+    "living.w_bay_cheek_w.shutter.0.louvres",
+    "living.w_bay_cheek_w.frame",
+    "living.w_bay_cheek_e.timber",
+    "living.w_bay_cheek_e.shutter.0",
+    "living.w_bay_cheek_e.shutter.0.louvres",
+    "living.w_bay_cheek_e.frame",
+    "living.skirting",
+    "living.cornice",
+    "living.rose",
+    "living.tv",
+    "living.tv_unit",
+    "living.amplifier",
+    "living.games_console",
+    "living.speaker.0",
+    "living.speaker.0.grille",
+    "living.speaker.1",
+    "living.speaker.1.grille",
+    "living.xiangqi",
+    "living.wall_controls",
+    "living.aircon",
+    "living.rug",
+    "living.curtain_track",
+    "living.tapestry"
+   ]
+  },
+  {
+   "room": "loft_office",
+   "level": "2",
+   "image": "lightmaps/loft_office.jpg",
+   "size": 2048,
+   "pxPerM": 151,
+   "intensity": 3.32753,
+   "bytes": 580992,
+   "objects": [
+    "loft_office.floor",
+    "loft_office.walls",
+    "loft_office.ceiling",
+    "loft_office.d_loft.lining",
+    "loft_office.d_loft.surround",
+    "loft_office.h_eaves_front_w.frame",
+    "loft_office.h_eaves_front_w.leaf.0",
+    "loft_office.h_eaves_front_w.leaf.1",
+    "loft_office.h_eaves_front_e.frame",
+    "loft_office.h_eaves_front_e.leaf.0",
+    "loft_office.h_eaves_front_e.leaf.1",
+    "loft_office.h_eaves_rear.frame",
+    "loft_office.h_eaves_rear.leaf.0",
+    "loft_office.h_eaves_rear.leaf.1",
+    "loft_office.skirting",
+    "loft_office.cabinet",
+    "loft_office.radiator",
+    "loft_office.desk",
+    "loft_office.aircon",
+    "loft_office.tv"
+   ]
+  },
+  {
+   "room": "neighbours",
+   "level": "X",
+   "image": "lightmaps/neighbours.jpg",
+   "size": 2048,
+   "pxPerM": 42,
+   "intensity": 4.23554,
+   "bytes": 420550,
+   "objects": [
+    "neighbours.west_neighbour_wall",
+    "neighbours.alley_neighbour_gate",
+    "neighbours.alley_neighbour_gate.posts",
+    "neighbours.west",
+    "neighbours.west.yard",
+    "neighbours.east",
+    "neighbours.east.yard"
+   ]
+  },
+  {
+   "room": "purple_room",
+   "level": "2",
+   "image": "lightmaps/purple_room.jpg",
+   "size": 2048,
+   "pxPerM": 213,
+   "intensity": 1.21011,
+   "bytes": 477137,
+   "objects": [
+    "purple_room.ceiling",
+    "purple_room.floor",
+    "purple_room.walls",
+    "purple_room.d_purple.lining",
+    "purple_room.d_purple.surround",
+    "purple_room.w_purple.sash.0",
+    "purple_room.w_purple.frame",
+    "purple_room.skirting",
+    "purple_room.cornice",
+    "purple_room.window_board",
+    "purple_room.radiator"
+   ]
+  },
+  {
+   "room": "roof",
+   "level": "X",
+   "image": "lightmaps/roof.jpg",
+   "size": 512,
+   "pxPerM": 28,
+   "intensity": 4.67519,
+   "bytes": 41512,
+   "objects": [
+    "roof.main_front",
+    "roof.main_rear",
+    "roof.stair_dormer",
+    "roof.rear_flat",
+    "roof.bay_gable_w",
+    "roof.bay_gable_e",
+    "roof.porch_leanto",
+    "roof.rear_chimney",
+    "roof.rear_fascia",
+    "roof.main_front.gutter",
+    "roof.front.gutter",
+    "roof.rear_K.gutter",
+    "roof.flank.gutter",
+    "roof.bay_gable_w.gutter",
+    "roof.bay_gable_e.gutter",
+    "roof.porch_leanto.gutter",
+    "roof.ridge",
+    "roof.skylight.kerb",
+    "roof.velux.frame"
+   ]
+  },
+  {
+   "room": "shed",
+   "level": "X",
+   "image": "lightmaps/shed.jpg",
+   "size": 2048,
+   "pxPerM": 79,
+   "intensity": 2.92674,
+   "bytes": 815096,
+   "objects": [
+    "shed.shed_veranda",
+    "shed.walls",
+    "shed.roof",
+    "shed.store.walls",
+    "shed.store.floor",
+    "shed.store.ceiling",
+    "shed.workshop.walls",
+    "shed.workshop.floor",
+    "shed.workshop.ceiling",
+    "shed.soffit",
+    "shed.heads",
+    "shed.roof.kerb",
+    "shed.shed_w1.sash.0",
+    "shed.shed_w1.sash.1",
+    "shed.shed_w1.frame",
+    "shed.shed_d1.frame",
+    "shed.shed_d1.leaf.0",
+    "shed.shed_d1.leaf.1",
+    "shed.shed_w2.frame",
+    "shed.shed_w2.glass",
+    "shed.shed_store_doors.frame",
+    "shed.shed_store_doors.leaf.0",
+    "shed.shed_store_doors.leaf.1",
+    "shed.fascia",
+    "shed.garden_furniture",
+    "shed.chest",
+    "shed.veranda_rack",
+    "shed.veranda_rack.bowls",
+    "shed.hook_rail",
+    "shed.bird_box",
+    "shed.stone_cats",
+    "shed.mat.edge",
+    "shed.mat",
+    "shed.soffit_boards.joints",
+    "shed.store.shelves",
+    "shed.store.contents",
+    "shed.island",
+    "shed.bench_back",
+    "shed.bench_east",
+    "shed.racking",
+    "shed.cove",
+    "shed.skirting"
+   ]
+  },
+  {
+   "room": "side_passage",
+   "level": "X",
+   "image": "lightmaps/side_passage.jpg",
+   "size": 1024,
+   "pxPerM": 60,
+   "intensity": 1.16321,
+   "bytes": 47681,
+   "objects": [
+    "side_passage.side_alley",
+    "side_passage.side_passage",
+    "side_passage.kitchen_steps",
+    "side_passage.side_gate.frame",
+    "side_passage.side_gate"
+   ]
+  },
+  {
+   "room": "stairs",
+   "level": "G",
+   "image": "lightmaps/stairs.jpg",
+   "size": 1024,
+   "pxPerM": 122,
+   "intensity": 4.18433,
+   "bytes": 163430,
+   "objects": [
+    "stairs.ceiling",
+    "stairs.floor",
+    "stairs.walls",
+    "stairs.chamfer.hall_stair_diag",
+    "stairs.flight",
+    "stairs.carpet",
+    "stairs.spandrel",
+    "stairs.newel_drop",
+    "stairs.wall_string",
+    "stairs.cornice",
+    "stairs.dado_band"
+   ]
+  },
+  {
+   "room": "stairs2",
+   "level": "1",
+   "image": "lightmaps/stairs2.jpg",
+   "size": 1024,
+   "pxPerM": 134,
+   "intensity": 1.79673,
+   "bytes": 171104,
+   "objects": [
+    "stairs2.ceiling",
+    "stairs2.walls",
+    "stairs2.flight",
+    "stairs2.carpet",
+    "stairs2.string",
+    "stairs2.wall_string",
+    "stairs2.dado_band",
+    "stairs2.cornice",
+    "stairs2.strip_capping"
+   ]
+  },
+  {
+   "room": "study",
+   "level": "2",
+   "image": "lightmaps/study.jpg",
+   "size": 2048,
+   "pxPerM": 179,
+   "intensity": 1.77681,
+   "bytes": 590645,
+   "objects": [
+    "study.ceiling",
+    "study.floor",
+    "study.walls",
+    "study.d_study.lining",
+    "study.d_study.surround",
+    "study.w_study.sash.0",
+    "study.w_study.sash.1",
+    "study.w_study.sash.2",
+    "study.w_study.sash.3",
+    "study.w_study.frame",
+    "study.skirting",
+    "study.cornice",
+    "study.radiator",
+    "study.aircon",
+    "study.window_board",
+    "study.tv"
+   ]
+  },
+  {
+   "room": "utility",
+   "level": "G",
+   "image": "lightmaps/utility.jpg",
+   "size": 2048,
+   "pxPerM": 193,
+   "intensity": 3.64252,
+   "bytes": 471978,
+   "objects": [
+    "utility.ceiling",
+    "utility.floor",
+    "utility.walls",
+    "utility.d_utility.lining",
+    "utility.d_utility.surround",
+    "utility.d_wc.lining",
+    "utility.d_wc.surround",
+    "utility.w_utility.sash.0",
+    "utility.w_utility.frame",
+    "utility.skirting",
+    "utility.cornice",
+    "utility.base.filler",
+    "utility.washer",
+    "utility.dryer",
+    "utility.base.sink_unit",
+    "utility.sink",
+    "utility.tap",
+    "utility.worktop.rear",
+    "utility.worktop.ext",
+    "utility.tall",
+    "utility.wall_units",
+    "utility.splash.rear",
+    "utility.splash.ext.0",
+    "utility.splash.ext.1",
+    "utility.splash.ext.2",
+    "utility.splash.ext.3",
+    "utility.splash.ext.4",
+    "utility.window_board",
+    "utility.tile_trims"
+   ]
+  },
+  {
+   "room": "vestibule",
+   "level": "G",
+   "image": "lightmaps/vestibule.jpg",
+   "size": 2048,
+   "pxPerM": 226,
+   "intensity": 3.17539,
+   "bytes": 706631,
+   "objects": [
+    "vestibule.ceiling",
+    "vestibule.floor",
+    "vestibule.walls",
+    "vestibule.haunch.vest_haunch_w",
+    "vestibule.haunch.vest_haunch_e",
+    "vestibule.vault_fill",
+    "vestibule.threshold.d_inner",
+    "vestibule.d_street.frame",
+    "vestibule.d_street.leaf.0",
+    "vestibule.d_street.leaf.0.glass",
+    "vestibule.d_street.leaf.1",
+    "vestibule.d_street.leaf.1.glass",
+    "vestibule.w_bay_cheek_w.surround",
+    "vestibule.skirting",
+    "vestibule.dado",
+    "vestibule.arch_mouldings",
+    "vestibule.door_corner"
+   ]
+  },
+  {
+   "room": "wc",
+   "level": "G",
+   "image": "lightmaps/wc.jpg",
+   "size": 1024,
+   "pxPerM": 152,
+   "intensity": 2.51237,
+   "bytes": 173120,
+   "objects": [
+    "wc.ceiling",
+    "wc.floor",
+    "wc.walls",
+    "wc.d_wc.surround",
+    "wc.w_wc.frame",
+    "wc.w_wc.glass",
+    "wc.cornice",
+    "wc.tile_trim",
+    "wc.pan",
+    "wc.flush_plate",
+    "wc.basin",
+    "wc.basin.fittings",
+    "wc.fan",
+    "wc.towel_rail"
+   ]
+  },
+  {
+   "room": "yellow_room",
+   "level": "1",
+   "image": "lightmaps/yellow_room.jpg",
+   "size": 2048,
+   "pxPerM": 217,
+   "intensity": 1.56059,
+   "bytes": 484073,
+   "objects": [
+    "yellow_room.ceiling",
+    "yellow_room.floor",
+    "yellow_room.walls",
+    "yellow_room.d_yellow.lining",
+    "yellow_room.d_yellow.surround",
+    "yellow_room.w_yellow.sash.0",
+    "yellow_room.w_yellow.sash.1",
+    "yellow_room.w_yellow.frame",
+    "yellow_room.skirting",
+    "yellow_room.cornice",
+    "yellow_room.aircon",
+    "yellow_room.radiator",
+    "yellow_room.sill"
+   ]
+  }
  ],
- "sky": "#296c97",
- "encoding": "8-bit sRGB JPEG; linear = srgbDecode(px) * intensity; lightmaps = Cycles diffuse direct+indirect without albedo (radiance of a white surface: multiply by PI for three.js lightMap), on TEXCOORD_1, flipY false; probes = equirect radiance, image centre +X, pos in plan metres (x, y, z up); white balance of the previews already applied; whiteBalance = that matrix (scene linear, rows) for emissive colours, which the GLB carries unbalanced; sky = sRGB of the world behind the windows; lightmapsOff / probesOff = the same encoding, UVs, object lists and probe positions with every lamp and emissive off: sun + dusk sky through the windows plus a cool ambient-occlusion term (radiance 0.15 x (0.62, 0.8, 1.0) on an open wall as encoded; lit rooms have about 0.9) that keeps dark rooms readable (probes: the same radiance added uniformly, so a probe-lit object matches the wall beside it); lightmaps half the size, own intensity per image (at most 1.8)",
- "viewpoints": {
-  "dining": {
+ "lightmapsOff": [
+  {
+   "room": "balcony",
+   "level": "1",
+   "image": "lightmaps_off/balcony.jpg",
+   "size": 256,
+   "pxPerM": 46,
+   "intensity": 1.41446,
+   "bytes": 17733,
+   "objects": [
+    "balcony.floor",
+    "balcony.structure",
+    "balcony.rainpipe"
+   ]
+  },
+  {
+   "room": "basement",
+   "level": "B",
+   "image": "lightmaps_off/basement.jpg",
+   "size": 1024,
+   "pxPerM": 94,
+   "intensity": 0.16184,
+   "bytes": 199048,
+   "objects": [
+    "basement.ceiling",
+    "basement.floor",
+    "basement.walls",
+    "basement.backboard",
+    "basement.pipework",
+    "basement.boiler",
+    "basement.vessel_heating",
+    "basement.vessel_potable",
+    "basement.cylinder",
+    "basement.electrics",
+    "basement.netcab",
+    "basement.gas_meter",
+    "basement.hatch"
+   ]
+  },
+  {
+   "room": "basement_stair",
+   "level": "B",
+   "image": "lightmaps_off/basement_stair.jpg",
+   "size": 512,
+   "pxPerM": 88,
+   "intensity": 0.10162,
+   "bytes": 59919,
+   "objects": [
+    "basement_stair.walls",
+    "basement_stair.flight",
+    "basement_stair.d_basement.surround",
+    "basement_stair.lining",
+    "basement_stair.shelf_cap",
+    "basement_stair.beads",
+    "basement_stair.extinguisher"
+   ]
+  },
+  {
+   "room": "bathroom2",
+   "level": "2",
+   "image": "lightmaps_off/bathroom2.jpg",
+   "size": 1024,
+   "pxPerM": 58,
+   "intensity": 0.69832,
+   "bytes": 184950,
+   "objects": [
+    "bathroom2.ceiling",
+    "bathroom2.floor",
+    "bathroom2.walls",
+    "bathroom2.d_bath2.lining",
+    "bathroom2.d_bath2.surround",
+    "bathroom2.w_bath2.sash.0",
+    "bathroom2.w_bath2.frame",
+    "bathroom2.w_bath2.glass",
+    "bathroom2.cornice",
+    "bathroom2.slab.w",
+    "bathroom2.slab.n0",
+    "bathroom2.slab.n1",
+    "bathroom2.slab.n2",
+    "bathroom2.slab.n3",
+    "bathroom2.niche.back",
+    "bathroom2.niche.bottom",
+    "bathroom2.niche.top",
+    "bathroom2.niche.l",
+    "bathroom2.niche.r",
+    "bathroom2.niche.trim",
+    "bathroom2.sill",
+    "bathroom2.shower.tray",
+    "bathroom2.towel_rail",
+    "bathroom2.vanity",
+    "bathroom2.vanity.ends",
+    "bathroom2.basin",
+    "bathroom2.mirror_cabinet",
+    "bathroom2.wc_unit",
+    "bathroom2.wc_unit.front",
+    "bathroom2.wc_unit.top",
+    "bathroom2.wc",
+    "bathroom2.tallcab",
+    "bathroom2.roll_holder",
+    "bathroom2.extractor",
+    "bathroom2.sauna",
+    "bathroom2.sauna.heater",
+    "bathroom2.sauna.seat",
+    "bathroom2.sauna.vent"
+   ]
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "image": "lightmaps_off/blue_bedroom.jpg",
+   "size": 2048,
+   "pxPerM": 102,
+   "intensity": 1.02199,
+   "bytes": 748923,
+   "objects": [
+    "blue_bedroom.ceiling",
+    "blue_bedroom.floor",
+    "blue_bedroom.walls",
+    "blue_bedroom.d_blue.lining",
+    "blue_bedroom.d_blue.surround",
+    "blue_bedroom.d_ensuite.lining",
+    "blue_bedroom.d_ensuite.surround",
+    "blue_bedroom.d_ensuite.leaf",
+    "blue_bedroom.d_balcony.frame",
+    "blue_bedroom.d_balcony.leaf.0",
+    "blue_bedroom.d_balcony.leaf.1",
+    "blue_bedroom.d_balcony.surround",
+    "blue_bedroom.skirting",
+    "blue_bedroom.cornice",
+    "blue_bedroom.wardrobe",
+    "blue_bedroom.bed",
+    "blue_bedroom.bed.bedding",
+    "blue_bedroom.bureau",
+    "blue_bedroom.tv_cabinet",
+    "blue_bedroom.radiator",
+    "blue_bedroom.tv",
+    "blue_bedroom.wall_fittings",
+    "blue_bedroom.pelmet",
+    "blue_bedroom.rose"
+   ]
+  },
+  {
+   "room": "blue_ensuite",
+   "level": "1",
+   "image": "lightmaps_off/blue_ensuite.jpg",
+   "size": 1024,
+   "pxPerM": 111,
+   "intensity": 0.13924,
+   "bytes": 175457,
+   "objects": [
+    "blue_ensuite.ceiling",
+    "blue_ensuite.floor",
+    "blue_ensuite.walls",
+    "blue_ensuite.d_ensuite.surround",
+    "blue_ensuite.w_ensuite.sash.0",
+    "blue_ensuite.w_ensuite.frame",
+    "blue_ensuite.cornice",
+    "blue_ensuite.cladding.e.n",
+    "blue_ensuite.cladding.e.s",
+    "blue_ensuite.cladding.e.lo",
+    "blue_ensuite.cladding.e.hi",
+    "blue_ensuite.cladding.n",
+    "blue_ensuite.cladding.r.s",
+    "blue_ensuite.cladding.r.n",
+    "blue_ensuite.cladding.r.lo",
+    "blue_ensuite.cladding.r.hi",
+    "blue_ensuite.tile_trim",
+    "blue_ensuite.bath",
+    "blue_ensuite.bath.panel",
+    "blue_ensuite.bath.plinth",
+    "blue_ensuite.vanity",
+    "blue_ensuite.vanity.rail",
+    "blue_ensuite.basin",
+    "blue_ensuite.towel_rail",
+    "blue_ensuite.wc",
+    "blue_ensuite.wc.flush",
+    "blue_ensuite.shower.tray",
+    "blue_ensuite.shelf",
+    "blue_ensuite.fan"
+   ]
+  },
+  {
+   "room": "dining",
+   "level": "G",
+   "image": "lightmaps_off/dining.jpg",
+   "size": 2048,
+   "pxPerM": 105,
+   "intensity": 0.4953,
+   "bytes": 817499,
+   "objects": [
+    "dining.ceiling",
+    "dining.floor",
+    "dining.walls",
+    "dining.d_dining.lining",
+    "dining.d_dining.surround",
+    "dining.d_french.frame",
+    "dining.d_french.leaf.0",
+    "dining.d_french.leaf.1",
+    "dining.d_french.surround",
+    "dining.w_dining_n_w.sash.0",
+    "dining.w_dining_n_w.frame",
+    "dining.w_dining_n_w.surround",
+    "dining.w_dining_n_e.frame",
+    "dining.w_dining_n_e.surround",
+    "dining.w_dining_e_s.frame",
+    "dining.w_dining_e_s.glass",
+    "dining.w_dining_e_s.surround",
+    "dining.w_dining_e_n.frame",
+    "dining.w_dining_e_n.glass",
+    "dining.w_dining_e_n.surround",
+    "dining.skirting",
+    "dining.dado",
+    "dining.cornice",
+    "dining.rose",
+    "dining.pelmet",
+    "dining.tv"
+   ]
+  },
+  {
+   "room": "eaves_front",
+   "level": "2",
+   "image": "lightmaps_off/eaves_front.jpg",
+   "size": 512,
+   "pxPerM": 76,
+   "intensity": 0.06982,
+   "bytes": 42438,
+   "objects": [
+    "eaves_front.floor",
+    "eaves_front.walls",
+    "eaves_front.ceiling",
+    "eaves_front.kneecap",
+    "eaves_front.carton.0",
+    "eaves_front.carton.1",
+    "eaves_front.carton.2",
+    "eaves_front.carton.3",
+    "eaves_front.suitcase.0",
+    "eaves_front.suitcase.1"
+   ]
+  },
+  {
+   "room": "eaves_rear",
+   "level": "2",
+   "image": "lightmaps_off/eaves_rear.jpg",
+   "size": 512,
+   "pxPerM": 82,
+   "intensity": 0.10703,
+   "bytes": 33870,
+   "objects": [
+    "eaves_rear.floor",
+    "eaves_rear.walls",
+    "eaves_rear.ceiling",
+    "eaves_rear.floor_low",
+    "eaves_rear.nosing.2",
+    "eaves_rear.nosing.3",
+    "eaves_rear.carton.0",
+    "eaves_rear.carton.1",
+    "eaves_rear.suitcase.0"
+   ]
+  },
+  {
+   "room": "front",
+   "level": "X",
+   "image": "lightmaps_off/front.jpg",
+   "size": 1024,
+   "pxPerM": 50,
+   "intensity": 2.44477,
+   "bytes": 153295,
+   "objects": [
+    "front.forecourt",
+    "front.forecourt_alley_mouth",
+    "front.footway",
+    "front.footway.kerb",
+    "front.road",
+    "front.front_wall_w",
+    "front.front_pier_w",
+    "front.front_pier_w.cap",
+    "front.planter",
+    "front.cover.0",
+    "front.cover.1",
+    "front.cover.2",
+    "front.road_line"
+   ]
+  },
+  {
+   "room": "garden",
+   "level": "X",
+   "image": "lightmaps_off/garden.jpg",
+   "size": 512,
+   "pxPerM": 33,
+   "intensity": 1.7857,
+   "bytes": 69002,
+   "objects": [
+    "garden.garden_path",
+    "garden.deck",
+    "garden.deck_step_n",
+    "garden.deck_step_e",
+    "garden.lawn",
+    "garden.lavender_bed",
+    "garden.passage_step.drain",
+    "garden.west_fence",
+    "garden.west_fence.posts",
+    "garden.east_fence",
+    "garden.east_fence.posts",
+    "garden.east_fence.trellis"
+   ]
+  },
+  {
+   "room": "green_bathroom",
+   "level": "1",
+   "image": "lightmaps_off/green_bathroom.jpg",
+   "size": 1024,
+   "pxPerM": 71,
+   "intensity": 0.96737,
+   "bytes": 196194,
+   "objects": [
+    "green_bathroom.ceiling",
+    "green_bathroom.floor",
+    "green_bathroom.walls",
+    "green_bathroom.d_green_slide.lining",
+    "green_bathroom.d_green_slide.surround",
+    "green_bathroom.d_green_slide.leaf",
+    "green_bathroom.d_gbath.lining",
+    "green_bathroom.d_gbath.surround",
+    "green_bathroom.w_gbath.sash.0",
+    "green_bathroom.w_gbath.frame",
+    "green_bathroom.w_gbath.glass",
+    "green_bathroom.cornice",
+    "green_bathroom.duct",
+    "green_bathroom.vanity",
+    "green_bathroom.vanity.0",
+    "green_bathroom.vanity.1",
+    "green_bathroom.vanity.1.divider",
+    "green_bathroom.vanity.top",
+    "green_bathroom.vanity.2",
+    "green_bathroom.basin.0",
+    "green_bathroom.basin.1",
+    "green_bathroom.mirror_cabinet",
+    "green_bathroom.slab.w",
+    "green_bathroom.slab.n",
+    "green_bathroom.shower_tray",
+    "green_bathroom.screen",
+    "green_bathroom.bath",
+    "green_bathroom.window_sill",
+    "green_bathroom.reveal_tile.341",
+    "green_bathroom.reveal_tile.421",
+    "green_bathroom.wc",
+    "green_bathroom.wc.flush",
+    "green_bathroom.towel_rail",
+    "green_bathroom.roll_holder",
+    "green_bathroom.fan"
+   ]
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "image": "lightmaps_off/green_bedroom.jpg",
+   "size": 1024,
+   "pxPerM": 59,
+   "intensity": 1.66215,
+   "bytes": 224837,
+   "objects": [
+    "green_bedroom.ceiling",
+    "green_bedroom.floor",
+    "green_bedroom.walls",
+    "green_bedroom.chamfer.green_bay.0",
+    "green_bedroom.chamfer.green_bay.1",
+    "green_bedroom.d_green.lining",
+    "green_bedroom.d_green.surround",
+    "green_bedroom.d_green_slide.surround",
+    "green_bedroom.w_green_bay.sash.0",
+    "green_bedroom.w_green_bay.sash.1",
+    "green_bedroom.w_green_bay.sash.2",
+    "green_bedroom.w_green_bay.frame",
+    "green_bedroom.w_green_cheek_w.frame",
+    "green_bedroom.w_green_cheek_e.frame",
+    "green_bedroom.w_green_west.sash.0",
+    "green_bedroom.w_green_west.frame",
+    "green_bedroom.skirting",
+    "green_bedroom.cornice",
+    "green_bedroom.sills",
+    "green_bedroom.pelmets",
+    "green_bedroom.rose",
+    "green_bedroom.radiator",
+    "green_bedroom.aircon",
+    "green_bedroom.coat_rail",
+    "green_bedroom.tv"
+   ]
+  },
+  {
+   "room": "hallway",
+   "level": "G",
+   "image": "lightmaps_off/hallway.jpg",
+   "size": 2048,
+   "pxPerM": 112,
+   "intensity": 1.33765,
+   "bytes": 957795,
+   "objects": [
+    "hallway.ceiling",
+    "hallway.floor",
+    "hallway.walls",
+    "hallway.arch_fill",
+    "hallway.threshold.d_kitchen",
+    "hallway.threshold.d_utility",
+    "hallway.d_inner.frame",
+    "hallway.d_inner.leaf.0",
+    "hallway.d_living.surround",
+    "hallway.d_kitchen.lining",
+    "hallway.d_kitchen.surround",
+    "hallway.d_utility.surround",
+    "hallway.d_dining.surround",
+    "hallway.d_basement.lining",
+    "hallway.d_basement.surround",
+    "hallway.d_basement.leaf",
+    "hallway.skirting",
+    "hallway.dado",
+    "hallway.cornice",
+    "hallway.arch_corbels",
+    "hallway.cupboard_trim"
+   ]
+  },
+  {
+   "room": "kitchen",
+   "level": "G",
+   "image": "lightmaps_off/kitchen.jpg",
+   "size": 2048,
+   "pxPerM": 96,
+   "intensity": 0.22677,
+   "bytes": 596730,
+   "objects": [
+    "kitchen.ceiling",
+    "kitchen.floor",
+    "kitchen.walls",
+    "kitchen.d_kitchen.surround",
+    "kitchen.d_back.frame",
+    "kitchen.d_back.frame.glass",
+    "kitchen.d_back.leaf",
+    "kitchen.d_back.leaf.glass",
+    "kitchen.skirting",
+    "kitchen.cornice",
+    "kitchen.base.hob",
+    "kitchen.worktop.hob",
+    "kitchen.wall.w1",
+    "kitchen.wall.w2",
+    "kitchen.splash.hob.a",
+    "kitchen.splash.hob.b",
+    "kitchen.splash.hob.c",
+    "kitchen.hood",
+    "kitchen.base.sink",
+    "kitchen.worktop.sink",
+    "kitchen.wall.sink",
+    "kitchen.splash.sink",
+    "kitchen.splash.return",
+    "kitchen.wall.corner",
+    "kitchen.tower",
+    "kitchen.fridge_housing",
+    "kitchen.fridge",
+    "kitchen.nook.base",
+    "kitchen.worktop.nook",
+    "kitchen.splash.nook",
+    "kitchen.splash.nook.l",
+    "kitchen.splash.nook.r",
+    "kitchen.nook.soffit",
+    "kitchen.nook.shelves",
+    "kitchen.nook.cornice",
+    "kitchen.memo_board"
+   ]
+  },
+  {
+   "room": "landing1_front",
+   "level": "1",
+   "image": "lightmaps_off/landing1_front.jpg",
+   "size": 512,
+   "pxPerM": 76,
+   "intensity": 0.79644,
+   "bytes": 49174,
+   "objects": [
+    "landing1_front.ceiling",
+    "landing1_front.floor",
+    "landing1_front.walls",
+    "landing1_front.d_green.surround",
+    "landing1_front.d_gbath.surround",
+    "landing1_front.skirting",
+    "landing1_front.dado",
+    "landing1_front.cornice",
+    "landing1_front.rake_trim",
+    "landing1_front.nosing.b",
+    "landing1_front.nosing.a"
+   ]
+  },
+  {
+   "room": "landing1_ql",
+   "level": "1",
+   "image": "lightmaps_off/landing1_ql.jpg",
+   "size": 256,
+   "pxPerM": 96,
+   "intensity": 0.16006,
+   "bytes": 14940,
+   "objects": [
+    "landing1_ql.ceiling",
+    "landing1_ql.floor",
+    "landing1_ql.walls",
+    "landing1_ql.cove.ql_vault",
+    "landing1_ql.skirting",
+    "landing1_ql.dado",
+    "landing1_ql.cornice"
+   ]
+  },
+  {
+   "room": "landing1_rear",
+   "level": "1",
+   "image": "lightmaps_off/landing1_rear.jpg",
+   "size": 512,
+   "pxPerM": 64,
+   "intensity": 0.67206,
+   "bytes": 69607,
+   "objects": [
+    "landing1_rear.ceiling",
+    "landing1_rear.floor",
+    "landing1_rear.walls",
+    "landing1_rear.chamfer.landing1_chamfer",
+    "landing1_rear.arch_fill",
+    "landing1_rear.d_yellow.surround",
+    "landing1_rear.d_blue.surround",
+    "landing1_rear.skirting",
+    "landing1_rear.dado",
+    "landing1_rear.cornice",
+    "landing1_rear.radiator",
+    "landing1_rear.nosing.ql"
+   ]
+  },
+  {
+   "room": "landing2_head",
+   "level": "2",
+   "image": "lightmaps_off/landing2_head.jpg",
+   "size": 512,
+   "pxPerM": 58,
+   "intensity": 0.78978,
+   "bytes": 54798,
+   "objects": [
+    "landing2_head.ceiling",
+    "landing2_head.floor",
+    "landing2_head.walls",
+    "landing2_head.arch_fill",
+    "landing2_head.d_purple.surround",
+    "landing2_head.d_bath2.surround",
+    "landing2_head.d_study.surround",
+    "landing2_head.skirting",
+    "landing2_head.dado",
+    "landing2_head.cornice"
+   ]
+  },
+  {
+   "room": "landing2_platform",
+   "level": "2",
+   "image": "lightmaps_off/landing2_platform.jpg",
+   "size": 256,
+   "pxPerM": 56,
+   "intensity": 1.34987,
+   "bytes": 15664,
+   "objects": [
+    "landing2_platform.ceiling",
+    "landing2_platform.floor",
+    "landing2_platform.walls",
+    "landing2_platform.d_loft.surround",
+    "landing2_platform.skirting",
+    "landing2_platform.dado",
+    "landing2_platform.cornice",
+    "landing2_platform.apron",
+    "landing2_platform.step_nosing"
+   ]
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "image": "lightmaps_off/living.jpg",
+   "size": 2048,
+   "pxPerM": 109,
+   "intensity": 1.49621,
+   "bytes": 714380,
+   "objects": [
+    "living.ceiling",
+    "living.floor",
+    "living.walls",
+    "living.chamfer.living_nw_chamfer",
+    "living.chamfer.living_bay.0",
+    "living.chamfer.living_bay.1",
+    "living.d_living.lining",
+    "living.d_living.surround",
+    "living.w_bay_front.timber",
+    "living.w_bay_front.shutter.0",
+    "living.w_bay_front.shutter.0.louvres",
+    "living.w_bay_front.shutter.1",
+    "living.w_bay_front.shutter.1.louvres",
+    "living.w_bay_front.shutter.2",
+    "living.w_bay_front.shutter.2.louvres",
+    "living.w_bay_front.shutter.3",
+    "living.w_bay_front.shutter.3.louvres",
+    "living.w_bay_front.frame",
+    "living.bay.sill",
+    "living.w_bay_cheek_w.timber",
+    "living.w_bay_cheek_w.shutter.0",
+    "living.w_bay_cheek_w.shutter.0.louvres",
+    "living.w_bay_cheek_w.frame",
+    "living.w_bay_cheek_e.timber",
+    "living.w_bay_cheek_e.shutter.0",
+    "living.w_bay_cheek_e.shutter.0.louvres",
+    "living.w_bay_cheek_e.frame",
+    "living.skirting",
+    "living.cornice",
+    "living.rose",
+    "living.tv",
+    "living.tv_unit",
+    "living.amplifier",
+    "living.games_console",
+    "living.speaker.0",
+    "living.speaker.0.grille",
+    "living.speaker.1",
+    "living.speaker.1.grille",
+    "living.xiangqi",
+    "living.wall_controls",
+    "living.aircon",
+    "living.rug",
+    "living.curtain_track",
+    "living.tapestry"
+   ]
+  },
+  {
+   "room": "loft_office",
+   "level": "2",
+   "image": "lightmaps_off/loft_office.jpg",
+   "size": 1024,
+   "pxPerM": 76,
+   "intensity": 1.11939,
+   "bytes": 151318,
+   "objects": [
+    "loft_office.floor",
+    "loft_office.walls",
+    "loft_office.ceiling",
+    "loft_office.d_loft.lining",
+    "loft_office.d_loft.surround",
+    "loft_office.h_eaves_front_w.frame",
+    "loft_office.h_eaves_front_w.leaf.0",
+    "loft_office.h_eaves_front_w.leaf.1",
+    "loft_office.h_eaves_front_e.frame",
+    "loft_office.h_eaves_front_e.leaf.0",
+    "loft_office.h_eaves_front_e.leaf.1",
+    "loft_office.h_eaves_rear.frame",
+    "loft_office.h_eaves_rear.leaf.0",
+    "loft_office.h_eaves_rear.leaf.1",
+    "loft_office.skirting",
+    "loft_office.cabinet",
+    "loft_office.radiator",
+    "loft_office.desk",
+    "loft_office.aircon",
+    "loft_office.tv"
+   ]
+  },
+  {
+   "room": "purple_room",
+   "level": "2",
+   "image": "lightmaps_off/purple_room.jpg",
+   "size": 1024,
+   "pxPerM": 106,
+   "intensity": 1.15038,
+   "bytes": 133364,
+   "objects": [
+    "purple_room.ceiling",
+    "purple_room.floor",
+    "purple_room.walls",
+    "purple_room.d_purple.lining",
+    "purple_room.d_purple.surround",
+    "purple_room.w_purple.sash.0",
+    "purple_room.w_purple.frame",
+    "purple_room.skirting",
+    "purple_room.cornice",
+    "purple_room.window_board",
+    "purple_room.radiator"
+   ]
+  },
+  {
+   "room": "shed",
+   "level": "X",
+   "image": "lightmaps_off/shed.jpg",
+   "size": 1024,
+   "pxPerM": 40,
+   "intensity": 2.18297,
+   "bytes": 221806,
+   "objects": [
+    "shed.shed_veranda",
+    "shed.walls",
+    "shed.roof",
+    "shed.store.walls",
+    "shed.store.floor",
+    "shed.store.ceiling",
+    "shed.workshop.walls",
+    "shed.workshop.floor",
+    "shed.workshop.ceiling",
+    "shed.soffit",
+    "shed.heads",
+    "shed.roof.kerb",
+    "shed.shed_w1.sash.0",
+    "shed.shed_w1.sash.1",
+    "shed.shed_w1.frame",
+    "shed.shed_d1.frame",
+    "shed.shed_d1.leaf.0",
+    "shed.shed_d1.leaf.1",
+    "shed.shed_w2.frame",
+    "shed.shed_w2.glass",
+    "shed.shed_store_doors.frame",
+    "shed.shed_store_doors.leaf.0",
+    "shed.shed_store_doors.leaf.1",
+    "shed.fascia",
+    "shed.garden_furniture",
+    "shed.chest",
+    "shed.veranda_rack",
+    "shed.veranda_rack.bowls",
+    "shed.hook_rail",
+    "shed.bird_box",
+    "shed.stone_cats",
+    "shed.mat.edge",
+    "shed.mat",
+    "shed.soffit_boards.joints",
+    "shed.store.shelves",
+    "shed.store.contents",
+    "shed.island",
+    "shed.bench_back",
+    "shed.bench_east",
+    "shed.racking",
+    "shed.cove",
+    "shed.skirting"
+   ]
+  },
+  {
+   "room": "side_passage",
+   "level": "X",
+   "image": "lightmaps_off/side_passage.jpg",
+   "size": 512,
+   "pxPerM": 30,
+   "intensity": 1.13853,
+   "bytes": 15407,
+   "objects": [
+    "side_passage.side_alley",
+    "side_passage.side_passage",
+    "side_passage.kitchen_steps",
+    "side_passage.side_gate.frame",
+    "side_passage.side_gate"
+   ]
+  },
+  {
+   "room": "stairs",
+   "level": "G",
+   "image": "lightmaps_off/stairs.jpg",
+   "size": 512,
+   "pxPerM": 61,
+   "intensity": 1.8,
+   "bytes": 67342,
+   "objects": [
+    "stairs.ceiling",
+    "stairs.floor",
+    "stairs.walls",
+    "stairs.chamfer.hall_stair_diag",
+    "stairs.flight",
+    "stairs.carpet",
+    "stairs.spandrel",
+    "stairs.newel_drop",
+    "stairs.wall_string",
+    "stairs.cornice",
+    "stairs.dado_band"
+   ]
+  },
+  {
+   "room": "stairs2",
+   "level": "1",
+   "image": "lightmaps_off/stairs2.jpg",
+   "size": 512,
+   "pxPerM": 67,
+   "intensity": 1.20402,
+   "bytes": 63165,
+   "objects": [
+    "stairs2.ceiling",
+    "stairs2.walls",
+    "stairs2.flight",
+    "stairs2.carpet",
+    "stairs2.string",
+    "stairs2.wall_string",
+    "stairs2.dado_band",
+    "stairs2.cornice",
+    "stairs2.strip_capping"
+   ]
+  },
+  {
+   "room": "study",
+   "level": "2",
+   "image": "lightmaps_off/study.jpg",
+   "size": 1024,
+   "pxPerM": 90,
+   "intensity": 0.58999,
+   "bytes": 175040,
+   "objects": [
+    "study.ceiling",
+    "study.floor",
+    "study.walls",
+    "study.d_study.lining",
+    "study.d_study.surround",
+    "study.w_study.sash.0",
+    "study.w_study.sash.1",
+    "study.w_study.sash.2",
+    "study.w_study.sash.3",
+    "study.w_study.frame",
+    "study.skirting",
+    "study.cornice",
+    "study.radiator",
+    "study.aircon",
+    "study.window_board",
+    "study.tv"
+   ]
+  },
+  {
+   "room": "utility",
+   "level": "G",
+   "image": "lightmaps_off/utility.jpg",
+   "size": 1024,
+   "pxPerM": 96,
+   "intensity": 0.79625,
+   "bytes": 163583,
+   "objects": [
+    "utility.ceiling",
+    "utility.floor",
+    "utility.walls",
+    "utility.d_utility.lining",
+    "utility.d_utility.surround",
+    "utility.d_wc.lining",
+    "utility.d_wc.surround",
+    "utility.w_utility.sash.0",
+    "utility.w_utility.frame",
+    "utility.skirting",
+    "utility.cornice",
+    "utility.base.filler",
+    "utility.washer",
+    "utility.dryer",
+    "utility.base.sink_unit",
+    "utility.sink",
+    "utility.tap",
+    "utility.worktop.rear",
+    "utility.worktop.ext",
+    "utility.tall",
+    "utility.wall_units",
+    "utility.splash.rear",
+    "utility.splash.ext.0",
+    "utility.splash.ext.1",
+    "utility.splash.ext.2",
+    "utility.splash.ext.3",
+    "utility.splash.ext.4",
+    "utility.window_board",
+    "utility.tile_trims"
+   ]
+  },
+  {
+   "room": "vestibule",
+   "level": "G",
+   "image": "lightmaps_off/vestibule.jpg",
+   "size": 1024,
+   "pxPerM": 113,
+   "intensity": 1.58291,
+   "bytes": 217501,
+   "objects": [
+    "vestibule.ceiling",
+    "vestibule.floor",
+    "vestibule.walls",
+    "vestibule.haunch.vest_haunch_w",
+    "vestibule.haunch.vest_haunch_e",
+    "vestibule.vault_fill",
+    "vestibule.threshold.d_inner",
+    "vestibule.d_street.frame",
+    "vestibule.d_street.leaf.0",
+    "vestibule.d_street.leaf.0.glass",
+    "vestibule.d_street.leaf.1",
+    "vestibule.d_street.leaf.1.glass",
+    "vestibule.w_bay_cheek_w.surround",
+    "vestibule.skirting",
+    "vestibule.dado",
+    "vestibule.arch_mouldings",
+    "vestibule.door_corner"
+   ]
+  },
+  {
+   "room": "wc",
+   "level": "G",
+   "image": "lightmaps_off/wc.jpg",
+   "size": 512,
+   "pxPerM": 76,
+   "intensity": 0.88874,
+   "bytes": 51547,
+   "objects": [
+    "wc.ceiling",
+    "wc.floor",
+    "wc.walls",
+    "wc.d_wc.surround",
+    "wc.w_wc.frame",
+    "wc.w_wc.glass",
+    "wc.cornice",
+    "wc.tile_trim",
+    "wc.pan",
+    "wc.flush_plate",
+    "wc.basin",
+    "wc.basin.fittings",
+    "wc.fan",
+    "wc.towel_rail"
+   ]
+  },
+  {
+   "room": "yellow_room",
+   "level": "1",
+   "image": "lightmaps_off/yellow_room.jpg",
+   "size": 1024,
+   "pxPerM": 108,
+   "intensity": 0.67824,
+   "bytes": 149387,
+   "objects": [
+    "yellow_room.ceiling",
+    "yellow_room.floor",
+    "yellow_room.walls",
+    "yellow_room.d_yellow.lining",
+    "yellow_room.d_yellow.surround",
+    "yellow_room.w_yellow.sash.0",
+    "yellow_room.w_yellow.sash.1",
+    "yellow_room.w_yellow.frame",
+    "yellow_room.skirting",
+    "yellow_room.cornice",
+    "yellow_room.aircon",
+    "yellow_room.radiator",
+    "yellow_room.sill"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "room": "basement",
+   "level": "B",
+   "image": "probes/basement.jpg",
    "pos": [
-    -0.35,
-    12.7
+    2.65,
+    7.39,
+    -0.81
+   ],
+   "intensity": 8.12531,
+   "bytes": 63971
+  },
+  {
+   "room": "basement_stair",
+   "level": "B",
+   "image": "probes/basement_stair.jpg",
+   "pos": [
+    0.6,
+    6.4,
+    0.1
+   ],
+   "intensity": 7.26015,
+   "bytes": 43713
+  },
+  {
+   "room": "vestibule",
+   "level": "G",
+   "image": "probes/vestibule.jpg",
+   "pos": [
+    -0.25,
+    1.6,
+    1.5
+   ],
+   "intensity": 2.80467,
+   "bytes": 81593
+  },
+  {
+   "room": "hallway",
+   "level": "G",
+   "image": "probes/hallway.jpg",
+   "pos": [
+    0.55,
+    4.03,
+    1.5
+   ],
+   "intensity": 3.36158,
+   "bytes": 80568
+  },
+  {
+   "room": "stairs",
+   "level": "G",
+   "image": "probes/stairs.jpg",
+   "pos": [
+    0.55,
+    5.65,
+    1.5
+   ],
+   "intensity": 2.21738,
+   "bytes": 73152
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "image": "probes/living.jpg",
+   "pos": [
+    2.4,
+    2.6,
+    1.5
+   ],
+   "intensity": 5.28486,
+   "bytes": 108950
+  },
+  {
+   "room": "kitchen",
+   "level": "G",
+   "image": "probes/kitchen.jpg",
+   "pos": [
+    3.05,
+    7.31,
+    1.5
+   ],
+   "intensity": 2.20914,
+   "bytes": 79687
+  },
+  {
+   "room": "wc",
+   "level": "G",
+   "image": "probes/wc.jpg",
+   "pos": [
+    1.8,
+    9.76,
+    1.5
+   ],
+   "intensity": 2.88558,
+   "bytes": 76397
+  },
+  {
+   "room": "utility",
+   "level": "G",
+   "image": "probes/utility.jpg",
+   "pos": [
+    1.6,
+    11.06,
+    1.5
+   ],
+   "intensity": 3.17776,
+   "bytes": 70445
+  },
+  {
+   "room": "dining",
+   "level": "G",
+   "image": "probes/dining.jpg",
+   "pos": [
+    1.15,
+    14.36,
+    1.5
+   ],
+   "intensity": 4.06312,
+   "bytes": 100468
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "image": "probes/green_bedroom.jpg",
+   "pos": [
+    1.55,
+    2.54,
+    4.92
+   ],
+   "intensity": 4.07316,
+   "bytes": 80184
+  },
+  {
+   "room": "green_bathroom",
+   "level": "1",
+   "image": "probes/green_bathroom.jpg",
+   "pos": [
+    2.85,
+    6.35,
+    4.92
+   ],
+   "intensity": 1.50173,
+   "bytes": 61101
+  },
+  {
+   "room": "landing1_front",
+   "level": "1",
+   "image": "probes/landing1_front.jpg",
+   "pos": [
+    -0.05,
+    5.35,
+    4.92
+   ],
+   "intensity": 1.37511,
+   "bytes": 63005
+  },
+  {
+   "room": "stairs2",
+   "level": "1",
+   "image": "probes/stairs2.jpg",
+   "pos": [
+    0.35,
+    6.26,
+    4.92
+   ],
+   "intensity": 1.55054,
+   "bytes": 68689
+  },
+  {
+   "room": "landing1_ql",
+   "level": "1",
+   "image": "probes/landing1_ql.jpg",
+   "pos": [
+    0.35,
+    8.33,
+    4.35
+   ],
+   "intensity": 1.60282,
+   "bytes": 53063
+  },
+  {
+   "room": "landing1_rear",
+   "level": "1",
+   "image": "probes/landing1_rear.jpg",
+   "pos": [
+    0.15,
+    10.73,
+    4.54
+   ],
+   "intensity": 1.56664,
+   "bytes": 67678
+  },
+  {
+   "room": "yellow_room",
+   "level": "1",
+   "image": "probes/yellow_room.jpg",
+   "pos": [
+    1.55,
+    10.23,
+    4.54
+   ],
+   "intensity": 1.38566,
+   "bytes": 51108
+  },
+  {
+   "room": "blue_ensuite",
+   "level": "1",
+   "image": "probes/blue_ensuite.jpg",
+   "pos": [
+    1.5,
+    11.95,
+    4.54
+   ],
+   "intensity": 1.54474,
+   "bytes": 60086
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "image": "probes/blue_bedroom.jpg",
+   "pos": [
+    1.15,
+    14.92,
+    4.54
+   ],
+   "intensity": 4.38243,
+   "bytes": 96253
+  },
+  {
+   "room": "balcony",
+   "level": "1",
+   "image": "probes/balcony.jpg",
+   "pos": [
+    1.2,
+    18.36,
+    4.5
+   ],
+   "intensity": 1.52824,
+   "bytes": 101065
+  },
+  {
+   "room": "landing2_head",
+   "level": "2",
+   "image": "probes/landing2_head.jpg",
+   "pos": [
+    0.15,
+    10.73,
+    7.52
+   ],
+   "intensity": 1.87572,
+   "bytes": 63125
+  },
+  {
+   "room": "landing2_platform",
+   "level": "2",
+   "image": "probes/landing2_platform.jpg",
+   "pos": [
+    -0.25,
+    6.63,
+    7.72
+   ],
+   "intensity": 2.13776,
+   "bytes": 61050
+  },
+  {
+   "room": "loft_office",
+   "level": "2",
+   "image": "probes/loft_office.jpg",
+   "pos": [
+    2.15,
+    4.54,
+    7.99
+   ],
+   "intensity": 2.20854,
+   "bytes": 54517
+  },
+  {
+   "room": "eaves_front",
+   "level": "2",
+   "image": "probes/eaves_front.jpg",
+   "pos": [
+    2.2,
+    1.7,
+    7.0
+   ],
+   "intensity": 14.00397,
+   "bytes": 31293
+  },
+  {
+   "room": "eaves_rear",
+   "level": "2",
+   "image": "probes/eaves_rear.jpg",
+   "pos": [
+    3.15,
+    7.09,
+    7.2
+   ],
+   "intensity": 7.49201,
+   "bytes": 30990
+  },
+  {
+   "room": "purple_room",
+   "level": "2",
+   "image": "probes/purple_room.jpg",
+   "pos": [
+    0.92,
+    10.29,
+    7.52
+   ],
+   "intensity": 0.9532,
+   "bytes": 47595
+  },
+  {
+   "room": "bathroom2",
+   "level": "2",
+   "image": "probes/bathroom2.jpg",
+   "pos": [
+    1.0,
+    12.3,
+    7.52
+   ],
+   "intensity": 1.11476,
+   "bytes": 63493
+  },
+  {
+   "room": "study",
+   "level": "2",
+   "image": "probes/study.jpg",
+   "pos": [
+    0.75,
+    15.44,
+    7.52
+   ],
+   "intensity": 2.30968,
+   "bytes": 59985
+  },
+  {
+   "room": "front",
+   "level": "X",
+   "image": "probes/front.jpg",
+   "pos": [
+    1.88,
+    -4.2,
+    1.44
+   ],
+   "intensity": 2.61963,
+   "bytes": 84533
+  },
+  {
+   "room": "side_passage",
+   "level": "X",
+   "image": "probes/side_passage.jpg",
+   "pos": [
+    4.4,
+    17.43,
+    1.2
+   ],
+   "intensity": 1.29902,
+   "bytes": 74233
+  },
+  {
+   "room": "garden",
+   "level": "X",
+   "image": "probes/garden.jpg",
+   "pos": [
+    1.25,
+    20.36,
+    1.45
+   ],
+   "intensity": 1.27099,
+   "bytes": 101152
+  },
+  {
+   "room": "shed",
+   "level": "X",
+   "image": "probes/shed.jpg",
+   "pos": [
+    2.2,
+    26.68,
+    1.18
+   ],
+   "intensity": 2.9636,
+   "bytes": 45707
+  }
+ ],
+ "probesOff": [
+  {
+   "room": "basement",
+   "level": "B",
+   "image": "probes_off/basement.jpg",
+   "pos": [
+    2.65,
+    7.39,
+    -0.81
+   ],
+   "intensity": 0.15001,
+   "bytes": 29681
+  },
+  {
+   "room": "basement_stair",
+   "level": "B",
+   "image": "probes_off/basement_stair.jpg",
+   "pos": [
+    0.6,
+    6.4,
+    0.1
+   ],
+   "intensity": 0.15006,
+   "bytes": 20919
+  },
+  {
+   "room": "vestibule",
+   "level": "G",
+   "image": "probes_off/vestibule.jpg",
+   "pos": [
+    -0.25,
+    1.6,
+    1.5
+   ],
+   "intensity": 1.06483,
+   "bytes": 77598
+  },
+  {
+   "room": "hallway",
+   "level": "G",
+   "image": "probes_off/hallway.jpg",
+   "pos": [
+    0.55,
+    4.03,
+    1.5
+   ],
+   "intensity": 1.8,
+   "bytes": 76082
+  },
+  {
+   "room": "stairs",
+   "level": "G",
+   "image": "probes_off/stairs.jpg",
+   "pos": [
+    0.55,
+    5.65,
+    1.5
+   ],
+   "intensity": 1.8,
+   "bytes": 71042
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "image": "probes_off/living.jpg",
+   "pos": [
+    2.4,
+    2.6,
+    1.5
+   ],
+   "intensity": 0.90991,
+   "bytes": 66879
+  },
+  {
+   "room": "kitchen",
+   "level": "G",
+   "image": "probes_off/kitchen.jpg",
+   "pos": [
+    3.05,
+    7.31,
+    1.5
+   ],
+   "intensity": 0.4135,
+   "bytes": 42438
+  },
+  {
+   "room": "wc",
+   "level": "G",
+   "image": "probes_off/wc.jpg",
+   "pos": [
+    1.8,
+    9.76,
+    1.5
+   ],
+   "intensity": 1.56202,
+   "bytes": 54709
+  },
+  {
+   "room": "utility",
+   "level": "G",
+   "image": "probes_off/utility.jpg",
+   "pos": [
+    1.6,
+    11.06,
+    1.5
+   ],
+   "intensity": 1.20462,
+   "bytes": 45109
+  },
+  {
+   "room": "dining",
+   "level": "G",
+   "image": "probes_off/dining.jpg",
+   "pos": [
+    1.15,
+    14.36,
+    1.5
+   ],
+   "intensity": 0.67842,
+   "bytes": 70988
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "image": "probes_off/green_bedroom.jpg",
+   "pos": [
+    1.55,
+    2.54,
+    4.92
+   ],
+   "intensity": 1.00446,
+   "bytes": 56014
+  },
+  {
+   "room": "green_bathroom",
+   "level": "1",
+   "image": "probes_off/green_bathroom.jpg",
+   "pos": [
+    2.85,
+    6.35,
+    4.92
+   ],
+   "intensity": 0.48322,
+   "bytes": 26867
+  },
+  {
+   "room": "landing1_front",
+   "level": "1",
+   "image": "probes_off/landing1_front.jpg",
+   "pos": [
+    -0.05,
+    5.35,
+    4.92
+   ],
+   "intensity": 1.07152,
+   "bytes": 55328
+  },
+  {
+   "room": "stairs2",
+   "level": "1",
+   "image": "probes_off/stairs2.jpg",
+   "pos": [
+    0.35,
+    6.26,
+    4.92
+   ],
+   "intensity": 1.47208,
+   "bytes": 67558
+  },
+  {
+   "room": "landing1_ql",
+   "level": "1",
+   "image": "probes_off/landing1_ql.jpg",
+   "pos": [
+    0.35,
+    8.33,
+    4.35
+   ],
+   "intensity": 0.59501,
+   "bytes": 35196
+  },
+  {
+   "room": "landing1_rear",
+   "level": "1",
+   "image": "probes_off/landing1_rear.jpg",
+   "pos": [
+    0.15,
+    10.73,
+    4.54
+   ],
+   "intensity": 1.12073,
+   "bytes": 57696
+  },
+  {
+   "room": "yellow_room",
+   "level": "1",
+   "image": "probes_off/yellow_room.jpg",
+   "pos": [
+    1.55,
+    10.23,
+    4.54
+   ],
+   "intensity": 0.77798,
+   "bytes": 32051
+  },
+  {
+   "room": "blue_ensuite",
+   "level": "1",
+   "image": "probes_off/blue_ensuite.jpg",
+   "pos": [
+    1.5,
+    11.95,
+    4.54
+   ],
+   "intensity": 0.15,
+   "bytes": 30096
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "image": "probes_off/blue_bedroom.jpg",
+   "pos": [
+    1.15,
+    14.92,
+    4.54
+   ],
+   "intensity": 0.32151,
+   "bytes": 71396
+  },
+  {
+   "room": "balcony",
+   "level": "1",
+   "image": "probes_off/balcony.jpg",
+   "pos": [
+    1.2,
+    18.36,
+    4.5
+   ],
+   "intensity": 1.44772,
+   "bytes": 101294
+  },
+  {
+   "room": "landing2_head",
+   "level": "2",
+   "image": "probes_off/landing2_head.jpg",
+   "pos": [
+    0.15,
+    10.73,
+    7.52
+   ],
+   "intensity": 0.67423,
+   "bytes": 56446
+  },
+  {
+   "room": "landing2_platform",
+   "level": "2",
+   "image": "probes_off/landing2_platform.jpg",
+   "pos": [
+    -0.25,
+    6.63,
+    7.72
+   ],
+   "intensity": 1.8,
+   "bytes": 58605
+  },
+  {
+   "room": "loft_office",
+   "level": "2",
+   "image": "probes_off/loft_office.jpg",
+   "pos": [
+    2.15,
+    4.54,
+    7.99
+   ],
+   "intensity": 0.16268,
+   "bytes": 40030
+  },
+  {
+   "room": "eaves_front",
+   "level": "2",
+   "image": "probes_off/eaves_front.jpg",
+   "pos": [
+    2.2,
+    1.7,
+    7.0
+   ],
+   "intensity": 0.15001,
+   "bytes": 16260
+  },
+  {
+   "room": "eaves_rear",
+   "level": "2",
+   "image": "probes_off/eaves_rear.jpg",
+   "pos": [
+    3.15,
+    7.09,
+    7.2
+   ],
+   "intensity": 0.15002,
+   "bytes": 17624
+  },
+  {
+   "room": "purple_room",
+   "level": "2",
+   "image": "probes_off/purple_room.jpg",
+   "pos": [
+    0.92,
+    10.29,
+    7.52
+   ],
+   "intensity": 0.90175,
+   "bytes": 33133
+  },
+  {
+   "room": "bathroom2",
+   "level": "2",
+   "image": "probes_off/bathroom2.jpg",
+   "pos": [
+    1.0,
+    12.3,
+    7.52
+   ],
+   "intensity": 0.8659,
+   "bytes": 39948
+  },
+  {
+   "room": "study",
+   "level": "2",
+   "image": "probes_off/study.jpg",
+   "pos": [
+    0.75,
+    15.44,
+    7.52
+   ],
+   "intensity": 0.47118,
+   "bytes": 43082
+  },
+  {
+   "room": "front",
+   "level": "X",
+   "image": "probes_off/front.jpg",
+   "pos": [
+    1.88,
+    -4.2,
+    1.44
+   ],
+   "intensity": 2.61378,
+   "bytes": 84408
+  },
+  {
+   "room": "side_passage",
+   "level": "X",
+   "image": "probes_off/side_passage.jpg",
+   "pos": [
+    4.4,
+    17.43,
+    1.2
+   ],
+   "intensity": 1.29887,
+   "bytes": 74183
+  },
+  {
+   "room": "garden",
+   "level": "X",
+   "image": "probes_off/garden.jpg",
+   "pos": [
+    1.25,
+    20.36,
+    1.45
+   ],
+   "intensity": 1.27036,
+   "bytes": 101237
+  },
+  {
+   "room": "shed",
+   "level": "X",
+   "image": "probes_off/shed.jpg",
+   "pos": [
+    2.2,
+    26.68,
+    1.18
+   ],
+   "intensity": 0.48331,
+   "bytes": 48553
+  }
+ ],
+ "circuits": [
+  {
+   "room": "bathroom2",
+   "level": "2",
+   "name": "main",
+   "image": "lightmaps_circuits/bathroom2.main.jpg",
+   "size": 1024,
+   "intensity": 2.26578,
+   "bytes": 190862,
+   "groups": [],
+   "lights": [
+    "bathroom2.downlight.0",
+    "bathroom2.downlight.1",
+    "bathroom2.downlight.2",
+    "bathroom2.downlight.3"
+   ],
+   "emissive": [
+    "bathroom2.downlight_trim.0",
+    "bathroom2.downlight_trim.1",
+    "bathroom2.downlight_trim.2",
+    "bathroom2.downlight_trim.3"
+   ],
+   "share": 0.8172
+  },
+  {
+   "room": "bathroom2",
+   "level": "2",
+   "name": "sauna",
+   "image": "lightmaps_circuits/bathroom2.sauna.jpg",
+   "size": 1024,
+   "intensity": 2.19084,
+   "bytes": 114689,
+   "groups": [
+    "bathroom2.sauna"
+   ],
+   "lights": [
+    "bathroom2.sauna.lamp"
+   ],
+   "emissive": [],
+   "share": 0.1828
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "name": "bedside_lamp.0",
+   "image": "lightmaps_circuits/blue_bedroom.bedside_lamp.0.jpg",
+   "size": 2048,
+   "intensity": 2.17588,
+   "bytes": 372770,
+   "groups": [
+    "blue_bedroom.bedside_lamp.0"
+   ],
+   "lights": [
+    "blue_bedroom.bedside_lamp.0.bulb"
+   ],
+   "emissive": [],
+   "share": 0.0274
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "name": "bedside_lamp.1",
+   "image": "lightmaps_circuits/blue_bedroom.bedside_lamp.1.jpg",
+   "size": 2048,
+   "intensity": 1.82269,
+   "bytes": 455335,
+   "groups": [
+    "blue_bedroom.bedside_lamp.1"
+   ],
+   "lights": [
+    "blue_bedroom.bedside_lamp.1.bulb"
+   ],
+   "emissive": [],
+   "share": 0.0333
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "name": "chandelier",
+   "image": "lightmaps_circuits/blue_bedroom.chandelier.jpg",
+   "size": 2048,
+   "intensity": 2.40237,
+   "bytes": 807169,
+   "groups": [
+    "blue_bedroom.chandelier"
+   ],
+   "lights": [
+    "blue_bedroom.chandelier.bulb.0",
+    "blue_bedroom.chandelier.bulb.1",
+    "blue_bedroom.chandelier.bulb.2",
+    "blue_bedroom.chandelier.bulb.3",
+    "blue_bedroom.chandelier.bulb.4",
+    "blue_bedroom.chandelier.bulb.5"
+   ],
+   "emissive": [],
+   "share": 0.34
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "name": "main",
+   "image": "lightmaps_circuits/blue_bedroom.main.jpg",
+   "size": 2048,
+   "intensity": 1.47415,
+   "bytes": 970044,
+   "groups": [
+    "blue_bedroom.switch"
+   ],
+   "lights": [
+    "blue_bedroom.downlight.0",
+    "blue_bedroom.downlight.1",
+    "blue_bedroom.downlight.2",
+    "blue_bedroom.downlight.3",
+    "blue_bedroom.downlight.4",
+    "blue_bedroom.downlight.5"
+   ],
+   "emissive": [
+    "blue_bedroom.downlight_trim.0",
+    "blue_bedroom.downlight_trim.1",
+    "blue_bedroom.downlight_trim.2",
+    "blue_bedroom.downlight_trim.3",
+    "blue_bedroom.downlight_trim.4",
+    "blue_bedroom.downlight_trim.5"
+   ],
+   "share": 0.5657
+  },
+  {
+   "room": "blue_bedroom",
+   "level": "1",
+   "name": "wall_light",
+   "image": "lightmaps_circuits/blue_bedroom.wall_light.jpg",
+   "size": 2048,
+   "intensity": 0.81702,
+   "bytes": 604726,
+   "groups": [
+    "blue_bedroom.wall_light"
+   ],
+   "lights": [
+    "blue_bedroom.wall_light.bulb"
+   ],
+   "emissive": [],
+   "share": 0.0337
+  },
+  {
+   "room": "dining",
+   "level": "G",
+   "name": "chandelier",
+   "image": "lightmaps_circuits/dining.chandelier.jpg",
+   "size": 2048,
+   "intensity": 2.722,
+   "bytes": 789609,
+   "groups": [
+    "dining.chandelier",
+    "dining.switch.chandelier"
+   ],
+   "lights": [
+    "dining.chandelier.bulb.0",
+    "dining.chandelier.bulb.1",
+    "dining.chandelier.bulb.2",
+    "dining.chandelier.bulb.3",
+    "dining.chandelier.bulb.4",
+    "dining.chandelier.bulb.5",
+    "dining.chandelier.bulb.6",
+    "dining.chandelier.bulb.7",
+    "dining.chandelier.bulb.8",
+    "dining.chandelier.bulb.9",
+    "dining.chandelier.bulb.10",
+    "dining.chandelier.bulb.11",
+    "dining.chandelier.glow"
+   ],
+   "emissive": [],
+   "share": 0.351
+  },
+  {
+   "room": "dining",
+   "level": "G",
+   "name": "main",
+   "image": "lightmaps_circuits/dining.main.jpg",
+   "size": 2048,
+   "intensity": 1.68824,
+   "bytes": 935568,
+   "groups": [
+    "dining.switch"
+   ],
+   "lights": [
+    "dining.downlight.0",
+    "dining.downlight.1",
+    "dining.downlight.2",
+    "dining.downlight.3",
+    "dining.downlight.4",
+    "dining.downlight.5",
+    "dining.downlight.6",
+    "dining.downlight.7"
+   ],
+   "emissive": [
+    "dining.downlight_trim.0",
+    "dining.downlight_trim.1",
+    "dining.downlight_trim.2",
+    "dining.downlight_trim.3",
+    "dining.downlight_trim.4",
+    "dining.downlight_trim.5",
+    "dining.downlight_trim.6",
+    "dining.downlight_trim.7"
+   ],
+   "share": 0.5712
+  },
+  {
+   "room": "dining",
+   "level": "G",
+   "name": "wall",
+   "image": "lightmaps_circuits/dining.wall.jpg",
+   "size": 2048,
+   "intensity": 2.79083,
+   "bytes": 553758,
+   "groups": [
+    "dining.sconce.0",
+    "dining.sconce.1",
+    "dining.switch.wall_lights"
+   ],
+   "lights": [
+    "dining.sconce.0.bulb.0",
+    "dining.sconce.0.bulb.1",
+    "dining.sconce.1.bulb.0",
+    "dining.sconce.1.bulb.1"
+   ],
+   "emissive": [],
+   "share": 0.0778
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "name": "chandelier",
+   "image": "lightmaps_circuits/green_bedroom.chandelier.jpg",
+   "size": 1024,
+   "intensity": 3.69147,
+   "bytes": 244582,
+   "groups": [
+    "green_bedroom.chandelier"
+   ],
+   "lights": [
+    "green_bedroom.chandelier.lamp"
+   ],
+   "emissive": [],
+   "share": 0.6252
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "name": "main",
+   "image": "lightmaps_circuits/green_bedroom.main.jpg",
+   "size": 1024,
+   "intensity": 0.7097,
+   "bytes": 287470,
+   "groups": [
+    "green_bedroom.switch.s1",
+    "green_bedroom.switch.s3"
+   ],
+   "lights": [
+    "green_bedroom.downlight.0",
+    "green_bedroom.downlight.1",
+    "green_bedroom.downlight.2",
+    "green_bedroom.downlight.3",
+    "green_bedroom.downlight.4",
+    "green_bedroom.downlight.5",
+    "green_bedroom.downlight.6",
+    "green_bedroom.downlight.7"
+   ],
+   "emissive": [
+    "green_bedroom.downlight_trim.0",
+    "green_bedroom.downlight_trim.1",
+    "green_bedroom.downlight_trim.2",
+    "green_bedroom.downlight_trim.3",
+    "green_bedroom.downlight_trim.4",
+    "green_bedroom.downlight_trim.5",
+    "green_bedroom.downlight_trim.6",
+    "green_bedroom.downlight_trim.7"
+   ],
+   "share": 0.2387
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "name": "pineapple.n",
+   "image": "lightmaps_circuits/green_bedroom.pineapple.n.jpg",
+   "size": 1024,
+   "intensity": 3.31045,
+   "bytes": 124461,
+   "groups": [
+    "green_bedroom.pineapple.n"
+   ],
+   "lights": [
+    "green_bedroom.pineapple.n.lamp"
+   ],
+   "emissive": [],
+   "share": 0.0445
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "name": "pineapple.s",
+   "image": "lightmaps_circuits/green_bedroom.pineapple.s.jpg",
+   "size": 1024,
+   "intensity": 3.29089,
+   "bytes": 132402,
+   "groups": [
+    "green_bedroom.pineapple.s"
+   ],
+   "lights": [
+    "green_bedroom.pineapple.s.lamp"
+   ],
+   "emissive": [],
+   "share": 0.0583
+  },
+  {
+   "room": "green_bedroom",
+   "level": "1",
+   "name": "sconce",
+   "image": "lightmaps_circuits/green_bedroom.sconce.jpg",
+   "size": 1024,
+   "intensity": 1.94303,
+   "bytes": 122317,
+   "groups": [
+    "green_bedroom.sconce"
+   ],
+   "lights": [
+    "green_bedroom.sconce.lamp.0",
+    "green_bedroom.sconce.lamp.1",
+    "green_bedroom.sconce.lamp.2"
+   ],
+   "emissive": [],
+   "share": 0.0333
+  },
+  {
+   "room": "kitchen",
+   "level": "G",
+   "name": "led",
+   "image": "lightmaps_circuits/kitchen.led.jpg",
+   "size": 2048,
+   "intensity": 2.7582,
+   "bytes": 363169,
+   "groups": [
+    "kitchen.led"
+   ],
+   "lights": [
+    "kitchen.strip.0",
+    "kitchen.strip.1",
+    "kitchen.strip.2",
+    "kitchen.strip.3"
+   ],
+   "emissive": [],
+   "share": 0.0968
+  },
+  {
+   "room": "kitchen",
+   "level": "G",
+   "name": "main",
+   "image": "lightmaps_circuits/kitchen.main.jpg",
+   "size": 2048,
+   "intensity": 2.91212,
+   "bytes": 573750,
+   "groups": [
+    "kitchen.switch"
+   ],
+   "lights": [
+    "kitchen.downlight.0",
+    "kitchen.downlight.1",
+    "kitchen.downlight.2",
+    "kitchen.downlight.3",
+    "kitchen.hood_spot.0",
+    "kitchen.hood_spot.1",
+    "kitchen.strip.nook",
+    "kitchen.ceiling_bounce",
+    "kitchen.low_fill"
+   ],
+   "emissive": [
+    "kitchen.hood",
+    "kitchen.tower",
+    "kitchen.downlight_trim.0",
+    "kitchen.downlight_trim.1",
+    "kitchen.downlight_trim.2",
+    "kitchen.downlight_trim.3"
+   ],
+   "share": 0.9032
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "name": "chandelier",
+   "image": "lightmaps_circuits/living.chandelier.jpg",
+   "size": 2048,
+   "intensity": 4.67702,
+   "bytes": 563695,
+   "groups": [
+    "living.chandelier"
+   ],
+   "lights": [
+    "living.chandelier.lamp.0",
+    "living.chandelier.lamp.1",
+    "living.chandelier.lamp.2",
+    "living.chandelier.lamp.3",
+    "living.chandelier.lamp.4",
+    "living.chandelier.lamp.5",
+    "living.chandelier.lamp.6",
+    "living.chandelier.lamp.7",
+    "living.chandelier.lamp.8",
+    "living.chandelier.lamp.9",
+    "living.chandelier.lamp.10",
+    "living.chandelier.lamp.11"
+   ],
+   "emissive": [],
+   "share": 0.2342
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "name": "main",
+   "image": "lightmaps_circuits/living.main.jpg",
+   "size": 2048,
+   "intensity": 0.76699,
+   "bytes": 872810,
+   "groups": [
+    "living.dimmer"
+   ],
+   "lights": [
+    "living.downlight.0",
+    "living.downlight.1",
+    "living.downlight.2",
+    "living.downlight.3",
+    "living.downlight.4",
+    "living.downlight.5",
+    "living.downlight.6",
+    "living.downlight.7"
+   ],
+   "emissive": [
+    "living.tantalus.decanter.0",
+    "living.tantalus.decanter.1",
+    "living.tantalus.decanter.2",
+    "living.crystal_vase.0",
+    "living.crystal_vase.1",
+    "living.decanter",
+    "living.glass_tray.stem.0",
+    "living.glass_tray.stem.1",
+    "living.glass_tray.stem.2",
+    "living.glass_tray.tumbler.0",
+    "living.glass_tray.tumbler.1",
+    "living.glass_tray.tumbler.2",
+    "living.glass_tray.tumbler.3",
+    "living.glass_tray.tumbler.4",
+    "living.glass_tray.tumbler.5",
+    "living.glass_tray.tumbler.6",
+    "living.glass_tray.tumbler.7",
+    "living.glass_tray.tumbler.8",
+    "living.downlight_trim.0",
+    "living.downlight_trim.1",
+    "living.downlight_trim.2",
+    "living.downlight_trim.3",
+    "living.downlight_trim.4",
+    "living.downlight_trim.5",
+    "living.downlight_trim.6",
+    "living.downlight_trim.7"
+   ],
+   "share": 0.1629
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "name": "sconces",
+   "image": "lightmaps_circuits/living.sconces.jpg",
+   "size": 2048,
+   "intensity": 4.95822,
+   "bytes": 681739,
+   "groups": [
+    "living.sconces"
+   ],
+   "lights": [
+    "living.sconce.0.lamp.0",
+    "living.sconce.0.lamp.1",
+    "living.sconce.0.lamp.2",
+    "living.sconce.0.lamp.3",
+    "living.sconce.0.lamp.4",
+    "living.sconce.1.lamp.0",
+    "living.sconce.1.lamp.1",
+    "living.sconce.1.lamp.2",
+    "living.sconce.1.lamp.3",
+    "living.sconce.1.lamp.4"
+   ],
+   "emissive": [],
+   "share": 0.5515
+  },
+  {
+   "room": "living",
+   "level": "G",
+   "name": "table_lamp",
+   "image": "lightmaps_circuits/living.table_lamp.jpg",
+   "size": 2048,
+   "intensity": 4.3193,
+   "bytes": 410938,
+   "groups": [
+    "living.table_lamp"
+   ],
+   "lights": [
+    "living.table_lamp.bulb"
+   ],
+   "emissive": [],
+   "share": 0.0514
+  },
+  {
+   "room": "loft_office",
+   "level": "2",
+   "name": "desk_lamp",
+   "image": "lightmaps_circuits/loft_office.desk_lamp.jpg",
+   "size": 1024,
+   "intensity": 0.69077,
+   "bytes": 82074,
+   "groups": [
+    "loft_office.desk_lamp"
+   ],
+   "lights": [
+    "loft_office.desk_lamp.bulb"
+   ],
+   "emissive": [],
+   "share": 0.0073
+  },
+  {
+   "room": "loft_office",
+   "level": "2",
+   "name": "main",
+   "image": "lightmaps_circuits/loft_office.main.jpg",
+   "size": 1024,
+   "intensity": 3.06073,
+   "bytes": 204195,
+   "groups": [],
+   "lights": [
+    "loft_office.downlight.0",
+    "loft_office.downlight.1",
+    "loft_office.downlight.2",
+    "loft_office.downlight.3",
+    "loft_office.downlight.4",
+    "loft_office.downlight.5",
+    "loft_office.downlight.6"
+   ],
+   "emissive": [
+    "loft_office.downlight_trim.0",
+    "loft_office.downlight_trim.1",
+    "loft_office.downlight_trim.2",
+    "loft_office.downlight_trim.3",
+    "loft_office.downlight_trim.4",
+    "loft_office.downlight_trim.5",
+    "loft_office.downlight_trim.6"
+   ],
+   "share": 0.9927
+  },
+  {
+   "room": "study",
+   "level": "2",
+   "name": "desk_lamp",
+   "image": "lightmaps_circuits/study.desk_lamp.jpg",
+   "size": 1024,
+   "intensity": 0.18624,
+   "bytes": 176414,
+   "groups": [
+    "study.desk_lamp"
+   ],
+   "lights": [
+    "study.desk_lamp.bulb"
+   ],
+   "emissive": [],
+   "share": 0.0495
+  },
+  {
+   "room": "study",
+   "level": "2",
+   "name": "main",
+   "image": "lightmaps_circuits/study.main.jpg",
+   "size": 1024,
+   "intensity": 1.58578,
+   "bytes": 213518,
+   "groups": [],
+   "lights": [
+    "study.downlight.0",
+    "study.downlight.1",
+    "study.downlight.2",
+    "study.downlight.3",
+    "study.downlight.4",
+    "study.downlight.5"
+   ],
+   "emissive": [
+    "study.downlight_trim.0",
+    "study.downlight_trim.1",
+    "study.downlight_trim.2",
+    "study.downlight_trim.3",
+    "study.downlight_trim.4",
+    "study.downlight_trim.5"
+   ],
+   "share": 0.9505
+  },
+  {
+   "room": "utility",
+   "level": "G",
+   "name": "led",
+   "image": "lightmaps_circuits/utility.led.jpg",
+   "size": 1024,
+   "intensity": 3.32119,
+   "bytes": 114294,
+   "groups": [
+    "utility.led"
+   ],
+   "lights": [
+    "utility.led.strip"
+   ],
+   "emissive": [],
+   "share": 0.2423
+  },
+  {
+   "room": "utility",
+   "level": "G",
+   "name": "main",
+   "image": "lightmaps_circuits/utility.main.jpg",
+   "size": 1024,
+   "intensity": 1.91953,
+   "bytes": 173818,
+   "groups": [
+    "utility.switch.grid"
+   ],
+   "lights": [
+    "utility.downlight.0",
+    "utility.downlight.1",
+    "utility.upfill.0",
+    "utility.upfill.1"
+   ],
+   "emissive": [
+    "utility.downlight_trim.0",
+    "utility.downlight_trim.1"
+   ],
+   "share": 0.7577
+  }
+ ],
+ "viewpoints": {
+  "front": {
+   "pos": [
+    2.0,
+    -4.9
    ],
    "look": [
-    2.4,
-    15.6
+    1.0,
+    0.0
+   ]
+  },
+  "basement": {
+   "pos": [
+    2.55,
+    7.55
+   ],
+   "look": [
+    4.2,
+    8.0
+   ]
+  },
+  "garden": {
+   "pos": [
+    1.4,
+    18.3
+   ],
+   "look": [
+    2.2,
+    24.0
+   ]
+  },
+  "shed": {
+   "pos": [
+    3.35,
+    25.6
+   ],
+   "look": [
+    1.2,
+    28.6
+   ]
+  },
+  "balcony": {
+   "pos": [
+    0.35,
+    17.55
+   ],
+   "look": [
+    2.3,
+    17.95
+   ]
+  },
+  "yellow_room": {
+   "pos": [
+    0.8,
+    10.55
+   ],
+   "look": [
+    3.1,
+    10.35
+   ]
+  },
+  "basement_stair": {
+   "pos": [
+    0.6,
+    6.25
+   ],
+   "look": [
+    0.58,
+    7.6
+   ]
+  },
+  "vestibule": {
+   "pos": [
+    0.0,
+    0.15
+   ],
+   "look": [
+    0.0,
+    1.78
+   ]
+  },
+  "hallway": {
+   "pos": [
+    0.2,
+    2.2
+   ],
+   "look": [
+    -0.1,
+    8.0
+   ]
+  },
+  "stairs": {
+   "pos": [
+    -0.2,
+    3.7
+   ],
+   "look": [
+    0.6,
+    6.6
+   ]
+  },
+  "living": {
+   "pos": [
+    1.05,
+    4.3
+   ],
+   "look": [
+    3.6,
+    1.6
+   ]
+  },
+  "kitchen": {
+   "pos": [
+    4.0,
+    8.4
+   ],
+   "look": [
+    1.9,
+    5.6
    ]
   },
   "wc": {
@@ -984,73 +4629,238 @@
     12.0
    ]
   },
-  "kitchen": {
+  "dining": {
    "pos": [
-    4.0,
-    8.4
+    -0.35,
+    12.7
    ],
    "look": [
-    1.9,
-    5.6
+    2.4,
+    15.6
    ]
   },
-  "living": {
+  "green_bedroom": {
    "pos": [
-    1.05,
-    4.3
+    0.6,
+    2.6
    ],
    "look": [
-    3.6,
-    1.6
+    4.3,
+    2.3
    ]
   },
-  "stairs": {
+  "green_bathroom": {
+   "pos": [
+    2.7,
+    5.05
+   ],
+   "look": [
+    2.7,
+    8.7
+   ]
+  },
+  "landing1_front": {
    "pos": [
     -0.2,
-    3.7
+    6.5
    ],
    "look": [
-    0.6,
-    6.6
+    0.3,
+    4.95
    ]
   },
-  "hallway": {
+  "stairs2": {
    "pos": [
-    0.2,
-    2.2
+    0.3,
+    5.6
    ],
    "look": [
-    -0.1,
+    0.5,
     8.0
    ]
   },
-  "vestibule": {
+  "landing1_rear": {
    "pos": [
-    0.0,
-    0.15
+    -0.15,
+    9.05
    ],
    "look": [
-    0.0,
-    1.78
+    -0.2,
+    11.8
+   ]
+  },
+  "blue_ensuite": {
+   "pos": [
+    1.8,
+    12.8
+   ],
+   "look": [
+    2.05,
+    11.15
+   ]
+  },
+  "blue_bedroom": {
+   "pos": [
+    -0.1,
+    12.72
+   ],
+   "look": [
+    1.45,
+    16.8
+   ]
+  },
+  "landing2_head": {
+   "pos": [
+    -0.3,
+    9.1
+   ],
+   "look": [
+    -0.1,
+    6.3
+   ]
+  },
+  "landing2_platform": {
+   "pos": [
+    -0.15,
+    6.45
+   ],
+   "look": [
+    0.1,
+    8.6
+   ]
+  },
+  "loft_office": {
+   "pos": [
+    2.3,
+    4.5
+   ],
+   "look": [
+    -0.65,
+    4.0
+   ]
+  },
+  "eaves_front": {
+   "pos": [
+    2.95,
+    2.38
+   ],
+   "look": [
+    2.53,
+    0.3
+   ]
+  },
+  "eaves_rear": {
+   "pos": [
+    1.7,
+    7.1
+   ],
+   "look": [
+    4.0,
+    8.0
+   ]
+  },
+  "purple_room": {
+   "pos": [
+    0.5,
+    10.8
+   ],
+   "look": [
+    3.1,
+    10.2
+   ]
+  },
+  "bathroom2": {
+   "pos": [
+    0.48,
+    11.93
+   ],
+   "look": [
+    3.1,
+    12.4
+   ]
+  },
+  "study": {
+   "pos": [
+    -0.17,
+    13.12
+   ],
+   "look": [
+    0.25,
+    16.5
+   ]
+  },
+  "side_passage": {
+   "pos": [
+    4.05,
+    17.0
+   ],
+   "look": [
+    4.0,
+    9.0
    ]
   }
  },
- "glb": {
-  "nodes": 824,
-  "meshes": 558,
-  "instanced_nodes": 266,
-  "triangles": 741986,
-  "materials": 360,
-  "images": 92,
-  "nodes_with_extras": 824,
-  "interactive": 244,
-  "extensions": [
-   "EXT_meshopt_compression",
-   "EXT_texture_webp",
-   "KHR_materials_emissive_strength",
-   "KHR_materials_sheen",
-   "KHR_mesh_quantization"
+ "spawn": {
+  "pos": [
+   0.0,
+   3.0
   ],
-  "bytes": 20183760
- }
+  "yaw": 0,
+  "level": "G"
+ },
+ "toneMapping": "agx",
+ "exposure": 0.6598,
+ "whiteBalance": [
+  [
+   0.72829,
+   -0.30193,
+   -0.12443
+  ],
+  [
+   0.02075,
+   1.16914,
+   -0.02916
+  ],
+  [
+   0.03676,
+   0.13243,
+   2.54723
+  ]
+ ],
+ "sky": {
+  "image": "sky.jpg",
+  "color": "#6587a3",
+  "sunDir": [
+   0.4288,
+   -0.8066,
+   0.4068
+  ]
+ },
+ "firstView": {
+  "bytes": 29428392,
+  "files": [
+   "glb/G.glb",
+   "lightmaps/vestibule.jpg",
+   "lightmaps/hallway.jpg",
+   "lightmaps/stairs.jpg",
+   "lightmaps/living.jpg",
+   "lightmaps/kitchen.jpg",
+   "lightmaps/wc.jpg",
+   "lightmaps/utility.jpg",
+   "lightmaps/dining.jpg",
+   "probes/vestibule.jpg",
+   "probes/hallway.jpg",
+   "probes/stairs.jpg",
+   "probes/living.jpg",
+   "probes/kitchen.jpg",
+   "probes/wc.jpg",
+   "probes/utility.jpg",
+   "probes/dining.jpg",
+   "manifest.json",
+   "house.json",
+   "plan.json",
+   "footprints.json"
+  ]
+ },
+ "encoding": "8-bit sRGB JPEG; linear = srgbDecode(px) * intensity; lightmaps = Cycles diffuse direct+indirect without albedo (radiance of a white surface: multiply by PI for three.js lightMap), on TEXCOORD_1, flipY false; probes = equirect radiance, image centre +X, pos in plan metres (x, y, z up); white balance of the previews already applied; whiteBalance = that matrix (scene linear, rows) for emissive colours, which the GLBs carry unbalanced; sky.image = the world alone as DISPLAYED (view transform, exposure and white balance in the pixels: use as an sRGB equirect background, same orientation as the probes), sky.color its mean above the horizon, sky.sunDir the unit vector to the sun (x, y, z up); lightmapsOff / probesOff = the same encoding, UVs, object lists and probe positions with every lamp and emissive off: sun + sky, plus indoors a cool ambient-occlusion term (radiance 0.15 x (0.9, 0.95, 1.0) on an open wall as encoded; lit rooms have about 0.9) that keeps dark rooms readable (probes: the same radiance added uniformly, so a probe-lit object matches the wall beside it); lightmaps half the size, own intensity per image (indoors at most 1.8); circuits = per lighting circuit of a room with several, the same encoding and UVs at half size holding the light of that circuit's lamps alone (no sun, sky, ambient or emissive surfaces): with some circuits lit the room shows lightmapsOff + the sum of the lit circuits, with all lit the lightmaps atlas; share = its part of the sum of the circuits' mean radiance (scales the probe light), groups = ix group ids that switch it (other switches of the room switch every circuit), emissive = untagged emissive meshes that glow with it; bytes = file sizes; firstView = what loads before level G shows"
 }

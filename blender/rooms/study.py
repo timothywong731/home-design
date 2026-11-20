@@ -10,8 +10,8 @@ Walls, door, window with its opening casements, skirting and cove are shell. Bui
 
 Deviations from the spec (all inside its +-0.2 m furniture tolerance), so that doors, drawers and the walker clear:
 desks 0.15 further east (desk B x 0.30..1.50, desk A x 1.50..2.30) - the bookcase doors open into the lane beside
-desk B; radiator and a/c 0.06 / 0.04 further west and the curtain pole x 0.32..2.16, because the reconciled window is
-1.50 wide (x 0.48..1.98) instead of the 1.00 the wall inventory was measured against.
+desk B; radiator and a/c 0.06 / 0.04 further west. The window is 1.00 wide (x 0.76..1.76, round 3); the curtain pole
+runs x 0.40..2.12, 0.26 clear of the a/c.
 Corrected from the footage: the drawer pedestal stands in front of the radiator (x -0.45..-0.09, y 16.08..16.66) with
 its drawer face to the south and four drawers (three shallow, one deep: hr_v4_449), not five facing east; the only
 plate on the E wall is a single-gang outlet at z 1.03 (v4:f_0486), not a double socket at 0.40; the flat monitor's
@@ -24,7 +24,7 @@ from mathutils import Matrix, Vector
 
 from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell
 from rooms import study_parts as S
-from rooms.study_parts import T, RX, RZ, facing, m
+from rooms.study_parts import T, RZ, facing, m
 
 ROOM = 'study'
 ART = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'textures', 'art'))
@@ -90,9 +90,11 @@ def fittings(ctx, add, on, fz, cz, W, N, E):
     add(on(S.outlet_plate('study.outlet'), XE, 15.80, 1.03, face=E), 'fit')   # single-gang plate, centre outlet (v4:f_0486)
     add(on(S.detector('study.detector'), 2.30, 16.30, cz - fz), 'fit')
 
+    fr = ctx.opening_frame('w_study')
+    x0, x1 = fr['center'].x - fr['width'] / 2, fr['center'].x + fr['width'] / 2
     mb = mo.MB()                                                   # oak window board in the reveal, nosing to the room
-    mb.box((0.482, YN, fz + .681), (1.978, YN + .198, fz + .706), 'oak_door', bev=.003, grain=0)
-    mb.box((0.45, YN - .035, fz + .681), (2.01, YN, fz + .706), 'oak_door', bev=.006, grain=0)
+    mb.box((x0 + .002, YN, fz + .681), (x1 - .002, YN + .198, fz + .706), 'oak_door', bev=.003, grain=0)
+    mb.box((x0 - .03, YN - .035, fz + .681), (x1 + .03, YN, fz + .706), 'oak_door', bev=.006, grain=0)
     add(mb.finish('study.window_board'), 'fit')
 
     tv = on(P.tv_panel(1.45, .83, depth=.03, standoff=.02, name='study.tv'), XW, 15.35, 1.555, face=W)
@@ -114,9 +116,10 @@ def fittings(ctx, add, on, fz, cz, W, N, E):
 def curtains(add, on, fz, N):
     """Pair with an eyelet heading on a mid-oak pole with ball finials (hr_v4_559), tied back (state 0) or drawn
     (state 1). The heading rises 50 mm above the pole axis and the pole runs through it on brushed-steel eyelet
-    rings; the rings are part of each state (bunched over the stacks / spread across). Pole x 0.32..2.16, so the
-    west finial stays clear of the a/c (x <= 0.235)."""
-    xc, zp, sd, span, stack = 1.24, 2.26, .062, 1.80, .30           # pole centre x, axis z, axis off the wall
+    rings; the rings are part of each state (bunched over the stacks / spread across). Pole x 0.40..2.12 over the
+    1.00 window, so the west finial stays clear of the a/c (x <= 0.235)."""
+    xc, zp, sd, span, stack = 1.26, 2.26, .062, 1.68, .34           # pole centre x, axis z, axis off the wall; the
+    # drops' inner edges on the window jambs (x 0.76 / 1.76), as in v4 f_0560
     kw = dict(width=span, height=2.28, mat=CURTAIN, stack=stack, tie_from_top=1.36, tassel=.15)   # top 2.31, hem 0.03, tie 0.95
     pole = P.curtain_pole(span + .04, .03, 'ball', rings=0, mat=M.solid('study_pole', POLE, .45), standoff=sd,
                           name='study.curtain.pole')
@@ -143,12 +146,6 @@ def curtains(add, on, fz, N):
         for x in xs:                                                 # eyelets hang on the pole: centre 5 mm below its axis
             mb.tube([(x, YN - sd + .022 * math.cos(t), fz + zp - .005 + .022 * math.sin(t))
                      for t in (math.tau * k / 10 for k in range(10))], .0045, 'silver_satin', n=6, closed=True, up=(1, 0, 0))
-        if not closed:                                               # tie-back hooks reach the wall (the cloth's own stop 35 mm off it)
-            for x in (lo - .012 - .0001, hi + .012 + .0001):
-                mb.tube([(x, YN, fz + .98), (x, YN - .037, fz + .98)], .005, 'brass', n=6)
-                mb.at(T(x, YN, fz + .98) @ RX(90))
-                mb.lathe([(0, 0), (.014, 0), (.012, .003), (0, .004)], 'brass', 10)
-                mb.at()
         rings = add(mb.finish(nm + '.rings'), 'decor', lm='dynamic')
         IX.tag_many([cloth, rings], 'show', g='study.curtain', when=state, fx='none')
 

@@ -6,7 +6,7 @@ Heights `h` of the spec are above the basement floor: Z = h - 2.31. The reconcil
 """
 import math
 
-from mathutils import Matrix, Vector
+from mathutils import Matrix
 
 from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, shell, stairs as LS
 
@@ -50,7 +50,7 @@ def _shaft(ctx):
     """Linings of the shaft above shelf level: the shell stops at the hall floor and the spandrel is one-sided."""
     beige, sof = M.paint(BEIGE), M.paint(SOFFIT)
     y4 = ctx.stair('stair_main')['firstStraightRiserY']                      # 5.60: the clean rake starts here
-    yn = ctx.stair('stair_main')['newel'][1]                                 # 5.33: all winder soffits meet here
+    yn = ctx.stair('stair_main')['newel'][1]                                 # 5.42: all winder soffits meet here
     mb = mo.MB()
     # back of the spandrel = upper west wall, with the 0.07 jog at y 6.45 (basement.md 3.2)
     top = lambda y: soffit(ctx, y) + 0.01
@@ -95,9 +95,7 @@ def _steps(ctx):
     mb.box((X_W, Y_S, zw2), (X_W + b, yf, zw2 + b), WHITE)                   # W2 against the west wall
     mb.box((X_E, yf - b, zw2), (1.25, yf, zw2 + b), WHITE)                   # W2 against the pier
     mb.box((X_W, Y_S, zw1), (1.25, Y_S + b, zw1 + b), WHITE)                 # W1 against the south wall
-    # the shell carries the R9 riser tile across the pier face (x 0.93..1.25): wall paint over it, 1 mm proud
-    mb.box((X_E + 0.001, yf - 0.002, zw2 + b), (1.2495, yf - 0.001, zt(n_str - 1)), M.paint('#F3F2EE'))
-    s = TT + 0.0008                                                          # trims sit 0.8 mm proud of the tile skin
+    s = 0.0008                                                               # trims sit 0.8 mm proud of the carcass
     for n in range(2, n_str + 1):
         mb.box((X_W + 0.001, R(n) - s, zt(n - 1) - 0.010), (X_E - 0.001, R(n) + 0.010, zt(n - 1) + s), trim)
     p0, p1 = (X_W, Y_S), (1.25, yf)                                          # R10, the diagonal winder riser
@@ -112,77 +110,6 @@ def _steps(ctx):
     for y in (7.613, 7.635):
         ins.box((X_W + 0.004, y, 0.0055), (0.871, y + 0.012, 0.0072), 'black_matt')
     ctx.add(ins.finish('basement_stair.nosing_inserts'), ST, 'trim')
-
-
-TT = 0.002                                   # tile skin thickness
-_COLS = [round(1024 * i / 6) for i in range(7)]                 # wood_tile_floor_dark_col.jpg (1024 x 2048 px):
-_STAGGER = (0.0, 0.34, 0.71, 0.12, 0.60, 0.88)                  # 6 columns x 3 planks, gen/woods.py wood_tile_floor()
-_TEX_W, _TEX_H = 1.221, 3.6105                                  # metres per repeat (manifest size_m)
-
-
-def _plank(i, length):
-    """UV rect (u0, u1, v0, v1) inside one whole plank of the texture, `length` metres of it along V (clamped)."""
-    c, m = (i * 5 + 1) % 6, 6                                   # column; margin px clear of the grout
-    cuts = sorted((j * 682 + int(_STAGGER[c] * 682)) % 2048 for j in range(3))
-    r0, r1 = cuts[i % 2], cuts[i % 2 + 1]                      # a plank that does not wrap the image edge
-    need = min(length / _TEX_H * 2048, r1 - r0 - 2 * m)
-    ra = r0 + m + (i * 0.618 % 1) * (r1 - r0 - 2 * m - need)
-    return (_COLS[c] + m) / 1024, (_COLS[c + 1] - m) / 1024, 1 - ra / 2048, 1 - (ra + need) / 2048
-
-
-def _tiles(ctx):
-    """2 mm wood-effect tile skin over the carcass treads and risers with explicit UVs: each straight tread and riser
-    is one uncut plank laid across the stair, the winders W1 / W2 are planked parallel to R10 (basement.md 3.1)."""
-    rise, going, y1, n = _stair(ctx)
-    R = lambda k: y1 - going * (k - 1)
-    zt = lambda k: -rise * k
-    e, tile = 0.001, M.mat('wood_tile_floor_dark')
-    yf, zw2, zw1, zf = R(n), zt(n), zt(n + 1), zt(n + 2)
-    mb = mo.MB()
-    for k in range(1, n):                                                    # T1..T8
-        mb.box((X_W + e, R(k + 1), zt(k)), (X_E - e, R(k), zt(k) + TT), tile)
-    for k in range(1, n + 1):                                                # R1..R9 (R1 stops under the threshold)
-        mb.box((X_W + e, R(k) - TT, zt(k) + TT), (X_E - e, R(k), zt(k - 1) + (TT if k > 1 else 0)), tile)
-    mb.prism([(X_W + e, yf, zw2), (1.25, yf, zw2), (X_W + e, Y_S + e, zw2)], (0, 0, TT), tile)          # W2
-    mb.prism([(1.25, yf - e, zw1), (1.25, Y_S + e, zw1), (X_W + e, Y_S + e, zw1)], (0, 0, TT), tile)    # W1
-    d = Vector((1.25 - X_W, yf - Y_S))
-    ln = d.length
-    d.normalize()
-    mb.at(Matrix.Translation((X_W, Y_S, 0)) @ Matrix.Rotation(math.atan2(d.y, d.x), 4, 'Z'))
-    mb.box((0, -TT, zw1 + TT), (ln, 0, zw2 + TT), tile)                      # R10, 2 mm proud toward W1
-    mb.at()
-    mb.box((1.25, Y_S + e, zf), (1.25 + TT, yf - e, zw1 + TT), tile)         # R11, faces the room
-    ob = mb.finish('basement_stair.tiles')
-
-    nd = Vector((d.y, -d.x))                                                 # across R10, toward W1
-    uv = ob.data.uv_layers[0].data
-    vs = ob.data.vertices
-    for p in ob.data.polygons:
-        c, nn = p.center, p.normal
-        ax = max(range(3), key=lambda i: abs(nn[i]))
-        if abs(nn.x) > 0.3 and abs(nn.y) > 0.3:                              # R10
-            rect, st = _plank(32, ln), lambda q: ((q.z - zw1) / rise, (q.x - X_W) * d.x + (q.y - Y_S) * d.y)
-            sc = (1.0, ln)
-        elif ax == 2 and round(-c.z / rise) >= n:                            # W2, W1: world planks along R10,
-            rect = None                                                      # a column joint on the R10 line
-        elif ax == 2:
-            k = round(-c.z / rise)
-            rect, st, sc = _plank(k, X_E - X_W), lambda q, k=k: ((q.y - R(k + 1)) / going, q.x - X_W), (1, X_E - X_W)
-        elif ax == 1:
-            k = int(-c.z / rise) + 1
-            rect, st, sc = _plank(20 + k, X_E - X_W), lambda q, k=k: ((q.z - zt(k)) / rise, q.x - X_W), (1, X_E - X_W)
-        else:                                                                # R11 (and the 2 mm side faces)
-            rect, st, sc = _plank(31, yf - Y_S), lambda q: ((q.z - zf) / rise, q.y - Y_S), (1, yf - Y_S)
-        for li in p.loop_indices:
-            q = vs[ob.data.loops[li].vertex_index].co
-            if rect is None:
-                a, b = (q.x - X_W) * d.x + (q.y - Y_S) * d.y, (q.x - X_W) * nd.x + (q.y - Y_S) * nd.y
-                uv[li].uv = (b / _TEX_W, a / _TEX_H)
-                continue
-            s_, t_ = st(q)
-            s_, t_ = min(max(s_ / sc[0], 0), 1), min(max(t_ / sc[1], 0), 1)
-            uv[li].uv = (rect[0] + s_ * (rect[1] - rect[0]), rect[2] + t_ * (rect[3] - rect[2]))
-    ctx.add(ob, ST, 'fit')
 
 
 def _extinguisher(ctx):
@@ -271,7 +198,6 @@ def _lights(ctx):
 
 def build(ctx):
     _shaft(ctx)
-    _tiles(ctx)
     _steps(ctx)
     _extinguisher(ctx)
     _ornaments(ctx)

@@ -193,7 +193,7 @@
  },
  "carpet_silver_beige": {
   "base": "carpet_silver_beige_col.jpg",
-  "mean": "#C9C2B3",
+  "mean": "#A9A397",
   "metal": 0.0,
   "nrm": "carpet_mink_nrm.jpg",
   "nrm_strength": 1.0,
@@ -211,7 +211,7 @@
    1.0,
    1.0
   ],
-  "target": "#C9C2B3"
+  "target": "#A9A397"
  },
  "check_grey": {
   "base": "check_grey_col.jpg",
@@ -346,7 +346,7 @@
  },
  "concrete_setts_grey_buff": {
   "base": "concrete_setts_grey_buff_col.jpg",
-  "mean": "#A49A8D",
+  "mean": "#A29B8F",
   "metal": 0.0,
   "note": "tumbled 160 mm setts, three tones",
   "nrm": "concrete_setts_grey_buff_nrm.jpg",
@@ -357,8 +357,8 @@
   ],
   "rough": 0.9,
   "seam": [
-   0.1,
-   0.05
+   0.09,
+   0.04
   ],
   "size_m": [
    1.968,
@@ -880,9 +880,9 @@
  },
  "porcelain_calacatta_slab": {
   "base": "porcelain_calacatta_slab_col.jpg",
-  "mean": "#EDEAE1",
+  "mean": "#E4DFD3",
   "metal": 0.0,
-  "note": "1.2 m slabs, veins #8E8A82 / #B79A55",
+  "note": "1.2 m slabs, gold bands #B9A06A, veins #9C9A93",
   "px": [
    1024,
    1024
@@ -896,7 +896,7 @@
    1.2,
    1.2
   ],
-  "target": "#F1EEE6"
+  "target": "#EDE9E0"
  },
  "porcelain_grey": {
   "base": "porcelain_grey_col.jpg",
@@ -1396,5 +1396,28 @@
    3.6105
   ],
   "target": "#7B6F5C"
+ },
+ "wood_tile_floor_grey": {
+  "base": "wood_tile_floor_grey_col.jpg",
+  "mean": "#6B6A66",
+  "metal": 0.0,
+  "note": "planks 200x1200 along V",
+  "nrm": "wood_tile_floor_nrm.jpg",
+  "nrm_strength": 1.0,
+  "orm": "wood_tile_floor_orm.jpg",
+  "px": [
+   1024,
+   2048
+  ],
+  "rough": 0.5,
+  "seam": [
+   0.14,
+   0.18
+  ],
+  "size_m": [
+   1.221,
+   3.6105
+  ],
+  "target": "#6B6A66"
  }
 }

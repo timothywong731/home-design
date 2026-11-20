@@ -131,3 +131,57 @@ def build(ctx):
         ctx.add(ob, ROOM, 'decor', plan_sym='pipe' if k == 0 else None)
     zr = ctx.ground_z(1.0, -7.65)
     ctx.add(shell.box('front.road_line', -2.6, 7.6, -7.70, -7.60, zr, zr + 0.004, '#E6E6E2'), ROOM, 'fit')
+    opposite_row(ctx)
+
+
+OPPOSITE = (-15.0, 20.0, -21.5, 9.0)      # x from, x to, front face y, depth: the row across the street (front.md 37 / 142)
+HOUSE_W, EAVES, RIDGE = 5.0, 6.2, 9.0
+
+
+def opposite_row(ctx):
+    """[round 4] The far side of the street (Q11: past the street tree there was asphalt to the horizon): a continuous row
+    of gabled two-storey-plus-attic houses about 22 m away, red brick with every other upper storey in white render,
+    dark windows, low front walls and the opposite footway; the carriageway and our footway carried on beyond the
+    zones of house.json. Massing as backdrop, room 'neighbours' (the dollhouse hides it; quarter-density bake).
+    ponytail: one object, no window frames or chimneys - it is seen from 20 m and more (v2 f_0944 / f_0950)."""
+    from lib.site import _Mesh
+    m = _Mesh()
+    x_from, x_to, yf, depth = OPPOSITE
+    yb, z0 = yf - depth, -0.5
+    for lo, hi, key, top in (((-15, -15.2, z0), (-3, -7.2, -0.28), 'asphalt', 'asphalt'),       # road beyond the zone
+                             ((8, -15.2, z0), (20, -7.2, -0.28), 'asphalt', 'asphalt'),
+                             ((-15, -7.2, z0), (-3, -5.2, -0.16), 'concrete_flags', None),     # our footway, both ends
+                             ((8, -7.2, z0), (20, -5.2, -0.16), 'concrete_flags', None),
+                             ((-15, -17.2, z0), (20, -15.2, -0.16), 'concrete_flags', None),   # the opposite footway + kerb
+                             ((-15, yf, z0), (20, -17.45, -0.12), '#5F6B4C', None)):           # front gardens
+        m.box(lo, hi, key, only=('+z', '+y', '-y'))
+    m.box((-15, -17.45, -0.16), (20, -17.2, 0.45), 'red_brick', only=('+z', '+y', '-y'))      # low front walls
+    doors = ('#1F3A5F', '#5A1E1E', '#2F4F3A', '#202020', '#6B5A3A')
+    n = int(round((x_to - x_from) / HOUSE_W))
+    for i in range(n):
+        x0, x1 = x_from + i * HOUSE_W, x_from + (i + 1) * HOUSE_W
+        xc, ov = (x0 + x1) / 2, 0.2
+        m.face([(x1, yf, z0), (x0, yf, z0), (x0, yf, EAVES), (xc, yf, RIDGE), (x1, yf, EAVES)], 'red_brick')   # gable
+        m.face([(x0, yb, z0), (x1, yb, z0), (x1, yb, EAVES), (xc, yb, RIDGE), (x0, yb, EAVES)], 'stock_brick_grey')
+        m.face([(x0, yf, z0), (x0, yb, z0), (x0, yb, EAVES), (x0, yf, EAVES)], 'stock_brick_grey')
+        m.face([(x1, yb, z0), (x1, yf, z0), (x1, yf, EAVES), (x1, yb, EAVES)], 'stock_brick_grey')
+        ze, zr = EAVES - ov * (RIDGE - EAVES) / (xc - x0), RIDGE + 0.12
+        m.face([(x0 - ov, yf + ov, ze), (x0 - ov, yb - ov, ze), (xc, yb - ov, zr), (xc, yf + ov, zr)], 'slate')
+        m.face([(xc, yf + ov, zr), (xc, yb - ov, zr), (x1 + ov, yb - ov, ze), (x1 + ov, yf + ov, ze)], 'slate')
+        y1 = yf + 0.01
+        if i % 2:                                                       # white render above the ground floor
+            m.face([(x1, y1, 3.1), (x0, y1, 3.1), (x0, y1, EAVES), (xc, y1, RIDGE - 0.02), (x1, y1, EAVES)], '#EEEBE2')
+
+        def rect(a, b, za, zb, key, y):                                # a window / door face on the front (+Y)
+            m.face([(b, y, za), (a, y, za), (a, y, zb), (b, y, zb)], key)
+        y2, y3 = yf + 0.02, yf + 0.03
+        rect(x0 + 0.5, x0 + 2.5, 0.55, 2.35, '#F2F1EC', y2)             # ground-floor bay: white frame, dark glass
+        rect(x0 + 0.6, x0 + 2.4, 0.65, 2.25, '#2B3135', y3)
+        rect(x1 - 1.6, x1 - 0.6, -0.12, 2.15, '#F2F1EC', y2)            # front door in a white frame
+        rect(x1 - 1.5, x1 - 0.7, -0.12, 2.05, doors[i % len(doors)], y3)
+        for a in (x0 + 0.7, x1 - 1.7):                                  # two first-floor sashes
+            rect(a, a + 1.0, 3.55, 5.05, '#F2F1EC', y2)
+            rect(a + 0.08, a + 0.92, 3.63, 4.97, '#2B3135', y3)
+        rect(xc - 0.45, xc + 0.45, 6.55, 7.65, '#F2F1EC', y2)           # attic window in the gable
+        rect(xc - 0.37, xc + 0.37, 6.63, 7.57, '#2B3135', y3)
+    m.obj(ctx, 'neighbours.opposite', 'neighbours', kind='decor')

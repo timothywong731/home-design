@@ -5,15 +5,19 @@ spec/rooms/landing1.md 11).
     "$B" -b --factory-startup --python blender/build.py -- --levels G,1 --only shell,stairs --preview stairs \\
         --res 540x960 --samples 64 --tag stairs
 
-Dresses the shell carcass of house.json `stair_main` (15 risers of 0.19, going 0.23, R4 at y 5.60, newel (0.20, 5.33),
+Dresses the shell carcass of house.json `stair_main` (15 risers of 0.19, going 0.23, R4 at y 5.60, newel (0.20, 5.42),
 R15 = quarter-landing nosing at y 8.13, Z 2.85).  The carcass keeps its raked soffit (the ceiling of the basement stair
 below); only its plain tread / riser faces are deleted and replaced by the carpet here.  Built here: carpet with
 wrapped nosings (bullnose R1, R2 / R3 radiating from the newel), cut string, returned tread nosings, panelled spandrel
-and its skirting (closing the basement shaft from the hall), foot newel, handrail and spindles up to the landing1 top
-newel, the white drop of that newel under the string, the wall string and raking dado over the 45-degree face and the
-staircase wall with the greige band under it, the three watercolours P1-P3 (crops: stairs_art.py), one downlight,
-and the hall ceiling (2.95) carried flat over the stair foot to the R4 line with the hall cornice returned to its edge.
-Nothing on the stairs is operable (no switch on the stairs: the hall plate switches them, rooms/hallway.py).
+and its skirting (closing the basement shaft from the hall), foot newel, handrail and spindles, the white drop of the
+landing1 top newel under the string, the wall string and raking dado over the 45-degree face and the staircase wall
+with the greige band under it, the three watercolours P1-P3 (crops: stairs_art.py), one downlight, and the hall
+cornice returned along the staircase wall to the square edge of the hall ceiling (house.json zone stair_foot, 2.95).
+The handrail dies into the underside of the white fascia under the first-floor strip capping (rooms/stairs2.py) about
+0.5 m short of the top newel, as in v6 f_0038; the spindles beyond stop under that fascia (the strip's own spindles
+stand on the capping above them, v4 f_0183).
+Nothing on the stairs is operable: the stair downlight is on the landing circuit (hall plate's left gang, the landing
+switches; ground_corrections 1, landing1.md 8.2).
 
 Raking dado as filmed: level 0.965 on the hall wall, rakes up the diagonal at the pitch to 1.36 at the internal corner
 (HA1, re-measured on v3 f_0009 against the hall rail and P1), a 0.12 level piece, then straight to the landing rail
@@ -28,6 +32,7 @@ import bpy
 from mathutils import Matrix
 
 from lib import lighting, materials as M, mouldings as mo, props as P, shell
+from rooms import stairs2_parts as SP2
 
 ROOM = 'stairs'
 ART = Path(__file__).resolve().parents[1] / 'textures' / 'art'
@@ -208,6 +213,23 @@ def _newel():
     return _square(mb.finish(f'{ROOM}.newel'), h)
 
 
+def _clip_shaft(ob, origin, x0, y0, z0, slope):
+    """Delete the part of `ob` (local frame at `origin`) that hangs into the basement stair shaft: east of x0 and under
+    the raked soffit z = z0 + slope * (y - y0).  The cut faces lie on the shaft's wall and soffit linings, which hide
+    them (the foot newel stands at the edge of the shaft since the winders fan from (0.20, 5.42))."""
+    ox, oy, oz = origin
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    n = (0.0, slope, -1.0)
+    for co, no in (((x0 - ox, 0, 0), (1, 0, 0)), ((0, y0 - oy, z0 - oz), n)):
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-6, plane_co=co, plane_no=no)
+    below = lambda c: slope * (c.y + oy - y0) - (c.z + oz - z0) > 1e-6
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_center_median().x + ox > x0 + 1e-6
+                               and below(f.calc_center_median())], context='FACES')
+    bm.to_mesh(ob.data)
+    bm.free()
+
+
 def _bezier(p0, p1, p2, p3, n):
     return [tuple((1 - t) ** 3 * a + 3 * t * (1 - t) ** 2 * b + 3 * t * t * (1 - t) * c + t ** 3 * d
                   for a, b, c, d in zip(p0, p1, p2, p3)) for t in (i / n for i in range(n + 1))]
@@ -377,14 +399,10 @@ def build(ctx):
              up=(-1, 0, 0))
     wall_string = ws.finish(f'{ROOM}.wall_string')
 
-    # ---- hall ceiling carried flat over the stair foot to the R4 line, ending in a plain square edge (v1 f_0245,
-    # v6 f_0041 / f_0043; house.json has the 3.17 landing soffit from y 5.05).  The hall cornice on the 45-degree
-    # face returns along the staircase wall to that edge.
-    zc, zs = ctx.ceil_z('hallway', 0.0, 5.0), ctx.ceil_z(ROOM, 0.5, 5.8)          # 2.95, 3.17
-    cs = mo.MB()                                                     # plan outline clockwise: outward side faces
-    cs.prism([(X_OPEN, py, zc), (X_OPEN, r4, zc), (X_WALL, r4, zc), (qx, qy, zc), (px, py, zc)], (0, 0, zs - zc),
-             shell.material(shell.finish('hallway')['ceiling']))
-    ceil_slab = cs.finish(f'{ROOM}.ceiling_foot')
+    # ---- the hall ceiling runs flat over the stair foot to the R4 line and ends in a plain square edge (shell zone
+    # stair_foot, Z 2.95; v1 f_0245, v6 f_0041 / f_0043): the hall cornice on the 45-degree face returns along the
+    # staircase wall to that edge.
+    zc = ctx.ceil_z(ROOM, 0.5, 5.3)                                  # 2.95
     cc = mo.MB()
     cc.sweep(mo.PROFILES['cornice_hall'], [(X_WALL, qy, zc), (X_WALL, r4, zc)], 'plaster_white', ends=(m_ic, None))
     B = mo.HALL_BAND
@@ -405,21 +423,37 @@ def build(ctx):
     gb.face([(X_WALL - e, y, z) for y, z in wall_band], grey, hint=(-1, 0, 0))
     band = gb.finish(f'{ROOM}.dado_band')
 
-    # ---- balustrade: foot newel, handrail to the landing1 newel, two spindles per tread --------------------------
+    # ---- balustrade: foot newel, handrail up to the strip fascia (v6 f_0038), two spindles per tread ------------------
     newel = _newel()
     newel.location = (nx, ny, 0)
+    # its north-east corner overhangs the basement stair shaft: cut it back to the linings of rooms/basement.py
+    # (wall face x 0.156, raked soffit -0.004 at y 5.42 rising 2.5 per m) + 6 mm, so no mahogany shows down there
+    _clip_shaft(newel, (nx, ny, 0), 0.156, 5.42, 0.002, 2.5)
     U = lambda y: NL(y) + RAIL_H - 0.055 * k                         # underside of the handrail
-    ya, yb = y_newel - 0.005, tny - tns + 0.006                      # into both newels (the top one's shaft)
+    # underside of the white fascia under the strip capping (rooms/stairs2.py): 3.32 by the strip, 3.13 by the step
+    fascia = lambda y: ctx.floor_z('landing1_front', X_RAIL - 0.2, y) - SP2.STRIP_FASCIA
+    ya, yb = y_newel - 0.005, y_newel
+    while U(yb) + 0.055 * k < fascia(yb) + 0.025:                    # rail top 25 mm into the fascia, then stop
+        yb += 0.005
     rail = mo.sweep(_handrail(k), [(X_RAIL, ya, U(ya)), (X_RAIL, yb, U(yb))], name=f'{ROOM}.handrail', material=_wood())
     SP = (0.045, 0.16)                                               # two per tread at 0.115 centres (f_0777)
     heights = [U(R(4) + dy) - 4 * rise + 0.02 for dy in SP]          # tops let into the rail
     protos = [_spindle(f'{ROOM}.spindle.p{i}', h, base) for i, (h, base) in enumerate(zip(heights, (0.20, 0.295)))]
-    spindles = []
+    spindles, short = [], {}
     y_last = tny - tnh - 0.0225 - 0.03                               # a base block 30 mm clear of the top newel's foot
     for n in range(3, last + 1):
         for dy, proto in zip(SP, protos):
-            ob = bpy.data.objects.new(f'{ROOM}.spindle.{len(spindles):02d}', proto.data)         # shared mesh
-            ob.location = (X_RAIL, min(R(n) + dy, y_last), n * rise)  # the top stays housed in the rail
+            y = min(R(n) + dy, y_last)
+            me = proto.data                                          # shared mesh; the top stays housed in the rail
+            if y + 0.0225 > yb - 0.03:                               # past the rail: up to the fascia, let in 5 mm
+                h = round(fascia(y) + 0.005 - n * rise, 3)
+                if h not in short:
+                    sp = _spindle(f'{ROOM}.spindle.s', h, 0.20) if h - 0.35 >= 0.46 else SP2.stub(f'{ROOM}.spindle.s', h)
+                    short[h] = sp.data
+                    bpy.data.objects.remove(sp)
+                me = short[h]
+            ob = bpy.data.objects.new(f'{ROOM}.spindle.{len(spindles):02d}', me)
+            ob.location = (X_RAIL, y, n * rise)
             spindles.append(ob)
     for ob in protos:
         bpy.data.objects.remove(ob)
@@ -431,7 +465,6 @@ def build(ctx):
     for ob in (newel, rail, *spindles):
         ctx.add(ob, ROOM, 'joinery', lm='dynamic')
     ctx.add(wall_string, ROOM, 'trim')
-    ctx.add(ceil_slab, ROOM, 'fit')
     ctx.add(cornice, ROOM, 'trim')
     ctx.add(band, ROOM, 'trim')
 

@@ -281,3 +281,7 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   radiator, window x 3.42..4.22).
 - North wall = rear wall of the main house (8.73..9.03); the back addition's flank outer face is x **3.40**, so the
   window reveal starts 0.02 east of it. East wall is external.
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- Upper wall paint #AAACA7 (measured against v4 f_0106 / f_0164 / f_0246, normalised to the tile) is now the
+  shell finish; the room module's repaint is a no-op.

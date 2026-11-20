@@ -9,6 +9,7 @@ blender -b [--factory-startup] build/home.blend --python blender/export.py -- --
 import argparse
 import importlib
 import json
+import re
 import shutil
 import struct
 import subprocess
@@ -28,15 +29,32 @@ GLTF_TRANSFORM = 'npx --yes @gltf-transform/cli@4.5.1'
 
 # ---- knobs and budgets (MULTILEVEL.md sections 5 and 10)
 ATLAS_CAP = {}                                   # room -> largest atlas side: the one knob when a budget fails
-NONCOLOUR_MAX = 512                              # px: cap of the normal and ORM maps in the GLBs (colour maps: 2048)
+NONCOLOUR_MAX = 512                              # px: cap of the normal and ORM maps in the GLBs
+COLOUR_MAX = 1024                                # px: cap of the other colour maps (the hero art keeps up to 2048)
+HERO_DIR = ROOT / 'blender' / 'textures' / 'art'
 FAR_ROOMS = ('facade', 'roof', 'neighbours')     # quarter density, no lights-off atlas, never named by a switch
 SITE_NAMES = {'front': 'Front', 'side_passage': 'Side passage', 'garden': 'Garden', 'shed': 'Shed'}
 LOAD_ORDER = ('G', 'X', '1', '2', 'B')
+# ix group -> lighting circuit (INTERACT.md, Circuits) for a tag without its own 'circuit' key; a tag's key wins.
+# Empty since round 3: the modules tag circuit= themselves
+CIRCUIT = {}
 MB = 1e6
 TRIANGLES = {'G': 850e3, '1': 1.3e6, '2': 850e3, 'B': 150e3, 'X': 850e3}     # the numbers of build.py report_tris
 TRIANGLES_ALL = 4.0e6
 GLB_MAX, GLB_G_MAX, FILE_MAX, FIRST_VIEW_MAX, SITE_MAX = 40 * MB, 21.5 * MB, 50 * MB, 35 * MB, 300 * MB
 ATLAS_BYTES, PROBE_BYTES = 2.7 * MB, 0.1 * MB    # first-view estimate before the bake: a 4096 px atlas, a probe
+# [round 4] probe spots (x, y, z world) where export_bake.probe_point's most open spot is wrong: basement_stair's lay
+# under the top treads (Z -0.6: lit 0.11, darker than its own lights-off probe, so everything probe-lit on the west ledge
+# was black), eaves_front's outside the eaves behind the bay gable. Over the flight at eye height / inside the void.
+PROBE_AT = {'basement_stair': (0.6, 6.4, 0.1), 'eaves_front': (2.2, 1.7, 7.0)}
+# [round 4] room-jump views (manifest viewpoints, plan (x, y) of the eye and of the point looked at) for the rooms
+# whose first still is not taken from their own walkable floor (the viewer silently drops a view outside the room):
+# front (the still stands across the street; between the cars instead of behind the grey one), basement (the first
+# still is on its stair), garden / shed / balcony (their stills stand in the garden), and yellow_room (from the door
+# toward the window, not into the blank corner).
+VIEWPOINT = {'front': ((2.0, -4.9), (1.0, 0.0)), 'basement': ((2.55, 7.55), (4.2, 8.0)),
+             'garden': ((1.4, 18.3), (2.2, 24.0)), 'shed': ((3.35, 25.6), (1.2, 28.6)),
+             'balcony': ((0.35, 17.55), (2.3, 17.95)), 'yellow_room': ((0.8, 10.55), (3.1, 10.35))}
 
 
 def log(msg):
@@ -199,18 +217,41 @@ def export_glb(path, objs):
         export_animations=False, export_skins=False, export_morph=False, export_gpu_instances=False)
 
 
-def compress(raw, out):
-    """glTF-Transform: textures capped at 2048 (normal / ORM maps at NONCOLOUR_MAX: all five level GLBs together decoded
-    to 880 MB of RGBA8 + mips, 390 MB of it in those maps), colour textures to WebP (normal / ORM maps stay JPEG: recompressing
-    them only adds artefacts), meshopt geometry. No dedup / join / instance / prune / simplify: those drop the
+def hero_names():
+    """Image names of the rectified art crops (blender/textures/art: paintings, tapestry, rugs), as Blender and the glTF
+    exporter name them (with and without the file extension): the colour maps that keep up to 2048 px."""
+    out = set()
+    for img in bpy.data.images:
+        try:
+            path = Path(bpy.path.abspath(img.filepath)).resolve() if img.filepath else None
+        except (OSError, ValueError):
+            path = None
+        if path and HERO_DIR in path.parents:
+            out |= {img.name, Path(img.name).stem}
+    return sorted(n for n in out if re.fullmatch(r'[\w.\-]+', n))      # no glob characters in the pattern
+
+
+def compress(raw, out, heroes=()):
+    """glTF-Transform: colour maps capped at COLOUR_MAX except the hero art (heroes: image names, up to 2048), normal /
+    ORM maps at NONCOLOUR_MAX (all five level GLBs together decoded to 880 MB of RGBA8 + mips, 390 MB of it in those
+    maps; then 470 MB of colour maps, 70 MB of it in seven 2048 px library maps), colour textures to WebP (normal / ORM
+    maps stay JPEG: recompressing them only adds artefacts), meshopt geometry. Names are kept, so the viewer still
+    shares an image across the level GLBs. No dedup / join / instance / prune / simplify: those drop the
     unused-looking TEXCOORD_1, merge named nodes or lose the extras."""
     a, b = raw, raw.with_suffix('.tmp.glb')
     nc = ' --width {0} --height {0}'.format(NONCOLOUR_MAX)
-    for step in ('resize {a} {b} --width 2048 --height 2048',
-                 'resize {a} {b} --pattern "*_nrm"' + nc,     # normal / ORM maps of the material library (named
-                 'resize {a} {b} --pattern "*_orm"' + nc,     # <key>_nrm / <key>_orm): 45 % of the decoded texture memory
-                 'webp {a} {b} --slots "{{baseColorTexture,emissiveTexture}}" --quality 88',
-                 'meshopt {a} {b} --level medium --quantize-texcoord 14'):
+    # glTF-Transform matches --pattern as a case-blind SUBSTRING (micromatch `contains`), so a negated pattern matches
+    # every name: list the GLB's other images instead, minus any whose name lies inside a hero's
+    names = {im.get('name') or '' for im in glb_json(raw).get('images', [])}
+    hero = [n.lower() for n in names if n in set(heroes)]
+    cap = sorted(n for n in names - set(heroes) if re.fullmatch(r'[\w.\-]+', n) and not any(n.lower() in h for h in hero))
+    glob = cap[0] if len(cap) == 1 else '{{' + ','.join(cap) + '}}'          # one name: braces would be literal
+    steps = [f'resize {{a}} {{b}} --width {COLOUR_MAX} --height {COLOUR_MAX} --pattern "{glob}"'] if cap else []
+    for step in steps + ['resize {a} {b} --width 2048 --height 2048',
+                         'resize {a} {b} --pattern "*_nrm"' + nc,     # normal / ORM maps of the material library (named
+                         'resize {a} {b} --pattern "*_orm"' + nc,     # <key>_nrm / <key>_orm): 45 % of the decoded texture memory
+                         'webp {a} {b} --slots "{{baseColorTexture,emissiveTexture}}" --quality 88',
+                         'meshopt {a} {b} --level medium --quantize-texcoord 14']:
         cmd = f'{GLTF_TRANSFORM} ' + step.format(a=f'"{a}"', b=f'"{b}"')
         r = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
         if r.returncode:
@@ -318,16 +359,66 @@ def check_glb(path, lightmapped, ix=()):
 
 
 # ------------------------------------------------------------------ plan footprints
-def footprints():
+TALL_BACK = {'bed', 'wc', 'car'}                         # front: away from the taller end of the long axis
+WALL_BACK = {'wardrobe', 'desk', 'tv', 'bureau', 'bookcase'}   # front: away from the nearer wall (desk: toward its chair)
+SEATS = {'office_chair', 'chair', 'stool'}
+
+
+def _seg_dist(p, a, b):
+    ab = b - a
+    t = np.clip(np.dot(p - a, ab) / max(np.dot(ab, ab), 1e-12), 0, 1)
+    return float(np.linalg.norm(p - (a + t * ab)))
+
+
+def front_of(sym, p, R, lo, hi, poly, seats):
+    """Unit plan vector [x, y] a footprint faces, or None when it cannot be told (MULTILEVEL.md 10, footprints).
+    p: world points (n, 3); R, lo, hi: the fit_box frame (box coordinates = p[:, :2] @ R.T, world axis k = R[k]);
+    poly: the room polygon or None; seats: plan centres of seats on the level.
+    - TALL_BACK, along the long axis: the end whose outer 30 % stands at least 8 cm taller is the back (headboard,
+      a car's roof and hatch against its bonnet); a wc pan without its cistern: the end nearer the wall;
+    - WALL_BACK, across the short axis: the long side whose middle is nearer the room outline is the back (both over
+      0.4 m: free-standing, no front); a desk faces the nearest seat within 1.2 m of its centre first (user side)."""
+    q, ext, mid = p[:, :2] @ R.T, hi - lo, (lo + hi) / 2
+    c = mid @ R
+
+    def off_wall(a):                     # away from the nearer of the two sides across axis a
+        if not poly:
+            return None
+        pts, d = np.asarray(poly, float), []
+        for side in (lo[a], hi[a]):
+            m = mid.copy()
+            m[a] = side
+            d.append(min(_seg_dist(m @ R, pts[i], pts[(i + 1) % len(pts)]) for i in range(len(pts))))
+        return None if min(d) > 0.4 else (R[a] if d[0] < d[1] else -R[a])
+
+    if sym in TALL_BACK:
+        a = int(np.argmax(ext))
+        t = (q[:, a] - lo[a]) / max(ext[a], 1e-9)
+        z0, z1 = p[t < 0.3, 2].max(initial=-1e9), p[t > 0.7, 2].max(initial=-1e9)
+        if abs(z1 - z0) >= 0.08:
+            return -R[a] if z1 > z0 else R[a]
+        return off_wall(a) if sym == 'wc' else None
+    if sym not in WALL_BACK:
+        return None
+    a = int(np.argmin(ext))
+    if sym == 'desk' and seats:
+        s = np.asarray(min(seats, key=lambda s: np.hypot(*(np.asarray(s) - c)))) - c
+        if np.hypot(*s) < 1.2 and abs(np.dot(s, R[a])) > 0.05:
+            return R[a] * np.sign(np.dot(s, R[a]))
+    return off_wall(a)
+
+
+def footprints(h=None):
     """Every object tagged plan_sym: tight oriented rectangle of its (and its children's) vertices in world XY,
-    with the room and level it is tagged with (after retag: balcony furniture is '1', a car is 'X').
+    with the room and level it is tagged with (after retag: balcony furniture is '1', a car is 'X'), and where it can
+    be told the unit plan vector it faces, `front` (obj['front'] when the module sets one, else front_of()).
     The kitchen pedal bins carry obj['toggle'] = 'bins' instead of a plan symbol; they stand on the floor, so they
     are written as plan_sym 'bin' (drawn on the plan, solid for the walker).
     Objects that exist only in state 1 (closed curtains, water: show when=1) are no obstacles: never a footprint
     of their own, never part of their parent's. Cabinet / fridge interiors need nothing: only plan_sym roots get
     a footprint, and an interior parented to one lies inside its box."""
     import export_bake as EB
-    out = []
+    out, frames = [], []
     for o in bpy.context.scene.objects:
         sym = o.get('plan_sym') or ('bin' if o.get('toggle') == 'bins' else None)
         if not sym or o.get('no_export') or EB.state1(o):
@@ -342,6 +433,15 @@ def footprints():
         zmin, zmax = float(p[:, 2].min()), float(p[:, 2].max())
         out.append(dict(name=o.name, room=o['room'], level=o['level'], plan_sym=sym, obb=np.round(obb, 4).tolist(),
                         zmin=round(zmin, 4), zmax=round(zmax, 4), height=round(zmax - zmin, 4)))
+        frames.append((o, p, R, lo, hi))
+    for r, (o, p, R, lo, hi) in zip(out, frames):
+        f = o.get('front')
+        if f is None:
+            seats = [np.mean(s['obb'], 0) for s in out if s['plan_sym'] in SEATS and s['level'] == r['level']]
+            poly = h.rooms[r['room']]['polygon'] if h is not None and r['room'] in h.rooms else None
+            f = front_of(r['plan_sym'], p, R, lo, hi, poly, seats)
+        if f is not None and np.hypot(f[0], f[1]) > 1e-6:
+            r['front'] = np.round(np.asarray(f[:2], float) / np.hypot(f[0], f[1]), 4).tolist()
     return sorted(out, key=lambda r: r['name'])
 
 
@@ -377,13 +477,16 @@ HEROES = [
     ('dining_north', 'dining', 'Dining room - table and French doors', (1.9, 12.62, 1.55), (0.9, 16.9, 1.2), 80),
     ('dining_west', 'dining', 'Dining room - mirror and crest plaques', (2.6, 15.9, 1.5), (-0.65, 14.0, 1.5), 85),
 ]
+# A room with neither HEROES nor rows above gives only its first CAMERAS entry (also its room-jump viewpoint), plus
+# the camera named here where that first one misses the room's main feature.
+HERO_EXTRA = {'basement': 'boiler', 'loft_office': 'desk'}
 
 
 def heroes(h, rooms):
     """[(stem, room, title, pos, look, fov)] in rooms[] order. Per room the first of: HEROES of its room module
     (blender/rooms/<module>.py: [dict(name, pos, look, title=..., fov_deg=80, room=...)], landscape), its rows in
-    the table above, the module's CAMERAS (reference matches; fov capped at 90). A camera of a module that
-    furnishes several rooms belongs to c['room'], else to the room it stands in."""
+    the table above, the first of the module's CAMERAS (reference matches; fov capped at 90) and the one named in
+    HERO_EXTRA. A camera of a module that furnishes several rooms belongs to c['room'], else to the room it stands in."""
     from lib import ctx as C
     legacy, mods, siblings, out = {}, {}, {}, []
     for row in HEROES:
@@ -410,13 +513,17 @@ def heroes(h, rooms):
                        tuple(c['pos']), tuple(c['look']), min(90, c.get('fov_deg', 80)))
 
     for r in rooms:
-        out += list(cams(r, 'HEROES')) or legacy.get(r['id']) or list(cams(r, 'CAMERAS'))
+        cam = list(cams(r, 'CAMERAS'))
+        extra = f"{r['id']}_{HERO_EXTRA.get(r['id'])}"
+        out += list(cams(r, 'HEROES')) or legacy.get(r['id']) or cam[:1] + [c for c in cam[1:] if c[0] == extra]
     return out
 
 
 def renders(h, table, rooms, out, samples, res):
     """Cycles stills of heroes() for the rooms asked for (AgX and white balance of the scene, denoised, JPEG quality
-    88) -> <out>/<stem>.jpg and index.json [{file, room, level, title}]; other rooms keep their old entries."""
+    88) -> <out>/<stem>.jpg and index.json [{file, room, level, title}] of every row whose still exists; stills of
+    no row are deleted."""
+    import export_bake as EB
     from lib import preview
     out.mkdir(parents=True, exist_ok=True)
     idx = out / 'index.json'
@@ -430,13 +537,17 @@ def renders(h, table, rooms, out, samples, res):
             sc.render.resolution_x, sc.render.resolution_y = res
             sc.render.image_settings.file_format, sc.render.image_settings.quality = 'JPEG', 88
             sc.render.filepath = str(out / entry['file'])
-            bpy.ops.render.render(write_still=True)
+            with EB.exterior_daylight(h.is_exterior(room)):      # as its lightmaps and probes (lighting.py)
+                bpy.ops.render.render(write_still=True)
             bpy.data.objects.remove(cam)
             log(f'render {entry["file"]}')
-        elif entry['file'] not in old:
+        elif entry['file'] not in old and not (out / entry['file']).exists():
             continue
         index.append(entry)
     idx.write_text(json.dumps(index, indent=1), encoding='utf-8')
+    for f in set(out.glob('*.jpg')) - {out / f'{row[0]}.jpg' for row in table}:
+        f.unlink()
+        log(f'removed stale still {f.name}')
 
 
 # ------------------------------------------------------------------ main
@@ -482,8 +593,15 @@ def main():
         f'{sum(map(len, atlases.values()))} in {len(atlases)} atlases; {demoted} small/metal/glass static objects '
         f'demoted to dynamic; {unlinked} shared static meshes made single-user; {len(tagged)} interaction-tagged '
         f'({len(fx)} state-1 objects hidden while baking)')
+    circ = EB.circuits(tagged, CIRCUIT)          # rooms with several lighting circuits (INTERACT.md, Circuits)
+    for room, cs in sorted(circ.items()):
+        log(f'circuits {room}: ' + ', '.join(f'{n} ({len(c["lights"])} lamps, {round(sum(o.data.energy for o in c["lights"]))} W, '
+                                              f'switched by {c["groups"] or "the room"})' for n, c in sorted(cs.items())))
     write = args.levels or level_ids             # level GLBs written by this run
-    probed = [r for r in rooms if r['kind'] != 'void']      # eaves are looked into, never stood in
+    probed = rooms                               # the eaves (kind void) too: their probe-lit switches follow their light
+
+    def probe_z(r):                              # eye height, or half way up a low void
+        return r['floorZ'] + min(EB.EYE, (r['ceilZ'] - r['floorZ']) / 2 if r['kind'] == 'void' and r['ceilZ'] else EB.EYE)
 
     # previous manifest: what is not redone keeps its entry (only valid while that geometry is unchanged)
     old = json.loads((out / 'manifest.json').read_text(encoding='utf-8')) if (out / 'manifest.json').exists() else {}
@@ -494,6 +612,8 @@ def main():
 
     lightmaps, lightmaps_off = kept('lightmaps', atlases), kept('lightmapsOff', atlases)
     probes, probes_off = (kept(k, {r['id'] for r in probed}) for k in ('probes', 'probesOff'))
+    circuits = {(e['room'], e['name']): e for e in old.get('circuits', [])
+                if e['name'] in circ.get(e['room'], {}) and (out / e['image']).exists()}
     info = {e['id']: e for e in old.get('levels', []) if e.get('glb') and (out / e['glb']).exists()}
     M = EB.wb_matrix()
     log('white balance matrix ' + np.array2string(M, precision=3, suppress_small=True).replace('\n', ''))
@@ -515,8 +635,10 @@ def main():
             lightmaps[room]['objects'] = [o.name for o in obs]
 
     # 2. one GLB per level (plan footprints first: they need the parent-child links that flatten() removes)
-    fp = footprints()
+    fp = footprints(h)
     boxes = tagged_boxes(tagged)
+    heroes_ = hero_names()
+    log(f'{len(heroes_)} hero art images keep up to 2048 px, other colour maps {COLOUR_MAX}')
     flatten()
     for o in fx:
         o.hide_render = False                    # exported like everything else; the viewer shows them in state 1
@@ -529,7 +651,7 @@ def main():
         raw, glb = tmp / f'{L}_raw.glb', out / 'glb' / f'{L}.glb'
         glb.parent.mkdir(exist_ok=True)
         export_glb(raw, obs)
-        compress(raw, glb)
+        compress(raw, glb, heroes_)
         names = {o.name for o in obs}
         static = [o.name for room in atlases for o in atlases[room] if o.name in names]
         ix = {k: v for k, v in boxes.items() if k in names}
@@ -574,44 +696,75 @@ def main():
     if over:
         raise SystemExit(f'BUDGET FAILED before the bake: {over} (trim with ATLAS_CAP in export.py or cut triangles)')
 
-    # 4. lightmaps
+    # 4. lightmaps (exterior rooms under the exterior daylight, lighting.EXTERIOR_SKY_GAIN). Each bake is kept drawn down
+    # to the lights-off size (float16) for step 6: the ambient there never lifts an atlas above it, and the circuits are
+    # scaled to it
+    on_half = {}
+    keep_on = not args.skip_off
     for room, obs in sorted(atlases.items()):
         if not todo(room):
             continue
         t = time.time()
         res, density = size[room]
         img = out / 'lightmaps' / f'{room}.jpg'
+        with EB.exterior_daylight(h.is_exterior(room)):
+            px = EB.denoise(EB.bake(room, obs, res), res, tmp)
         # exterior atlases hold sunlit and shaded faces (10x apart): only the percentile clips there, not 6 x median
-        k = EB.encode(EB.denoise(EB.bake(room, obs, res), res, tmp), res, res, img, M,
-                      cap=float('inf') if h.is_exterior(room) else None)
+        k = EB.encode(px, res, res, img, M, cap=float('inf') if h.is_exterior(room) else None)
+        if keep_on and room not in FAR_ROOMS:    # as shown: the circuits must add up to the CLIPPED atlas
+            on_half[room] = EB.half(EB.clip_like(px[:, :3].astype(np.float64), k, M), res).astype(np.float16)
         lightmaps[room] = dict(room=room, level=h.level(room), image=f'lightmaps/{room}.jpg', size=res,
                                pxPerM=round(density), intensity=k, bytes=img.stat().st_size, objects=[o.name for o in obs])
         lightmaps_off.pop(room, None)            # stale now; step 6 bakes it again unless --skip-off
+        for key in [key for key in circuits if key[0] == room]:
+            circuits.pop(key)                    # the same
         log(f'bake {room:16s} {res} px, {args.samples} spp, intensity {k} ({time.time() - t:.1f}s)')
 
     # 5. probes
+    probe_mean, probe_on = {}, {}
     for r in probed:
         rid = r['id']
         if not todo(rid):
             continue
         t = time.time()
-        pos = EB.probe_point([tuple(p) for p in r['polygon']], r['floorZ'] + EB.EYE)
+        pos = PROBE_AT.get(rid) or EB.probe_point([tuple(p) for p in r['polygon']], probe_z(r))
         probes_off.pop(rid, None)                # stale now, like the lightmap
         if pos is None:
             probes.pop(rid, None)
             log(f'probe {rid}: no free spot, skipped')
             continue
         img = out / 'probes' / f'{rid}.jpg'
-        k = EB.encode(EB.render_probe(pos, args.probe_res, args.samples, tmp), args.probe_res, args.probe_res // 2, img, M,
-                      quality=90)
+        with EB.exterior_daylight(h.is_exterior(rid)):
+            px = EB.render_probe(pos, args.probe_res, args.samples, tmp)
+        probe_mean[rid] = float(np.maximum(px[:, :3], 0).mean())
+        probe_on[rid] = px[:, :3].astype(np.float16)
+        k = EB.encode(px, args.probe_res, args.probe_res // 2, img, M, quality=90)
         probes[rid] = dict(room=rid, level=r['level'], image=f'probes/{rid}.jpg', pos=list(pos), intensity=k,
                            bytes=img.stat().st_size)
-        log(f'probe {rid:16s} at {pos}, intensity {k} ({time.time() - t:.1f}s)')
+        log(f'probe {rid:16s} at {pos}, intensity {k}, mean {probe_mean[rid]:.4f} ({time.time() - t:.1f}s)')
 
-    # 6. lights-off set: every lamp and emissive off, same UVs at half the size, same probe positions. Indoors a
-    # cool ambient term keeps dark rooms readable; outdoors the sun and the sky are still there, so none is added.
+    # 6. lights-off set, per room: the lamps of the room and of every room a switch names together with it off (the
+    # landing switch: the three landings and the main flight; front, with no lamp of its own, goes dark with the
+    # vestibule), every other lamp still lit, so that a switch never takes away the light the next room's lamps throw
+    # in (round 4: the landing switch left the flight at 6 % beside the lit hall). Every emissive surface off; same UVs
+    # at half the size, same probe positions. Indoors a neutral ambient term keeps dark rooms readable, capped at the
+    # lights-on bake (export_bake.with_ambient); outdoors the sun and the sky (exterior daylight) are still there, so
+    # none is added.
     if not args.skip_bake and not args.skip_off:
         amb = EB.AMBIENT_OFF * np.linalg.solve(M, EB.AMBIENT_TINT)       # scene linear: encode() applies M again
+        every = EB.lamps()
+        partners = {}
+        for o in tagged:
+            d = EB.ix(o)
+            if d.get('t') in {'light', 'lamp'} and not d.get('circuit'):
+                for r in d.get('rooms') or []:
+                    partners.setdefault(r, set()).update(d['rooms'])
+
+        def lit_others(room):                    # the lamps that stay lit in the lights-off bake of this room
+            dark = partners.get(room, set()) | {room}
+            return [o for o in every if o.get('room') not in dark]
+
+        off_half = {}
         with EB.lights_off() as (n_lights, n_glow):
             log(f'lights off: {n_lights} lights hidden, {n_glow} emission strengths zeroed, ambient {amb.round(4).tolist()}')
             for room, obs in sorted(atlases.items()):
@@ -620,23 +773,61 @@ def main():
                 t = time.time()
                 res, inside = lightmaps[room]['size'] // 2, not h.is_exterior(room)
                 img = out / 'lightmaps_off' / f'{room}.jpg'
-                px = EB.bake_off(room, obs, res, amb) if inside else EB.bake(room, obs, res)
-                k = EB.encode(EB.denoise(px, res, tmp), res, res, img, M, cap=EB.PEAK_OFF if inside else float('inf'))
+                lit = lit_others(room)
+                with EB.only(lit), EB.exterior_daylight(not inside):
+                    px = EB.denoise(EB.bake_off(room, obs, res, amb, on_half.get(room)) if inside
+                                    else EB.bake(room, obs, res), res, tmp)
+                if room in circ and room in on_half:
+                    off_half[room] = px[:, :3].copy()
+                k = EB.encode(px, res, res, img, M, cap=EB.PEAK_OFF if inside else float('inf'))
                 lightmaps_off[room] = dict(room=room, level=h.level(room), image=f'lightmaps_off/{room}.jpg', size=res,
                                            pxPerM=round(lightmaps[room]['pxPerM'] / 2), intensity=k, bytes=img.stat().st_size)
-                log(f'off  {room:16s} {res} px, intensity {k} ({time.time() - t:.1f}s)')
+                log(f'off  {room:16s} {res} px, intensity {k}, {len(every) - len(lit)} lamps dark ({time.time() - t:.1f}s)')
             for r in probed:
                 rid, inside = r['id'], not h.is_exterior(r['id'])
                 if not todo(rid) or rid not in probes:
                     continue
                 t = time.time()
                 img = out / 'probes_off' / f'{rid}.jpg'
-                px = EB.render_probe(probes[rid]['pos'], args.probe_res, args.samples, tmp)
-                if inside:
-                    px[:, :3] += amb             # uniform: lights a probe-lit object like bake_off lights an open wall
+                with EB.only(lit_others(rid)), EB.exterior_daylight(not inside):
+                    px = EB.render_probe(probes[rid]['pos'], args.probe_res, args.samples, tmp)
+                if inside:                       # uniform: lights a probe-lit object like bake_off lights an open wall
+                    px = EB.with_ambient(px, np.ones((len(px), 1), np.float32), amb, probe_on.get(rid))
+                mean = float(np.maximum(px[:, :3], 0).mean())
                 k = EB.encode(px, args.probe_res, args.probe_res // 2, img, M, quality=90, cap=EB.PEAK_OFF if inside else None)
                 probes_off[rid] = dict(probes[rid], image=f'probes_off/{rid}.jpg', intensity=k, bytes=img.stat().st_size)
-                log(f'off  probe {rid:16s} intensity {k} ({time.time() - t:.1f}s)')
+                own = any(o.get('room') == rid for o in every)
+                warn = '   WARNING: brighter than the lights-on probe (probe spot? PROBE_AT)' \
+                    if own and rid in probe_mean and mean > 1.02 * probe_mean[rid] else ''
+                log(f'off  probe {rid:16s} intensity {k}, mean {mean:.4f} ({time.time() - t:.1f}s){warn}')
+            # 6b. circuits: per circuit of a room with several, the light of its lamps alone (no sun, sky or ambient), same
+            # UVs at half size; the viewer adds the lit ones to the lights-off atlas (all lit: the lights-on atlas), so
+            # they are scaled until lights-off + their sum = the lights-on bake (export_bake.normalise_circuits)
+            with EB.daylight_off():
+                for room, cs in sorted(circ.items()):
+                    if not todo(room) or room not in lightmaps:
+                        continue
+                    res, pxs = lightmaps[room]['size'] // 2, {}
+                    for name, c in sorted(cs.items()):
+                        t = time.time()
+                        with EB.only(c['lights']):
+                            pxs[name] = EB.denoise(EB.bake(room, atlases[room], res), res, tmp)
+                        log(f'circuit {room}.{name}: {len(c["lights"])} lamps, {res} px ({time.time() - t:.1f}s)')
+                    if room in on_half and room in off_half:
+                        s_med, before, after = EB.normalise_circuits(pxs, on_half[room].astype(np.float32), off_half.pop(room))
+                        log(f'circuits {room}: (off + sum) / on {before:.3f} -> {after:.3f}, median scale {s_med:.3f}')
+                    else:
+                        log(f'WARNING: circuits {room} not normalised (no lights-on / lights-off bake in this run)')
+                    means = {name: float(np.maximum(px[:, :3], 0).mean()) for name, px in pxs.items()}
+                    for name, c in sorted(cs.items()):
+                        img = out / 'lightmaps_circuits' / f'{room}.{name}.jpg'
+                        # no median cap: a clipped circuit no longer adds up to the lights-on atlas (living 0.82)
+                        k = EB.encode(pxs[name], res, res, img, M, cap=float('inf'), top_floor=0.02)
+                        share = round(means[name] / max(sum(means.values()), 1e-9), 4)
+                        circuits[(room, name)] = dict(room=room, level=h.level(room), name=name, image=f'lightmaps_circuits/{room}.{name}.jpg',
+                                                      size=res, intensity=k, bytes=img.stat().st_size, groups=c['groups'],
+                                                      lights=[o.name for o in c['lights']], emissive=c['emissive'], share=share)
+                        log(f'circuit {room}.{name}: intensity {k}, mean {means[name]:.4f}, share {share}')
 
     # 7. sky: kept from the old manifest in partial runs
     sky = old.get('sky')
@@ -650,9 +841,15 @@ def main():
     order = [l for l in LOAD_ORDER if l in info] + [l for l in level_ids if l in info and l not in LOAD_ORDER]
     first = ([levels[level_ids.index('G')]['glb']] if 'G' in info else []) + \
         [e[r]['image'] for e in (lightmaps, probes) for r in first_rooms if r in e]
-    viewpoints = {}                              # room-jump views: the first hero still of each room
+    viewpoints = {}                              # room-jump views: VIEWPOINT, else the first hero still of each room
+    polys = {r['id']: r['polygon'] for r in rooms}
+    for room, (pos, look) in VIEWPOINT.items():
+        viewpoints[room] = dict(pos=list(pos), look=list(look))
     for _, room, _, pos, look, _ in table:
         viewpoints.setdefault(room, dict(pos=list(pos[:2]), look=list(look[:2])))
+    for room, v in sorted(viewpoints.items()):
+        if room in polys and not C.poly_contains(*v['pos'], polys[room]):
+            log(f'WARNING: viewpoint of {room} at {v["pos"]} lies outside the room (add it to VIEWPOINT)')
     manifest = dict(
         schema=2,
         levels=levels,                           # glb null: nothing is built on that level (yet)
@@ -663,6 +860,8 @@ def main():
         lightmapsOff=[dict(lightmaps_off[k], objects=lightmaps[k]['objects']) for k in sorted(lightmaps_off) if k in lightmaps],
         probes=[probes[r['id']] for r in probed if r['id'] in probes],
         probesOff=[probes_off[r['id']] for r in probed if r['id'] in probes_off and r['id'] in probes],
+        # rooms with several lighting circuits: one atlas per circuit (INTERACT.md, Circuits); loaded with the lights-off set
+        circuits=[circuits[k] for k in sorted(circuits) if k[0] in lightmaps_off],
         viewpoints=viewpoints,                   # the viewer snaps pos to walkable floor on the room's level
         spawn=dict(pos=list(h.spec.get('spawn', [0, 3]))[:2], yaw=0, level='G'),
         toneMapping='agx' if vs.view_transform == 'AgX' else 'none', exposure=round(2 ** vs.exposure, 4),
@@ -681,7 +880,13 @@ def main():
                  f'(radiance {EB.AMBIENT_OFF} x {EB.AMBIENT_TINT} on an open wall as encoded; lit rooms have about 0.9) '
                  'that keeps dark rooms readable (probes: the same radiance added uniformly, so a probe-lit object '
                  'matches the wall beside it); lightmaps half the size, own intensity per image '
-                 f'(indoors at most {EB.PEAK_OFF:g}); bytes = file sizes; firstView = what loads before level G shows')
+                 f'(indoors at most {EB.PEAK_OFF:g}); circuits = per lighting circuit of a room with several, the same '
+                 'encoding and UVs at half size holding the light of that circuit\'s lamps alone (no sun, sky, ambient '
+                 'or emissive surfaces): with some circuits lit the room shows lightmapsOff + the sum of the lit '
+                 'circuits, with all lit the lightmaps atlas; share = its part of the sum of the circuits\' mean '
+                 'radiance (scales the probe light), groups = ix group ids that switch it (other switches of the '
+                 'room switch every circuit), emissive = untagged emissive meshes that glow with it; bytes = file '
+                 'sizes; firstView = what loads before level G shows')
     # newline='\n': byte counts must not depend on the platform (json.dumps output is ASCII)
     (out / 'house.json').write_text(json.dumps(strip_notes(h.spec), indent=1), encoding='utf-8', newline='\n')
     (out / 'footprints.json').write_text(json.dumps(fp, indent=1), encoding='utf-8', newline='\n')
@@ -691,9 +896,9 @@ def main():
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=1), encoding='utf-8', newline='\n')
     log(f'manifest: {len(order)} level GLBs {order}, {len(manifest["lightmaps"])} lightmaps, {len(manifest["probes"])} '
         f'probes, off set {len(manifest["lightmapsOff"])} + {len(manifest["probesOff"])}; {len(fp)} footprints')
-    used = {e['image'] for k in ('lightmaps', 'lightmapsOff', 'probes', 'probesOff') for e in manifest[k]} | \
+    used = {e['image'] for k in ('lightmaps', 'lightmapsOff', 'probes', 'probesOff', 'circuits') for e in manifest[k]} | \
         {l['glb'] for l in levels}
-    for d in ('glb', 'lightmaps', 'lightmaps_off', 'probes', 'probes_off'):      # images no entry points to any more
+    for d in ('glb', 'lightmaps', 'lightmaps_off', 'probes', 'probes_off', 'lightmaps_circuits'):   # images no entry points to any more
         for f in sorted((out / d).glob('*')):
             if f.is_file() and f'{d}/{f.name}' not in used:
                 f.unlink()

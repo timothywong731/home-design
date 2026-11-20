@@ -307,3 +307,8 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   With them: octagonal mirror A3 centre y **15.36** (over the headboard), bedside sockets X8 at y **14.50** and
   **16.17**, the two bedside lamps D1 on their nightstands.
 - The west "chimney breast" is modelled as a first-floor feature only [S3].
+
+## Round 3 corrections (core owner, from build/rooms2_open.md)
+- d_balcony: the uPVC frame head and the two low fanlights stop at 2.18 above the floor (doubt 5); a dark-stained
+  timber head board on the wall over the frame (joinery DARK_HEAD 0.18, to 2.36) shows about 0.12 under the 2.30
+  pelmet, as in v3 f_0159 and f_0345.

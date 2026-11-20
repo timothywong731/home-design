@@ -61,6 +61,11 @@ _F2 = ('#4A1A22', '#1B2540', '#151515', '#1B2540', '#C9C4B4', '#4A1A22', '#1F332
 _SPECIAL = {9: '#6F93B5', 22: '#6F93B5', 5: '#8E1B1B', 27: '#8E1B1B'}
 
 
+def _circ(name):
+    """Tag kwargs of lighting circuit name (INTERACT.md, Circuits)."""
+    return {'circuit': name}
+
+
 def _crest(n):
     """Deterministic variety for plaque n -> dict(kind, board, field, field2)."""
     f1 = _SPECIAL.get(n, _F1[(n * 5 + n // 3) % len(_F1)])
@@ -133,8 +138,8 @@ def build(ctx):
     IX.tag(tv, 'trigger', g='dining.tv', label='TV')
     add(IX.tag(pic, 'show', g='dining.tv', when=1, fx='tv'), 'fit', lm='dynamic')
     # 3-gang rotary dimmer midway between TV and door (ground_corrections section 1, D7). Facing it: left (east, by
-    # the TV) = wall lights, middle = chandelier, right (west, by the door) = spotlights. One knob per circuit; the
-    # viewer bakes one lights-on / lights-off pair per room, so each knob switches the whole room's lighting.
+    # the TV) = wall lights, middle = chandelier, right (west, by the door) = spotlights. One knob per circuit
+    # (INTERACT.md, Circuits): each switches only its own lamps and their baked light.
     sw = add(P.place(P.switch_plate(3, 'blank', wide=True, name='dining.switch'), (0.67, Y0, 1.30), facing=(0, 1)), 'fit',
              lm='dynamic')
     kb = mo.MB()
@@ -142,13 +147,14 @@ def build(ctx):
     kb.lathe([(0, 0), (.0095, 0), (.0095, .008), (.0087, .0115), (.006, .013), (0, .013)], 'plastic_white', 16)
     kb.at()
     knob = U.fin(kb, 'dining.switch.knob')
-    for i, (g, label) in enumerate((('dining.switch.wall_lights', 'Wall lights'), ('dining.switch.chandelier', 'Chandelier'),
-                                     ('dining.switch', 'Spotlights'))):
+    for i, (g, label, c) in enumerate((('dining.switch.wall_lights', 'Wall lights', 'wall'),
+                                        ('dining.switch.chandelier', 'Chandelier', 'chandelier'),
+                                        ('dining.switch', 'Spotlights', 'main'))):
         k = knob if i == 0 else bpy.data.objects.new('x', knob.data)
         k.name = f'dining.switch.knob.{i}'
         k.matrix_basis = sw.matrix_basis @ U.T(((i - 1) * .036, -.009, 0))      # local +X = viewer's right = west
-        add(IX.tag(k, 'light', g=g, label=label, rooms=[ROOM]), 'fit', lm='dynamic')
-    IX.tag(sw, 'light', g='dining.switch', label='Spotlights', rooms=[ROOM])
+        add(IX.tag(k, 'light', g=g, label=label, rooms=[ROOM], **_circ(c)), 'fit', lm='dynamic')
+    IX.tag(sw, 'light', g='dining.switch', label='Spotlights', rooms=[ROOM], **_circ('main'))
     add(P.place(D.sword_board(), (1.64, Y0, 2.43), facing=(0, 1)), 'decor')
     n = 0
     for x in (-0.43, -0.15, 0.13, 0.41, 0.69):                    # five over the door
@@ -238,7 +244,7 @@ def build(ctx):
     # clickable like the switch. Reach is measured from the walker's body column (eye 1.6) to the fitting's box (lowest
     # crystal ~2.05, the table keeps the walker 0.1-0.6 m off it sideways): 0.5 was out of reach from the floor
     IX.tag_many([chand] + list(chand.children_recursive), 'lamp', g='dining.chandelier', label='Chandelier',
-                rooms=[ROOM], reach=1.2)
+                rooms=[ROOM], reach=1.2, **_circ('chandelier'))
     for i, p in enumerate(P.bulb_points(chand)):
         lighting.bulb(ctx, ROOM, p, watts=BULB_W, name=f'dining.chandelier.bulb.{i}')     # 25 mm sphere round the 11 mm lamp
     # The cloth shades are opaque geometry: their lamps only shine out of the top and bottom openings. One large
@@ -250,8 +256,9 @@ def build(ctx):
     for i, y in enumerate((13.59, 15.63)):                        # twin-arm brass wall lights in the alcoves
         sc = L.sconce(f'dining.sconce.{i}')
         add(P.place(sc, (X1, y, 1.80), facing=(-1, 0)), 'light')
-        # with rooms: the bake only has the whole room on / off, so a wall light switches the room like the plate
-        IX.tag_many([sc] + list(sc.children_recursive), 'lamp', g=sc.name, label='Wall light', rooms=[ROOM])
+        # on the wall-light circuit with its knob (INTERACT.md, Circuits)
+        IX.tag_many([sc] + list(sc.children_recursive), 'lamp', g=sc.name, label='Wall light', rooms=[ROOM],
+                    **_circ('wall'))
         for j, p in enumerate(P.bulb_points(sc)):
             lighting.bulb(ctx, ROOM, p, watts=14, name=f'dining.sconce.{i}.bulb.{j}')
     i = 0

@@ -70,13 +70,14 @@ FINISHES = {
                    features={'dining_hearth': 'hearth_marble'}),
     # first floor
     'green_bedroom': _plain('#D4E0D2', '#F5F4F0', faces=[dict(axis=0, at=-0.65, mat='#3F6B5C')]),     # deep teal TV wall
-    'green_bathroom': _plain('#9AA59E', '#F5F4F0', wainscot=(1.20, 'metro_carrara_100x400'),
+    # green_bathroom / yellow_room / blue_ensuite walls: the values the room fixers measured against the frames
+    'green_bathroom': _plain('#AAACA7', '#F5F4F0', wainscot=(1.20, 'metro_carrara_100x400'),
                              features={'gbath_duct': 'metro_carrara_100x400'}),              # WC duct tiled all over
     # the quarter landing lies 0.19 below the corridor and carries the corridor's rail level on (world 4.015)
     'landing1_front': _L1, 'landing1_ql': dict(_L1, dado=1.165), 'landing1_rear': _L1,
     'stairs2': _plain('#F1EEE6', '#F6F5F2', WHITE),          # raking dado and its paint line: room module
-    'yellow_room': _plain('#EEE7C6', '#F6F5F2'),
-    'blue_ensuite': _plain('#B3BEC8', '#F5F4F0', wainscot=(1.20, 'marble_metro')),
+    'yellow_room': _plain('#F0EBD6', '#F6F5F2'),
+    'blue_ensuite': _plain('#AEB6CE', '#F5F4F0', wainscot=(1.20, 'marble_metro')),
     'blue_bedroom': _plain('#C9CAD4', '#F4F2EC', '#F4F3EE', faces=[dict(axis=0, at=-0.65, mat='#2B3B4C')],
                            features={'blue_breast_w': '#2B3B4C'}),                                  # navy west wall
     # second floor
@@ -84,7 +85,7 @@ FINISHES = {
     'loft_office': _plain('#EFEDE7', '#F2F1EC', faces=[dict(axis=0, at=4.3, mat='#3B4046')]),         # anthracite gable
     'eaves_front': _plain('#EFEEEA', '#EFEEEA'), 'eaves_rear': _plain('#EFEEEA', '#EFEEEA'),
     'purple_room': _plain('#B4AFC6', '#F4F3EE', WHITE),
-    'bathroom2': _plain('#B9B7B1', '#F4F3EF', wainscot=(1.20, 'marble_metro'), features={'bath2_pipe_boxing': 'marble_metro'}),
+    'bathroom2': _plain('#B9B7B1', '#F4F3EF', wainscot=(1.20, 'marble_metro')),      # the pipe-boxing column: tiles to 1.20, paint above
     'study': _plain('#EEE6DC', '#F4F3EE', WHITE, faces=[dict(axis=0, at=-0.65, mat='#BC9D99')]),      # dusty rose wall
 }
 DEFAULT_FINISH = _plain('#F2F0EA', '#F4F3EE', WHITE)
@@ -268,7 +269,8 @@ def _ops(ctx, levels):
         top, zones = _carve_top(ctx, rid), r.get('ceilingZones', [])
         for rc in poly_rects(ctx.room_poly(rid, rect=True), [p for z in zones for p in z['polygon']]):
             c = ((rc[0] + rc[1]) / 2, (rc[2] + rc[3]) / 2)
-            carve(rc, r['floorZ'], min([top] + [z['z'] for z in zones if point_in_poly(*c, z['polygon'])]), rid)
+            # poly_contains (as ctx.ceil_z): a cell centred on a zone's diagonal edge (stair_foot) belongs to the zone
+            carve(rc, r['floorZ'], min([top] + [z['z'] for z in zones if poly_contains(*c, z['polygon'])]), rid)
 
     for w in ctx.walls.values():                                       # 3. inner walls (arch walls)
         if 'building' not in w and not w.get('virtual') and on(w) and w['rooms'][0] == w['rooms'][1] \
@@ -356,6 +358,13 @@ def _ops(ctx, levels):
             cut((min(p[0], q[0]), max(p[0], q[0]), min(p[1], q[1]), max(p[1], q[1])), z0, z1,
                 room if passage else f'op|{oid}|{room}')
     return ops
+
+
+def _same_floor(ctx, oid):
+    """A door between two house rooms with the same floor finish (d_wc: the tile runs through, utility.md 2.2)."""
+    o = ctx.openings.get(oid) or {}
+    rs = [r for r in o.get('connects', ()) if r in ctx.rooms]
+    return 'door' in o.get('type', '') and len(rs) == 2 and len({ctx.rooms[r]['floor']['material'] for r in rs}) == 1
 
 
 def _roof_at(ctx, x, y):
@@ -491,8 +500,10 @@ def _quads(g, ctx):
         kind, room = tagv[g.void[j]]
         F, fz, rk, sl, top, fmat, sz = R(room)
         name = room + '.walls'
-        if kind == 'op':
-            return name, WHITE, None                              # reveal liners (jambs, head, sill)
+        if kind == 'op':                                          # reveal liners (jambs, head, sill) ...
+            if a == 2 and s > 0 and _same_floor(ctx, g.tags[g.void[j]].split('|')[1]):
+                return room + '.floor', fmat, None                # ... but the floor runs on under a door between equal floors
+            return name, WHITE, None
         tt = tagv[T[i]]
         if tt and tt[0] == 'fl' and (kind == 'fl' or (rk == 'stairwell' and Z[i[2]] >= Z[K[i]] - UNDER_TREAD - 1e-6)):
             return None                                           # under a tread: the flight carcass owns it
@@ -793,6 +804,25 @@ def _unique(name):
     return name if name not in bpy.data.objects else next(f'{name}.{n}' for n in range(2, 99) if f'{name}.{n}' not in bpy.data.objects)
 
 
+def _three_centred(um, hs, zs, zc, r1, N):
+    """Three-centred arch, half span hs, springing zs, crown zc, haunch radius r1 (rising vertically off the
+    springing): -> f(sg) = intrados points from the sg-side springing to the crown, or None when r1 does not fit."""
+    h = zc - zs
+    if not 0 < r1 < min(h, hs):
+        return None
+    R = ((hs - r1) ** 2 + h * h - r1 * r1) / (2 * (h - r1))       # crown radius: its circle touches both haunches
+    if R <= r1:
+        return None
+    dx, dz = -(hs - r1), R - h                                     # crown centre -> left haunch centre
+    phi = math.atan2(dz, dx)                                       # where the two circles touch, seen from either centre
+    n1 = max(4, N // 2)
+    left = [(um - (hs - r1) + r1 * math.cos(math.pi - (math.pi - phi) * i / n1), zs + r1 * math.sin(math.pi - (math.pi - phi) * i / n1))
+            for i in range(n1 + 1)]
+    left += [(um + R * math.cos(phi + (math.pi / 2 - phi) * i / (N - n1)), zc - R + R * math.sin(phi + (math.pi / 2 - phi) * i / (N - n1)))
+             for i in range(1, N - n1 + 1)]
+    return lambda sg: [(x if sg < 0 else 2 * um - x, z) for x, z in left]
+
+
 def _curved(ctx, levels):
     """Arch infill (walls along X or Y; springing / crown above the opening's floorZ) and the vestibule vault."""
     N = 24                                                        # segments per haunch / half arch
@@ -809,10 +839,12 @@ def _curved(ctx, levels):
             zs, zc = fz + f['springing'], fz + f['crown']
             zt, hs, um = zc + ARCH_PAD, (ub - ua) / 2, (ua + ub) / 2
             rise = min(zc - zs, hs)                               # a taller arch is stilted on straight jambs
-            R = (hs * hs + rise * rise) / (2 * rise)
-            th0 = math.asin(min(1.0, hs / R))
-            arc = lambda sg: [(um + sg * R * math.sin(th0 * (1 - i / N)), zc - R + R * math.cos(th0 * (1 - i / N)))
-                              for i in range(N + 1)]
+            arc = _three_centred(um, hs, zs, zc, f['haunch'], N) if f.get('haunch') else None
+            if arc is None:                                       # one segmental arc
+                R = (hs * hs + rise * rise) / (2 * rise)
+                th0 = math.asin(min(1.0, hs / R))
+                arc = lambda sg: [(um + sg * R * math.sin(th0 * (1 - i / N)), zc - R + R * math.cos(th0 * (1 - i / N)))
+                                  for i in range(N + 1)]
             rc = wall_rect(ctx, w)
             d0, d1 = (rc[2], rc[3]) if ax == 0 else (rc[0], rc[1])
             ob = _fan_prism(_unique(room + '.arch_fill'), [((ua, zt), arc(-1), (um, zs), [(um, zt)]),
@@ -1045,6 +1077,11 @@ def build(ctx, levels=None, bare=False):
     assert ctx.schema == 2, 'lib.shell builds the multi-level spec (schema "house/2"): spec/house.json is schema 2 since the phase-2 adoption'
     levels = [l for l in ctx.levels if levels is None or l in levels]
     lv = set(levels)
+    if not lv:                                  # site only (--levels X): no house grid, but the shed's joinery
+        print('[shell] no house level selected - building-room openings only')
+        if not bare:
+            _install(ctx, {'X'})
+        return
     ops = _ops(ctx, lv)
     xs, ys, zs = set(), set(), set()
     for rid, r in ctx.rooms.items():

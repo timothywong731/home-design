@@ -1,7 +1,7 @@
 // End-to-end check of the viewer in Chromium. Serves docs/ under /home-design/ (like GitHub Pages), drives the page,
 // writes screenshots + console log to build/e2e/, exits non-zero on console errors or failed checks.
 // Setup once:  npm install --prefix build/e2e playwright@1.65.1   (npx playwright install chromium if no browser yet)
-// Run:         node docs/test/e2e.mjs [--headed] [--only desktop,ref,realtime,phone,ix,levels] [--assets <dir>]
+// Run:         node docs/test/e2e.mjs [--headed] [--only desktop,ref,realtime,phone,ix,levels,cull,nav] [--assets <dir>]
 //   --assets serves assets/ from another folder (e.g. a fresh export under build/, before it is copied into docs/)
 // Two runs (blender/MULTILEVEL.md 12.g): schema-1 assets (docs/assets today) run the phase-1 blocks; schema-2 assets run
 // only `levels` (tabs, sheets, marker on every sheet, sheet follows the stairs, layers, routes, dollhouse cut per level,
@@ -63,7 +63,8 @@ const info = (page) => page.evaluate(() => window.viewer.info());
 // shared with Cycles bakes an animation can take longer than its nominal time
 const idle = (page, ms = 150) => page.waitForFunction(() => {
   const v = window.viewer;
-  return !v.S.anim && !v.S.glide && v.ix.groups().every((g) => g.p === g.state) && [...v.roomLights.values()].every((L) => (L.x ?? L.target) === L.target);
+  return !v.S.anim && !v.S.glide && v.ix.groups().every((g) => g.p === g.state) && [...v.roomLights.values()].every((L) => (L.x ?? L.target) === L.target
+    && !L.wait && (L.circuits || []).every((c) => c.x === c.target));
 }, null, { timeout: 20000, polling: 50 }).catch(() => {}).then(() => page.waitForTimeout(ms));
 const shot = (page, name, el) => (el ? page.locator(el).screenshot({ path: OUT + name }) : page.screenshot({ path: OUT + name }));
 
@@ -250,7 +251,7 @@ if (run('phone')) {
   const { ctx, page } = await open({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   check(await page.evaluate(() => document.body.classList.contains('touch')), 'touch UI on a phone');
   const lmMax = await page.evaluate(() => { let m = 0; window.viewer.scene.traverse((o) => { if (o.isMesh) for (const x of [].concat(o.material)) if (x.lightMap?.image) m = Math.max(m, x.lightMap.image.width, x.lightMap.image.height); }); return m; });
-  check(lmMax > 0 && lmMax <= 2048, `phone: lightmap atlases over 2048 px are drawn down on load (largest ${lmMax} px)`);
+  check(lmMax > 0 && lmMax <= 1024, `phone: lightmap atlases over 1024 px are drawn down on load (largest ${lmMax} px)`);
   await shot(page, 'phone.png');
   // move pad: hold the knob forward for 1 s
   const i0 = await info(page), pad = await page.locator('#pad').boundingBox();
@@ -352,6 +353,7 @@ if (run('ix')) {
   let i;
   const { ctx, page } = await open({ viewport: { width: 1440, height: 900 } });
   await inPage(page);
+  await page.evaluate(() => window.viewer.streaming);     // every level's groups (the bedroom TVs are on level 1)
   const gs = await groups(page), byId = new Map(gs.map((g) => [g.id, g])), kinds = {};
   for (const g of gs) kinds[g.kind] = (kinds[g.kind] || 0) + 1;
   console.log(`ix: ${gs.length} groups ${JSON.stringify(kinds)}, ${(await page.evaluate(() => window.viewer.ix.clocks())).length} clock hands`);
@@ -472,18 +474,20 @@ if (run('ix')) {
   // its state-1 objects appear and its state-0 objects go, and back
   const fxg = gs.filter((g) => g.fx.length && g.kind !== 'tv');
   const shows = await page.evaluate((ids) => { const o = {}; window.viewer.scene.traverse((n) => { if (typeof n.userData.ix !== 'string') return; const d = JSON.parse(n.userData.ix); if (d.t === 'show' && ids.includes(d.g)) (o[d.g] ||= []).push([n.userData.name, d.when]); }); return o; }, fxg.map((g) => g.id));
-  const fxState = async (on) => { const bad = []; for (const g of fxg) { const v = await visible(shows[g.id].map((s) => s[0])); shows[g.id].forEach(([n, w], k) => { if (v[k] !== (w === (on ? 1 : 0))) bad.push(n); }); } return bad; };
-  for (const g of fxg) await toggle(g.id);
+  // what each group shows must match the state it is in: opening one may shut another (`excl`: the fridge door shuts the
+  // ovens it would hit), so the check follows the states rather than assuming every group ended up open
+  const fxState = async () => { const bad = [], st = new Map((await groups(page)).map((g) => [g.id, g.state])); for (const g of fxg) { const v = await visible(shows[g.id].map((s) => s[0])); shows[g.id].forEach(([n, w], k) => { if (v[k] !== (w === st.get(g.id))) bad.push(n); }); } return bad; };
+  for (const g of fxg) if ((await stateOf(page, g.id)) === 0) await toggle(g.id);
   await idle(page, 300);
-  const badOn = await fxState(true);
+  const opened = (await groups(page)).filter((g) => g.state === 1 && fxg.some((f) => f.id === g.id)).length, badOn = await fxState();
   await page.evaluate(() => window.viewer.jump('kitchen')); await idle(page);
   await page.evaluate(() => { const { S, G } = window.viewer; Object.assign(S, { x: 3.0, y: 6.65, yaw: G.dirYaw(0.8, -0.05), pitch: -0.55 }); }); await settle(page, 150);
   await shot(page, 'ix_hob_on.png');
-  for (const g of fxg) await toggle(g.id);
+  for (const g of fxg) if ((await stateOf(page, g.id)) === 1) await toggle(g.id);
   await idle(page);
-  const badOff = await fxState(false);
-  check(!badOn.length && !badOff.length && (await groups(page)).filter((g) => fxg.some((f) => f.id === g.id)).every((g) => g.state === 0),
-    `${fxg.length} effect groups (${[...new Set(fxg.map((g) => g.kind))]}) show their state-1 objects and hide them again (${badOn}${badOff})`);
+  const badOff = await fxState();
+  check(!badOn.length && !badOff.length && opened > fxg.length / 2 && (await groups(page)).filter((g) => fxg.some((f) => f.id === g.id)).every((g) => g.state === 0),
+    `${fxg.length} effect groups (${[...new Set(fxg.map((g) => g.kind))]}): ${opened} on at once, each shows its state-1 objects and hides them again (${badOn}${badOff})`);
 
   // C3. the toilet seat lifts
   {
@@ -527,13 +531,50 @@ if (run('ix')) {
     check(l1.wc === 0 && l1.utility === 1, `utility.switch.light switches the WC (wc ${l1.wc}, utility ${l1.utility})`);
     await toggle('utility.switch.light'); await idle(page);
     await page.evaluate(() => window.viewer.jump('living')); await idle(page, 200);
-    await toggle('living.dimmer'); await idle(page);
+    // with circuits (manifest.circuits) the dimmer's spotlight knob switches the downlights only; then the room goes dark
+    // through each lamp's own circuit instead
+    const own = (await groups(page)).find((g) => g.id === 'living.dimmer')?.circuits.length > 0;
     const lamps = (await groups(page)).filter((g) => g.kind === 'lamp' && (g.rooms.includes('living') || g.home === 'living'));
+    for (const id of own ? ['living.dimmer', ...lamps.filter((g) => g.circuits.length).map((g) => g.id)] : ['living.dimmer']) await toggle(id);
+    await idle(page);
     const glow = await page.evaluate(() => { let s = 0; window.viewer.scene.traverse((o) => { if (o.isMesh && /living\.(sconce|table_lamp)/.test(o.userData.name || o.parent?.userData.name || '')) for (const m of [].concat(o.material)) s += m.emissiveIntensity > 0 && m.emissive && m.emissive.r + m.emissive.g > 0 ? m.emissiveIntensity : 0; }); return s; });
     await shot(page, 'ix_living_off.png');
-    check(lamps.length >= 3 && lamps.every((g) => g.state === 1) && glow < 1e-3, `living lights off: ${lamps.map((g) => g.id)} dark (emissive sum ${glow.toFixed(3)})`);
-    await toggle('living.dimmer'); await idle(page);
+    check(lamps.length >= 3 && (await groups(page)).filter((g) => lamps.some((l) => l.id === g.id)).every((g) => g.state === 1) && glow < 1e-3,
+      `living lights off${own ? ' (each circuit)' : ''}: ${lamps.map((g) => g.id)} dark (emissive sum ${glow.toFixed(3)})`);
+    for (const id of own ? ['living.dimmer', ...lamps.filter((g) => g.circuits.length).map((g) => g.id)] : ['living.dimmer']) await toggle(id);
+    await idle(page);
     check((await groups(page)).filter((g) => lamps.some((l) => l.id === g.id)).every((g) => g.state === 0), '... and lit again with the room');
+  }
+  // E3. per-circuit lights (manifest.circuits): a dining knob switches only its own fittings and their part of the bake
+  const circ = await page.evaluate(() => (window.viewer.roomLights.get('dining')?.circuits || []).map((c) => c.name));
+  if (circ.length < 2) skip('per-circuit lights: no circuits in this manifest');
+  else {
+    const view = () => page.evaluate(() => Object.assign(window.viewer.S, { anim: null, glide: null, x: -0.35, y: 14.6, yaw: -Math.PI / 2, pitch: 0.05 }));  // facing the sconce wall (+X)
+    await page.evaluate(() => window.viewer.jump('dining')); await idle(page, 300); await view(); await idle(page, 300);
+    const st = () => page.evaluate(() => ({ c: Object.fromEntries(window.viewer.roomLights.get('dining').circuits.map((c) => [c.name, c.target])),
+      g: Object.fromEntries(window.viewer.ix.groups().filter((g) => /^dining\.(sconce|chandelier|switch)/.test(g.id)).map((g) => [g.id, g.state])) }));
+    // glow of the fittings' own emissive parts, by fitting
+    const glow = () => page.evaluate(() => { const s = { sconce: 0, chandelier: 0 }; window.viewer.scene.traverse((o) => { const n = o.userData.name || o.parent?.userData.name || '', k = /^dining\.sconce/.test(n) ? 'sconce' : /^dining\.chandelier/.test(n) ? 'chandelier' : null;
+      if (o.isMesh && k) for (const m of [].concat(o.material)) s[k] += m.emissive && m.emissive.r > 0 ? m.emissiveIntensity : 0; }); return s; });
+    const on = await meanLum(page), g0 = await glow(); await shot(page, 'ix_dining_circuits_on.png');
+    await toggle('dining.switch.wall_lights'); await idle(page);
+    const wall = await st(), g1 = await glow(); await shot(page, 'ix_dining_wall_off.png');
+    check(wall.c.wall === 0 && wall.c.main === 1 && wall.c.chandelier === 1 && wall.g['dining.sconce.0'] === 1 && wall.g['dining.sconce.1'] === 1 && wall.g['dining.chandelier'] === 0
+      && wall.g['dining.switch'] === 0 && g0.sconce > 0 && g1.sconce < 1e-3 && Math.abs(g1.chandelier - g0.chandelier) < 1e-6,
+      `dining wall-light knob: only the wall circuit off (${JSON.stringify(wall.c)}), sconces dark (glow ${g0.sconce.toFixed(2)} -> ${g1.sconce.toFixed(3)}), chandelier lit (${g1.chandelier.toFixed(2)})`);
+    await toggle('dining.switch'); await idle(page);
+    const spots = await st(), ls = await meanLum(page); await shot(page, 'ix_dining_chandelier_only.png');
+    check(spots.c.main === 0 && spots.c.chandelier === 1 && ls < on * 0.9 && ls > 1, `spotlight knob: the chandelier alone lights the room (${JSON.stringify(spots.c)}; view ${on.toFixed(1)} -> ${ls.toFixed(1)})`);
+    await toggle('dining.chandelier'); await idle(page);
+    const dark = await st(), ld = await meanLum(page), g2 = await glow(); await shot(page, 'ix_dining_all_off.png');
+    check(dark.c.chandelier === 0 && dark.g['dining.switch.chandelier'] === 1 && g2.chandelier < 1e-3 && ld < ls, `clicking the chandelier switches its circuit, its knob follows (view ${ld.toFixed(1)})`);
+    await toggle('dining.switch.wall_lights'); await idle(page);
+    const lw = await meanLum(page); await shot(page, 'ix_dining_wall_only.png');
+    check(lw > ld, `the wall lights alone add their light to the dark room (view ${ld.toFixed(1)} -> ${lw.toFixed(1)})`);
+    for (const id of ['dining.switch', 'dining.switch.chandelier']) await toggle(id);
+    await idle(page);
+    const back = await meanLum(page);
+    check(Math.abs(back - on) < on * 0.04, `... all circuits back on: the lights-on bake again (${back.toFixed(1)})`);
   }
 
   // F. double-click on the floor walks there (ring under the cursor first); the double-click operates nothing
@@ -785,6 +826,8 @@ async function syntheticIx(page) {
     add('test.firepit.bowl', new THREE.CylinderGeometry(0.3, 0.2, 0.2, 16), std(), [1.5, 26.0, -0.4], { t: 'trigger', g: 'test.firepit', label: 'Fire pit' }, 'garden');
     add('test.sauna.door', new THREE.BoxGeometry(0.6, 1.9, 0.04), std({ name: 'sauna_glass' }), [1.5, 12.5, 7.0], { t: 'hinge', p: [1.2, 12.5, 7.0], a: [0, 0, 1], deg: 95, g: 'test.sauna', label: 'Sauna door' });
     add('test.bin.lid', new THREE.BoxGeometry(0.3, 0.02, 0.3), std(), [2.0, 12.5, 6.6], { t: 'hinge', p: [2.0, 12.65, 6.61], a: [1, 0, 0], deg: -70, g: 'test.bin', label: 'Bin lid' });
+    add('test.wc.lid', new THREE.BoxGeometry(0.36, 0.02, 0.45), std(), [2.6, 12.0, 6.92], { t: 'hinge', p: [2.6, 12.22, 6.93], a: [1, 0, 0], deg: -90, g: 'test.wc.lid', label: 'Toilet lid' });
+    add('test.wc.seat', new THREE.BoxGeometry(0.36, 0.02, 0.45), std(), [2.6, 12.0, 6.9], { t: 'hinge', p: [2.6, 12.22, 6.91], a: [1, 0, 0], deg: -90, g: 'test.wc.seat', label: 'Toilet seat', needs: 'test.wc.lid' });
     add('test.clock.minute', new THREE.BoxGeometry(0.01, 0.12, 0.005), std(), [2.2, 13.0, 8.0], { t: 'clock', hand: 'm', p: [2.2, 13.0, 7.94], a: [0, -1, 0] });
     add('test.tv.picture', new THREE.PlaneGeometry(0.8, 0.45), std(), [2.2, 13.2, 7.5], { t: 'show', when: 1, fx: 'tv', g: 'test.tv' });
     add('test.tv', new THREE.BoxGeometry(0.82, 0.47, 0.04), std({ color: 0x111111 }), [2.2, 13.22, 7.5], { t: 'trigger', g: 'test.tv' });
@@ -793,7 +836,7 @@ async function syntheticIx(page) {
     scene.getObjectByName('house').add(lv); ix.add(lv);
     return ix.groups().filter((g) => g.id.startsWith('test.')).map((g) => `${g.id}:${g.kind}`);
   });
-  check(made.join() === 'test.shower:water,test.firepit:flame,test.sauna:move,test.bin:move,test.tv:tv,test.lamp:lamp,test.switch:light', `test objects added to the engine as one more level (${made})`);
+  check(made.join() === 'test.shower:water,test.firepit:flame,test.sauna:move,test.bin:move,test.wc.lid:move,test.wc.seat:move,test.tv:tv,test.lamp:lamp,test.switch:light', `test objects added to the engine as one more level (${made})`);
   const toggle = (id) => page.evaluate((id) => window.viewer.ix.toggle(id), id);
   const centre = (id) => page.evaluate((id) => window.viewer.ix.box(id).getCenter(new window.viewer.THREE.Vector3()).toArray(), id);
   const c0 = { sauna: await centre('test.sauna'), bin: await centre('test.bin') };
@@ -814,6 +857,13 @@ async function syntheticIx(page) {
     `sauna door swings (${Math.round(d(c0.sauna, c1.sauna) * 1000)} mm), bin lid lifts (${Math.round((c1.bin[1] - c0.bin[1]) * 1000)} mm), lamp off (${fx.lamp}), TV on (${fx.tv}), clock at local time (err ${err?.toFixed(4)})`);
   for (const id of ['test.shower', 'test.firepit', 'test.sauna', 'test.bin', 'test.tv', 'test.lamp']) await toggle(id);
   await idle(page, 300);
+  // `needs`: lifting the seat lifts the lid first; lowering the lid lowers the seat first; the lid alone lifts alone
+  const wc = () => page.evaluate(() => ['test.wc.lid', 'test.wc.seat'].map((id) => window.viewer.ix.state(id)).join(''));
+  await toggle('test.wc.seat'); await idle(page); const w1 = await wc();
+  await toggle('test.wc.lid'); await idle(page); const w2 = await wc();
+  await toggle('test.wc.lid'); await idle(page); const w3 = await wc();
+  await toggle('test.wc.lid'); await idle(page);
+  check(w1 === '11' && w2 === '00' && w3 === '10', `needs: seat lifts the lid with it (${w1}), the lid lowers the seat first (${w2}), the lid lifts alone (${w3})`);
   // the real roof window, eaves hatches and shed store doors of the export (hinges on other levels and axes)
   const real = (await groups(page)).filter((g) => /^roof\.velux|h_eaves|shed_store_doors|shed_w1/.test(g.id)).map((g) => g.id);
   const r0 = await Promise.all(real.map(centre));
@@ -823,6 +873,23 @@ async function syntheticIx(page) {
   for (const id of real) await toggle(id);
   await idle(page, 300);
   check(!real.length || moved.every((m) => m > 40), `Velux, eaves hatches, shed doors and windows open (${real.map((id, k) => `${id} ${moved[k]} mm`).join(', ')})`);
+  // a void room's light (the eaves, switch and bulkhead behind the knee wall) answers Space / E through an open hatch only
+  const hatch = (await groups(page)).filter((g) => /h_eaves_front_e\.leaf/.test(g.id)).map((g) => g.id), eavesIds = ['eaves_front.switch', 'eaves_front.bulkhead'];
+  if (!hatch.length || !(await groups(page)).some((g) => g.id === eavesIds[0])) skip('eaves light through the hatch: no eaves switch or hatch');
+  else {
+    await page.evaluate(() => window.viewer.jump('loft_office')); await idle(page, 300);
+    // in front of the middle of the east hatch (jambs x 2.52 / 3.43, knee wall y 2.575), facing the bulkhead in the void
+    // (2.53, 1.60) past the open leaves; shut, the leaf in front is the thing to use
+    await page.evaluate(() => { const { S, G } = window.viewer; Object.assign(S, { anim: null, glide: null, x: 2.975, y: 2.95, yaw: G.dirYaw(-0.445, -1.35), pitch: -0.22 }); }); await settle(page, 200);
+    const bestId = () => page.evaluate(() => window.viewer.ix.best(window.viewer.camera)?.id ?? null);
+    const shut = await bestId();
+    for (const id of hatch) await toggle(id);
+    await idle(page, 300);
+    const open = await bestId();
+    for (const id of hatch) await toggle(id);
+    await idle(page, 300);
+    check(!eavesIds.includes(shut) && eavesIds.includes(open), `eaves light: Space / E reaches it through the open hatch (${open}), not through the shut one (${shut})`);
+  }
   // the two-floor switch: only its rooms' lights-off images are fetched, both rooms go dark, the green bedroom dims
   await page.evaluate(() => window.viewer.jump('green_bedroom')); await idle(page, 300);
   const offs = () => page.evaluate(() => performance.getEntriesByType('resource').filter((r) => /lightmaps_off|probes_off/.test(r.name)).map((r) => r.name.split('/assets/')[1]));
@@ -1102,6 +1169,152 @@ if (run('levels')) {
       check(f.inside && f.fill > 0.5 && !f.neighbours, `phone dollhouse ${id}: framed below the plan panel (fill ${f.fill.toFixed(2)}, ${f.d.toFixed(1)} m)`);
       await shot(page, `phone_dollhouse_${id}.png`);
     }
+    await ctx.close();
+  }
+}
+
+// ---- walk-mode culling + static batching (NAV-PERF-DRAWCALLS): at every room viewpoint, four ways, the culled frame is
+// the full frame (no hole) for far fewer draw calls; a shut solid door hides the room behind; the dollhouse draws all ----
+if (run('cull')) {
+  const { ctx, page } = await open({ viewport: { width: 1440, height: 900 } });
+  await page.evaluate(() => window.viewer.streaming);
+  check((await info(page)).batches > 100, `static meshes batched per room and material (${(await info(page)).batches} batches)`);
+  const rows = [];
+  for (const id of await page.evaluate(() => Object.keys(window.viewer.vps))) for (const k of [0, 1, 2, 3]) {
+    await page.evaluate((id) => window.viewer.jump(id), id); await idle(page, 50);
+    await page.evaluate((k) => { window.viewer.S.yaw += (k * Math.PI) / 2; }, k); await settle(page);
+    const r = await page.evaluate(() => {
+      const v = window.viewer, { renderer, scene, camera } = v, W = 240, H = 150, c = Object.assign(document.createElement('canvas'), { width: W, height: H }), g = c.getContext('2d', { willReadFrequently: true });
+      const grab = (on) => { v.setCull(on); renderer.render(scene, camera); const n = renderer.info.render.calls; g.drawImage(renderer.domElement, 0, 0, W, H); return [g.getImageData(0, 0, W, H).data, n]; };
+      const [a, on] = grab(true), [b, off] = grab(false); v.setCull(true);
+      let d = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 40) d++;
+      return { room: v.info().room, on, off, diff: (100 * d) / (W * H) };
+    });
+    rows.push({ id, k, ...r });
+    if (r.diff > 0.3) await shot(page, `cull_hole_${id}_${k}.png`);
+  }
+  const worst = rows.reduce((a, b) => (b.diff > a.diff ? b : a)), most = rows.reduce((a, b) => (b.on > a.on ? b : a)), sum = (k) => rows.reduce((n, r) => n + r[k], 0);
+  console.log('cull', JSON.stringify({ views: rows.length, calls: sum('on'), uncut: sum('off'), most, worst }));
+  check(worst.diff <= 0.3, `culling leaves no hole: ${rows.length} views (every room viewpoint, four ways), worst ${worst.diff.toFixed(2)} % of pixels changed (${worst.id} ${worst.k})`);
+  check(sum('on') < 0.45 * sum('off') && most.on <= 1200, `draw calls ${sum('on')} vs ${sum('off')} without culling; most ${most.on} (${most.id} ${most.k}, was ${most.off})`);
+  // a shut solid door: the study, facing its door - the landing behind is not drawn until the door opens
+  await page.evaluate(() => window.viewer.jump('study')); await idle(page, 100);
+  const door = await page.evaluate(() => {
+    const { ix, walk, S, G } = window.viewer, g = ix.groups().find((q) => q.blocks.includes('d_study')), p = walk.portals.find((q) => q.id === 'd_study');
+    if (g.open) ix.toggle(g.id);
+    const k = G.cellAt(walk, '2', p.center[0] + p.normal[0], p.center[1] + p.normal[1])?.room === 'study' ? 1 : -1;
+    Object.assign(S, { anim: null, glide: null, x: p.center[0] + k * p.normal[0] * 1.2, y: p.center[1] + k * p.normal[1] * 1.2, yaw: G.dirYaw(-k * p.normal[0], -k * p.normal[1]), pitch: 0 });
+    return g.id;
+  });
+  await idle(page, 100); await settle(page);
+  const shutSeen = await page.evaluate(() => [...window.viewer.seen().keys()]);
+  await page.evaluate((id) => window.viewer.ix.toggle(id), door); await settle(page);
+  const openSeen = await page.evaluate(() => [...window.viewer.seen().keys()]);
+  await idle(page);
+  check(!shutSeen.includes('landing2_head') && openSeen.includes('landing2_head'), `the shut study door hides the landing (${shutSeen}), opening it shows it (${openSeen.includes('landing2_head')})`);
+  await page.evaluate(() => window.viewer.setMode('orbit')); await settle(page);
+  check(await page.evaluate(() => window.viewer.cullList.every((c) => c.o.layers.mask === 1)), 'the dollhouse draws every mesh (no walk culling)');
+  await page.evaluate(() => window.viewer.setMode('walk'));
+  await ctx.close();
+}
+
+// ---- round-3 navigation fixes (Q4, Q5, Q13, Q14 / IX-11, NAV-*), on the real export ----
+if (run('nav')) {
+  const { ctx, page } = await open({ viewport: { width: 1440, height: 900 } }, '', async (page) => {
+    // the level-G lightmaps arrive 1.2 s after the GLB: the loader must say so instead of standing at 100 %
+    await page.route(/lightmaps\/(hallway|living)\.jpg$/, async (r) => { await new Promise((f) => setTimeout(f, 1200)); await r.continue(); });
+    await page.addInitScript(() => { window.__msgs = []; new MutationObserver(() => { const t = document.querySelector('#loader-msg')?.textContent; if (t && window.__msgs.at(-1) !== t) window.__msgs.push(t); })
+      .observe(document, { subtree: true, childList: true, characterData: true }); });
+  });
+  await page.evaluate(() => window.viewer.streaming);
+  const msgs = await page.evaluate(() => window.__msgs);
+  check(msgs.some((m) => /^Loading model \d+%/.test(m)) && msgs.some((m) => /^Loading lighting (9\d|[1-8]\d)%/.test(m)), `loader: model then lighting progress over the first view (${msgs.filter((m, i) => !i || /lighting/.test(m)).slice(0, 4).join(' | ')})`);
+  await page.mouse.move(700, 12);
+  const best = () => page.evaluate(() => { const v = window.viewer, g = v.ix.best(v.camera); return g?.id ?? null; });
+  const turn = async (id, k) => { await page.evaluate((id) => window.viewer.jump(id), id); await idle(page, 100); await page.evaluate((k) => { window.viewer.S.yaw += (k * Math.PI) / 2; }, k); await settle(page, 100); };
+  // Q4: Space never reaches through a partition (the study's wall to bathroom2) or a window (vestibule -> living shutters)
+  await turn('study', 3); const b1 = await best();
+  await turn('vestibule', 3); const b2 = await best();
+  check(!/^bathroom2\./.test(b1 ?? '') && !/^living\./.test(b2 ?? ''), `Space stays in the room: study facing the bathroom wall -> ${b1}; vestibule facing the bay window -> ${b2}`);
+  // NAV-SPACE-OPEN-DOOR-CLOSE-RANGE: 0.6 m inside the dining room facing its open door, Space closes it
+  const near = await page.evaluate(() => {
+    const { S, G, walk, ix } = window.viewer, p = walk.portals.find((q) => q.id === 'd_dining'), g = ix.groups().find((q) => q.blocks.includes('d_dining'));
+    if (!g.open) ix.toggle(g.id);
+    for (const k of [1, -1]) { const x = p.center[0] - k * p.normal[0] * 0.6, y = p.center[1] - k * p.normal[1] * 0.6; if (G.cellAt(walk, 'G', x, y)?.room === 'dining' && G.isFree(walk, 'G', x, y)) { Object.assign(S, { anim: null, glide: null, x, y, layer: 'G', z: 0, yaw: G.dirYaw(k * p.normal[0], k * p.normal[1]), pitch: -0.05 }); return g.id; } }
+    return null;
+  });
+  await idle(page, 100); await settle(page, 100);
+  const b3 = await best(); await page.locator('#scene').focus(); await page.keyboard.press('Space'); await idle(page);
+  const shutNow = await page.evaluate((id) => !window.viewer.ix.groups().find((g) => g.id === id).open, near);
+  check(near && b3 === near && shutNow, `0.6 m inside the dining room facing its open door: Space picks ${b3} and closes it (${shutNow})`);
+  await page.evaluate((id) => window.viewer.ix.toggle(id), near); await idle(page);
+  // Q5: mirrors read the room probe box-projected; the hall mirror at the spawn shows the stair (a varied picture, not a blank panel)
+  await page.evaluate(() => window.viewer.jump('hallway')); await idle(page, 200);
+  const mir = await page.evaluate(() => {
+    const { scene, camera, renderer, castAt } = window.viewer; let n = 0, box = 0; scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.name === 'mirror') { n++; box += m.userData.boxProbe ? 1 : 0; } });
+    const c = Object.assign(document.createElement('canvas'), { width: innerWidth, height: innerHeight }), g = c.getContext('2d', { willReadFrequently: true }); renderer.render(scene, camera); g.drawImage(renderer.domElement, 0, 0);
+    const lum = []; for (let X = 20; X < 460; X += 12) for (let Y = 200; Y < 820; Y += 12) { const h = castAt(X, Y); if (h?.object.material.name !== 'mirror') continue; const d = g.getImageData(X, Y, 1, 1).data; lum.push(0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2]); }
+    const mean = lum.reduce((a, b) => a + b, 0) / lum.length, sd = Math.sqrt(lum.reduce((a, b) => a + (b - mean) ** 2, 0) / lum.length);
+    return { n, box, samples: lum.length, sd };
+  });
+  await shot(page, 'nav_spawn_mirror.png');
+  check(mir.n > 5 && mir.box === mir.n && mir.samples > 20 && mir.sd > 18, `mirrors box-projected (${mir.box} of ${mir.n}); the hall mirror at the spawn shows a picture (luminance sd ${mir.sd?.toFixed(1)} over ${mir.samples} px)`);
+  // Q14 / IX-11: verbs that say what the thing does
+  const hint = Object.fromEntries((await groups(page)).map((g) => [g.id, g.hint]));
+  const burners = Object.entries(hint).filter(([id]) => /^kitchen\.hob\.\d$/.test(id)).map(([, h]) => h);
+  check(hint['loft_office.office_chair'] === 'Swivel chair' && hint['bathroom2.sauna.timer'] === 'Turn over sand timer' && hint['green_bedroom.armchair.footstool'] === 'Pull out footstool'
+    && hint['loft_office.aircon'] === 'Turn air conditioning on' && burners.length === 5 && new Set(burners).size === 5 && burners.every((h) => /^Light [a-z-]+ burner$/.test(h)),
+  `hints: ${['loft_office.office_chair', 'bathroom2.sauna.timer', 'green_bedroom.armchair.footstool', 'loft_office.aircon'].map((id) => hint[id]).join(', ')}; ${burners.join(', ')}`);
+  // NAV-W-SNAG-CORNER: W due south past the side-passage downpipe gully, tangent to its footprint, and 3 deg either side
+  for (const a of [0, 3, -3]) {
+    await page.evaluate((a) => { const { S, G, walk } = window.viewer; Object.assign(S, { anim: null, glide: null, x: 4.84, y: 7.95, layer: 'G', z: G.zAt(walk, 'G', 4.84, 7.95), yaw: Math.PI + (a * Math.PI) / 180, pitch: 0 }); }, a);
+    await page.locator('#scene').focus(); await page.keyboard.down('KeyW');
+    await page.waitForFunction(() => window.viewer.S.y < 6.6, null, { timeout: 4000, polling: 50 }).catch(() => {}); await page.keyboard.up('KeyW');
+    const y = (await info(page)).y; check(y < 6.75, `W south past the side-passage gully (heading ${a} deg): from y 7.95 to ${y.toFixed(2)}`);
+  }
+  // NAV-PLAN-HEADER-STAIR-NAME: half-way up the main stair the header names the flight, not the stairwell above it
+  await page.evaluate(() => { const { S, G, walk } = window.viewer; Object.assign(S, { anim: null, glide: null, x: 0.58, y: 7.69, layer: 'stair_main', z: G.zAt(walk, 'stair_main', 0.58, 7.69), yaw: 0 }); }); await settle(page, 100);
+  const head = await page.textContent('#plan-room');
+  check(/^Stairs, ground floor to first floor$/.test(head), `on the main flight the plan header reads "${head}"`);
+  // NAV-STAIR2-FOOT-TARGET: walking to the first tread of the second-floor stair ends on that flight, facing up it
+  await page.evaluate(() => { const { S, G, walk } = window.viewer; Object.assign(S, { anim: null, glide: null, x: -0.31, y: 6.81, layer: '1', z: G.zAt(walk, '1', -0.31, 6.81), yaw: 0 }); }); await settle(page);
+  await page.evaluate(() => window.viewer.walkTo(0.61, 6.22, 'stair_second')); await idle(page, 200);
+  const foot = await page.evaluate(() => { const { S, G, walk } = window.viewer, c = walk.cells.find((q) => q.id === 'stair_second'), [a, b] = c.risers[0], up = [-(b[1] - a[1]), b[0] - a[0]], [fx, fy] = G.yawDir(S.yaw); return { layer: S.layer, dot: (fx * up[0] + fy * up[1]) / Math.hypot(...up) }; });
+  check(foot.layer === 'stair_second' && foot.dot > 0.7, `double-click on the first tread: ends on ${foot.layer}, facing up the flight (${foot.dot.toFixed(2)})`);
+  await shot(page, 'nav_stair2_foot.png');
+  // NAV-PLAN-FOLLOW-ZOOM: a zoomed plan follows the walker to another room
+  await page.evaluate(() => window.viewer.jump('hallway')); await idle(page, 200);
+  const pb = await page.locator('#plan-canvas').boundingBox();
+  const m0 = await page.evaluate(() => { const p = window.viewer.planView, [X, Y] = p.toScreen(p.viewer.x, p.viewer.y); return [X / p.c.width, Y / p.c.height]; });
+  await page.mouse.move(pb.x + m0[0] * pb.width, pb.y + m0[1] * pb.height);
+  for (let k = 0; k < 6; k++) { await page.mouse.wheel(0, -200); await page.waitForTimeout(60); }
+  await page.mouse.move(900, 600);
+  const zoomed = [];
+  for (const r of ['dining', 'kitchen', 'blue_bedroom', 'loft_office']) {
+    await page.evaluate((r) => window.viewer.jump(r), r); await idle(page, 200);
+    zoomed.push(await page.evaluate(() => { const p = window.viewer.planView, [X, Y] = p.toScreen(p.viewer.x, p.viewer.y); return { s: p.v.s, inside: X > 0 && X < p.c.width && Y > 0 && Y < p.c.height }; }));
+  }
+  await shot(page, 'nav_plan_follow.png', '#plan');
+  check(zoomed.every((z) => z.inside) && zoomed[0].s > 2 * (await page.evaluate(() => { const p = window.viewer.planView, b = p.bounds; return Math.min(p.c.width / (b.maxX - b.minX), p.c.height / (b.maxY - b.minY)); })),
+    `zoomed plan keeps the marker in view in dining, kitchen, blue bedroom, loft (${zoomed.map((z) => z.inside)})`);
+  // NAV-PLAN-FOOTER-TRUNC: the scale is never cut off; the coordinate readout clears when the pointer leaves the plan
+  await page.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2); await page.waitForTimeout(100);
+  const xy0 = await page.textContent('#plan-xy'), cut = await page.evaluate(() => { const t = document.querySelector('#plan-title'); return t.scrollWidth > t.clientWidth + 1; });
+  await page.mouse.move(900, 600); await page.waitForTimeout(100);
+  check(/^X -?\d+ +Y -?\d+$/.test(xy0) && !cut && (await page.textContent('#plan-xy')) === '', `plan footer: "${await page.textContent('#plan-title')}" whole while the readout shows "${xy0}"; readout cleared on leave`);
+  // Q13: the dollhouse on level 2 over the stairwell names no ground-floor room
+  await page.evaluate(() => window.viewer.setMode('orbit')); await page.waitForTimeout(400);
+  await page.click('#dh-levels button[data-level="2"]'); await page.waitForTimeout(300);
+  await page.evaluate(() => { const { orbit, camera } = window.viewer, d = camera.position.clone().sub(orbit.target); orbit.target.set(0.57, 6.02, -7.0); camera.position.copy(orbit.target).add(d); orbit.update(); }); await settle(page, 100);
+  const dh = await page.evaluate(() => ({ room: document.querySelector('#plan-room').textContent, sheet: window.viewer.planView.sheetId }));
+  check(dh.sheet === '2' && !/kitchen|hall|living|dining/i.test(dh.room), `dollhouse level 2 over the stairwell: sheet ${dh.sheet}, header "${dh.room}"`);
+  await page.evaluate(() => window.viewer.setMode('walk'));
+  await ctx.close();
+  // phones: 1.5x pixels at most
+  {
+    const { ctx, page } = await open({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    const pr = await page.evaluate(() => window.viewer.renderer.getPixelRatio());
+    check(pr <= 1.5, `phone: renderer pixel ratio ${pr} (device 3)`);
     await ctx.close();
   }
 }

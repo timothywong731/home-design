@@ -18,12 +18,12 @@ ROOM = 'balcony'
 X0, X1, Y0, Y1, DZ = 0.0, 2.30, 17.36, 18.41, 3.00      # platform, deck top
 RAIL = DZ + 1.10                                         # top of the top rail
 
-CAMERAS = [
+CAMERAS = [   # [round 4] 'rear' first: the first camera is the room's hero still (export.heroes); 'deck' was a dark close-up
+    dict(name='rear', pos=(1.20, 23.00, 1.20), look=(1.20, 17.36, 3.60), fov_deg=80, ref='v2 f_0251'),
     dict(name='deck', pos=(1.20, 17.60, 4.55), look=(1.20, 18.60, 3.60), fov_deg=100, ref='v3 f_0285'),
     dict(name='lantern', pos=(1.40, 17.90, 4.50), look=(2.40, 17.36, 4.90), fov_deg=90, ref='v3 f_0295'),
     dict(name='west', pos=(1.80, 17.80, 4.55), look=(-0.50, 17.90, 4.00), fov_deg=100, ref='v3 f_0299'),
     dict(name='below', pos=(1.20, 19.80, 1.50), look=(1.20, 17.40, 4.40), fov_deg=100, ref='v2 f_0173'),
-    dict(name='rear', pos=(1.20, 23.00, 1.20), look=(1.20, 17.36, 3.60), fov_deg=80, ref='v2 f_0251'),
 ]
 
 # trough planters hung outside the top rail: (centre x, centre y, along unit, out unit); rail outer faces y 18.415,
