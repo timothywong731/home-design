@@ -253,12 +253,13 @@ if (run('phone')) {
   const lmMax = await page.evaluate(() => { let m = 0; window.viewer.scene.traverse((o) => { if (o.isMesh) for (const x of [].concat(o.material)) if (x.lightMap?.image) m = Math.max(m, x.lightMap.image.width, x.lightMap.image.height); }); return m; });
   check(lmMax > 0 && lmMax <= 1024, `phone: lightmap atlases over 1024 px are drawn down on load (largest ${lmMax} px)`);
   await shot(page, 'phone.png');
-  // move pad: hold the knob forward for 1 s
+  // move pad: hold the knob forward
   const i0 = await info(page), pad = await page.locator('#pad').boundingBox();
   const cdp = await ctx.newCDPSession(page), cx = pad.x + pad.width / 2, cy = pad.y + pad.height / 2;
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx, y: cy - 40 }] });
-  await page.waitForTimeout(1000);
+  // held until the walker has moved 0.3 m (slow frames under GPU load), at most 6 s
+  await page.waitForFunction((y0) => window.viewer.info().y > y0 + 0.3, i0.y, { timeout: 6000 }).catch(() => {});
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   const i1 = await info(page);
   check(i1.y > i0.y + 0.3, `touch pad walks forward (y ${i0.y.toFixed(2)} -> ${i1.y.toFixed(2)})`);
