@@ -14,6 +14,7 @@ import getpass
 import json
 import os
 import shutil
+import stat
 import sys
 from pathlib import Path
 
@@ -48,8 +49,8 @@ def seal(src, out, pw):
         iv = os.urandom(12)
         return iv + aes.encrypt(iv, data, None)
 
-    if out.exists():
-        shutil.rmtree(out)
+    if out.exists():                    # the deploy repo inside it has read-only git objects on Windows
+        shutil.rmtree(out, onexc=lambda fn, path, _: (os.chmod(path, stat.S_IWRITE), fn(path)))
     shutil.copytree(src, out, ignore=shutil.ignore_patterns('test'))
     n = 0
     for d in SEALED:
