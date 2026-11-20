@@ -48,12 +48,17 @@ self.addEventListener('fetch', (e) => {
 async function serve(req, url) {
   key ||= await stored();
   if (!key) return new Response('locked', { status: 401 });
-  const r = await fetch(req.url, { method: req.method });
   const type = TYPES[url.pathname.split('.').pop().toLowerCase()] || 'application/octet-stream';
-  if (!r.ok) return r;
-  if (req.method === 'HEAD') return new Response(null, { headers: { 'Content-Type': type } });
-  try {
-    const body = await open(key, await r.arrayBuffer());
-    return new Response(body, { headers: { 'Content-Type': type, 'Content-Length': String(body.byteLength) } });
-  } catch { return new Response('wrong key', { status: 403 }); }
+  // The HTTP cache (Pages: max-age 600) can still hold a copy from before the last deploy - plain, or sealed with an
+  // older salt - which this key cannot open: then fetch it again past the cache, once.
+  for (const cache of ['default', 'reload']) {
+    const r = await fetch(req.url, { method: req.method, cache });
+    if (!r.ok) return r;
+    if (req.method === 'HEAD') return new Response(null, { headers: { 'Content-Type': type } });
+    try {
+      const body = await open(key, await r.arrayBuffer());
+      return new Response(body, { headers: { 'Content-Type': type, 'Content-Length': String(body.byteLength) } });
+    } catch { /* stale copy: retry */ }
+  }
+  return new Response('wrong key', { status: 403 });
 }

@@ -19,14 +19,16 @@ const head = async (f) => (await readFile(join(SITE, f))).subarray(0, 4).toStrin
 check(await head('assets/glb/G.glb') !== 'glTF', 'stored G.glb is not a readable glTF');
 check(!(await head('assets/manifest.json')).startsWith('{'), 'stored manifest.json is not readable JSON');
 
+let stale = true;          // first: a plain manifest from 'before the deploy', cached by the browser (Pages sends max-age 600)
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
 const server = createServer(async (req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
   if (!url.startsWith('/home-design/')) { res.writeHead(404).end(); return; }
   const rel = normalize(url.slice(13) || 'index.html').replace(/^([/\\]|\.\.)+/, '');
   try {
-    const body = await readFile(join(SITE, rel));
-    res.writeHead(200, { 'content-type': TYPES[extname(rel)] || 'application/octet-stream', 'content-length': body.length });
+    const old = stale && rel.replace(/\\/g, '/') === 'assets/manifest.json';
+    const body = await readFile(old ? join(REPO, 'docs/assets/manifest.json') : join(SITE, rel));
+    res.writeHead(200, { 'content-type': TYPES[extname(rel)] || 'application/octet-stream', 'content-length': body.length, 'cache-control': 'max-age=600' });
     res.end(req.method === 'HEAD' ? undefined : body);
   } catch { res.writeHead(404).end(); }
 });
@@ -41,6 +43,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 const loaded = () => page.waitForFunction(() => window.viewer?.ix?.groups?.().length > 0, null, { timeout: 240000 }).then(() => true, () => false);
 
+await page.goto(BASE + 'assets/manifest.json');   // no worker yet: the plain copy lands in the HTTP cache
+stale = false;
 await page.goto(BASE);
 await page.waitForSelector('#gate:not([hidden])', { timeout: 30000 });
 check(true, 'gate shown on the first visit');
@@ -50,7 +54,7 @@ await page.waitForFunction(() => document.querySelector('#gate-msg').textContent
 check(await page.isVisible('#gate'), 'wrong password refused, gate stays');
 await page.fill('#gate-pw', PW);
 await page.click('#gate button');
-check(await loaded(), 'right password: the house loads (interaction groups present)');
+check(await loaded(), 'right password: the house loads, past a stale cached manifest (interaction groups present)');
 const pdf = await page.evaluate(() => fetch('assets/house-plans.pdf').then((r) => r.arrayBuffer()).then((b) => new TextDecoder().decode(b.slice(0, 4))));
 check(pdf === '%PDF', `plan PDF decrypts through the worker (${pdf})`);
 await page.screenshot({ path: join(REPO, 'build/gate_test_open.png') });
