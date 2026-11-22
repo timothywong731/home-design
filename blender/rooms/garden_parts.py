@@ -107,32 +107,58 @@ def strand(rng, path, n, L, W, nm, normal, off=.012):
 
 
 # ---------------------------------------------------------------- containers
-def planter(mb, x0, x1, y0, y1, z0, h, feet=0.0, fill=None, drop=.04, slat=.085, post=.045, t=.018, liner=True):
-    """Slatted timber planter (garden.md 6): corner posts, horizontal slats with shadow gaps, a flat rim, black
-    liner, filled to `drop` below the rim with `fill` (default soil). -> z of the fill surface."""
+def planter(mb, x0, x1, y0, y1, z0, h, feet=0.0, fill=None, drop=.04, slat=.085, post=.045, t=.018, liner=True,
+            wood=TIMBER, vertical=False):
+    """Slatted timber planter (garden.md 6), filled to `drop` below the rim with `fill` (default soil), black liner
+    (liner='fold': its edge turned over the rim). Horizontal style: corner posts down to the deck, slats with shadow
+    gaps between them, `feet` = slat-free height at the bottom. vertical=True (the east trough, v11 t194): sides of
+    vertical boards 0.095 with 3 mm gaps, square block feet `feet` high set 40 mm in from the corners.
+    `wood` = material key or Material (e.g. site_tex 'oak_table@#5A4A40'). -> z of the fill surface."""
     zb, zt = z0 + feet, z0 + h
-    for x, y in ((x0, y0), (x1 - post, y0), (x0, y1 - post), (x1 - post, y1 - post)):
-        mb.box((x, y, z0), (x + post, y + post, zt - .001), TIMBER, bev=.003, grain=2)
-    n = max(1, round((zt - zb) / slat))
-    s = (zt - zb) / n
-    for i in range(n):
-        a, b = zb + i * s + .002, zb + (i + 1) * s - .002
-        mb.box((x0 + post - .005, y0 + .004, a), (x1 - post + .005, y0 + .004 + t, b), TIMBER, bev=.002, grain=0)
-        mb.box((x0 + post - .005, y1 - .004 - t, a), (x1 - post + .005, y1 - .004, b), TIMBER, bev=.002, grain=0)
-        mb.box((x0 + .004, y0 + post - .005, a), (x0 + .004 + t, y1 - post + .005, b), TIMBER, bev=.002, grain=1)
-        mb.box((x1 - .004 - t, y0 + post - .005, a), (x1 - .004, y1 - post + .005, b), TIMBER, bev=.002, grain=1)
+    if vertical:
+        for x, y in ((x0 + .04, y0 + .04), (x1 - .11, y0 + .04), (x0 + .04, y1 - .11), (x1 - .11, y1 - .11)):
+            if feet:
+                mb.box((x, y, z0), (x + .07, y + .07, zb + .002), wood, bev=.004, grain=2)
+        for ya, yb in ((y0, y0 + t), (y1 - t, y1)):                        # long sides run the full length
+            n = max(1, round((x1 - x0) / .098))
+            s = (x1 - x0) / n
+            for i in range(n):
+                mb.box((x0 + i * s + .0015, ya, zb), (x0 + (i + 1) * s - .0015, yb, zt - .001), wood, bev=.002, grain=2)
+        for xa, xb in ((x0, x0 + t), (x1 - t, x1)):                        # ends between them
+            n = max(1, round((y1 - y0 - 2 * t) / .098))
+            s = (y1 - y0 - 2 * t) / n
+            for i in range(n):
+                mb.box((xa, y0 + t + i * s + .0015, zb), (xb, y0 + t + (i + 1) * s - .0015, zt - .001), wood, bev=.002, grain=2)
+        i0 = t
+    else:
+        for x, y in ((x0, y0), (x1 - post, y0), (x0, y1 - post), (x1 - post, y1 - post)):
+            mb.box((x, y, z0), (x + post, y + post, zt - .001), wood, bev=.003, grain=2)
+        n = max(1, round((zt - zb) / slat))
+        s = (zt - zb) / n
+        for i in range(n):
+            a, b = zb + i * s + .002, zb + (i + 1) * s - .002
+            mb.box((x0 + post - .005, y0 + .004, a), (x1 - post + .005, y0 + .004 + t, b), wood, bev=.002, grain=0)
+            mb.box((x0 + post - .005, y1 - .004 - t, a), (x1 - post + .005, y1 - .004, b), wood, bev=.002, grain=0)
+            mb.box((x0 + .004, y0 + post - .005, a), (x0 + .004 + t, y1 - post + .005, b), wood, bev=.002, grain=1)
+            mb.box((x1 - .004 - t, y0 + post - .005, a), (x1 - .004, y1 - post + .005, b), wood, bev=.002, grain=1)
+        i0 = .005 + t
     r = .05
-    mb.box((x0 - .006, y0 - .006, zt - .001), (x1 + .006, y0 + r, zt + .018), TIMBER, bev=.003, grain=0)
-    mb.box((x0 - .006, y1 - r, zt - .001), (x1 + .006, y1 + .006, zt + .018), TIMBER, bev=.003, grain=0)
-    mb.box((x0 - .006, y0 + r, zt - .001), (x0 + r, y1 - r, zt + .018), TIMBER, bev=.003, grain=1)
-    mb.box((x1 - r, y0 + r, zt - .001), (x1 + .006, y1 - r, zt + .018), TIMBER, bev=.003, grain=1)
-    i0, zf = .005 + t, zt - drop
+    mb.box((x0 - .006, y0 - .006, zt - .001), (x1 + .006, y0 + r, zt + .018), wood, bev=.003, grain=0)
+    mb.box((x0 - .006, y1 - r, zt - .001), (x1 + .006, y1 + .006, zt + .018), wood, bev=.003, grain=0)
+    mb.box((x0 - .006, y0 + r, zt - .001), (x0 + r, y1 - r, zt + .018), wood, bev=.003, grain=1)
+    mb.box((x1 - r, y0 + r, zt - .001), (x1 + .006, y1 - r, zt + .018), wood, bev=.003, grain=1)
+    zf = zt - drop
     black = M.mat('black_matt')
     mb.box((x0 + i0, y0 + i0, zb + .01), (x1 - i0, y1 - i0, zf), fill or P.mat('soil'))
     if liner:
         for a, b, hint in (((x0 + i0, y0 + i0), (x1 - i0, y0 + i0), (0, 1, 0)), ((x0 + i0, y1 - i0), (x1 - i0, y1 - i0), (0, -1, 0)),
                            ((x0 + i0, y0 + i0), (x0 + i0, y1 - i0), (1, 0, 0)), ((x1 - i0, y0 + i0), (x1 - i0, y1 - i0), (-1, 0, 0))):
             mb.face([(*a, zf), (*b, zf), (*b, zt + .017), (*a, zt + .017)], black, hint)
+    if liner == 'fold':                                                    # the liner's edge lapped over the rim
+        f, k = .028, zt + .0195
+        for a, b in (((x0 + i0 - .002, y0 + i0 - f), (x1 - i0 + .002, y0 + i0)), ((x0 + i0 - .002, y1 - i0), (x1 - i0 + .002, y1 - i0 + f)),
+                     ((x0 + i0 - f, y0 + i0), (x0 + i0, y1 - i0)), ((x1 - i0, y0 + i0), (x1 - i0 + f, y1 - i0))):
+            mb.box((*a, zt + .0175), (*b, k), black)
     return zf
 
 

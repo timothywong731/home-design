@@ -372,3 +372,4 @@ Local to global: x unchanged. For y, add the offset of the element the item is k
   vertically off the corbel caps (v1 f_0283, v2 f_0512-f_0516).
 - The hall cornice does not run along x 0.15 over the open top of the flight (y 7.58..8.13); the 2.84 run along the
   lobby edge starts at the drop post's north face (y 8.18).
+- Round-3 whole-house check: the front-hall cornice no longer runs across the screen wall over the inner-door frame head (lib/mouldings TRIM['hallway'] skip box moved from y 1.83 to 1.96 with the hall's south edge).

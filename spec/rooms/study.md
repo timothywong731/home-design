@@ -1,4 +1,7 @@
-# study — second-floor rear study / office
+# study (Rose Room) — second-floor rear room, garden side
+
+The owner's name for this room is **Rose Room** (id `study` unchanged). The round-3 section at the end wins over
+everything above it.
 
 Source: v4:f_0442–f_0570 (plus v4:f_0382–f_0386 and v5:f_0001–f_0003 through the door). Full-resolution stills
 in `reference/work/p2_second_rear/` (`hr_v4_443` … `hr_v4_567`, `m_windows.jpg`).
@@ -246,6 +249,56 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - Rear wall outer face y **17.36** (0.50), flank outer face x **3.40**.
 - Floor Z 6.02, ceiling 2.60: unchanged. Roof above: flat, Z 8.87.
 
-## Round 3 corrections (core owner, from build/rooms2_open.md)
-- 2.2 w_study is 1.00 wide (x 0.76..1.76) again: the interior frames v4 f_0560 / hr_v4_559 show the whole two-light frame
-  taller than wide; the rear-elevation 1.55 was measured over the surround.
+## Round 3 corrections (core owner, from build/rooms2_open.md) — superseded
+- ~~2.2 w_study is 1.00 wide (x 0.76..1.76) again~~: overruled by RECONCILE3 floor2b-02/03 (1.55 x 1.56 from 0.58), below.
+
+## Round 3 — 21 Nov footage (v13 t127–t212), as built in `rooms/study.py`
+
+Sources: `spec/phase3/floor2_b.md` section 1 (survey), `spec/phase3/briefs/study.md`, RECONCILE3 floor2b-01..05,
+envelope-05/-06, garden-23. Stills in `reference/work/r3_floor2_b/` (`hr_v13_t127` … `hr_v13_t217`).
+
+**Shell (house.json).** Neck x -0.65…0.32, y 13.04…13.84 (0.97 x 0.80); main room x -0.65…3.10, y 13.84…16.86
+(3.75 x 3.02). `w_bath2_study` 0.14 (faces 13.70 / 13.84). Window `w_study` 1.55 wide x 1.56 from sill 0.58 (head
+2.14), centre x 1.255, transom 1.70, four top-hung lights (lower pair 35 deg, brass espagnolette on each bottom rail),
+interior reveal 0.24 (frame inner face y 17.102). Ceiling 2.60, skirting 0.17.
+
+**Rule used to re-fit the room.** W-wall items keep their distance from the N wall (the survey tied them to it);
+S-wall items moved 0.31 south with the wall; neck-wall items keep their distance from the door wall.
+
+| item | as built (world; z above the floor 6.02) | evidence |
+|---|---|---|
+| W wall paint | `#C5ACA8` dusty rose-mauve (repaint of the shell's `#BC9D99`); other walls `#F0EDE6` (shell) | survey 1.1 #C6ABA3; render vs t193.4 / t166 ratios |
+| radiator | 7 oval tubes, 0.49 x 1.78, x -0.30…0.19, bottom 0.21, 0.09 off the wall; top wall brackets | t148, v4 f_0444 |
+| a/c | 0.80 x 0.30 x 0.22, x -0.62…0.18, z 2.10…2.40; louvre flap, sensor eye lower right | t147 / t148 / t193.4 |
+| dimmer | satin-steel plate, round knob, neck E wall y 13.38, z 1.32 (0.34 N of the door wall); switches the six downlights only (`circuit='main'`; the plug-in desk lamp keeps its own circuit) | t127 (the plate reads grey-metallic beside the white cradle) |
+| a/c remote cradle | neck E wall y 13.50 (0.12 further N), bottom z 1.25 | t127 |
+| downlights | six, 3 x 2 grid: x 0.05 / 1.25 / 2.50, y 14.75 / 16.10; none in the neck | v4 f_0563 / f_0565, t193.4 |
+| wall TV | 55-inch 1.23 x 0.71, W wall y 14.83…16.06, z 1.23…1.94, two bracket hooks under it | v4 f_0510, t193.4 |
+| E wall plates | single outlet plate z 1.05 at y 14.68; double socket z 0.35 at y 14.98 — placed 0.24 / 0.54 N of the corner cabinet as filmed, not at the survey's absolute 14.95 / 15.25 (measured against the old S wall) | t160 |
+| S wall socket | double, z 0.25, x 2.35 (just W of the corner cabinet) | f_0178 |
+| window board | oak, 22 mm on the reveal bottom (top 0.602), 0.24 deep to the frame + 25 mm bull-nose, full opening width, ends housed 5 mm into the reveals | t206, t194.4 |
+| curtains | pole 1.88 overall, x 0.315…2.195 (mid-brown wood `#7E6048`: 30 mm bar 1.80, two 40 mm ball finials, brackets and rosettes at x 0.445 / 2.065, outside the reveals; built in `study.py curtain_pole()`), centre x 1.255, axis z 2.30; eyelet heading (brushed steel), stacks 0.30 (outer edges x 0.335…2.175) covering both jambs, hem 0.03, tie z 0.95 with pale-gold rope and 0.20 tassel; cloth = generated pale silver jacquard `art/study_curtain.jpg` (repeat 0.64 m, `rooms/study_tex.py`) | t152, t193.4, hr_v4_563 |
+| glazed bookcase | y 15.00…16.02, x -0.63…-0.33 (0.02 off the wall for the skirting), 0.90 high; plinth, bead under the top, two glazed doors with brass butts, catch and escutcheon; book rows stand on the bottom panel and shelf tops (0.089 / 0.353 / 0.607) | t142, t193.4 |
+| frames under the TV | black 0.17 sq with a stepped gold slip and a grey-cat drawing (crop `art/study_cat_grey.jpg`, t142), y 15.08…15.25, z 0.98…1.15; gold rope frame, burgundy mount, 0.30 x **0.31**, y 15.33…15.63, z 0.908…1.218 (survey 0.34 high: does not fit between the 0.90 bookcase top and the TV at 1.23); stepped bronze 0.18 sq, y 15.71…15.89, z 0.97…1.15 | t142, t146, t193.4 |
+| rooster shadow box | 0.34 x 0.58, y 16.25…16.59, z 1.25…1.83, champagne-gilt box frame 45 x 60 mm, glazed | t147, t193.4 |
+| cottage painting | 0.70 x 0.58, y 13.98…14.68, centre z 1.61, plain gold 30 mm | v4 f_0510, hr_v4_527 |
+| goose trophy | two geese (breast, neck, head, pink beaks) on a dark kidney plaque, a fanned wing behind the S bird; centre y 14.49, z 2.23 | hr_v4_527, t146 |
+| antler plaque | carved leaf plaque, roe skull and antlers, y 15.42, plaque bottom 2.05, tips 2.38 | t193.4, t146 |
+| drawer pedestal | x -0.31…0.05, y 16.08…16.66, top 0.72, castors, 3 shallow + 1 deep drawers facing S. Its W side lines up with the bookcase front (t127), so the drawers (0.20 out) clear the bookcase; `excl` with the N bookcase door | t127, t142, t193.4 |
+| desk A | 1.60 x 0.80, long axis N–S, x 1.55…2.35, y 14.00…15.60 (S end 0.16 off the wall), top 0.74, r 0.08 corners, glides; black hand control under the NE front edge | t164, t170, t176 |
+| desk B | 1.20 x 0.70, long axis E–W, x 0.35…1.55, **y 14.95…15.65**, butting desk A's W edge in its N half. Evidence: a PnP fit of t127 (threshold, dimmer, radiator foot, N-wall floor line; 6 px rms) puts its W foot centre at 15.21…15.31; t129 shows the ring lamp on desk A's NW corner near desk B's NE corner; the survey's N-tied 15.08…15.78 and the lamp in t128 lean up to 0.1 further N, but a N edge past 15.65 closes the 0.50 m walking lane between desk B's NW corner and the drawer pedestal (0.52 m as built). The kneeling chair fits between it and the settee (t128 / t129). Top 0.72, castors, hand control under its S edge just E of the W leg (x 0.58…0.78) | t127, t128, t129 |
+| on desk A | 34-inch curved ultrawide on a bentwood riser at the S end facing N-NE, hexagonal ring foot; 32-inch flat monitor (silver edge) on a riser at the N end facing the chair; keyboard with key caps, leather mouse mat, mouse; gooseneck ring lamp (lamp group `study.desk_lamp`) at the NW corner. Screens blank | t129, t171, t176 |
+| office chair | (2.66, 14.86) facing W: five-star base, twin castors; bucket seat with a dished centre panel and rolled side bolsters about 0.07 above it; U-section back - shoulder wings 0.11 forward easing to 0.04 at the lumbar, rounded wing tops (ears) beside a head section 0.72 of the shoulder width, a 0.016 lumbar bulge; padded channels with real grooves (five vertical over the shoulders, five horizontal over the lumbar), dark red stitching along both groove edges; oval arm pads. Under 1.30 high (soft in the walk layer) | t160, t176 |
+| kneeling chair | (1.00, 14.68), sitter facing W, between the settee and desk B: 0.05 clear of the settee, 0.02 clear of desk B | t128, t129 |
+| settee | x 0.38…1.43, back 0.025 off the S wall (y 13.865…14.38); front legs slightly cabriole | hr_v4_543, t129, t133 |
+| corner cabinet | SE corner, 0.02 off both walls (skirting), legs 0.60; door hinged right, small pewter knob at the left | t160, hr_v4_501 |
+| S-wall pictures | foliage x 2.05 z 1.80; small green x 2.00 z 1.22; octagon x 1.60 z 1.42 (1 cm clear of the foliage frame, as in v4 f_0492) — all on y 13.84 | t170, t171, t176, v4 f_0492 |
+| plant | pot (1.00, 16.45), narrow staked shrub to 1.05, about 180 cupped oval leaves 0.055-0.08 long held upward on short rising shoots, muted mid-green, dark drip band under the light rim | t152, t166, t194.4 |
+| bean bag | lounger, `#93566B` dusty raspberry (render-matched to t152 / t166 against the wall), x 2.26…3.06, y 16.05…16.81, back on the E wall, 0.55 high + crown, carry loop | t152, t166, f_0151–f_0158 |
+| certificate / whiteboard | N wall E of the window, x 2.55 z 1.85 / x 2.52 z 1.30 — both **blank** | t128 |
+
+Not modelled (clutter): yoga mat, gift bags and boxes, games console, photographs and the document on the bookcase
+top, tissue boxes, jigsaw and craft trays, microphone, floor exerciser, foot massager, soft toys, yoga blocks.
+
+Open: the cornice is still the shell's plain 0.12 cove (the survey reads a small stepped ogee, bottom edge 2.46,
+projection 0.10) — a request to the trim owner.

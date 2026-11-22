@@ -201,13 +201,13 @@
   "file": "loft_office_west.jpg",
   "room": "loft_office",
   "level": "2",
-  "title": "Loft office (front) - west"
+  "title": "Slate Room - west"
  },
  {
   "file": "loft_office_desk.jpg",
   "room": "loft_office",
   "level": "2",
-  "title": "Loft office (front) - desk"
+  "title": "Slate Room - desk"
  },
  {
   "file": "eaves_front_tunnel.jpg",
@@ -225,7 +225,7 @@
   "file": "purple_room_door.jpg",
   "room": "purple_room",
   "level": "2",
-  "title": "Purple room (unused) - door"
+  "title": "Lavender Room - door"
  },
  {
   "file": "bathroom2_door.jpg",
@@ -237,7 +237,7 @@
   "file": "study_door.jpg",
   "room": "study",
   "level": "2",
-  "title": "Study (rear) - door"
+  "title": "Rose Room - door"
  },
  {
   "file": "front_street.jpg",

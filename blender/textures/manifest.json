@@ -774,9 +774,9 @@
  },
  "oak_floor": {
   "base": "oak_floor_col.jpg",
-  "mean": "#AE9E66",
+  "mean": "#AF9E66",
   "metal": 0.0,
-  "note": "boards 220 mm along V",
+  "note": "boards 245 mm along V, joint on U = 0",
   "nrm": "oak_floor_nrm.jpg",
   "nrm_strength": 1.0,
   "orm": "oak_floor_orm.jpg",
@@ -786,11 +786,11 @@
   ],
   "rough": 0.38,
   "seam": [
-   0.28,
+   0.24,
    0.38
   ],
   "size_m": [
-   2.2,
+   2.45,
    4.4
   ],
   "target": "#AF9F66"
@@ -1353,9 +1353,9 @@
  },
  "wood_tile_floor": {
   "base": "wood_tile_floor_col.jpg",
-  "mean": "#847E67",
+  "mean": "#837D66",
   "metal": 0.0,
-  "note": "planks 200x1200 along V, grout #CFCABB",
+  "note": "planks 245x1200 along V, grout #CFCABB",
   "nrm": "wood_tile_floor_nrm.jpg",
   "nrm_strength": 1.0,
   "orm": "wood_tile_floor_orm.jpg",
@@ -1365,20 +1365,20 @@
   ],
   "rough": 0.45,
   "seam": [
-   0.14,
+   0.08,
    0.13
   ],
   "size_m": [
-   1.221,
+   1.47,
    3.6105
   ],
   "target": "#807A62"
  },
  "wood_tile_floor_dark": {
   "base": "wood_tile_floor_dark_col.jpg",
-  "mean": "#7B6F5C",
+  "mean": "#695F4F",
   "metal": 0.0,
-  "note": "planks 200x1200 along V",
+  "note": "planks 245x1200 along V",
   "nrm": "wood_tile_floor_nrm.jpg",
   "nrm_strength": 1.0,
   "orm": "wood_tile_floor_orm.jpg",
@@ -1388,20 +1388,20 @@
   ],
   "rough": 0.5,
   "seam": [
-   0.15,
+   0.09,
    0.19
   ],
   "size_m": [
-   1.221,
+   1.47,
    3.6105
   ],
-  "target": "#7B6F5C"
+  "target": "#695F4F"
  },
  "wood_tile_floor_grey": {
   "base": "wood_tile_floor_grey_col.jpg",
   "mean": "#6B6A66",
   "metal": 0.0,
-  "note": "planks 200x1200 along V",
+  "note": "planks 245x1200 along V",
   "nrm": "wood_tile_floor_nrm.jpg",
   "nrm_strength": 1.0,
   "orm": "wood_tile_floor_orm.jpg",
@@ -1411,11 +1411,11 @@
   ],
   "rough": 0.5,
   "seam": [
-   0.14,
-   0.18
+   0.08,
+   0.19
   ],
   "size_m": [
-   1.221,
+   1.47,
    3.6105
   ],
   "target": "#6B6A66"

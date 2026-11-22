@@ -418,8 +418,8 @@ of the house rooms (grid, pieces, carcasses) <= 60 k; rooms `facade` + `roof` <=
   `steel_chequer_plate`, `wood_effect_porcelain_plank_dark`; **wall finishes for `FINISHES`** `marble_metro`
   (existing, 300 x 100: blue_ensuite, bathroom2), `metro_carrara_100x400` (green_bathroom), `porcelain_calacatta_slab`
   (shower walls of the three bathrooms) — every other wall and ceiling of the new rooms is a `'#hex'` paint; zones
-  `asphalt`, `clay_block_paving_red_herringbone`, `composite_deck_dark_brown`, `concrete_flags`, `concrete_or_flags`,
-  `concrete_setts_grey_buff`, `grass`, `sandstone_flags_grey`, `soil_lavender`, `timber_box_dark`; boundaries
+  `asphalt`, `clay_block_paving_red_herringbone`, `composite_deck_dark_brown`, `concrete_flags`, `concrete_insitu`,
+  `concrete_or_flags`, `concrete_setts_grey_buff`, `grass`, `sandstone_flags_grey`, `soil_lavender`, `timber_box_dark`; boundaries
   `buff_brick`, `closeboard_brown`, `closeboard_grey_painted`, `ledged_braced_grey`, `stock_brick_grey`,
   `stock_brick_yellow`, `red_brick`; facades `white_masonry_paint`, `render_sandstone`, `plinth_black`; roof `slate`,
   `fibre_cement_slate`, `flat_felt`, `roof_underside`. Image-textured Principled only, <= 2048 px, texture payload <=
@@ -581,6 +581,27 @@ on entries, `rooms[].level/kind`, `sky` object, `firstView`):
 ```
 Readers (plan, viewer) accept records without `level` (today's file has none): the level is that of `room` in
 house.json; pseudo-rooms and building rooms -> `X`; an unknown room -> `G`.
+
+**[round 3] sections.json** (`blender/export_sections.py`; `export.py` calls its `write()` right after the footprints,
+so every export refreshes it; alone: `blender -b --factory-startup build/home.blend --python
+blender/export_sections.py -- --out docs/assets`, 20 s, `SECTIONS OK`). The cross-sections of the drawing set, cut
+from the scene on the planes of `tools/plan/section_planes.py` (a plane is not a number: `through` lists the rooms
+and openings it passes, and it stands in the middle of what they have in common). Per section, in section
+coordinates (`s` = metres along the plane from the left end of the drawing = `(p - origin) . right` in plan, `z` =
+world Z): `cut` = closed outlines with holes of what the plane cuts of the structure (kind `shell`), class `fabric`
+or `earth`; `rooms` = the cut rooms (outline, `floor`, `top`, extent `s`); `fixtures` = joinery, trim and fittings
+cut by the plane, polylines per piece; `beyond` = what stands beyond the plane with hidden lines removed (structure,
+joinery, trim, fittings of 0.30 m or more and the parts of fixed pieces; furniture, decor, lights, a ceiling airer
+and stored goods - a `fit` object named `<room>.stock` - are neither drawn nor hide anything; `neighbours` is left
+out; the lines run over the plane's whole length, also past a frame trimmed to the model, so the chimney on the
+party line is whole); `hidden` = rooms the plane misses, cut on a plane through their own middle (the basement and
+its stair under A-A; all the air inside the room's own box counts, so a stair shaft under a flight is outlined from
+its door to its foot); `ground` = the ground line. The shell is open surfaces facing the air, so the
+cut is built per slab of `s`: air is what lies above an upward-facing cut segment and below the next downward-facing
+one; solid is `fabric` inside the mass the shell was carved from (the envelope blocks, each storey from `shell.SLAB`
+below its lowest floor) and above the ground line, `earth` below it. A plane whose `through` list has lost its
+common span fails alone (traceback, the other sections are written); if the whole step fails the export goes on
+without sections.json and the drawing set is the plan sheets.
 - `circuits[]` (only rooms with two or more): `share` = the circuit's part of the sum of the room's circuit means
   (linear radiance over the atlas), `groups` = the ix groups that switch only it (any other switch of the room
   switches every circuit), `lights` = its Cycles lamps (information), `emissive` = untagged emissive meshes that glow
@@ -606,9 +627,12 @@ stool bin plant office_chair bedside`; everything else blocks.
 - Sheets `B`, `G`, `1`, `2` at 1:50 on A3 and the site plan, **sheet id `X`**, title `SITE PLAN`, at 1:100 on A3, all
   in **world coordinates** (no per-sheet offset), so one (x, y) means the same place on every sheet. Level `1`
   includes the balcony: to keep 1:50 the vertical margins shrink to 48 mm (18.53 m x 20 + 48 = 419 mm).
-- **Site sheet window** = the plot polygon's bounding box + 0.3 m: x -1.18..5.73, y -5.5..29.2 (69 x 347 mm at 1:100;
-  `siteBounds` would need 430 mm of height and drop the sheet to 1:125). Everything (zones, footway, road,
-  neighbours, boundaries, cars) is clipped to it. The scale is fixed at 1:100 and asserted, never picked.
+- **Site sheet window** = the plot polygon's bounding box + 0.3 m: x -1.18..6.10, y -5.5..31.05 since the round-3
+  follow-ups (73 x 366 mm at 1:100; `siteBounds` would need 430 mm of height and drop the sheet to 1:125). Everything
+  (zones, footway, road, neighbours, boundaries, cars) is clipped to it. The scale is fixed at 1:100 and asserted, never
+  picked. To keep it on A3 with the longer plot, the annotation is tight: the two chains and `FRONT (STREET)` 22.5 mm
+  below the plot, `REAR (GARDEN)` 7 mm above it (no chain there), and the frame centres window plus annotation with
+  3 mm to spare inside the border (`SITE_ROWS`; draft.py asserts it and says by how much it is short).
 - Poche of level L = envelope polygons of L minus every room of L (all kinds) minus `floor_void` polygons of L, plus
   inner walls and solid features, cut at the openings of L. Chamfers are drawn true, both kinds (the bay splays from
   `bay.chamfers`, computed as in section 3; the cut plane lies inside their `z`). Cut plane 1.2 m above each room's
@@ -617,8 +641,8 @@ stool bin plant office_chair bedside`; everything else blocks.
   end beyond the break with "DN", risers from `walk.risers`; `steps` as riser lines with "UP 2R"; every split floor
   gets an FFL mark (`FFL +3.420`). Room tags carry FFL. Sloped ceilings: dashed 1.5 m headroom line; roof windows
   dashed.
-- Site sheet: plot (dashed), zones with surface name and level (both ends of a `fall`), steps, boundaries, gate swing
-  (50 degrees), shed with poche, house as outline + roof lines, cars and garden items from footprints (fallback
+- Site sheet: plot (dashed), zones with surface name and level (both ends of a `fall`; a fall too short for a level
+  at each end gets both mid-arrow, `-0.080 / -0.300`), steps, boundaries, every gate's swing (50 degrees), shed with poche, house as outline + roof lines, cars and garden items from footprints (fallback
   `exterior.features`). New layers `L-SITE` (ACI 3), `L-SITE-BNDY` (ACI 1, dashed), `A-ROOF` (ACI 8).
 - Footprints are filtered by `level` (fallback of section 10); new symbols of section 10 get drawn forms (bed with
   pillows, bath, shower tray with diagonal, sauna, car outline with wheels, etc.) on `A-FURN` / `A-FLOR-FIXT`.
@@ -628,6 +652,55 @@ stool bin plant office_chair bedside`; everything else blocks.
 - **DXF**: one model space, units mm, sheets side by side: sheet i is translated by its `dxfOffset`, given **in DXF
   millimetres**. `$LTSCALE` 1; the entities of the 1:100 sheet are written with linetype scale 2.0 (group 48) and
   DIMSTYLE `PLAN100` (text and ticks x 2), the others with `PLAN50`.
+- **[round 3] Cross-sections**: one sheet per section of `sections.json` after the five plans, in the order of
+  `SECTION_SHEETS` (`AA` SECTION A-A `GA-005`, `BB` SECTION B-B `GA-006`, `CC` SECTION C-C `GA-007`); without a
+  sections.json beside the footprints (or `--sections FILE`) the set is the five plans, and every title block counts
+  the sheets there are (`6 OF 8`). The planes (`tools/plan/section_planes.py`): **A-A** along the hall axis through
+  every doorway of the spine (front door, vestibule, hall, hall arch, dining room; the landings with their split
+  levels; Slate Room under the front slope, Rose Room), viewed from the party wall, so both stair flights stand in
+  elevation just beyond and the basement is dashed beyond; **B-B** across the front block through the living-room
+  door (hall + living room, front bedroom, Slate Room), looking to the rear; **C-C** along the rooms through both bay
+  windows, the basement, kitchen, WC, utility, dining room and the French doors, the bathrooms and bedrooms above,
+  both eaves voids under the duo-pitch roof and the balcony. A sheet is drawn in **section coordinates** (x = `s`,
+  y = world Z), at the largest of 1:50 / 1:100 / 1:200 that fits A3: portrait beside the title column when the
+  drawing is narrow (B-B, 1:50), else landscape over a title strip (A-A and C-C show the whole plot, 1:100).
+  Conventions: cut fabric in the heaviest line with the plans' ANSI31 poche, the ground as a band of `EARTH` hatch
+  under a heavy ground line, cut joinery and fittings medium (a cut fitting as its outline: loose parts such as the
+  shelves of a rack are closed into one block, and nothing of its inside is drawn beyond), everything beyond thin,
+  hidden rooms dashed from end to end and named clear of their outlines; room names in capitals with their FFL
+  inside each cut room (names from house.json); datum marks for every cut floor level, ridge / flat roof, eaves and
+  the ground (`GL`, `DECK` on a deck: at the house, and the garden level where it differs; beside the house at both
+  ends on a wide sheet, where the split levels differ; on the left of a narrow one), chains of space heights and
+  floor-to-floor heights (to 5 mm), the overall height above the `GL` at the front, lengths of plot, outbuilding
+  and house under the drawing, the ends named (`FRONT (STREET)`, `REAR (GARDEN)`, `PARTY WALL`,
+  `FLANK (SIDE PASSAGE)`). **A slope cut along its length is no height**: where the plane runs parallel to a ridge
+  (B-B through the main roof, C-C through the bay gable) the roof shows as a level band, named on it
+  (`ROOF SLOPE CUT PARALLEL TO RIDGE - SEE A-A`, `BAY GABLE ROOF`), and a room sliced through its sloped ceiling
+  says `CEILING SLOPES: 1815 AT SECTION, 2120 MAX`; no chain stops on either: the space heights end at the last
+  floor and the levels run to the ridge seen beyond. A chimney beyond is named. Dimension lines and level marks
+  stand in front of what is seen beyond: the thin lines break along every chain and under every value, the earth
+  hatch clears under the values, and a value lifted beside its line slides clear of the ground line; the chains of
+  a narrow section stand past what is seen beside the house (gate and condenser in the side passage).
+  Layers: `A-SECT` (cut outline, ACI 7, 0.50), `A-SECT-PATT` (hatch, ACI 8), `A-SECT-FIXT` (cut joinery / fittings,
+  ACI 2), `A-SECT-BYND` (beyond, ACI 9, 0.13), `A-SECT-HIDN` (hidden beyond, linetype hidden), `A-ANNO-LEVL` (level
+  marks, ACI 140), and on the plans `A-ANNO-SECT-CUTL` (the cutting line, linetype center, broken under tags and
+  dimension values; these two carry their linetype on the DXF layer as well as on every entity: `LAYER_LINETYPE`) + `A-ANNO-SECT` (heavy end strokes, arrows in the direction of view, the letter at both ends) on
+  every sheet whose level the plane crosses and on the site sheet; the FRONT / REAR notes move aside for them.
+  plan.json: a section sheet has `kind: "section"`, `level: null`, `orientation`, `section: {id, letter, axis, at,
+  look, origin, right, normal}` (the walker's projection: x = `(p - origin) . right`, y = Z), `rooms[].polygon`
+  in section coordinates and, where the drawing is much wider than the house, `fitBounds` (the house, 2 m to either
+  side, a metre under its lowest floor and over its roof: what a small panel shows first); the layers `A-SECT-BYND` / `A-SECT-FIXT` are one entity each of type `paths`
+  (`paths: [[x0, y0, x1, y1, ...], ...]`, written to the DXF as one LWPOLYLINE per path); hatch pattern `EARTH` =
+  square cells of 2 x the hatch spacing, three lines in each, alternately along x and y (the DXF carries AutoCAD's
+  `EARTH` at that cell size). DXF: the section sheets follow the site sheet, frames 8 m apart, bottoms level; PDF:
+  one page per sheet (landscape pages for the wide sections). `check.py` and `test_draft.py` assert closed cut
+  outlines, the section layers and their linetypes, level marks that are levels of house.json (ground marks: of
+  the cut ground line), the room names, hidden rooms outlined over their whole length, the page count and the
+  registration of sections.json with house.json (floor levels and the wall faces on the section lines within 20 mm);
+  `draft.py` itself asserts that no chain stops on a sliced ceiling, that nothing beyond is drawn inside a cut
+  fitting and that no lifted value sits on the ground line. **The section sheets are required**: `check.py` fails
+  a plan.json that lacks one of `SECTION_SHEETS`, `test_draft.py` fails without a sections.json and the e2e plan
+  checks fail a real export without section tabs - each takes `--no-sections` to test the plan sheets on purpose.
 
 **plan.json, schema 2**. `units`, `layers`, `textNote` and `footprintSource` are shared at the top. `linestyles`,
 `hatch` and `dimstyle` are model metres derived from the sheet scale, so they live **in each sheet**, with
@@ -653,17 +726,22 @@ no outdoor layer: ground-floor rooms and exterior zones never overlap in plan, s
 and a door to the garden is an ordinary door. The balcony is on layer `1`.
 
 **Cells**
-1. Level layers: every room of that level with kind `room` or `exterior`: polygon, `z = floorZ`, `treads` (from
-   `steps` stairs whose `toRoom` it is: strip between `riserLines[k]` and `[k+1]`, `z = fromZ +- (k+1) * rise`),
-   `planes` (from `ceiling.planes`, for headroom). Free = inside the polygon and >= `radius` from every edge (every
-   edge is solid unless a portal of this layer bridges it, so balustrades and well edges block with no extra data).
+1. Level layers: every room of that level with kind `room`, `exterior` or **[round 3]** `void` (the eaves, `void:
+   true`: no viewpoint, no room button - they are walked into through a hatch): polygon, `z = floorZ` (the low side of
+   a `floor_step` feature beyond its line: eaves_rear 6.37 east of x 2.35), `treads` (from `steps` stairs whose
+   `toRoom` it is: strip between `riserLines[k]` and `[k+1]`, `z = fromZ +- (k+1) * rise`), and the ceiling for
+   headroom (see Low places). Free = inside the polygon, >= `radius` from every edge (every edge is solid unless a
+   portal of this layer bridges it, so balustrades and well edges block with no extra data) and with headroom >=
+   `CLEAR`.
 2. Layer `G` also holds the **ground cell**: all zones with `walk != false`, their `z` or `fall` and `room`, and
    `steps[].treads`; lookup = first containing tread, else first containing zone, both sorted by area ascending
    (containment with 1 mm tolerance: zones share edges). Free = inside some zone and >= `radius + halfThickness` from
    every **blocker**: edges of the envelope polygons of level G, boundary lines (walls, fences, neighbour walls; a
-   gate only while its portal is shut), pier polygons, shed wall rectangles, neighbour polygons. Walkable building
-   rooms (`walk: true`) are ordinary cells of `G` carrying `room` = the building's room (`shed`), so the room label
-   and the probe resolve.
+   gate only while its portal is shut), pier polygons, shed wall rectangles, neighbour polygons. Building rooms are
+   ordinary cells of `G` carrying `room` = the building's room (`shed`), so the room label and the probe resolve;
+   **[round 3]** every one of them, `walk: false` is no longer honoured (owner: the shed store is walked into), and the
+   building's walls block inside its rooms and its doorways as they do outside (`bw`: radius + half thickness), since
+   a room polygon may run into a wall.
 3. Flight layers: one cell = `stairs[i].walk.polygon`. Floor Z is a ramp over the riser lines: with k = number of
    consecutive risers passed (point on the left of a->b) and d = distances to riser k and k+1, `z = fromZ + (toZ -
    fromZ) * (k - 1 + d_k / (d_k + d_k1)) / (n - 1)`, `fromZ` before the first riser, `toZ` after the last.
@@ -675,13 +753,18 @@ soffits and overhead boxings are excluded).
 
 **Portals** (rectangle: along = width / 2 - radius, at least 0.04; across = wall thickness / 2 + radius + 0.05,
 exactly as `portalFor` today; flat list `walk.portals` with `id` and `open`, which is all `interact.js` uses):
-- every opening of type door, double_door, french_door, arch, opening (never hatch) whose two `connects` ends resolve
-  to cells: a walkable room -> its cell; `outside` -> the ground cell; a stairwell room -> the flight whose
-  `walk.ends` names this opening. `open = openAngle !== 0`, switched by `ix` tags with `blocks`. Building openings
-  likewise.
+- every opening of type door, double_door, french_door, arch, opening and **[round 3]** hatch (when its `height` >=
+  `CLEAR`: the 0.70 hatches of the old set are not) whose two `connects` ends resolve to cells: a walkable room -> its
+  cell; `outside` -> the ground cell; a stairwell room -> the flight whose `walk.ends` names this opening. `open =
+  openAngle !== 0`, switched by `ix` tags with `blocks`; a hatch by its leaves `<room>.<hatch>.leaf.N`, which carry no
+  `blocks` (interact.js `g.hatch`: they open its portal and are moving obstacles like door leaves, nothing else).
+  Building openings likewise (`shed_store_doors`). A portal of an opening with a `height` carries `head = floorZ +
+  sill + height` (the hatch head 0.93 above the loft floor).
 - every segment of `riserLines[0]` of a `steps` stair (thickness 0), joining `fromRoom` and `toRoom`; a line with one
   segment gets the id `<steps id>`, with several `<steps id>.<k>` (`steps_ql_rear.0`, `steps_ql_rear.1`).
-- the side gate: portal on its line inside the ground cell, shut until its `ix` group opens.
+- every gate boundary (`side_gate`, **[round 3]** `street_gate` across the alley mouth, (5.80, 1.70)-(4.76, 1.70)):
+  a portal on its line inside the ground cell, shut until its `ix` group opens (`side_passage.street_gate`: hinge,
+  `blocks` `street_gate`). An open gate frees its whole line.
 
 Every portal carries `layers: [a, b]` and `cells: [idA, idB]`. **A portal exists only on its own layers**:
 `isFree(walk, L, x, y)` is true inside an open portal only when L is in `portal.layers`; `nearestFree`, `route` and
@@ -698,8 +781,38 @@ walkable piece (room polygon, tread, zone polygon or flight ramp, by polygon dis
 that layer: `d_street` -> forecourt -0.06, `d_back` -> `kitchen_steps` tread -0.02, `d_french` -> deck -0.05,
 `shed_d1` -> shed_veranda -0.42. `zAt` is therefore finite wherever `isFree` is true. Single risers, the two steps and
 the 0.27 m loft step are instantaneous; the camera eases to the target height at rate 10 per second (`z += (target -
-z) * min(1, 10 dt)`). Under `planes` the eye is the lower of 1.6 m and headroom minus 0.12 m; a point with headroom <
-1.25 m is not free (loft knee walls).
+z) * min(1, 10 dt)`). The eye: see Low places.
+
+**[round 3] Low places** (owner: "Allow viewers to get into narrow space areas, such as the eaves storage"; `geom.js`
+`CLEAR`, `EYE_MIN`, `EYE_GAP`, `headroomAt`, `eyeAt`):
+- **Ceiling** of a room cell at (x, y) = the lowest of `ceilingZ`, the `ceilingZones` containing the point, the
+  `ceiling.planes` containing it, and for `ceiling.type` `under_roof` the lining: the highest roof plane over the point
+  (not the ground-floor lean-to) + `ceiling.offset` (no offset: - slab, slab = `roof.structure.thickness` - 0.01) - the
+  rule of `ctx.ceil_z`: min(`ceilingZ`, roof + offset, `ceiling.planes`). The eaves module builds its linings there and
+  `lib.envelope` keeps the slab underside 1 cm above them. **[round 3 follow-ups]** eaves_front = min(8.19, roof - 0.17,
+  its four lining planes main_w / main_e / tunnel_w / tunnel_e; the strip x 2.28..2.68 has none): above its floor 6.49
+  1.00 at the knee-wall back, 0.14 at the front wall, 1.70 under the strip, 0.31 at the tunnel feet; eaves_rear =
+  min(7.65, roof - 0.31) = 12.33 - 0.70 y, 1.157 above 6.49 at y 6.69. Without an offset, flat roof planes keep the full
+  slab (ctx thins them over the ceilings below): the camera stays lower, never higher. Flights and the ground cell have
+  no ceiling. **Headroom** = ceiling - floor Z; inside an open portal with a `head`, at most head -
+  floor Z.
+- **Free** down to `CLEAR` = 0.80 m of headroom: the loft right up to its knee walls, the eaves where the roof leaves
+  0.80 (eaves_rear: a strip about 0.35 deep behind the knee wall; eaves_front: the bay-gable tunnel up to the 1.70 strip
+  of `ceilingZ`, and the main void within about 0.35 of the knee wall, where its lining is 0.80..1.00).
+- **Eye** = clamp(H - `EYE_GAP` 0.15, `EYE_MIN` 0.55, 1.6), H = the least headroom over the body (its centre and 8
+  points on the radius around it, so the walker ducks before a lintel reaches the eye): 0.81 under the 0.93 hatch head,
+  0.6-0.9 in the rear eaves, 1.58 under the tunnel strip. `main.js` eases it at 10 / s and holds it at once under the
+  headroom straight above less 0.06, so a quick step under a lintel never lifts the camera into it. In an under_roof
+  cell (the eaves) where the eye is lowered, a ray straight up from 0.3 m over the floor (cast again after 5 cm of
+  movement) also holds the eye under the modelled lining: a room module's lining below this rule is a bug of that
+  module (see the note under Tight places, 16), but the camera still stays out of the roof. Not in other rooms: a ray
+  would meet a chair seat the walker wades through.
+- **Pens** (a sauna cabin: footprint symbol in `PENS`, `obstaclesFrom(fp, 'pen')`, `buildWalk({pens})`, `walk.pens`):
+  solid until `interact.js` finds its door - a vertical hinge with no `blocks` whose axis stands within 0.1 m of the
+  pen's outline and whose shut outline lies along one edge (`penDoor`); then the pen is its walls (strips 0.04 thick
+  inside the outline) with a gap the leaf's length, which the leaf fills while shut (a moving obstacle). Inside, only
+  footprints of their own block (the bench and heater need their own `plan_sym`).
+- Shower trays stay walkable (`shower` is non-blocking; the glass screens are walked past like a curtain).
 
 **Level shown** `levelAt`: a room cell -> its level; the ground cell and building rooms -> `X`; a flight -> the level
 of its lower end below mid-height, of its upper end above. The room label, the plan sheet and the dollhouse level
@@ -712,8 +825,12 @@ point's height (floor hits within 0.3 m, wall hits within floor..floor + 2.6). A
 sheet (`X` -> `G`). Room jumps to another layer cut with a 150 ms fade instead of flying through floors.
 
 **Narrow passages** (radius 0.15): basement door 0.61 -> 0.31 m lane; basement shaft 0.665 -> 0.365; loft door 0.61 ->
-0.31; stair foot 0.50 -> 0.20; quarter landing 0.60 deep -> 0.30. Section 16 traces them. Walls inside one room (arch
-walls) are not obstacles: jambs intrude <= 0.10 m.
+0.31; stair foot 0.50 -> 0.20; quarter landing 0.60 deep -> 0.30; **[round 3]** eaves hatches 1.05 -> 0.75 (head
+0.93: eye 0.81), shed store doors 1.23 -> 0.93 into the store (0.39 deep inside, to the back wall `shed_w_west_store`
+whose inner face is the polygon's edge x -0.77: the body gets 0.25 past the door line), the sauna door
+0.60 -> 0.30, a
+0.50 gap between furniture -> 0.20. The radius stays 0.15 everywhere (the near-plane corners need 0.14). Section 16
+traces them. Walls inside one room (arch walls) are not obstacles: jambs intrude <= 0.10 m.
 
 **The structure `buildWalk(house, {obstacles, soft})` returns:**
 ```json
@@ -806,6 +923,15 @@ walls) are not obstacles: jambs intrude <= 0.10 m.
 - **Plan panel**: tabs B G 1 2 SITE (sheet ids B G 1 2 X); the sheet follows `levelAt` whenever the visitor's level
   changes, a tab click overrides until the next change. Marker and view cone are drawn on the sheet of the visitor's
   level and always on SITE (hollow when indoors). Click = walk / teleport on that sheet's layer.
+  **[round 3]** then a tab per cross-section, A-A B-B C-C (sheet ids AA BB CC, a group of their own that wraps to a
+  second row in a narrow panel). On a section the visitor is always drawn, projected onto the plane at eye height
+  (`setViewer` takes `z`): solid within a metre of the plane, a ring further off; the cone points along the plane and
+  is left out when the view is mostly across it; the room the visitor stands in is highlighted when the plane cuts
+  it. A click on a section moves nobody; the readout shows S / Z; a section stays up while the visitor changes floor
+  (it shows every floor), a floor tab brings the plan back. The view refits when the sheet's frame changes (floor
+  sheets share one, SITE and each section have their own). `PlanView.fit()` shows the sheet's `fitBounds` while the
+  whole sheet would draw the room names under 5 px (the docked panel on A-A / C-C: the house instead of the whole
+  plot); `fit(true)` - key 0 and the fit button - always shows the whole sheet, and so does the maximised panel.
   `PlanView.setSheet(id)` re-reads the sheet's `linestyles`, `hatch`, `dimstyle` and bounds; room highlight from the
   sheet's rooms. Downloads point to `house-plans.dxf` / `.pdf`. Room buttons are grouped by level (see Room bar).
 - **Lights off** **[phase 2]**: a switch loads the lights-off lightmap and probe of exactly the rooms in its `rooms`
@@ -1045,8 +1171,38 @@ in the model and opened first.
 5. **Dining French doors -> deck** (2.2 m): dining [0] > d_french (open; outer half [-0.05]) > deck [-0.05].
 6. **Street doors -> forecourt** (2.1 m): vestibule [0] > d_street (open; outer half [-0.06]) > forecourt [-0.06,
    falling to -0.14 at the footway].
-7. Extra: side_passage > side gate (open) > side_alley [-0.30 rising to -0.20] > forecourt_alley_mouth [-0.08]; it
-   only works with gap 4.
+7. Extra: side_passage > side gate (open) > side_alley [-0.30 rising to -0.20] > **[round 3]** street_gate (open; the
+   test opens `['side_gate', 'street_gate']` and checks that the shut street gate cuts the alley off) >
+   forecourt_alley_mouth [-0.08]; it only works with gap 4.
+
+**[round 3] Tight places** (`docs/test/geom.test.mjs`, traced on spec/house.json and on the published house.json;
+`eye` = `eyeAt` along the route, which must stay 0.1 under the headroom everywhere):
+8. **Kitchen -> basement** (7.0 m): kitchen [0] > d_kitchen > hallway > **d_basement** (open) > stair_basement
+   [0 .. -2.31], ducking to eye 1.37 under the 1.85 head of o_basement_foot > basement [-2.31].
+9. **Slate Room -> front eaves -> bay-gable tunnel** (3.5 m, only where the hatch is >= `CLEAR`): loft_office (x 2.48,
+   y 4.0) [6.49] > **h_eaves_front_e** (open: both leaves) > eaves_front tunnel to y 0.5; eye 1.60 > 0.81 under the
+   hatch head > 1.58 under the strip.
+10. **Slate Room -> rear eaves** (2.6 m): loft_office (2.0, 5.0) [6.49] > **h_eaves_rear** (open) > eaves_rear over the
+    floor step [6.37] to the deepest free point on x 3.0 (headroom 0.80); eye 1.60 > below 1.0 > about 0.6.
+11. **Landing -> second-floor bathroom -> shower** (3.7 m): landing2_head [6.02] > d_bath2 > the shower tray in the NW
+    corner (non-blocking).
+12. **Shed veranda -> shed store** (2.5 m): shed_veranda [-0.42] > shed_store_apron > **shed_store_doors** (open) >
+    as far into the store as its walls let the body (0.25 past the door line, BODY off `shed_w_west_store`: see Narrow
+    passages) [-0.42].
+13. **Bathroom2 -> sauna** (1.8 m, a synthetic pen in the NE corner after bathroom2.md: cabin 1.366 x 0.753, glass
+    door 0.60 on its east edge): solid before its door is known; with the door found and shut, the inside is free but
+    unreachable; open (100 deg out), the route goes through the 0.30 lane of the gap.
+
+Note (round 3, measured): rays cast straight up from every free 0.1 m grid point of the r3 integration build
+(`build/r3/int/home.blend`, the reconciled spec with the round-2 room modules) meet the rule in the Slate Room, the rear
+eaves and the rear hatch (only furniture, boxes and shut leaves lower), but the round-2 `eaves_front.ceiling` lining
+peaks at 0.90 in the tunnel (the rule: 1.70) and sits 0.2-0.8 below the rule over most of the front void - the round-3
+eaves module must follow `house.json` (strip 1.70, lining 1.00 at the knee-wall back) for the camera to stay inside.
+Round-3 follow-ups: `rooms/eaves.py` now builds its linings at `ctx.ceil_z` (checked on a 5 cm grid) and `geom.js`
+reproduces `ctx.ceil_z` for the eaves (a 5 cm grid over eaves_front / eaves_rear agrees to 1e-6, except within 1 mm of a
+lining-plane edge, where the viewer takes the lower plane). The `main.js` ray stays as a safety net for sets exported
+before the new eaves module (the published round-2 assets); it can go once an export with that module shows no
+frame above the model's lining without it.
 
 ## 17. Open questions for the orchestrator (both decided at integration)
 

@@ -254,3 +254,33 @@ Nothing on the stairs was removed. Hands/feet of the owner in f_0249–f_0250 ig
   dies about 25 mm into the underside of a white fascia under the strip capping at y ~7.62 (v6 f_0038; fascia 0.10
   deep, x 0.15..0.22, Z 3.32..3.42 by the strip, 3.13..3.23 by the step). Main spindles past the rail stop 5 mm into
   the fascia (tread 14: stubs).
+
+## Phase 3 (21 Nov round, unit `stairs`; RECONCILE3 vert-01)
+- Flight now **14 risers of 0.2036**, going **0.253**: three winders, R4..R14 at y 5.600 + 0.253 (n - 4); R14 (y 8.13,
+  Z 2.85) is the quarter-landing nosing; tread 13 at Z 2.646. Pitch 38.8 deg. The module derives everything from
+  `ctx.stair('stair_main')`, so carpet, returned nosings, cut string, spandrel top, wall string and handrail follow.
+  Sections 1 and the reconciled table above (15 x 0.19 / 0.23) are superseded on these numbers.
+- **Spindles**: two per tread at half-going centres (0.1265; first 0.05 behind the riser line) on T4..T13 (v1 t776.25,
+  t774.0; dims_vert 7.2), plus the back one on winder T3 between the newel and R4; the front one would stand inside the
+  newel and is dropped (it showed as white patches through the newel's turning). Base blocks 0.20 / 0.302 so the
+  turnings line up with the rake. T12 and T13 (over the lobby) stop in the strip fascia (T13: stubs).
+- **Foot newel**: the rail (0.90 over the nosing line) now meets the newel face at Z 1.565-1.636, 0.057 higher than
+  before; the turning, block and cap ride up 0.108 so the rail tenons into the block just under the collar (v1
+  t776.25, v3 f_0017). Newel 1.85 m overall (was 1.75; set from the rail height, not measured independently; the
+  stills are too distorted for a better absolute height). Ball finial 115 wide x about 104 high (section 4 says 115 x
+  100; near round in v1 t776.25).
+- **Raking dado** knee at the internal corner 1.36 -> **1.37** (house.json hall_stair_diag). The rake to the landing
+  rail (4.015 at y 8.10) stays straight at 45.6 deg, steeper than the pitch: the two ends are measured.
+- Spandrel: **six panels** (pitch 0.36 = 1.4 goings, 65 mm stiles), starting one stile clear of the newel's north face.
+  Pitch measured against the tread-return lines: v2 t521.5 1.5-1.6 goings, v1 t776.25 about 1.4 (critic round; seven
+  panels read as narrow uprights).
+- The west shelf of the basement shaft (feature basement_shelf_w, Z -0.03) starts at y 5.19, which leaves its corner
+  x 0.15..0.235 south of the R1 bullnose open to the hall (a white triangle on the floor): covered by an oak patch
+  (`stairs.floor_patch`) until the feature is trimmed to the bullnose.
+- Open (dims_vert note 1, not changed here): the footage shows T12 and T13 on the spandrel up to the basement-door wall
+  corner and a 1.04-deep quarter landing; the spec keeps the top nosing 0.45 north of that corner.
+- Fixer round: the hall cornice on the 45-degree face ends square at the internal corner (lib TRIM skip box), so
+  `stairs.cornice` now forms the whole mitre: it starts 0.12 back on the face, 0.8 mm over the hall run, and buries the
+  hall run's square end (was a black hole in the corner). The spandrel's arris face at y 7.68 covers only the 1 mm the
+  panelling stands proud of the shell's lobby face (a coplanar overlap showed as a black line beside the under-stairs
+  door). The carpet runs on from R1's wall end into the external corner over the skirting top (was a dark slot).

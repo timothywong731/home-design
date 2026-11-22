@@ -99,7 +99,7 @@ if (!realtime && manifest?.whiteBalance) {
 const rooms = (manifest?.rooms || planJson?.rooms || house?.rooms || []).map((r) => ({ id: r.id, name: r.name || r.id, polygon: r.polygon,
   ceilZ: r.ceilZ ?? r.ceilingZ ?? 2.9, floorZ: r.floorZ ?? 0, level: r.level ?? G.levelOf(house, r.id), kind: r.kind ?? (G.PSEUDO_ROOMS.includes(r.id) ? 'site' : 'room') }));
 const isExterior = (id) => { const r = rooms.find((q) => q.id === id); return r ? ['site', 'exterior'].includes(r.kind) : G.PSEUDO_ROOMS.includes(id); };
-const walk = house ? G.buildWalk(house, { obstacles: G.obstaclesFrom(foot, false, house), soft: G.obstaclesFrom(foot, true, house) }) : null;
+const walk = house ? G.buildWalk(house, { obstacles: G.obstaclesFrom(foot, false, house), soft: G.obstaclesFrom(foot, true, house), pens: G.obstaclesFrom(foot, 'pen', house) }) : null;
 const hasLayer = (L) => !walk || walk.layers.includes(L);
 const spawnLayer = G.layerOfLevel(manifest?.spawn?.level || 'G');
 const spawn = { pos: (manifest?.spawn?.pos || house?.spawn || G.centroid(rooms[0]?.polygon || [[0, 1]])).slice(0, 2),
@@ -692,6 +692,16 @@ function tween(dt) {
   if (a.t >= 1) S.anim = null;
 }
 const on = (...codes) => (codes.some((c) => S.keys.has(c)) ? 1 : 0);
+// Under the roof (an under_roof room - the eaves - where the eye is lowered) the modelled lining straight above counts as
+// well: a ray up from 0.3 m over the floor, cast again after 5 cm of movement, so a lining a room module built lower
+// than house.json says still keeps the camera out of the roof. ponytail: one ray over every mesh's bounding sphere, a
+// BVH if it ever shows; not in rooms with soft furniture (a chair seat would duck the walker).
+const UP = new THREE.Vector3(0, 1, 0), probe = { x: NaN, y: NaN, z: NaN, h: Infinity };
+function modelHead() {
+  if (Math.hypot(S.x - probe.x, S.y - probe.y) < 0.05 && Math.abs(S.z - probe.z) < 0.02) return probe.h;
+  const hit = castRay(new THREE.Vector3(S.x, S.z + 0.3, -S.y), UP, 2.2);
+  return Object.assign(probe, { x: S.x, y: S.y, z: S.z, h: hit ? hit.distance + 0.3 : Infinity }).h;
+}
 function stepWalk(dt) {
   S.yaw += (on('ArrowLeft') - on('ArrowRight')) * TURN * dt;
   let f = on('KeyW', 'ArrowUp') - on('KeyS', 'ArrowDown') + S.pad[1], s = on('KeyD') - on('KeyA') + S.pad[0];
@@ -707,9 +717,14 @@ function stepWalk(dt) {
   if (S.glide) glide(dt);
   if (S.anim) tween(dt);
   if (Math.abs(camera.fov - S.fovT) > 0.01) { camera.fov += (S.fovT - camera.fov) * Math.min(1, dt * 9); camera.updateProjectionMatrix(); }
-  // floor and eye ease at 10 / s: single risers and split-level steps are instantaneous in plan, smooth on screen
-  const k = Math.min(1, 10 * dt), tz = floorAt(S.layer, S.x, S.y) ?? S.z, te = walk ? Math.min(EYE, G.headroomAt(walk, S.layer, S.x, S.y) - 0.12) : EYE;
+  // floor and eye ease at 10 / s: single risers and split-level steps are instantaneous in plan, smooth on screen. The eye
+  // follows the headroom over the body (ducking through a hatch, crouching under the eaves: geom.js eyeAt) and is held
+  // under the ceiling straight above at once, so a quick step under a lintel never lifts the camera into it
+  const k = Math.min(1, 10 * dt), tz = floorAt(S.layer, S.x, S.y) ?? S.z, ea = walk ? G.eyeAt(walk, S.layer, S.x, S.y, EYE) : EYE;
+  const head = walk ? Math.min(G.headroomAt(walk, S.layer, S.x, S.y), ea < EYE && G.cellAt(walk, S.layer, S.x, S.y)?.cell.roof ? modelHead() : Infinity) : Infinity;
+  const te = Math.min(ea, Math.max(G.EYE_MIN, head - G.EYE_GAP));
   S.z += (tz - S.z) * k; S.eye += (te - S.eye) * k;
+  if (walk) S.eye = Math.min(S.eye, Math.max(G.EYE_MIN, head - 0.06));
   camera.position.set(S.x, S.z + S.eye, -S.y);
   camera.rotation.set(S.pitch, S.yaw, 0);
 }
@@ -997,7 +1012,7 @@ function jump(id) {
   if (schema2) setDollLevel(lv);
 }
 
-// ---------- plan panel: one sheet per level + the site sheet; it follows the floor you are on ----------
+// ---------- plan panel: one sheet per level + the site sheet, then the cross-sections; it follows the floor you are on ----------
 const planEl = $('#plan'), planCanvas = $('#plan-canvas'), tabsEl = $('#plan-tabs');
 const plan = planJson || (house && {      // minimal fallback drawing from house.json until plan.json exists
   bounds: house.bounds, rooms, layers: [{ name: 'A-WALL', color: '#e8e8e8', paper: '#111111', lineweight: 0.35 }],
@@ -1005,8 +1020,11 @@ const plan = planJson || (house && {      // minimal fallback drawing from house
 const sheetLayer = () => G.layerOfLevel(planView?.sheet.level || planView?.sheetId || 'G');
 const planView = plan ? new PlanView(planCanvas, plan, {
   sheet: spawn.layer,
-  onPick: (x, y) => { const L = sheetLayer(); if (S.mode === 'orbit' && schema2) setDollLevel(dollLevelOf(planView.sheet.level ?? planView.sheetId)); teleport(x, y, hasLayer(L) ? L : S.layer); },
-  onHover: (x, y) => { $('#plan-xy').textContent = `X ${Math.round(x * 1000)}  Y ${Math.round(y * 1000)}`; },
+  onPick: (x, y) => {
+    if (planView.sheet.section) return;                      // a cross-section is looked at, not walked on
+    const L = sheetLayer(); if (S.mode === 'orbit' && schema2) setDollLevel(dollLevelOf(planView.sheet.level ?? planView.sheetId)); teleport(x, y, hasLayer(L) ? L : S.layer);
+  },
+  onHover: (x, y) => { $('#plan-xy').textContent = planView.sheet.section ? `S ${Math.round(x * 1000)}  Z ${Math.round(y * 1000)}` : `X ${Math.round(x * 1000)}  Y ${Math.round(y * 1000)}`; },
 }) : null;
 if (!planView) $('.plan-empty').hidden = false;
 planCanvas.addEventListener('pointerleave', () => { $('#plan-xy').textContent = ''; });   // no stale readout
@@ -1014,13 +1032,18 @@ function showSheet(id) {               // switch the drawing (tab click, or the 
   planView?.setSheet(id);
   const s = planView?.sheet?.title ? planView.sheet : plan?.sheet;            // schema 1: plan.sheet
   if (s) $('#plan-title').textContent = [s.title, s.scale].filter(Boolean).join(' · ');
-  for (const b of tabsEl.children) b.setAttribute('aria-pressed', b.dataset.sheet === planView?.sheetId);
+  for (const b of tabsEl.querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.sheet === planView?.sheetId);
+  planCanvas.style.cursor = planView?.sheet?.section ? 'default' : '';
 }
 if (planView?.sheets.length > 1) {
   tabsEl.hidden = false;
+  const grp = () => tabsEl.appendChild(Object.assign(document.createElement('span'), { className: 'grp' }));
+  const floors = grp(); let secs = null;         // B G 1 2 SITE, then A-A B-B C-C: a group of their own that wraps as one
   for (const s of planView.sheets) {
-    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: s.id === 'X' ? 'SITE' : s.id, title: s.title || levelName(s.id) });
-    b.dataset.sheet = s.id; b.onclick = () => showSheet(s.id); tabsEl.append(b);
+    const b = Object.assign(document.createElement('button'), { type: 'button', title: s.title || levelName(s.id),
+      textContent: s.section ? `${s.section.letter}-${s.section.letter}` : s.id === 'X' ? 'SITE' : s.id });
+    if (s.section) b.classList.add('sec');
+    b.dataset.sheet = s.id; b.onclick = () => showSheet(s.id); (s.section ? (secs ??= grp()) : floors).append(b);
   }
 }
 showSheet(planView?.sheetId);
@@ -1030,7 +1053,7 @@ function togglePlan(force) {
 }
 $('#plan-toggle').onclick = () => togglePlan();
 new ResizeObserver(() => S.mode === 'orbit' && applyViewShift()).observe(planEl);   // collapsed, maximised, resized
-$('#plan-fit').onclick = () => planView?.fit();
+$('#plan-fit').onclick = () => planView?.fit(true);      // the whole sheet (a section first opens on the house)
 $('#plan-max').onclick = () => {
   if (planView) planView.fitted = false;          // refit once the ResizeObserver reports the new size
   const m = planEl.classList.toggle('max'); planEl.classList.remove('collapsed');
@@ -1095,13 +1118,13 @@ function openGroup(lv) {
 }
 openGroup(spawn.layer);
 const curGroup = () => groupOf.get(openLv) || [];
-// the floor you are on changed: the plan sheet follows (a tab click overrides until the next change), its tab and room
-// group are marked and opened
+// the floor you are on changed: the plan sheet follows (a tab click overrides until the next change; a cross-section
+// stays, it shows every floor), its tab and room group are marked and opened
 function onLevel(lv) {
   if (!lv || lv === S.level) return;
   S.level = lv;
-  if (planView?.sheets.some((s) => s.id === lv)) showSheet(lv);
-  for (const b of tabsEl.children) b.classList.toggle('here', b.dataset.sheet === lv);
+  if (!planView?.sheet.section && planView?.sheets.some((s) => s.id === lv)) showSheet(lv);
+  for (const b of tabsEl.querySelectorAll('button')) b.classList.toggle('here', b.dataset.sheet === lv);
   for (const g of nav.children) g.classList.toggle('cur', g.dataset.level === lv);
   openGroup(lv);
 }
@@ -1192,10 +1215,11 @@ function frame(now) {
   }
   updateRoom(px, py);
   ix.update(dt, now); updatePointer(now);
-  if (planView) {                       // marker on the sheet of the visitor's floor, and always on SITE (hollow indoors)
-    const sl = planView.sheet.level ?? planView.sheetId, multi = planView.sheets.length > 1;
+  if (planView) {                       // marker on the sheet of the visitor's floor, and always on SITE (hollow indoors);
+    const sl = planView.sheet.level ?? planView.sheetId, multi = planView.sheets.length > 1;   // a section projects it at eye height
     const mark = !multi || sl === S.level ? 'full' : planView.sheetId === 'X' ? 'hollow' : null;
-    planView.setViewer({ x: px, y: py, dir, hfov: G.hfov(camera.fov, camera.aspect), mark }, S.room);
+    const z = S.mode === 'walk' ? S.z + S.eye : orbit.target.y;
+    planView.setViewer({ x: px, y: py, z, dir, hfov: G.hfov(camera.fov, camera.aspect), mark }, S.room);
   }
   cull();
   if (S.mode === 'orbit') {
@@ -1235,7 +1259,7 @@ function texStats() {
 }
 
 // debug / test handle
-window.viewer = { viewRect, texStats, sharedTex, cullList, seen: () => seen, setCull: (v) => { CULL = v; cullKey = null; cull(); }, dhMeshes, levelBox, openGroup, THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump, ix, walkTo, castAt, castRay, ring, roomLights,
+window.viewer = { house, viewRect, texStats, sharedTex, cullList, seen: () => seen, setCull: (v) => { CULL = v; cullKey = null; cull(); }, dhMeshes, levelBox, openGroup, THREE, G, scene, camera, renderer, orbit, S, walk, rooms, vps, planView, setMode, teleport, jump, ix, walkTo, castAt, castRay, ring, roomLights,
   FOV, FOV_MIN, FOV_MAX, LEVELS, ORDER, levelScenes, ixLevels, setDollLevel, streaming, schema2, targetOf, lmProbeScale,
   info: () => ({ mode: S.mode, x: S.x, y: S.y, z: S.z, layer: S.layer, level: S.level, yaw: S.yaw, room: S.room?.id ?? null, sheet: planView?.sheetId ?? null,
     realtime, meshes: meshes.length, lightmapped: meshes.filter((m) => m.userData.baked).length, probed: meshes.filter((m) => !realtime && !m.userData.baked).length,

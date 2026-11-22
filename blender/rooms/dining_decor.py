@@ -7,6 +7,8 @@ the back face (curtain: top centre of the heading)."""
 import math
 from math import sin, cos, pi
 
+from mathutils import Matrix
+
 from lib import materials as M, mouldings as mo, props as P
 from rooms.dining_furniture import T, R, WALL, fin, spline, loft, grid, bar, rrect, oval, turn, dark_wood, shared, check_mat
 
@@ -29,17 +31,20 @@ def _vine_leaf(mb, F, x, y, ang, size, mat):
         mb.leaf(size * k, size * .55 * k, .012, mat, 5, serrate=.3, curl=.5, base=.3)
 
 
-def carved_panel():
-    """Carved near-black oak panel 0.44 x 0.88: frame with a gilt slip, fielded panel with a hanging grapevine
-    in high relief (vine leaves, a long tapering bunch of grapes, lower leaves and tendrils)."""
+def carved_panel(w=.42, h=.77):
+    """Carved near-black oak panel w x h (0.42 x 0.77: v1 t719 between the dado and the 2.53 cornice edge, aspect from
+    the f_0724 / f_0739 quads): 45 mm frame with a gilt slip, fielded panel with a hanging grapevine in high relief
+    (vine leaves, a long tapering bunch of grapes, lower leaves and tendrils). The carving was drawn on the 0.44 x 0.88
+    panel and is scaled to the field."""
     wd = dark_wood()
     mb = mo.MB()
-    _ring(mb, .44, .88, .045, 0, -.045, wd, .004)                                   # flat outer band
-    _ring(mb, .35, .79, .006, 0, -.041, 'gilt', .001)                               # gilt inner slip
-    _ring(mb, .338, .778, .014, 0, -.036, wd, .004)                                 # moulded border, stepping in
-    _ring(mb, .31, .75, .012, 0, -.028, wd, .004)
-    mb.box((-.143, 0, -.363), (.143, -.016, .363), wd)                               # field
-    F = T((0, -.016, 0)) @ WALL
+    _ring(mb, w, h, .045, 0, -.045, wd, .004)                                       # flat outer band
+    _ring(mb, w - .09, h - .09, .006, 0, -.041, 'gilt', .001)                       # gilt inner slip
+    _ring(mb, w - .102, h - .102, .014, 0, -.036, wd, .004)                         # moulded border, stepping in
+    _ring(mb, w - .13, h - .13, .012, 0, -.028, wd, .004)
+    fw, fh = w / 2 - .077, h / 2 - .077
+    mb.box((-fw, 0, -fh), (fw, -.016, fh), wd)                                      # field
+    F = T((0, -.016, 0)) @ WALL @ Matrix.Diagonal((fw / .143, fh / .363, 1, 1))      # carving frame, scaled to the field
     for x, y, a, sz in ((-.055, .255, 35, .095), (.05, .27, -40, .09), (0, .30, 0, .075), (-.085, .19, 110, .06),
                         (.085, .18, -115, .065)):
         _vine_leaf(mb, F, x, y, a, sz, wd)
@@ -59,58 +64,63 @@ def carved_panel():
         mb.tube([(s * (.03 + .0035 * i) * cos(.7 * i) + s * .09, -.02 + .012 * i + (.03 - .002 * i) * sin(.7 * i), .004)
                  for i in range(12)], .003, wd, 4)
     mb.at()
-    mb.box((-.09, -.016, -.363), (.09, -.03, -.345), wd, bev=.004)                      # small moulded base
+    mb.box((-.09, -.016, -fh), (.09, -.03, -fh + .018), wd, bev=.004)                   # small moulded base
     return fin(mb, 'dining.carved_panel')
 
 
-def triptych_mirror():
-    """Near-black oak triptych mirror 1.47 x 0.85: bolection-moulded 75 mm frame, two 90 mm moulded mullions,
-    three plates (0.30 / 0.52 / 0.30 wide x 0.70 high) with a 20 mm bevel."""
+def triptych_mirror(widths=(.385, .68, .385), H=.79, mem=.065):
+    """Three near-black oak mirrors hung edge to edge (v1 t724, t739: each has its own frame; the two inner members
+    meet in a V), 1.45 x 0.79 overall (v1 t719 between the dado and the 2.53 cornice edge; t724 quad, f 1050 px):
+    bolection-moulded members `mem` wide, one plate per frame with a 20 mm bevel. Origin = centre of the back."""
     oak = dark_wood()
     mb = mo.MB()
-    W, H = 1.47, .85
-    mb.box((-W / 2 + .004, 0, -H / 2 + .004), (W / 2 - .004, -.012, H / 2 - .004), oak)   # back board
-    bol = [(.075, .012), (.075, .017), (.07, .026), (.062, .031), (.05, .031), (.04, .037), (.024, .041), (.009, .037),
-           (0, .028), (0, 0)]                                                       # bolection: raised roll, cove to the glass
-    mb.sweep(bol, [(-W / 2, 0, -H / 2), (W / 2, 0, -H / 2), (W / 2, 0, H / 2), (-W / 2, 0, H / 2)], oak, closed=True, up=(0, -1, 0))
-    mul = [(.045, .012), (.045, .017), (.04, .026), (.03, .031), (.012, .038), (0, .04), (-.012, .038), (-.03, .031),
-           (-.04, .026), (-.045, .017), (-.045, .012)]
-    for x in (-.305, .305):
-        mb.sweep(mul, [(x, 0, -.352), (x, 0, .352)], oak, up=(0, -1, 0), caps=False)
-    for cx, w in ((-.505, .31), (0, .52), (.505, .31)):                             # plates, each with a 20 mm bevel
-        w2, h2, bv = w / 2, .35, .02
+    W = sum(widths)
+    k = mem / .075                                                                  # the 75 mm section, narrowed to `mem`
+    bol = [(.075 * k, .012), (.075 * k, .017), (.07 * k, .026), (.062 * k, .031), (.05 * k, .031), (.04 * k, .037),
+           (.024 * k, .041), (.009 * k, .037), (0, .028), (0, 0)]                   # raised roll, cove to the glass
+    x0 = -W / 2
+    for w in widths:
+        x1 = x0 + w
+        mb.box((x0 + .004, 0, -H / 2 + .004), (x1 - .004, -.012, H / 2 - .004), oak)        # back board
+        mb.sweep(bol, [(x0, 0, -H / 2), (x1, 0, -H / 2), (x1, 0, H / 2), (x0, 0, H / 2)], oak, closed=True, up=(0, -1, 0))
+        cx, w2, h2, bv = (x0 + x1) / 2, w / 2 - mem + .004, H / 2 - mem + .004, .02
         o = [(cx - w2, -.0125, -h2), (cx + w2, -.0125, -h2), (cx + w2, -.0125, h2), (cx - w2, -.0125, h2)]
         i_ = [(cx - w2 + bv, -.0165, -h2 + bv), (cx + w2 - bv, -.0165, -h2 + bv), (cx + w2 - bv, -.0165, h2 - bv),
               (cx - w2 + bv, -.0165, h2 - bv)]
         # flat-shaded: the 11 deg bevel is under the smoothing angle, and averaged normals bent the plate into a lens
-        for f in [mb.face(i_, 'mirror', (0, -1, 0))] + [mb.face([o[k], o[(k + 1) % 4], i_[(k + 1) % 4], i_[k]], 'mirror', (0, -1, 0))
-                                                         for k in range(4)]:
+        for f in [mb.face(i_, 'mirror', (0, -1, 0))] + [mb.face([o[j], o[(j + 1) % 4], i_[(j + 1) % 4], i_[j]], 'mirror', (0, -1, 0))
+                                                         for j in range(4)]:
             f.smooth = False
+        x0 = x1
     for s in (-1, 1):                                                               # brass hanging hooks
-        mb.at(T((s * .45, -.004, H / 2 + .008)) @ WALL)
+        mb.at(T((s * (W / 2 - widths[0] / 2), -.004, H / 2 + .008)) @ WALL)
         mb.dome(.009, .009, .008, 'brass', 8, 2)
     mb.at()
     return fin(mb, 'dining.mirror')
 
 
-def sword_board():
-    """Dark board 1.24 x 0.22 with ogee-pointed ends carrying an officer's sword (pierced half-basket hilt at
-    the viewer's left, fullered blade) above its steel scabbard, on two pairs of black iron hooks."""
+def sword_board(L=1.14, H=.22):
+    """Dark board L x H, square-ended with a bevelled edge round a raised field (F_613 close-up), carrying an officer's
+    sword (pierced half-basket hilt at the viewer's left, fullered blade, X 1.19..2.22 in F_613) above its steel
+    scabbard, on two pairs of black iron hooks."""
     # polished steel: the library's silver_satin (#9C9C98, roughness .35) read as dull pewter against the dark board
     steel, blk = M.solid('dining_steel', '#D8D8D4', .14, metallic=1), 'cast_iron'
     mb = mo.MB()
-    end = [(.56, -.11), (.575, -.085), (.585, -.045), (.62, 0), (.585, .045), (.575, .085), (.56, .11)]
-    out = end + [(-x, z) for x, z in reversed(end)]
-    mb.prism([(x, 0, z) for x, z in out], (0, -.02, 0), DARK)
-    mb.prism([(x * .97, -.02, z * .9) for x, z in out], (0, -.004, 0), DARK)            # raised field
+    l2, h2 = L / 2, H / 2
+    mb.box((-l2, 0, -h2), (l2, -.016, h2), DARK, bev=.003)                         # board, eased arrises
+    mb.prism([(-l2 + .014, -.016, -h2 + .014), (l2 - .014, -.016, -h2 + .014), (l2 - .014, -.016, h2 - .014),
+              (-l2 + .014, -.016, h2 - .014)], (0, -.002, 0), DARK)                 # bevel up to the raised field
+    mb.box((-l2 + .022, -.018, -h2 + .022), (l2 - .022, -.021, h2 - .022), DARK, bev=.0015)
+    S = T((-.035, 0, 0))                                                            # sword and scabbard sit 35 mm toward the hilt
+    mb.at(S)
     zs, zc, yb = .047, -.047, -.039
     rings = []
-    for x, k in ((-.37, 1), (.30, .92), (.47, .8), (.535, .5), (.562, .08)):         # blade: lens section, shallow fuller
+    for x, k in ((-.37, 1), (.26, .92), (.406, .8), (.462, .5), (.485, .08)):        # blade: lens section, shallow fuller
         w, t = .015 * k, .004 * k                                                   # 30 mm blade, full lens section
-        rings.append([(x, yb, zs + w), (x, yb - t, zs + w * .45), (x, yb - t * (.55 if x < .4 else 1), zs), (x, yb - t, zs - w * .45),
+        rings.append([(x, yb, zs + w), (x, yb - t, zs + w * .45), (x, yb - t * (.55 if x < .35 else 1), zs), (x, yb - t, zs - w * .45),
                       (x, yb, zs - w), (x, yb + t, zs - w * .45), (x, yb + t, zs + w * .45)])
     loft(mb, rings, steel, True, True)
-    mb.at(T((0, yb, zs)) @ R('Y', -90))                                             # hilt axis: local +Z runs toward the pommel
+    mb.at(S @ T((0, yb, zs)) @ R('Y', -90))                                         # hilt axis: local +Z runs toward the pommel
     grip = [(.0085 + .0012 * (i % 2), .378 + .0075 * i) for i in range(15)]         # wire-bound grip
     turn(mb, [(.006, .376)] + grip + [(.006, .485)], 'black_matt', 10)
     mb.lathe([(0, .484), (.008, .484), (.0125, .492), (.0135, .502), (.01, .513), (.004, .518), (0, .519)], steel, 12)   # pommel
@@ -123,13 +133,13 @@ def sword_board():
         r = {.40: .047, .44: .05, .478: .04}[z]
         bar(mb, [(r * cos(math.radians(a)), r * sin(math.radians(a)), z) for a in range(-190, -61, 16)], oval(.0035, .0035, 6),
             steel, up=(0, 0, 1))
-    mb.at(T((0, -.04, zc)) @ R('Y', -90))
-    mb.lathe([(0, -.44), (.008, -.44), (.013, -.425), (.014, 0), (.016, .38), (.019, .385), (.019, .40), (.016, .405),
+    mb.at(S @ T((0, -.04, zc)) @ R('Y', -90))
+    mb.lathe([(0, -.495), (.008, -.495), (.013, -.48), (.014, 0), (.016, .38), (.019, .385), (.019, .40), (.016, .405),
               (.016, .42), (0, .42)], steel, 12)                                    # scabbard, mouth toward the hilt
     for z in (.18, .34):
         mb.lathe([(.0155, z), (.019, z), (.019, z + .012), (.0155, z + .012)], steel, 12)   # ring mounts
     mb.at()
-    for x in (-.27, .30):
+    for x in (-.27, .15):                                                           # the two pairs of hooks (F_613)
         for z0 in (zs - .016, zc - .018):
             mb.box((x - .006, -.02, z0 - .006), (x + .006, -.062, z0), blk, bev=.002)       # hook arm
             mb.box((x - .006, -.056, z0), (x + .006, -.062, z0 + .022), blk, bev=.002)      # upturned tip
@@ -279,18 +289,18 @@ def plaque(name, kind='bend', board='#6E4F31', field='#1B2540', field2='#4A1A22'
 
 
 # ============================================================================== curtains
-def curtain(name, seed=0, back=.025):
-    """New curtain object; the two drops share one mesh (linked duplicates)."""
-    return shared(_CACHE, ('curtain', seed, back), lambda: _curtain_mesh(seed, back=back), name)
+def curtain(name, seed=0, back=.025, top=2.50):
+    """New curtain object hanging from z = top to 10 mm over the floor; the two drops share one mesh."""
+    return shared(_CACHE, ('curtain', seed, back, top), lambda: _curtain_mesh(seed, back=back, top=top), name)
 
 
-def _curtain_mesh(seed=0, name='dining.curtain', back=.025):
+def _curtain_mesh(seed=0, name='dining.curtain', back=.025, top=2.50):
     """Full-length check curtain on the pelmet track, tied round its middle into a symmetric hourglass: 0.60
     wide at the gathered pencil-pleat heading (75 mm tape, 46 small pleats), 0.25 at the tie-back 1.50 below,
     0.50 at the hem, 10 mm clear of the floor. Soft, shallow folds of uneven width (8 columns per fold), deep
     only where the tie bunches the cloth. Doubled cream cord with a 40 mm bead and a long gold fringed tassel,
     hooked to the wall pier `back` behind the origin. Origin: top centre of the heading's back."""
-    Ht, zt, n, zh = 2.49, -1.50, 11, -.075                                          # zh = foot of the heading tape
+    Ht, zt, n, zh = top - .01, -1.50, 11, -.075                                     # zh = foot of the heading tape
     cloth = P.two_sided(check_mat())
     mb = mo.MB()
 

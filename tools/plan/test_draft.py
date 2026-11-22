@@ -2,8 +2,16 @@
 the sheet of its level (with and without a `level` field), unknown / unreadable records fall back to their outline,
 spec fallback and export never double-draw, `front` vectors orient symbols, car yaw is read from the spec, title-block
 cells fit any text, neighbours are dashed context inside the site window, and the drafter's self-checks still pass.
+Cross-sections (a sections.json cut from the model by blender/export_sections.py): without one the set is the five
+plans; with one every section is a sheet after them (closed cut outlines, both hatches, level marks that are levels
+of house.json, the cut rooms named from house.json, the walker's projection landing in the room it stands in), the
+plans carry the cutting lines on the planes of section_planes.py, every title block counts the whole set, the DXF
+audits clean with the section layers and the PDF has a page per sheet; a sections.json holding one section gives a
+set of six; and sections.json stands within 20 mm of house.json.
 
-    python tools/plan/test_draft.py [--house PATH]      -> TEST OK   (default spec/house.json)
+    python tools/plan/test_draft.py [--house PATH] [--sections FILE] [--no-sections]      -> TEST OK
+        # defaults: spec/house.json, docs/assets/sections.json. None there: the test fails (the export writes it), unless
+        # --no-sections says the plan sheets alone are to be tested
 """
 import argparse, json, math, sys, tempfile
 from pathlib import Path
@@ -39,13 +47,21 @@ SKEW = dict(R("green_bedroom", "bed", 0, 0, 1, 1), name="green_bedroom.skewed",
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--house", default=str(D.ROOT / "spec" / "house.json"))
-house = ap.parse_args().house
+ap.add_argument("--sections", default=str(D.OUT / "sections.json"), help="sections.json of an export (default docs/assets)")
+ap.add_argument("--no-sections", action="store_true", help="test the plan sheets alone (no sections.json at hand)")
+house, sections = ap.parse_args().house, Path(ap.parse_args().sections)
+assert sections.exists() or ap.parse_args().no_sections, (
+    "no %s: blender/export.py writes it on every export (blender/export_sections.py alone: 20 s); --no-sections tests "
+    "the plan sheets only" % sections)
 with tempfile.TemporaryDirectory() as tmp:
     fp = Path(tmp) / "footprints.json"
     fp.write_text(json.dumps(RECS + [SKEW]), encoding="utf-8")
     plan, checks = D.build(house, fp)
     D.self_check(plan, checks)
     sheets = {s["id"]: s for s in plan["sheets"]}
+    assert list(sheets) == ["B", "G", "1", "2", "X"] and not D.SECS, "no sections.json beside the footprints: the five plans"
+    assert not any(l["name"].startswith(("A-SECT", "A-ANNO-SECT", "A-ANNO-LEVL")) for l in plan["layers"])
+    assert all(any(e["type"] == "text" and e["text"] == "%d OF 5" % s["index"] for e in s["entities"]) for s in plan["sheets"])
     for r in RECS + [SKEW]:                                     # every record drew something on its level's sheet
         lvl = D.rec_level(dict(r))
         bx = Polygon(r["obb"]).buffer(0.03)
@@ -107,5 +123,90 @@ ctx = [e for e in X["entities"] if e["layer"] == "L-SITE-CTXT" and e["type"] == 
 win = sbox(*D.site_window()).buffer(1e-6)
 assert ctx and all(e.get("ls") == "dashed" and all(win.contains(Point(p)) for p in e["pts"]) for e in ctx)
 assert sorted(D.SYMBOLS) == sorted(set(D.SYMBOLS))
+
+# cross-sections
+import section_planes as SP
+for sec in SP.SECTIONS:                                         # the planes are data: resolved from the spec, each through its list
+    pl = SP.resolve(D.H, sec)
+    lo, hi = SP.span(D.H, sec["through"], sec["axis"])
+    assert lo < pl["at"] < hi and hi - lo >= SP.MIN_SPAN and abs(pl["at"] - (lo + hi) / 2) < 1e-3, (sec["id"], lo, hi)
+    assert abs(SP.to_s(pl, *SP.to_xy(pl, 3.21)) - 3.21) < 1e-9 and pl["right"] == [pl["normal"][1], -pl["normal"][0]]
+note = "section sheets not tested (--no-sections)"
+if sections.exists() and not ap.parse_args().no_sections:
+    import ezdxf, fitz
+    from shapely.geometry import LineString
+    from render import render_pdf
+    secs = json.loads(sections.read_text(encoding="utf-8"))
+    with tempfile.TemporaryDirectory() as tmp:
+        fp = Path(tmp) / "footprints.json"
+        fp.write_text(json.dumps(RECS), encoding="utf-8")
+        plan, checks = D.build(house, fp, sections)
+        D.self_check(plan, checks)                              # incl. section_check: closed outlines, names, level marks
+        ids = [s["id"] for s in plan["sheets"]]
+        cut = [sid for sid, _, _ in D.SECTION_SHEETS if sid in D.SECS]
+        assert ids == ["B", "G", "1", "2", "X"] + cut and len(cut) >= 2, ids
+        n = len(ids)
+        for s in plan["sheets"]:                                # every title block counts the whole set
+            assert any(e["type"] == "text" and e["text"] == "%d OF %d" % (s["index"], n) for e in s["entities"]), (s["id"], n)
+        spec_floors = {round(float(r["floorZ"]), 3) for r in list(D.ROOMS.values()) + list(D.HC.building_rooms.values())}
+        named = set()
+        for s in plan["sheets"][5:]:
+            sec, E = D.SECS[s["id"]], s["entities"]
+            assert s["kind"] == "section" and s["scale"] in ("1:50", "1:100", "1:200") and s["number"].startswith("GA-"), s["id"]
+            assert s["title"] == "SECTION %s-%s" % (sec["letter"], sec["letter"]) and s["section"]["at"] == sec["at"]
+            by = lambda lay, typ: [e for e in E if e["layer"] == lay and e["type"] == typ]
+            assert by("A-SECT", "polyline") and all(e["closed"] for e in by("A-SECT", "polyline")[:1]), s["id"]
+            assert {e["pattern"] for e in by("A-SECT-PATT", "hatch")} == {"ANSI31", "EARTH"}, s["id"]
+            for lay in ("A-SECT-BYND", "A-SECT-FIXT"):          # the packed layers: flat lists of x, y pairs
+                p = by(lay, "paths")
+                assert len(p) == 1 and p[0]["paths"] and all(len(q) >= 4 and len(q) % 2 == 0 for q in p[0]["paths"]), (s["id"], lay)
+            texts = {e["text"] for e in E if e["type"] == "text"}
+            marks = [t for e in by("A-ANNO-LEVL", "text") for t in e["text"].split(" / ")]
+            assert all(any(D.ffl(z) == t for z in spec_floors) for t in marks if t.startswith("FFL")), (s["id"], marks)
+            assert any(t.startswith(("RIDGE", "FLAT ROOF")) for t in marks) and by("A-ANNO-DIMS", "dim"), s["id"]
+            assert D.ENDS[tuple(sec["right"])] in texts and D.ENDS[(-sec["right"][0], -sec["right"][1])] in texts, s["id"]
+            for r in s["rooms"]:                                # the viewer's projection: on the plane inside a room -> inside its outline
+                if r["id"] not in D.ROOMS or D.HC.kind(r["id"]) != "room":
+                    continue
+                assert D.room_name(r["id"]) in texts, (s["id"], r["id"])
+                named.add(D.room_name(r["id"]))
+                g = LineString([D.sec_xy(sec, -50), D.sec_xy(sec, 50)]).intersection(Polygon(D.ROOMS[r["id"]]["polygon"]))
+                x, y = g.interpolate(0.5, normalized=True).coords[0]
+                sm = (x - s["section"]["origin"][0]) * s["section"]["right"][0] + (y - s["section"]["origin"][1]) * s["section"]["right"][1]
+                assert Polygon(r["polygon"]).buffer(0.01).contains(Point(sm, r["floorZ"] + 0.5)), (s["id"], r["id"], sm)
+        for rid in ("loft_office", "study", "purple_room"):     # the names are house.json's (round 3 renamed these three)
+            assert D.room_name(rid) == D.ROOMS[rid]["name"].split("(")[0].strip().upper() and D.room_name(rid) in named, rid
+        for s in plan["sheets"][:5]:                            # cutting lines on the plans: on the plane, lettered at both ends
+            E = s["entities"]
+            for sid in cut:
+                sec = D.SECS[sid]
+                k = 0 if sec["axis"] == "x" else 1
+                lines = [e for e in E if e["layer"] == "A-ANNO-SECT-CUTL" and all(abs(p[k] - sec["at"]) < 1e-6 for p in
+                         ([e["p1"], e["p2"]] if e["type"] == "line" else e["pts"]))]
+                letters = [e for e in E if e["layer"] == "A-ANNO-SECT" and e["type"] == "text" and e["text"] == sec["letter"]]
+                crossed = s["id"] == "X" or LineString([D.sec_xy(sec, -50), D.sec_xy(sec, 50)]).intersects(D.envelope(s["id"]))
+                assert (len(letters) == 2 and lines and all(e.get("ls") == "center" for e in lines)) if crossed else not letters, (s["id"], sid)
+        reg = D.section_registration()
+        worst = max(reg, key=lambda r: abs(r[3] - r[4]))
+        assert abs(worst[3] - worst[4]) <= 0.02 and sum(r[2] != "floor" for r in reg) >= 10, ("registration", worst)
+        D.write_dxf(plan, Path(tmp) / "t.dxf")                  # audits inside; re-read: the section layers hold entities
+        msp = ezdxf.readfile(Path(tmp) / "t.dxf").modelspace()
+        used = {e.dxf.layer for e in msp}
+        assert {n_ for n_, *_ in D.SECTION_LAYERS} - {"A-SECT-HIDN"} <= used, used
+        assert {"EARTH", "ANSI31"} <= {h.dxf.pattern_name for h in msp.query("HATCH")}
+        # a sections.json holding one section: a set of six, counted so on every sheet, six PDF pages
+        one = Path(tmp) / "one.json"
+        one.write_text(json.dumps(dict(secs, sections=[q for q in secs["sections"] if q["id"] == cut[1]])), encoding="utf-8")
+        plan6, checks6 = D.build(house, fp, one)
+        D.self_check(plan6, checks6)
+        assert [s["id"] for s in plan6["sheets"]] == ["B", "G", "1", "2", "X", cut[1]]
+        assert all(any(e["type"] == "text" and e["text"] == "%d OF 6" % s["index"] for e in s["entities"]) for s in plan6["sheets"])
+        render_pdf(plan6, Path(tmp) / "t.pdf")
+        doc = fitz.open(Path(tmp) / "t.pdf")
+        pages = len(doc)
+        doc.close()
+        assert pages == 6, pages
+    note = "%d section sheets (%s): closed cut, hatches, level marks, room names, cutting lines on the plans, registration " \
+           "within %.0f mm over %d checks, DXF layers, set of six" % (len(cut), " ".join(cut), abs(worst[3] - worst[4]) * 1000, len(reg))
 print("TEST OK  %d symbols drawn on their sheets (+1 unreadable as its outline); fallback dedupe, front vectors, car yaw, "
-      "title-block fit, neighbour context, self-checks pass" % len(RECS))
+      "title-block fit, neighbour context, self-checks pass; %s" % (len(RECS), note))

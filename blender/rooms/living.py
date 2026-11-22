@@ -3,13 +3,14 @@
     B="C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
     "$B" -b --factory-startup --python blender/build.py -- --only shell,living --preview living --res 540x960 --samples 64 --tag living
 
-Room: x 0.80..4.30, y 0.99..5.19, 45-degree chamfer (0.80, 4.78) -> (1.21, 5.19) behind the door, bay x 1.10..4.00 /
-y 0..0.99, ceiling 2.95. W wall (x 0.80) = terracotta TV wall, N wall (y 5.19) = bookcase wall, E wall (x 4.30) = sofa /
+Room: x 0.80..4.30, y 0.99..5.19, 45-degree chamfer (0.80, 4.78) -> (1.21, 5.19) behind the door, bay x 1.03..3.93 /
+y 0..0.99 (round 3: 0.07 west, lights centred on x 2.48; the bay dressing reads it from house.json), ceiling 2.95. W wall (x 0.80) = terracotta TV wall, N wall (y 5.19) = bookcase wall, E wall (x 4.30) = sofa /
 gallery wall, bay to the south. Phase-2 corrections (spec/phase2/ground_corrections.md 1, 4, 9): TV, TV unit,
 amplifier, coffee table, rug, sofa and the big floral painting on one east-west axis y 2.33; N-wall items moved
 north with the wall; the shell builds the bay-nib splays and the NW chamfer (their skirting is mouldings').
 Helpers: living_parts (seating, tables), living_case (bookcase, chairs, TV unit, A/C), living_decor (lights,
-ornaments). Textures in blender/textures/art/living: picture / tapestry / rug crops (reference/work/living/art.py,
+ornaments), living_games (round 3, v10: xiangqi set and domino box on the coffee table, solitaire on the lamp table;
+textures from living_games_tex.py). Textures in blender/textures/art/living: picture / tapestry / rug crops (reference/work/living/art.py,
 rug.py, fix1/tex_fix.py) and generated maps (not reference-derived): toile*.jpg (fix1/gen_tex.py), tartan.jpg, velvet*.jpg,
 oak_dark.jpg (fix2/gen_tex2.py).
 """
@@ -28,6 +29,7 @@ if _HERE not in sys.path:                       # build.py loads this file by pa
 import living_parts as LP
 import living_case as LC
 import living_decor as LD
+import living_games as LG
 
 ROOM = 'living'
 ART = os.path.normpath(os.path.join(_HERE, '..', 'textures', 'art', 'living'))
@@ -53,6 +55,12 @@ CAMERAS = [   # ref: v1 frame (reference/frames) or v2:<frame> (reference/v2/fra
     dict(name='ix_bookcase', pos=(2.55, 3.40, 1.45), look=(2.95, 4.96, 0.75), fov_deg=80, ref='f_0185'),
     dict(name='ix_clock', pos=(3.02, 4.41, 1.42), look=(3.085, 4.96, 1.35), fov_deg=35, ref='f_0785'),
     dict(name='ix_lamp', pos=(2.25, 1.35, 1.25), look=(2.6, 0.1, 0.95), fov_deg=80, ref='f_0115'),
+    # round 3 (v10, reference/v10/frames): the games on the coffee table, the domino box (--pose 1: lid open, three
+    # tiles out), the east bay corner with the magazine rack and the curtain hem
+    dict(name='games', pos=(2.30, 1.30, 1.30), look=(2.88, 1.98, 0.46), fov_deg=70, ref='v10:f_0041'),
+    dict(name='xiangqi', pos=(2.28, 2.14, 1.12), look=(2.88, 2.15, 0.46), fov_deg=62, ref='v10:f_0004'),
+    dict(name='ix_box', pos=(2.62, 1.42, 0.80), look=(2.86, 1.72, 0.49), fov_deg=50, ref='v10:f_0020'),
+    dict(name='bay_e', pos=(2.55, 1.75, 1.25), look=(3.85, 0.62, 0.55), fov_deg=80, ref='v10:f_0043'),
 ]
 
 # Gallery, hung from the brass rail. (id, position along the wall, top z, outer w, outer h, frame style, frame w, glazed)
@@ -264,7 +272,6 @@ def build(ctx):
     for i, sx in enumerate((-1, 1)):                      # speakers with their plain black cloth grilles on (f_0205)
         LP.kid(unit, LD.speaker(f'living.speaker.{i}'), (sx * 0.78, 0.02, 0.56), (0, 0, -sx * 8))
     LP.kid(unit, LD.amplifier(), (0.0, -0.07, 0.56))                # centred on the unit (v2:f_0825-0833)
-    LP.kid(unit, LD.xiangqi(), (0.425, -0.01, 0.56), (0, 0, 4))     # between the amplifier and the north speaker, ~6 mm off both
     LP.kid(unit, LD.games_console(), (0.0, 0.01, 0.282))            # games console, centred on the open shelf
     _add(ctx, unit, 'furn', 'tv_unit', lm='static')
     U = unit.matrix_basis                                 # cupboards hinge on the outer posts, the drawer slides out
@@ -279,7 +286,8 @@ def build(ctx):
     mb.box((X0, AXIS - 0.02, 0.56), (X0 + 0.016, AXIS + 0.02, 0.73), Wp, bev=0.002)      # cable trunking, TV to unit
     mb.box((X0, 3.50, 1.225), (X0 + 0.022, 3.56, 1.375), Wp, bev=0.003)                  # A/C controller in cradle
     mb.box((X0 + 0.021, 3.51, 1.32), (X0 + 0.0233, 3.55, 1.36), M.solid('living_lcd', '#9AA39A', 0.3))
-    mb.box((0.905, Y0, 1.458), (0.99, Y0 + 0.025, 1.542), Wp, bev=0.004)                 # thermostat on the west nib's room face
+    mb.box((0.82, Y0, 1.458), (0.905, Y0 + 0.025, 1.542), Wp, bev=0.004)                  # thermostat on the west nib's flat room face
+                                                          # (round 3: the nib is 0.23 wide, its chamfer starts at x 0.924)
     _add(ctx, mb.finish('living.wall_controls'), 'fit')
     sc0 = LD.sconce('living.sconce.0')
     P.place(sc0, (X0, 1.60, 2.38), facing=(1, 0))
@@ -357,33 +365,37 @@ def build(ctx):
 
     # ---- centre: rug, coffee table on the axis, footstool
     rug = P.rug(os.path.join(ART, 'rug.jpg'), 1.40, 2.00, corner_r=0.01, name='living.rug')
-    P.place(rug, (2.80, AXIS, 0))
+    P.place(rug, (2.65, AXIS, 0))                         # v10 t03 / t40: bare floor between table and sofa, east edge 3.35
     _add(ctx, rug, 'decor', 'rug', lm='static')
     ct = LP.coffee_table()
     P.place(ct, (2.80, AXIS, 0), rot_z=90)
     _add(ctx, ct, 'furn', 'coffee_table')
+    games(ctx)
     fs = LP.footstool()
-    P.place(fs, (3.12, 1.22, 0), rot_z=8)                 # in front of the east armchair (v2:f_0805, f_0873)
-    _add(ctx, fs, 'furn', 'stool')
+    P.place(fs, (2.50, 1.05, 0), rot_z=-4)                # in front of the lamp table, as in v10 g1309 / g1369 (v2 had it
+    _add(ctx, fs, 'furn', 'stool')                        # before the east armchair): the sofa - table lane stays open
 
     # ---- bay: armchairs, lamp table + lamp, curtains
     ch0 = LC.armchair('living.armchair.0')
     P.place(ch0, (1.76, 0.61, 0), facing=(0.33, 0.94))
     ch1 = bpy.data.objects.new('living.armchair.1', ch0.data)
     P.place(ch1, (3.34, 0.61, 0), facing=(-0.33, 0.94))
-    # loose velvet cushion propped on the east chair's back (v2:f_0755, f_0805, f_0873; the throw on it is clutter)
-    LP.kid(ch1, P.cushion(0.48, 0.48, 0.15, mat=LP.velvet(), name='living.armchair.1.cushion'), (0.0, 0.235, 0.63), (80, 0, 4))
+    # v10: the east chair carries no loose cushion (v2 showed one); the throw is clutter
     for ch in (ch0, ch1):
         _add(ctx, ch, 'furn', 'armchair')
     lt = LC.lamp_table()
     P.place(lt, (2.55, 0.37, 0))
     lamp = LD.table_lamp()
-    LP.kid(lt, lamp, (0.0, -0.13, 0.64))
-    LP.kid(lt, LD.solitaire(), (-0.15, 0.06, 0.64))
-    LP.kid(lt, LD.inlay_box(), (0.14, 0.09, 0.64), (0, 0, -25))
+    LP.kid(lt, lamp, LAMP_AT)
+    # solitaire: v10 puts it at the table centre + (0.02, 0.045); 0.035 further north-west so its rim clears the gilt foot
+    LP.kid(lt, LG.solitaire(), (0.01, 0.08, 0.64), (0, 0, 0))
     _add(ctx, lt, 'furn', 'table_round')
     IX.tag_many(P.family(lamp), 'lamp', g='living.table_lamp', label='Lamp')      # plugged in: its own switch
-    lighting.bulb(ctx, ROOM, (2.55, 0.24, 0.64 + 0.60), watts=W_LAMP, kelvin=2900, radius=0.03, name='living.table_lamp.bulb')
+    lighting.bulb(ctx, ROOM, (2.55 + LAMP_AT[0], 0.37 + LAMP_AT[1], 0.64 + 0.62), watts=W_LAMP, kelvin=2900, radius=0.03,
+                  name='living.table_lamp.bulb')
+    rack = LD.magazine_rack()                             # on the floor against the east cheek by the nib (v10 t42)
+    P.place(rack, (3.93 - 0.10, 0.78, 0), rot_z=90)      # splayed sides clear of the 20 mm skirting
+    _add(ctx, rack, 'decor', 'bin')                       # small soft plan symbol: on the plan, not a walk block
     curtains(ctx)
     gallery(ctx)
 
@@ -421,6 +433,26 @@ def build(ctx):
 # lamps give the up-light that makes the ceiling read near-white as in f_0791 / f_0133 (bulb radius 0.04 for the
 # chandelier so the extra energy spreads instead of burning a hot spot above it).
 W_DOWN, W_CHAND, W_SCONCE, W_LAMP = 52, 18, 26, 25
+LAMP_AT = (0.07, -0.125, 0.64)                    # table lamp on the lamp table (centre 2.55, 0.37): v10 g1369 back-projection
+
+
+def games(ctx):
+    """Owner instruction (round 3): the xiangqi set and the domino box on the coffee table, as left in v10 (survey
+    spec/phase3/living_games.md 2.1, 2.2). Coffee table top z 0.46, east edge x 3.11, south end y 1.53."""
+    top = 0.46
+    xq = LG.xiangqi()
+    xq.location, xq.rotation_euler = (2.845, 2.15, top), (0, 0, radians(-85))     # red edge on the east edge, turned 5 deg
+    _add(ctx, xq, 'decor')
+    base, lid, tin, tout = LG.domino_box()
+    for o in (base, lid, tin, tout):                      # long axis NE-SW, hinge side facing south-east
+        o.location, o.rotation_euler = (2.85, 1.70, top), (0, 0, radians(-131))
+        _add(ctx, o, 'decor', lm='dynamic')
+    Mb = base.matrix_basis
+    IX.tag(lid, 'hinge', g='living.domino_box', label='Dominoes', p=tuple(Mb @ Vector((0, LG.BY / 2, LG.BH))),
+           a=tuple(Mb.to_3x3() @ Vector((1, 0, 0))), deg=-100)
+    IX.tag(base, 'trigger', g='living.domino_box', label='Dominoes')                  # the box side opens it too
+    IX.tag(tin, 'show', g='living.domino_box', when=0, fx='none', label='Dominoes')   # taken out of the top layer ...
+    IX.tag(tout, 'show', g='living.domino_box', when=1, fx='none', label='Dominoes')  # ... and laid on the table
 
 
 def _strip_slots(ob, mats):
@@ -499,8 +531,8 @@ def tieback(side, width, gather, depth=0.06, wall=0.075, name='living.tieback'):
             pts.append(tuple(c + 0.0036 * (cos(ph) * n1 + sin(ph) * n2)))
         LP.rtube(mb, pts, 0.0046, rope, 4)
     mb._soft = 0
-    B = M.mat('brass')                                         # hook: stem out of the timber / wall face, upturned tip
-    yw = wall - 0.012                                          # the dark timber cladding stands 12 mm proud of the wall
+    B = M.mat('brass')                                         # hook: stem out of the wall face, upturned tip; on the front
+    yw = wall                                                  # drops the stem and rose pass into the 12 mm window timber
     LP.rtube(mb, [(hook.x, yw, hook.z - 0.012), (hook.x, hook.y + 0.012, hook.z - 0.012), (hook.x, hook.y, hook.z - 0.004),
                   (hook.x, hook.y - 0.002, hook.z + 0.012)], 0.004, B, 6)
     mb.at(LP.Tr(hook.x, yw, hook.z - 0.012) @ LP.Rx(90))
@@ -521,19 +553,20 @@ def tieback(side, width, gather, depth=0.06, wall=0.075, name='living.tieback'):
     return mb.finish(name)
 
 
-def drawn_curtains(cloth, top, hem, off, ye=0.875, sett=0.16, name='living.curtain.closed'):
+def drawn_curtains(cloth, top, hem, off, bay, ye=0.875, sett=0.16, name='living.curtain.closed'):
     """The four drops untied and drawn right round the bay (interaction state 1), in world coordinates: one
     pleated sheet along each cheek and one across the front, 3 mm in front of the track line `off` from the wall,
     folds 40 mm deep. The lamp table stands against the sill with the lamp shade 7 mm off the window timber, so
     behind them the cloth is pressed back: every column runs straight from the track to where the shade rim
     pushes it (z 1.15), on to the table edge (z 0.645) and plumb below; the 0.17 m of cloth pinched behind the
     table ends on the sill board instead of reaching the floor. ye: north end of the cheek sheets (clear of the nib
-    splays). Returns the cloth object (the track is static, curtains())."""
-    LAMP, R_SHADE, TABLE, R_TABLE = (2.55, 0.24), 0.181, (2.55, 0.37), 0.317     # obstacle radii + 8 mm clearance
-    Z_SHADE, Z_TABLE, Z_SILL, Y_NOSE = 1.15, 0.645, 0.626, 0.064                 # sill board: top 0.62, nose y 0.06
+    splays). bay = (west, east) inside faces of the bay. Returns the cloth object (the track is static, curtains())."""
+    TABLE, R_TABLE = (2.55, 0.37), 0.325                                         # obstacle radii + 8 mm clearance (gadroon r 0.317)
+    LAMP, R_SHADE = (TABLE[0] + LAMP_AT[0], TABLE[1] + LAMP_AT[1]), 0.181
+    Z_SHADE, Z_TABLE, Z_SILL, Y_NOSE = LAMP_AT[2] + 0.53, 0.645, 0.626, 0.064    # shade rim; sill board: top 0.62, nose y 0.06
     zt = top - 0.003                                                             # heading just under the track
     zs = [zt, 2.25, 1.70, Z_SHADE, 0.90, Z_TABLE, Z_SILL, 0.37, hem]
-    xw, xe, yf = 1.10 + off + 0.003, 4.00 - off - 0.003, off + 0.003
+    xw, xe, yf = bay[0] + off + 0.003, bay[1] - off - 0.003, off + 0.003
     runs = [((xw, ye), (0, -1), ye - yf, (1, 0)),                    # west cheek
             ((xw, yf), (1, 0), xe - xw, (0, 1)),                     # front: the folds die out at both ends, so the
             ((xe, yf), (0, 1), ye - yf, (-1, 0))]                    # east cheek      three sheets meet in the corners
@@ -553,7 +586,8 @@ def drawn_curtains(cloth, top, hem, off, ye=0.875, sett=0.16, name='living.curta
                 dx = p.x - LAMP[0]
                 if abs(dx) < R_SHADE:
                     y1 = min(p.y, LAMP[1] - sqrt(R_SHADE ** 2 - dx ** 2))
-                y2 = min(y1, TABLE[1] - sqrt(R_TABLE ** 2 - dx ** 2)) if abs(dx) < R_TABLE else y1
+                dt = p.x - TABLE[0]                                  # round 3: the lamp stands 0.07 east of the table centre
+                y2 = min(y1, TABLE[1] - sqrt(R_TABLE ** 2 - dt ** 2)) if abs(dt) < R_TABLE else y1
             landed.append(y2 < Y_NOSE)                               # no way past the sill nose: the cloth lies on the sill
             for z in zs:
                 if z >= Z_SHADE:
@@ -585,16 +619,18 @@ def curtains(ctx):
     z 1.15 with a swagged twisted rope and tassel (module-built: the prop's rigid hoop is stripped).
     Interaction group living.curtains: the tied drops and their tie-backs show in state 0, the cloth drawn
     round the bay (drawn_curtains) in state 1."""
-    top, hem, tie = 2.79, 0.12, 1.15
+    top, hem, tie = 2.79, 0.27, 1.15                 # hem 0.27 +- 0.04 above the floor (v10 t42, f_0010; v2 f_0873)
+    poly = ctx.feature('living_bay')['polygon']      # round 3: bay x 1.03..3.93
+    bx0, bx1 = min(p[0] for p in poly), max(p[0] for p in poly)
     W, GATHER, FOLDS, DEPTH = 0.48, 0.50, 3, 0.05     # three broad soft folds per drop: the 0.2 m checks stay whole (f_0211)
     off = 0.075                                  # clear of the dark timber and the sill board
     ys = min(min(c['p'][1], c['q'][1]) for c in ctx.chamfers(ROOM) if c['reflex'])   # 0.884: where the nib splays start
     yr = ys - W / 2 - 0.012                      # the return drops end at the splay, as in v2:f_0745 / f_0749
     spec = [                                     # (location, wall normal, bunch side seen from the room)
-        ((1.10 + off, yr, top), (1, 0), 'right'),        # west return, tied toward the nib
-        ((1.10 + off + W / 2, off, top), (0, 1), 'right'),   # front, west corner, tied to the corner: clear of the
-        ((4.00 - off - W / 2, off, top), (0, 1), 'left'),    # return sill board's nose; front, east corner
-        ((4.00 - off, yr, top), (-1, 0), 'left'),        # east return
+        ((bx0 + off, yr, top), (1, 0), 'right'),         # west return, tied toward the nib
+        ((bx0 + off + W / 2, off, top), (0, 1), 'right'),    # front, west corner, tied to the corner: clear of the
+        ((bx1 - off - W / 2, off, top), (0, 1), 'left'),     # return sill board's nose; front, east corner
+        ((bx1 - off, yr, top), (-1, 0), 'left'),         # east return
     ]
     cloth = LP.tartan()
     dead = M.solid('living_tie_strip', '#000000', 1.0)   # the prop's hoop: stripped below
@@ -618,11 +654,11 @@ def curtains(ctx):
     # return drops, the front between them; 40 mm deep from 10 mm behind the heading line, butt-jointed in the corners
     tr = mo.MB()
     Wp, z0, z1, ye = M.mat('plastic_white'), top - 0.002, top + 0.012, yr + W / 2
-    xw, xe = 1.10 + off, 4.00 - off
+    xw, xe = bx0 + off, bx1 - off
     tr.box((xw - 0.01, off - 0.01, z0), (xw + 0.03, ye, z1), Wp)
     tr.box((xw + 0.03, off - 0.01, z0), (xe - 0.03, off + 0.03, z1), Wp)
     tr.box((xe - 0.03, off - 0.01, z0), (xe + 0.01, ye, z1), Wp)
     _add(ctx, tr.finish('living.curtain_track'), 'fit')
-    ob = drawn_curtains(cloth, top, hem, off, ye=ys - 0.008)
+    ob = drawn_curtains(cloth, top, hem, off, (bx0, bx1), ye=ys - 0.008)
     _add(ctx, ob, 'decor', lm='dynamic')
     IX.tag(ob, 'show', g='living.curtains', when=1, fx='none', label='Curtains')

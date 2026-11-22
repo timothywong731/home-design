@@ -34,11 +34,11 @@ def _retex(key, name, image, size_m=None):
     return m
 
 
-def velvet(name='living_velvet', image='velvet.jpg', tint='#F0B080'):
-    """Crushed burnt-orange velvet: the library 'velvet_orange' (nap normal map, sheen) with a generated colour
-    map of nap patches (reference/work/living/fix2/gen_tex2.py: median #8B5631, +-20 %, 0.6 m repeat), a full
-    orange-tinted sheen and a slightly lower roughness so the pile catches the lamps. The library map is a flat
-    #B5683F that renders light, pink and plastic in this room. ponytail: drop it once lib velvet_orange has nap."""
+def velvet(name='living_velvet', image='velvet_rose.jpg', tint='#F0A898'):
+    """Crushed terracotta-rose velvet: the library 'velvet_orange' (nap normal map, sheen) with a generated colour
+    map of nap patches (0.6 m repeat; velvet_rose.jpg = the round-2 burnt-orange map, median #8B5631, turned toward
+    the v10 daylight samples, median #9B5044: living_games_tex.py velvet), a full rose-tinted sheen and a slightly
+    lower roughness so the pile catches the lamps. ponytail: drop it once lib velvet_orange has nap."""
     m = bpy.data.materials.get(name)
     if m is None:
         m = _retex('velvet_orange', name, image, (0.6, 0.6))
@@ -52,13 +52,16 @@ def velvet(name='living_velvet', image='velvet.jpg', tint='#F0B080'):
 
 def velvet_light():
     """Scatter cushions: the same cloth one tone lighter."""
-    return velvet('living_velvet_light', 'velvet_light.jpg', '#F4BC8C')
+    return velvet('living_velvet_light', 'velvet_rose_light.jpg', '#F4B4A4')
 
 
 def oak_dark():
-    """Dark stained open-grain oak of the coffee and side tables: library 'oak_table' (normal map) with a
-    generated bold cathedral-grain colour map, mean #5E4631 (fix2/gen_tex2.py; 0.64 m across x 1.28 m along)."""
-    return _retex('oak_table', 'living_oak_dark', 'oak_dark.jpg', (0.64, 1.28))
+    """Dark stained open-grain oak of the coffee and side tables: library 'oak_table' (normal map) with a generated
+    colour map of long, irregular plain-sawn grain with broad cathedral arches over four boards, lower contrast than
+    round 2 (oak_top.jpg, living_games_tex.py oak; 0.64 m across x 1.28 m along), satin-gloss (v10 t03, t40)."""
+    m = _retex('oak_table', 'living_oak_dark', 'oak_top.jpg', (0.64, 1.28))
+    _bsdf(m).inputs['Roughness'].default_value = 0.26
+    return m
 
 
 def gold(kind='bright'):
@@ -106,8 +109,8 @@ def wood():
 
 def tartan():
     """Curtain cloth: the library 'tartan_red' weave (normal map, 0.2 m sett) with a module-local colour map
-    generated to the spec yarns - taupe-grey ground over ~70 % of the threads, narrow muted brick-red bands,
-    cream and charcoal lines (reference/work/living/fix1/gen_tex.py; not a reference crop).
+    generated to the spec yarns - taupe-grey ground over ~70 % of the threads, narrow raspberry-wine bands (v10
+    daylight #9A4A55: tartan_wine.jpg, living_games_tex.py tartan), cream and charcoal lines (not a reference crop).
     ponytail: drop it once lib tartan_red is retuned."""
     m = bpy.data.materials.get('living_tartan')
     if m is None:
@@ -115,7 +118,7 @@ def tartan():
         m.name = 'living_tartan'
         m['key'] = m.name
         tex = _bsdf(m).inputs['Base Color'].links[0].from_node
-        tex.image = bpy.data.images.load(os.path.join(ART, 'tartan.jpg'), check_existing=True)
+        tex.image = bpy.data.images.load(os.path.join(ART, 'tartan_wine.jpg'), check_existing=True)
     return m
 
 

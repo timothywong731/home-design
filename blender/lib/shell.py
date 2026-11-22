@@ -15,7 +15,7 @@ import numpy as np
 from mathutils import Vector
 
 from . import materials as M
-from .ctx import plane_z, point_in_poly, poly_area, poly_contains
+from .ctx import FRAME_D, plane_z, point_in_poly, poly_area, poly_contains
 
 SLAB = 0.15          # mass carried below the lowest floor of every storey
 WHITE = '#F4F2EC'    # painted joinery / reveal liners
@@ -28,16 +28,30 @@ SOLID_FLIGHTS = {'stair_basement'}      # carcass = mass down to the shaft floor
 SOLID_FEATS = ('pier', 'pilaster', 'nib', 'chimney_breast', 'boxing', 'hearth')
 MISSING = []         # material keys that fell back to grey (build.py counts them as errors unless --bare)
 
+# exterior windows whose room-side reveal is smaller or higher than the frame (opening json `inner` {width, sill} wins):
+# the frame runs lower / wider behind the plaster. ponytail: spec values carried here until house.json has the field
+# (w_utility: board 1.05 and reveal 0.56 inside, frame 0.70 x 0.98 from 0.92; w_wc: the duct ledge 1.20, frame from 1.10)
+INNER = {'w_utility': dict(width=0.56, sill=1.05), 'w_wc': dict(sill=1.20)}
+
 # world point that lands on UV (0, 0) of a room's floor texture (registers the tile motif to the spec)
-FLOOR_ORIGIN = {'vestibule': (-0.045 - 0.165, 0.025 - 0.165, 0.0)}      # blue square centred on (-0.045, 0.025)
+# vestibule: blue-square rows centred y 0.155 + 0.331 k (a dark row cut to 0.9 cell at the street threshold, a full blue
+# row at the inner sill), columns x -0.425 + 0.33 k (porch survey round 3, section 4; x +-0.03)
+# hallway: oak_floor has a board joint on U = 0 (0.245 boards); hall joints at x -0.52, -0.27, -0.03, 0.21, 0.46, the
+# same lines on into the corridor (hall brief, dims_G 11: v2 t682.6) and the stair foot (stairs floor, no joint between)
+FLOOR_ORIGIN = {'vestibule': (-0.095 - 0.165, 0.155 - 0.165, 0.0),      # blue square centred on (-0.095, 0.155)
+                'hallway': (-0.52, 0.0, 0.0), 'stairs': (-0.52, 0.0, 0.0)}
 
 
 def _plain(wall, ceiling, joinery='#F4F3EF', **kw):
     return dict(upper=wall, lower=wall, dado=None, dado_h=0, ceiling=ceiling, joinery=joinery, **kw)
 
 
-_L1 = dict(upper='#F1EEE6', lower='#C8C5BB', dado=0.975, dado_h=0.065, ceiling='#F6F5F2', joinery='#F4F3EF')
-_L2 = dict(upper='#F2F0EA', lower='#C8C5BB', dado=0.99, dado_h=0.06, ceiling='#F4F3EE', joinery=WHITE)
+# below the dado rail: one greige in the vestibule, the hall and both landings (landing1.md: the hall paint; floor2_a
+# survey round 3: #C0B9AD under neutral light, luminance 0.45-0.55 of the white above, v13 t4 / t7; hall brief: same
+# paint as the second-floor hall). Was #C8C5BB. materials.PAINT['hall_dado_grey'] (raking bands of the flights) follows.
+HALL_LOWER = M.PAINT['hall_dado_grey']
+_L1 = dict(upper='#F1EEE6', lower=HALL_LOWER, dado=0.975, dado_h=0.065, ceiling='#F6F5F2', joinery='#F4F3EF')
+_L2 = dict(upper='#F2F0EA', lower=HALL_LOWER, dado=0.99, dado_h=0.06, ceiling='#F4F3EE', joinery=WHITE)
 
 # Per-room finishes (colours = neutral-light estimates from the surfaces section of spec/rooms/<id>.md).
 #   upper/lower : wall paint above/below the dado split (same when no dado)
@@ -50,10 +64,9 @@ _L2 = dict(upper='#F2F0EA', lower='#C8C5BB', dado=0.99, dado_h=0.06, ceiling='#F
 FINISHES = {
     'basement': _plain('#F3F2EE', '#F4F3F0'),
     'basement_stair': _plain('#EDE7DA', '#EDE7DA'),
-    'vestibule': dict(upper='#F2F0EA', lower='#C8C5BB', dado=0.965, dado_h=0.07, ceiling='#F4F3EE', joinery=WHITE),
-    # lower: hallway.md gives #B9B5A8; it rendered a khaki band ~0.6 of the upper wall where f_0770 / f_0548 show a
-    # pale greige at ~0.78 (the oak floor's bounce warms it), so it is lightened and neutralised.
-    'hallway': dict(upper='#F2F0EA', lower='#C8C5BB', dado=0.965, dado_h=0.07, ceiling='#F4F3EE', joinery=WHITE,
+    'vestibule': dict(upper='#F2F0EA', lower=HALL_LOWER, dado=0.965, dado_h=0.07, ceiling='#F4F3EE', joinery=WHITE),
+    # lower: hallway.md gives #B9B5A8 (a khaki band ~0.6 of the upper wall in the round-1 renders); round 3 HALL_LOWER
+    'hallway': dict(upper='#F2F0EA', lower=HALL_LOWER, dado=0.965, dado_h=0.07, ceiling='#F4F3EE', joinery=WHITE,
                     features={'lobby_overhead_cupboard': WHITE}),
     'stairs': dict(upper='#F2F0EA', lower='#F2F0EA', dado=None, dado_h=0.07, ceiling='#F4F3EE', joinery=WHITE),
     # living.md gives #E8D6CF / #A4685A; both rendered more saturated than every sampled frame value
@@ -82,11 +95,15 @@ FINISHES = {
                            features={'blue_breast_w': '#2B3B4C'}),                                  # navy west wall
     # second floor
     'landing2_head': _L2, 'landing2_platform': _L2,
-    'loft_office': _plain('#EFEDE7', '#F2F1EC', faces=[dict(axis=0, at=4.3, mat='#3B4046')]),         # anthracite gable
-    'eaves_front': _plain('#EFEEEA', '#EFEEEA'), 'eaves_rear': _plain('#EFEEEA', '#EFEEEA'),
-    'purple_room': _plain('#B4AFC6', '#F4F3EE', WHITE),
+    # round 3 (eaves_loft survey 2.7): slopes a shade greyer than the knee walls; the west party-wall end of the front
+    # void is unpainted cream plaster
+    'loft_office': _plain('#EFEDE7', '#EDEDEA', faces=[dict(axis=0, at=4.3, mat='#3B4046')]),         # anthracite gable
+    'eaves_front': _plain('#EFEEEA', '#EFEEEA', faces=[dict(axis=0, at=-0.65, mat='#D8D2BE')]),
+    'eaves_rear': _plain('#EFEEEA', '#EFEEEA'),
+    'purple_room': _plain('#B9B5C6', '#F4F3EE', WHITE),      # floor2_a survey round 3: paler, less saturated lavender
     'bathroom2': _plain('#B9B7B1', '#F4F3EF', wainscot=(1.20, 'marble_metro')),      # the pipe-boxing column: tiles to 1.20, paint above
-    'study': _plain('#EEE6DC', '#F4F3EE', WHITE, faces=[dict(axis=0, at=-0.65, mat='#BC9D99')]),      # dusty rose wall
+    'study': _plain('#F0EDE6', '#F4F3EE', WHITE, faces=[dict(axis=0, at=-0.65, mat='#BC9D99')]),      # dusty rose wall;
+    # the other walls soft white, no blush (floor2_b survey round 3, 1.1)
 }
 DEFAULT_FINISH = _plain('#F2F0EA', '#F4F3EE', WHITE)
 for _f in list(FINISHES.values()) + [DEFAULT_FINISH]:
@@ -218,6 +235,12 @@ def _bounds(poly):
     return min(xs), max(xs), min(ys), max(ys)
 
 
+def _square(poly):
+    """An axis-aligned rectangle (a square tread of a solid flight: mass goes back under it)."""
+    b = _bounds(poly)
+    return len(poly) == 4 and abs(abs(poly_area(poly)) - (b[1] - b[0]) * (b[3] - b[2])) < 1e-6
+
+
 def _inter(a, b):
     """Intersection of two (x0, x1, y0, y1) rectangles, or None when it has no area."""
     r = (max(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), min(a[3], b[3]))
@@ -324,9 +347,8 @@ def _ops(ctx, levels):
         if s['id'] in SOLID_FLIGHTS:                                   # the stairwell carve took the mass a solid flight
             base = min(s['fromZ'], s['toZ']) - SLAB                    # stands on: put it back under the square treads
             for t in ctx.stair(s['id'])['treads']:                     # ponytail: winder treads stay hollow (two kites
-                b = _bounds(t['poly'])                                 # one riser high, closed by their risers)
-                if len(t['poly']) == 4 and abs(abs(poly_area(t['poly'])) - (b[1] - b[0]) * (b[3] - b[2])) < 1e-6:
-                    fill(b, base, t['z'], 'mass')
+                if _square(t['poly']):                                 # one riser high, closed by their risers)
+                    fill(_bounds(t['poly']), base, t['z'], 'mass')
         thr = s['through']
         W = [rc for rid in thr for rc in rects[rid]]
         W += [rc for f in ctx.features if f['type'] == 'floor_void' and f.get('room') in thr for rc in poly_rects(f['polygon'])]
@@ -351,20 +373,28 @@ def _ops(ctx, levels):
         passage = o['type'] in ('arch', 'opening')
         sides = [fr['room_pos'], fr['room_neg']]
         inside = next((r for r in sides + list(o['connects']) if _interior(ctx, r)), None)
+        def hole(sa, sb, h_, zb, tag):              # s = signed distance from the centreline along the normal
+            p = (c[0] - al[0] * h_ + nm[0] * sa, c[1] - al[1] * h_ + nm[1] * sa)
+            q = (c[0] + al[0] * h_ + nm[0] * sb, c[1] + al[1] * h_ + nm[1] * sb)
+            cut((min(p[0], q[0]), max(p[0], q[0]), min(p[1], q[1]), max(p[1], q[1])), zb, z1, tag)
+        inner = (o.get('inner') or INNER.get(oid)) if fr['exterior'] and not passage else None
+        if inner:                                   # reveal smaller / higher than the frame: plaster in front of its
+            so = fr['face_out']                     # edges, the frame seen past it (w_utility, w_wc: passage survey)
+            ss = max(-t2, min(t2, so - math.copysign(fr['ext_reveal'] + FRAME_D + 0.005, so)))
+            hole(*sorted((so, ss)), hw, z0, f'op|{oid}|{inside}')
+            hole(*sorted((ss, -so)), inner.get('width', 2 * hw) / 2, fr['z0'] + inner.get('sill', fr['sill']), f'op|{oid}|{inside}')
+            continue
         for sgn, room in zip((1, -1), sides):
-            p = (c[0] - al[0] * hw, c[1] - al[1] * hw)
-            q = (c[0] + al[0] * hw + nm[0] * sgn * t2, c[1] + al[1] * hw + nm[1] * sgn * t2)
             room = room if _interior(ctx, room) else inside
-            cut((min(p[0], q[0]), max(p[0], q[0]), min(p[1], q[1]), max(p[1], q[1])), z0, z1,
-                room if passage else f'op|{oid}|{room}')
+            hole(0.0, sgn * t2, hw, z0, room if passage else f'op|{oid}|{room}')
     return ops
 
 
-def _same_floor(ctx, oid):
-    """A door between two house rooms with the same floor finish (d_wc: the tile runs through, utility.md 2.2)."""
+def _inner_door(ctx, oid):
+    """A door between two house rooms: each half of its hole carries its own room's floor up to the threshold bar on
+    the door line (d_kitchen: hall oak, then the kitchen planks; d_wc: the tile runs through, utility.md 2.2)."""
     o = ctx.openings.get(oid) or {}
-    rs = [r for r in o.get('connects', ()) if r in ctx.rooms]
-    return 'door' in o.get('type', '') and len(rs) == 2 and len({ctx.rooms[r]['floor']['material'] for r in rs}) == 1
+    return 'door' in o.get('type', '') and sum(_interior(ctx, r) for r in o.get('connects', ())) == 2
 
 
 def _roof_at(ctx, x, y):
@@ -403,11 +433,11 @@ def _ceil_plane(ctx, room, x, y):
     """(c0, cx, cy) of the sloped ceiling of a 'planes' / 'under_roof' room over (x, y)."""
     r = ctx.rooms[room]
     c = r['ceiling']
-    if c['type'] == 'under_roof':                  # underside of the roof slab of the highest plane there
-        pid = ctx.roof_plane(x, y)
-        if pid:
+    if c['type'] == 'under_roof':                  # underside of the roof slab of the highest plane there, or the lining
+        pid = ctx.roof_plane(x, y)                 # `offset` below the roof surface where that is higher (eaves_front
+        if pid:                                    # -0.17: 1.00 at the knee-wall back; validate_house.ceil_at)
             z = next(p for p in ctx.spec['roof']['planes'] if p['id'] == pid)['z']
-            return z['c0'] - ctx.roof_slab_t(pid), z['cx'], z['cy']
+            return z['c0'] + max(c.get('offset', -9.0), -ctx.roof_slab_t(pid)), z['cx'], z['cy']
     else:
         ps = [p for p in c['planes'] if poly_contains(x, y, p['polygon'])]
         if ps:
@@ -493,6 +523,8 @@ def _quads(g, ctx):
         return czc[key]
     solid_fl = [(s['walk']['polygon'], min(s['fromZ'], s['toZ']) - 1e-3, max(s['fromZ'], s['toZ']) - 1e-3)
                 for s in ctx.stairs if s['kind'] == 'flight' and s['id'] in SOLID_FLIGHTS]
+    solid_tr = [(_bounds(t['poly']), t['z']) for s in ctx.stairs if s['kind'] == 'flight' and s['id'] in SOLID_FLIGHTS
+                for t in ctx.stair(s['id'])['treads'] if _square(t['poly'])]     # the mass _ops puts back under them
 
     def label(i, j, a, s):
         """(object name, material spec, clip key) of the unit face of solid cell i against void cell j, or None."""
@@ -501,8 +533,9 @@ def _quads(g, ctx):
         F, fz, rk, sl, top, fmat, sz = R(room)
         name = room + '.walls'
         if kind == 'op':                                          # reveal liners (jambs, head, sill) ...
-            if a == 2 and s > 0 and _same_floor(ctx, g.tags[g.void[j]].split('|')[1]):
-                return room + '.floor', fmat, None                # ... but the floor runs on under a door between equal floors
+            oid = g.tags[g.void[j]].split('|')[1]
+            if a == 2 and s > 0 and _inner_door(ctx, oid) and abs(Z[i[2] + 1] - fz_at(room, j)) < 2e-3:
+                return room + '.floor', fmat, None                # ... but each half of an inner door's hole has its room's floor
             return name, WHITE, None
         tt = tagv[T[i]]
         if tt and tt[0] == 'fl' and (kind == 'fl' or (rk == 'stairwell' and Z[i[2]] >= Z[K[i]] - UNDER_TREAD - 1e-6)):
@@ -523,6 +556,8 @@ def _quads(g, ctx):
                     return room + '.ceiling', F['ceiling'], None
             return name, (F['ceiling'] if s < 0 else F['upper']), None
         z = mids[2][i[2]]
+        if any(b[0] < mids[0][i[0]] < b[1] and b[2] < mids[1][i[1]] < b[3] and z < tz for b, tz in solid_tr):
+            return None                                           # riser planes of a solid flight: lib.stairs' risers
         if z > top:
             return name, F['ceiling'], clip                       # roof-opening shaft
         if st == 'mass' and kind == '' and rk != 'stairwell' and tt and tt[0] == '':

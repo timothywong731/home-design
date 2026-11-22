@@ -88,6 +88,9 @@ def drawer_box(mb, x0, x1, y0, y1, z0, z1, mat='oak_light'):
 
 
 # ------------------------------------------------------------------------------------------ wardrobes
+# ogee crown of the wardrobe cornices (d out of the frieze, h up; 52 mm high, 34 mm projection; v3 f_0562 / f_0564)
+CROWN = [(0, 0), (0.005, 0), (0.005, 0.006), (0.008, 0.008), (0.012, 0.011), (0.017, 0.017), (0.022, 0.026),
+         (0.026, 0.033), (0.028, 0.036), (0.034, 0.038), (0.034, 0.048), (0.031, 0.052), (0, 0.052)]
 CLOTHES = ['#3B4658', '#8C8478', '#D9D2C2', '#6E7F6A', '#5A3A3E', '#A9A39A', '#2F3136']
 
 
@@ -111,7 +114,10 @@ def _wardrobe_door(mb, x0, x1, zb, zt, yb, hinge_left, tassel):
     za, zz = zc1 + 0.03, zt - rl - 0.03
     for k in range(4):
         xa = a + k * pw
-        mb.box((xa + 0.004, yp - 0.004, za), (xa + pw - 0.004, yp, zz), OAK, bev=0.003, grain=2)
+        xs_ = [xa + 0.004 + (pw - 0.008) * i / 12 for i in range(13)]
+        hump = lambda x: 0.016 * (1 - abs(sin(2 * pi * (x - xa) / pw)) ** 0.6)     # two curls per fold, on the ridges
+        mb.prism([(x, yp, za + hump(x)) for x in xs_] + [(x, yp, zz - hump(x)) for x in reversed(xs_)],
+                 (0, -0.004, 0), OAK, grain=2)                                        # fold board, scalloped ends
         for f in (0.28, 0.72):                       # two rolled ridges per fold, diving into the panel at the ends
             x = xa + pw * f
             mb.tube([(x, yp + 0.012, za), (x, yp - 0.003, za + 0.03), (x, yp - 0.003, zz - 0.03), (x, yp + 0.012, zz)],
@@ -126,8 +132,10 @@ def _wardrobe_door(mb, x0, x1, zb, zt, yb, hinge_left, tassel):
         mb.dome(0.009, 0.009, 0.005, OAK, segs=8, rings=2)
     mb.at(M0)
     xh, sg = (x0, 1) if hinge_left else (x1, -1)                               # butterfly hinges
-    for z in (zb + 0.20, zt - 0.20):
-        mb.box((xh, yf - 0.002, z - 0.02), (xh + sg * 0.035, yf, z + 0.02), 'cast_iron', bev=0.001)
+    for z in (zb + 0.15, zc0 - 0.07, zt - 0.10):       # three butterfly hinges: foot, under the carved rail, head (v4 f_0218)
+        mb.prism([(xh, yf, z - 0.022), (xh + sg * 0.012, yf, z - 0.008), (xh + sg * 0.042, yf, z - 0.024),
+                  (xh + sg * 0.042, yf, z + 0.024), (xh + sg * 0.012, yf, z + 0.008), (xh, yf, z + 0.022)],
+                 (0, -0.002, 0), 'cast_iron')
     xm = x1 - 0.028 if hinge_left else x0 + 0.028                              # drop ring on the meeting stile
     mb.at(M0 @ Tr((xm, yf, 1.0)) @ Rx(90))
     mb.lathe([(0, 0), (0.013, 0), (0.011, 0.004), (0, 0.006)], 'cast_iron', 10)
@@ -158,8 +166,10 @@ def wardrobe(ctx, name, x, y, facing, w, d, h, degs=(-100, 100), shelf=None, n_c
         mb.box((sx * bw, yf, z0), (sx * (bw - 0.045), yf + 0.022, z1), OAK, bev=0.002, grain=2)   # face stiles
     mb.box((-bw + 0.045, yf, z1 - 0.07), (bw - 0.045, yf + 0.022, z1), OAK, grain=0)          # top rail
     mb.box((-bw + 0.045, yf, z0), (bw - 0.045, yf + 0.022, z0 + 0.06), OAK, grain=0)          # bottom rail
-    mb.box((-hw, yf - 0.03, z1), (hw, 0, h), OAK, bev=0.008, grain=0)                         # cornice
-    mb.box((-hw + 0.008, yf - 0.022, z1 - 0.018), (hw - 0.008, 0, z1), OAK, bev=0.003, grain=0)
+    fy, fx = yf - 0.026, bw + 0.004                  # frieze face: just proud of the doors
+    mb.box((-fx, fy, z1 - 0.018), (fx, 0, h - 0.052), OAK, grain=0)                           # frieze
+    mb.sweep(CROWN, [(fx, 0, h - 0.052), (fx, fy, h - 0.052), (-fx, fy, h - 0.052), (-fx, 0, h - 0.052)], OAK)
+    mb.box((-fx, fy, h - 0.052), (fx, 0, h), OAK)                                             # core inside the crown
     zr = (shelf - 0.09) if shelf else z1 - 0.13
     if shelf:
         mb.box((-bw + t, yf + 0.03, shelf - 0.018), (bw - t, -0.012, shelf), OAK)
@@ -173,7 +183,7 @@ def wardrobe(ctx, name, x, y, facing, w, d, h, degs=(-100, 100), shelf=None, n_c
     for k in range(n_clothes):
         cx = -span / 2 + span * (k + 0.5) / n_clothes + rnd.uniform(-0.012, 0.012)
         L = min(rnd.choice((0.68, 0.75, 0.82, 0.92, 1.02, 1.08)), zr - z0 - 0.12)
-        th, flare = rnd.uniform(0.03, 0.085), rnd.uniform(-0.12, 0.05)          # thickness, hem flare / taper
+        th, flare = rnd.uniform(0.05, 0.11), rnd.uniform(-0.12, 0.05)           # thickness, hem flare / taper
         zs = zr - 0.045                                                           # shoulder line under the hanger
 
         def body(u, v, s, L=L, th=th, flare=flare, zs=zs):
@@ -183,7 +193,8 @@ def wardrobe(ctx, name, x, y, facing, w, d, h, degs=(-100, 100), shelf=None, n_c
             if z > zs:                                                            # sloping shoulders up to the hook
                 w *= max(0.12, 1 - (z - zs) / 0.03 * 0.88)
             y = w * (2 * u - 1) * s
-            puff = th / 2 * sin(pi * u) ** 0.6 * min(1.0, v / 0.03, (1 - v) / 0.05)
+            # full soft body: blunt rounded side edges (closed, sin^0.3) and an open, still-thick hem (v3 f_0556)
+            puff = th / 2 * sin(pi * u) ** 0.3 * min(1.0, 0.5 + v / 0.06, 0.3 + (1 - v) / 0.05)
             return (s * puff, y, z)
         cl.at(Tr((cx, yc, 0)) @ Rz(rnd.uniform(-10, 10)))
         mt = solid(f'cloth_{k % 7}', CLOTHES[(k * 3 + len(name)) % 7], 0.95)
@@ -206,7 +217,7 @@ def wardrobe(ctx, name, x, y, facing, w, d, h, degs=(-100, 100), shelf=None, n_c
 # ------------------------------------------------------------------------------------------ bed
 def bed(ctx):
     """King divan against the east wall: local origin = centre of the headboard back on the floor."""
-    pc = Piece(ctx, 'bed', 4.30, 2.29, (-1, 0))
+    pc = Piece(ctx, 'bed', 4.28, 2.29, (-1, 0))       # headboard stands on the carpet in front of the skirting
     velvet = solid('velvet_bottle', '#1B3027', 0.75)
     mb = mo.MB()
     mb.box((-0.75, -2.10, 0.035), (0.75, -0.10, 0.38), velvet, bev=0.012)                     # divan base
@@ -278,7 +289,7 @@ def bed(ctx):
 def nightstand(ctx, name, yc):
     """French bombe bedside chest 0.36 x 0.30 x 0.70 against the east wall: three serpentine inlaid drawers
     on cabriole legs, gilt mounts, shaped breccia marble top."""
-    pc = Piece(ctx, name, 4.28, yc, (-1, 0))
+    pc = Piece(ctx, name, 4.27, yc, (-1, 0))          # back legs clear of the skirting
     w, d = 0.36, 0.29
     hw = w / 2
     KW, G = solid('kingwood', '#6A4A30', 0.35), 'gilt_bright'
@@ -360,14 +371,15 @@ def blanket_chest(ctx):
         xa = -hw + 0.05 + k * (pw + 0.05)
         lid.box((xa + 0.012, -d + 0.05, h), (xa + pw - 0.012, -0.06, h + 0.004), OAK, bev=0.004, grain=0)
     ob = pc.add(lid, 'lid', lm='dynamic')
-    IX.tag(ob, 'hinge', g=pc.name + '.lid', label='Blanket chest', p=pc.pt((0, -0.004, zt)), a=pc.vec((1, 0, 0)), deg=-75)
+    # 55 deg: from 60 the lid's back edge swings into the bed end 0.02 behind the chest (r3 check sweep)
+    IX.tag(ob, 'hinge', g=pc.name + '.lid', label='Blanket chest', p=pc.pt((0, -0.004, zt)), a=pc.vec((1, 0, 0)), deg=-55)
     return pc
 
 
 # ------------------------------------------------------------------------------------------ bureau
-def bureau(ctx):
+def bureau(ctx, x=0.70):
     """Jacobean-revival oak bureau on a stand, 0.76 x 0.45 x 1.02, back to the front wall (faces +Y)."""
-    pc = Piece(ctx, 'bureau', 0.70, 1.012, (0, 1))
+    pc = Piece(ctx, 'bureau', x, 1.012, (0, 1))
     w, d, h = 0.76, 0.45, 1.02
     hw, bw = w / 2, w / 2 - 0.012
     zs, zd = 0.36, 0.78                               # top of the stand, desk level
@@ -539,20 +551,27 @@ def armchair(ctx, x, y, facing):
         back = [(0.375, 0), (0.33, 0), (0.30, 0.30), (0.335, 0.93), (0.375, 0.93), (0.345, 0.30)]   # raked back leg / post
         mb.prism([(sx * 0.34, a, b) for a, b in back], (-sx * 0.05, 0, 0), MD)
         mb.box((sx * 0.34, -0.345, 0.235), (sx * 0.29, 0.34, 0.315), MD, bev=0.004, grain=1)        # side seat rails
-        mb.prism([(sx * x, -0.33, z) for x, z in ((0.265, 0.315), (0.335, 0.315), (0.372, 0.585), (0.292, 0.585))],
-                 (0, 0.64, 0), TP)                                                                  # arm panel splayed outward
-        arm = [(-0.375, 0.30), (-0.375, 0.50), (-0.34, 0.60), (0.32, 0.64), (0.32, 0.60), (-0.31, 0.565), (-0.33, 0.50), (-0.335, 0.30)]
-        mb.prism([(sx * 0.385, a, b) for a, b in arm], (-sx * 0.085, 0, 0), MD)                     # show-wood arm sweeping down
+        mb.prism([(sx * x, -0.335, z) for x, z in ((0.265, 0.315), (0.335, 0.315), (0.392, 0.60), (0.322, 0.60))],
+                 (0, 0.645, 0), TP)                                                                 # arm panel flaring outward
+        mb.tube([(sx * 0.357, -0.335, 0.612), (sx * 0.357, 0.03, 0.622), (sx * 0.345, 0.31, 0.64)], 0.024, TP, n=8)   # padded roll
+        mb.tube([(sx * 0.381, -0.33, 0.632), (sx * 0.379, 0.03, 0.642), (sx * 0.367, 0.31, 0.66)], 0.004, 'linen_cream', n=4)
+        mb.tube([(sx * 0.300, -0.352, 0.30), (sx * 0.322, -0.358, 0.45), (sx * 0.352, -0.360, 0.565), (sx * 0.385, -0.355, 0.625),
+                 (sx * 0.404, -0.342, 0.632), (sx * 0.408, -0.330, 0.615)], 0.021, MD, n=8)        # front post, scrolled out
     mb.box((-0.29, -0.345, 0.235), (0.29, -0.30, 0.315), MD, bev=0.004, grain=0)                    # front rail
     mb.prism([(-0.20, -0.347, 0.235), (0.20, -0.347, 0.235), (0.12, -0.347, 0.20), (0, -0.347, 0.215), (-0.12, -0.347, 0.20)],
              (0, 0.03, 0), MD)                                                                      # carved apron
+    slot = lambda cx, cz, hx, hz: [(cx + hx * cos(t), cz + hz * sin(t) * (1 - 0.6 * cos(t) ** 2)) for t in [i * pi / 6 for i in range(12)]]
+    for cx in (-0.13, 0.13):                                                                        # fretted slots, front rail
+        mb.prism([(x, -0.3462, z) for x, z in slot(cx, 0.275, 0.07, 0.014)], (0, 0.001, 0), 'black_matt')
     mb.box((-0.29, 0.30, 0.235), (0.29, 0.345, 0.315), MD, bev=0.004, grain=0)
     Tb = Tr((0, 0.318, 0.675)) @ Rx(82)                                                             # back plane
     mb.at(Tb)
     mb.box((-0.29, -0.25, -0.03), (0.29, 0.25, 0.0), TP, bev=0.006)                                 # outside back
     xs = [-0.31 + 0.62 * i / 16 for i in range(17)]                                                  # shaped top rail:
-    ytop = [0.30 + 0.045 * (abs(x) / 0.31) ** 4 + 0.03 * max(0.0, 1 - abs(x) / 0.09) for x in xs]     # raised ears, centre crest
+    ytop = [0.30 + 0.065 * (abs(x) / 0.31) ** 2.5 - 0.012 * max(0.0, 1 - abs(x) / 0.10) for x in xs]  # high ears, dipped centre
     mb.prism([(x, 0.25, -0.04) for x in xs] + [(x, y, -0.04) for x, y in zip(reversed(xs), reversed(ytop))], (0, 0, 0.052), MD)
+    for zf in (0.0125, -0.0405):                                                                    # pierced slot under the dip
+        mb.prism([(x, y, zf) for x, y in slot(0, 0.268, 0.055, 0.009)], (0, 0, 0.001 if zf > 0 else -0.001), 'black_matt')
     mb.at()
     pc.add(mb, sym='armchair')
     seat = P.upholstered_seat(0.53, 0.62, 0.115, mat=TP, gimp='linen_cream', name=pc.name + '.seat')

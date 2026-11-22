@@ -2,6 +2,9 @@
 // with layer colours, lineweights, linetypes, hatches, text and dimensions; pan/zoom/pinch; live viewer marker
 // with view cone; current-room highlight; click/tap = pick (teleport). No three.js dependency.
 // plan.json schema 2 holds several sheets (B G 1 2 X) in one world frame: setSheet(id) switches; schema 1 = one sheet G.
+// A sheet of kind 'section' (AA, BB, CC) is a cross-section drawn in its own frame: x = metres along the cutting plane,
+// y = world Z. On it the viewer is projected onto the plane at eye height (setViewer) and a pick moves nobody. A sheet
+// may carry fitBounds, the window a small panel first shows (a section through the whole plot: the house).
 
 const LT = { dashed: [0.12, 0.06], hidden: [0.06, 0.04], center: [0.3, 0.06, 0.06, 0.06] };   // metres
 const THEME = {
@@ -23,7 +26,7 @@ export class PlanView {
     this.bind();
   }
   // switch sheet: its entities, rooms, bounds and the style tables that are model metres at its scale. The view stays
-  // where it is between floor sheets (one world frame); to or from the site sheet it refits. -> true if it changed
+  // where it is between floor sheets (one world frame); to or from the site sheet or a section it refits. -> true if it changed
   setSheet(id) {
     const s = this.sheets.find((q) => q.id === id), was = this.sheet;
     if (!s || s === was) return false;
@@ -32,7 +35,8 @@ export class PlanView {
     this.ds = { tick: 0.065, extGap: 0.06, extBeyond: 0.08, ...(s.dimstyle || {}) };
     this.hsp = s.hatch?.spacing || 0.09;
     this.key = '';
-    if (was && (was.id === 'X') !== (s.id === 'X')) this.fitted = false;
+    const frame = (q) => (q.section ? q.id : q.id === 'X' ? 'X' : 'floor');   // sheets of one frame share the view
+    if (was && frame(was) !== frame(s)) this.fitted = false;
     if (!this.sized) return true;                            // the first resize() fits
     if (!this.fitted) this.fit(); else { this.dirty = true; this.draw(); }
     return true;
@@ -48,10 +52,15 @@ export class PlanView {
     this.c.width = this.cache.width = w; this.c.height = this.cache.height = h; this.sized = true;
     if (!this.fitted) this.fit(); else { [this.v.cx, this.v.cy] = keep; this.dirty = true; this.draw(); }
   }
-  fit() {
-    const b = this.bounds, W = this.c.width, H = this.c.height, pad = 14 * this.dpr;
+  // fit(): the sheet, or its fitBounds while the whole sheet would show the room names (2.5 mm on paper) under 5 px:
+  // the docked panel on a section of the whole plot. fit(true): always the whole sheet (key 0, the fit button).
+  fit(whole) {
+    const W = this.c.width, H = this.c.height, pad = 14 * this.dpr;
     if (!W || !H) return;
-    this.v.s = Math.min((W - 2 * pad) / (b.maxX - b.minX), (H - 2 * pad) / (b.maxY - b.minY));
+    const sc = (q) => Math.min((W - 2 * pad) / (q.maxX - q.minX), (H - 2 * pad) / (q.maxY - q.minY));
+    const f = this.sheet.fitBounds, mm = (parseInt(this.sheet.scale?.split(':')[1], 10) || 50) / 1000;
+    const b = !whole && f && sc(this.bounds) * 2.5 * mm < 5 * this.dpr ? f : this.bounds;
+    this.v.s = sc(b);
     this.v.cx = (b.minX + b.maxX) / 2; this.v.cy = (b.minY + b.maxY) / 2;
     this.fitted = true; this.dirty = true; this.draw();
   }
@@ -65,11 +74,22 @@ export class PlanView {
   toScreen(x, y) { return [(x - this.v.cx) * this.v.s + this.c.width / 2, this.c.height / 2 - (y - this.v.cy) * this.v.s]; }
   toWorld(X, Y) { return [(X - this.c.width / 2) / this.v.s + this.v.cx, this.v.cy - (Y - this.c.height / 2) / this.v.s]; }
   setTheme(t) { this.theme = t; this.dirty = true; this.draw(); }
-  // viewer = { x, y, dir:[dx,dy] (plan frame), hfov (rad), mark: 'full' (default) | 'hollow' | null (not drawn) };
+  // viewer = { x, y, z (eye, world Z: section sheets), dir:[dx,dy] (plan frame), hfov (rad),
+  //            mark: 'full' (default) | 'hollow' | null (not drawn) };
   // room = room object or null (highlighted with this sheet's polygon for it; a plan without rooms uses room.polygon)
   // A zoomed-in plan follows the marker: when it leaves the middle 76 % of the canvas (and no finger or button is on the
   // plan), the view recentres on it. At the fitted scale the whole sheet shows, so nothing moves.
+  // On a section sheet the viewer is always drawn, projected onto the plane at eye height: solid within a metre of the
+  // plane (standing in what is cut), a ring further off; the cone points along the plane, and is left out when the
+  // view is mostly across it.
   setViewer(viewer, room) {
+    const sec = this.sheet.section;
+    if (sec) {
+      const dx = viewer.x - sec.origin[0], dy = viewer.y - sec.origin[1], off = dx * sec.normal[0] + dy * sec.normal[1];
+      const along = viewer.dir[0] * sec.right[0] + viewer.dir[1] * sec.right[1];
+      viewer = { ...viewer, x: dx * sec.right[0] + dy * sec.right[1], y: viewer.z ?? 0, dir: [Math.abs(along) > 0.3 ? Math.sign(along) : 0, 0],
+        hfov: Math.min(viewer.hfov, 0.9), mark: Math.abs(off) <= 1 ? 'full' : 'hollow' };
+    }
     const k = `${viewer.x.toFixed(3)},${viewer.y.toFixed(3)},${viewer.dir[0].toFixed(3)},${viewer.dir[1].toFixed(3)},${viewer.hfov.toFixed(3)},${room?.id},${viewer.mark}`;
     this.viewer = viewer; this.room = room;
     if (k === this.key) return;
@@ -95,14 +115,16 @@ export class PlanView {
       g.fillStyle = T.hl; g.fill(); g.strokeStyle = T.hlEdge; g.lineWidth = (1.5 * this.dpr) / s; g.setLineDash([]); g.stroke();
     }
     const vw = this.viewer; if (!vw || vw.mark === null) return;
-    const hollow = vw.mark === 'hollow';                     // the site sheet while indoors: outline marker
+    const hollow = vw.mark === 'hollow';                     // the site sheet while indoors, a section off its plane: outline marker
     g.setTransform(1, 0, 0, 1, 0, 0);
     const [X, Y] = this.toScreen(vw.x, vw.y), a = Math.atan2(-vw.dir[1], vw.dir[0]), h = vw.hfov / 2;
-    const R = Math.max(3 * s, 46 * this.dpr), grad = g.createRadialGradient(X, Y, 0, X, Y, R);
-    grad.addColorStop(0, T.mark + (hollow ? '44' : 'aa')); grad.addColorStop(1, T.mark + '00');
-    g.beginPath(); g.moveTo(X, Y); g.arc(X, Y, R, a - h, a + h); g.closePath(); g.fillStyle = grad; g.fill();
-    g.strokeStyle = T.mark; g.lineWidth = this.dpr; g.beginPath();
-    g.moveTo(X + Math.cos(a - h) * R, Y + Math.sin(a - h) * R); g.lineTo(X, Y); g.lineTo(X + Math.cos(a + h) * R, Y + Math.sin(a + h) * R); g.stroke();
+    if (vw.dir[0] || vw.dir[1]) {                            // the view cone (a section looked across has none)
+      const R = Math.max(3 * s, 46 * this.dpr), grad = g.createRadialGradient(X, Y, 0, X, Y, R);
+      grad.addColorStop(0, T.mark + (hollow ? '44' : 'aa')); grad.addColorStop(1, T.mark + '00');
+      g.beginPath(); g.moveTo(X, Y); g.arc(X, Y, R, a - h, a + h); g.closePath(); g.fillStyle = grad; g.fill();
+      g.strokeStyle = T.mark; g.lineWidth = this.dpr; g.beginPath();
+      g.moveTo(X + Math.cos(a - h) * R, Y + Math.sin(a - h) * R); g.lineTo(X, Y); g.lineTo(X + Math.cos(a + h) * R, Y + Math.sin(a + h) * R); g.stroke();
+    }
     g.beginPath(); g.arc(X, Y, 5 * this.dpr, 0, Math.PI * 2);
     if (hollow) { g.lineWidth = 2 * this.dpr; g.strokeStyle = T.mark; g.stroke(); return; }
     g.fillStyle = T.mark; g.fill();
@@ -125,6 +147,10 @@ export class PlanView {
       g.beginPath();
       if (e.type === 'line') { g.moveTo(...e.p1); g.lineTo(...e.p2); g.stroke(); }
       else if (e.type === 'polyline') { this.path(g, e.pts, e.closed); g.stroke(); }
+      else if (e.type === 'paths') {                         // many polylines in one entity: flat x, y lists
+        for (const q of e.paths) { g.moveTo(q[0], q[1]); for (let i = 2; i < q.length; i += 2) g.lineTo(q[i], q[i + 1]); }
+        g.stroke();
+      }
       else if (e.type === 'arc') { g.arc(e.c[0], e.c[1], e.r, (e.a0 * Math.PI) / 180, (e.a1 * Math.PI) / 180, false); g.stroke(); }
       else if (e.type === 'circle') { g.arc(e.c[0], e.c[1], e.r, 0, Math.PI * 2); g.stroke(); }
       else if (e.type === 'hatch') this.hatch(g, e, px);
@@ -135,10 +161,21 @@ export class PlanView {
   path(g, pts, closed) { pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); if (closed) g.closePath(); }
   hatch(g, e, px) {
     this.path(g, e.pts, true);
-    if (e.pattern !== 'ANSI31') { g.fill(); return; }
+    if (e.pattern !== 'ANSI31' && e.pattern !== 'EARTH') { g.fill(); return; }
     g.save(); g.clip(); g.lineWidth = 0.8 * px; g.setLineDash([]);
     const xs = e.pts.map((p) => p[0]), ys = e.pts.map((p) => p[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    if (e.pattern === 'EARTH') {
+      // ground: square cells of 2 x the hatch spacing on a grid through the origin, three lines in each, alternately
+      // along x and along y (tools/plan/render.py earth_lines); coarser when the lines would be < 3 px apart
+      const c = 2 * this.hsp * Math.max(1, Math.ceil((9 * px) / (2 * this.hsp)));
+      g.beginPath();
+      for (let i = Math.floor(x0 / c); i * c < x1; i++) for (let j = Math.floor(y0 / c); j * c < y1; j++) for (const k of [1, 3, 5]) {
+        const t = (k * c) / 6;
+        if ((i + j) % 2 === 0) { g.moveTo(i * c, j * c + t); g.lineTo(i * c + c, j * c + t); } else { g.moveTo(i * c + t, j * c); g.lineTo(i * c + t, j * c + c); }
+      }
+      g.stroke(); g.restore(); return;
+    }
     // 45 deg lines x - y = k through the world origin (adjacent hatches line up); thinned out when < 3 px apart
     const step = this.hsp * Math.SQRT2 * Math.max(1, Math.ceil((3 * px) / this.hsp)); g.beginPath();
     for (let k = Math.floor((x0 - y1) / step) * step; k <= x1 - y0; k += step) { g.moveTo(k + y0, y0); g.lineTo(k + y1, y1); }
@@ -205,7 +242,7 @@ export class PlanView {
       const st = 40 * this.dpr, mid = [c.width / 2, c.height / 2], pan = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[e.key];
       if (e.key === '+' || e.key === '=') this.zoomAt(...mid, 1.25);
       else if (e.key === '-' || e.key === '_') this.zoomAt(...mid, 0.8);
-      else if (e.key === '0') this.fit();
+      else if (e.key === '0') this.fit(true);
       else if (pan) { this.v.cx += pan[0] / this.v.s; this.v.cy -= pan[1] / this.v.s; this.dirty = true; this.draw(); }
       else return;
       e.preventDefault(); e.stopPropagation();

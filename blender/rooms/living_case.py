@@ -195,7 +195,8 @@ def armchair(name='living.armchair'):
     """Late-Victorian carved parlour armchair 0.65 x 0.67 x 1.03 (seat 0.39, arm pads 0.65), low and wide:
     seat wider at the front with a fixed stuffed-over seat and gimp inside the rails; back raked 10 deg with
     ring-turned finial posts, a shaped scrolled cresting rail with a carved shell and an upholstered panel edged
-    in cream cord; open arms on turned supports ending in knobs, full velvet pads centred on the arm rails;
+    in cream cord; two-tier arms (v10 g1309): a thick velvet roll on a flat pad with gimp at its lower edge, on the
+    dark arm rail, the turned front post rising to a ball finial;
     stacked-ring front legs, raked back legs."""
     mb = mo.MB()
     W, V = wood(), velvet()
@@ -224,18 +225,24 @@ def armchair(name='living.armchair'):
         mb.lathe(post, W, 16)
         mb.at(B)
         mb.box((sx * 0.222, -0.014, 0.085), (sx * 0.178, 0.014, 0.62), W, bev=0.003, grain=2)       # back stiles
-        # open arm: turned support with knob, rail back to the post, velvet pad centred on the rail
+        # arm (v10 g1309, t42): turned front post rising past the rail to a ball finial; on the dark arm rail a flat
+        # upholstered pad with gimp along its lower edge, and on that a thick velvet roll
         fx, fy, bx, by = sx * 0.28, -0.29, sx * 0.24, 0.262
         mb.at(Tr(fx, fy + 0.012, 0.285))
         mb.lathe(sup, W, 14)
         mb.at()
         loft(mb, [[(bx + dx, by, 0.588 + dz) for dx, dz in ((-0.02, -0.014), (0.02, -0.014), (0.02, 0.014), (-0.02, 0.014))],
                   [(fx + dx, fy, 0.578 + dz) for dx, dz in ((-0.023, -0.016), (0.023, -0.016), (0.023, 0.016), (-0.023, 0.016))]], W)
-        mb.at(Tr(fx, fy - 0.012, 0.582))
-        mb.lathe([(0, -0.027), (0.016, -0.021), (0.027, 0), (0.016, 0.021), (0, 0.027)], W, 14)      # hand knob
-        mb.at(Tr(fx + (bx - fx) * 0.3, fy + (by - fy) * 0.3, 0.592) @ Rz(sx * 4.1))
-        pad(mb, 0.045, 0.125, 0.03, 0.0, 0.06, V, crown=0.006, n=3)
-        gimp_band(mb, 0.045, 0.125, 0.03, 0.0, 0.012)
+        mb.at(Tr(fx, fy + 0.012, 0.565))
+        mb.lathe([(0, 0), (0.02, 0), (0.02, 0.036), (0.015, 0.05), (0.012, 0.072), (0.017, 0.08), (0.017, 0.088),
+                  (0.009, 0.095), (0.013, 0.097), (0.02, 0.107), (0.0225, 0.118), (0.019, 0.13), (0.01, 0.138), (0, 0.14)], W, 14)
+        A = Tr(fx + (bx - fx) * 0.47, fy + (by - fy) * 0.47, 0.598) @ Rz(sx * 4.1)
+        mb.at(A)
+        pad(mb, 0.044, 0.20, 0.02, 0.0, 0.026, V, crown=0.004, n=3)
+        gimp_band(mb, 0.044, 0.20, 0.02, 0.0, 0.011)
+        mb.at(A @ Tr(0, 0, 0.057) @ Rx(-90))
+        mb.lathe([(0, -0.19), (0.02, -0.19), (0.028, -0.186), (0.031, -0.177), (0.032, -0.16), (0.032, 0.16), (0.031, 0.177),
+                  (0.028, 0.186), (0.02, 0.19), (0, 0.19)], V, 14)
     mb.at(B)
     mb.box((-0.222, -0.014, 0.085), (0.222, 0.014, 0.132), W, bev=0.003, grain=0)                  # lower back rail
     crest = [(0.218, 0.61), (0.218, 0.668), (0.203, 0.684), (0.178, 0.686), (0.162, 0.674), (0.145, 0.69), (0.115, 0.712),

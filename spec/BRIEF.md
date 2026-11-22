@@ -201,3 +201,66 @@ positions, which switch controls which light).
   paintings, red chair, corner cabinet, computers (blank screens), boiler, hot-water tank, racks,
   network cabinet, gas meter, fire extinguisher, shed/workshop with racks and window, fire pit,
   planters, lavender, garden panel, metal balcony, flag.
+
+# Phase 3 — detail and dimension round (21 Nov footage)
+
+The owner's request: "Improve details across whole house. Make sure the dimensions are right." plus
+a cross-sectional view of the house in the DXF / PDF drawing set, and three second-floor rooms
+renamed. Everything above still applies. Round-3 notes go in `spec/phase3/` (briefs per room unit in
+`spec/phase3/briefs/<unit>.md`), decisions in `spec/RECONCILE3.md`.
+
+## Room names (ids do not change)
+Owner correction (binding): the 2F front room (street side) is the Slate Room, the 2F rear room
+(garden side) is the Rose Room. Anything written earlier this round that says otherwise is wrong.
+
+| id | old name | name from now on |
+|---|---|---|
+| `loft_office` | Loft office (2F **front**, street side, under the roof slope) | **Slate Room** |
+| `study` | Study (2F **rear**, garden side) | **Rose Room** |
+| `purple_room` | Purple room | **Lavender Room** |
+
+## Phase-3 reference material (PRIVATE, git-ignored)
+`reference/v8 … v13/` hold `frames/f_NNNN.jpg` (1 fps, 720x1280, frame N at t = N-1 s) and
+`sheets/s_NN.jpg` (label L = frame f_(2L-1)); `reference/work/overview_vN.jpg` shows 24 evenly spaced
+frames of each. **These six videos are silent** (no narration: the frames are the only evidence).
+Full-res still (1080x1920), also at times between the 1 fps frames:
+`ffmpeg -v error -ss <seconds> -i "C:/Users/Timothy Wong/Downloads/<file>.mp4" -frames:v 1 -q:v 2 reference/work/<area>/<name>.jpg`
+
+| id | file | length | content (frame ranges approximate — look at the overview and sheets) |
+|---|---|---|---|
+| v8 | PXL_20261121_124142138 | 138 s | street side in daylight: front bay and bins by the side gate 1-6; front elevation from the pavement with the brick gate pier, both cars, porch with the door open, flag, gable 13-66; the timber side gate, the rendered flank wall and the neighbour's brick flank 67-89; cars 90-101; the path between the brick planter wall and the grey car to the front door 102-113; porch canopy, fascia and gable from below and from the street 114-138 |
+| v9 | PXL_20261121_124601813 | 68 s | out through the open front door 1-6; porch and front door from the forecourt 7-20; vestibule interior: inner mahogany doors and transom, ceiling and cove, side windows, frosted glazing 21-44; outside of the front door, side lights, canopy underside with its light, brick return and planter 45-58; forecourt along the bay base, shutters, bins 59-68 |
+| v10 | PXL_20261121_124801398 | 65 s | living room table games: a Chinese chess (xiangqi) board with dark red disc pieces on the coffee table, an inlaid mosaic box of dominoes (the lid opens), a wooden solitaire board with marbles on the round table in the bay beside the lamp base; rug, sofa and armchairs in the background |
+| v11 | PXL_20261121_124951560 | 196 s | kitchen back door from inside (frosted glass, cat flap) 1-17; out to the side passage: paving, rendered walls, windows and sills, downpipes, hose reel, outside tap, view to the garden and shed 18-60; timber gate and its latch 61-76 and about 111; the passage towards the street: flank wall, soil and rainwater pipes, vents, wall lights (lit), air-conditioning condenser, gates 77-153; back towards the garden 154-187; garden: deck, planters, shed, trellis 188-196 |
+| v12 | PXL_20261121_125633444 | 122 s | loft eaves storage: low cupboard doors (open), panel mouldings, the triangular voids inside (sloping roof, floor finish, how far they run), and the room around them |
+| v13 | PXL_20261121_132233957 | 225 s | second floor: hallway, dado, arch, balustrade 1-10; lilac room (door, floral curtains, radiator, window, view down onto the side passage) 11-49; bathroom: basin, WC, tall cabinet, window, marble tiles, sauna interior (bench, heater, panelling), shower, towel rail 50-127; the two office rooms: desks, monitors (blank), bench with red upholstery, pale pink walls, wall TV, air-conditioning unit, bean bag, plants 128-206; views straight down from the rear window onto the outrigger roof / balcony, garden (deck, lawn, pergola) and shed roof — plan-like views 207-225 |
+
+Photo: `reference/photos/vestibule_front_door_open.jpg` (3072x4080) — from the vestibule out through
+the open right-hand front door leaf: door leaf with 3x3 frosted lights and brass lever, transom,
+shoe rack, floor tiles, block paving, the brick planter wall with lavender, the grey car.
+
+## Phase-3 privacy reminder
+v8, v9 and the photo show the street name on the transom, the house number, number plates and the
+neighbours' houses. **Never write any of them down** — not in spec notes, file names, comments or
+commit messages — and never model them. The whiteboard by the kitchen back door stays blank.
+
+## Measuring (the owner's emphasis this round)
+Ultrawide lens: measure by ratio against a known size in the same plane at a similar depth, from
+more than one frame, and state reference, frames, ratio, result and tolerance. Useful scales
+outdoors: brick course 75 mm (65 + 10 joint), brick 225 mm long with joint; block paver 200 x 100;
+paving slabs 600 x 600 or 450 x 450 (decide by ratio first); 240 L wheelie bin 1.07 high x 0.58 wide
+x 0.74 deep; fence panel 1.83 wide; the grey car is a supermini-class hatchback about 3.95 long x
+1.70 wide x 1.51 high, the white one a city car about 3.46 x 1.62 x 1.46; number plate 520 x 111
+(scale only). Indoors as listed under "Reference material" above, plus socket and switch plates
+86 mm (double 146 x 86). Change a dimension in `spec/house.json` only when the new evidence is
+better than the evidence behind the present value (`spec/RECONCILE.md`, `RECONCILE2.md`).
+
+## Phase-3 owner instructions (binding)
+- Living room table games (v10): the **domino box** stands on the **coffee table**; the **Chinese
+  chess (xiangqi) set** also stands on the **coffee table** and is modelled in fine detail (board
+  lines with river and palaces, every piece with its incised mark, correct count and layout); the
+  **solitaire board** with its marbles stays on the **side table** (the round table in the bay).
+- Walking: visitors can get into the narrow and low spaces, such as the **eaves storage** behind
+  the low cupboard doors (open the door, duck through, move about inside under the roof slope with
+  the eye height following the headroom), and likewise the sauna, shower enclosures, the shed store,
+  the basement stair and other tight places. Stored things and furniture leave a lane free.

@@ -526,3 +526,64 @@ All lamps are warm white (≈ 2700 K); the room reads distinctly warm/amber in t
   sofa 1.8-2.0, sofa scroll about 0.1 off the nib, B5 and the sofa sharing a centre at about y 2.04) is about 3.3-3.6 m
   long against the 4.20 m wall, while L1 (north wall at y 5.19 from the chamfer and door) and L6 (axis 2.33) are
   each supported by their own frames. Until a re-survey settles the north wall, the room keeps L1 and L6.
+
+## Round 3 (21 Nov footage v10; brief spec/phase3/briefs/living.md, survey spec/phase3/living_games.md)
+Built by `blender/rooms/living.py` + `living_games.py` (textures: `living_games_tex.py`, run with the system Python;
+all generated, nothing reference-derived, in `blender/textures/art/living/`).
+- Shell moved: bay x 1.03..3.93 (lights centred on 2.48). The curtain track, the four drops, tie-backs and the drawn
+  state read the bay from `features[living_bay]`; track x 1.095..3.865. The thermostat moved onto the flat part of the
+  0.23 m west nib (x 0.82..0.905; its chamfer starts at 0.924).
+- Owner instruction: **xiangqi set and domino box on the coffee table, solitaire on the lamp table**; the old copies on the
+  TV unit and the lamp table are gone.
+  - Xiangqi (`living.xiangqi`, one object): walnut board 0.43 x 0.475 x 0.015 at (2.845, 2.15, 0.46), rot -85 deg, one
+    generated top texture (cells alternating tone and grain, 4.5 mm maple lines, inner files stop at the river, both
+    palace crosses, 38 mm margin); 32 discs dia 38 x 15 with 2.5 mm round arrises on one lathed profile, characters in a
+    1024 px atlas (DFKai-SB kaishu; red 車 馬 相 仕 帥 炮 兵 with #C8505C fill on the east army, upright for the east
+    player; 車 馬 象 士 將 炮 卒 with #4FB3A6 fill on the west), UV per piece. Centres from survey table 2.1; two red
+    back-rank pairs that overlapped by 1-4 mm are pushed apart (0.8 mm gap).
+  - Domino box (`living.domino_box` + `.lid`, `.tiles_in`, `.tiles_out`): 145 x 97 x 42 (base 30, lid 12) at
+    (2.85, 1.70, 0.46), rot -131 deg, hinge side south-east. Generated marquetry atlas: lid border pinstripes with dotted
+    band and bone corner squares, bone / red-brown / bone lines, black field with the star-and-hexagon lattice (5 MOP
+    stars in a quincunx + half stars at the short sides, 12 hexagon rosettes), side panels of two-row lozenge chevrons in a
+    bone line, 6 mm striped corner posts, three stringing lines on the lid edge. Crimson velvet lining. 28 cream dominoes
+    48 x 24 x 7.5 with pips, centre line and brass pin from a generated atlas, four layers of seven. Interaction
+    `living.domino_box` (label Dominoes): lid hinge -100 deg; in state 1 the 6-6, 2-3 and 4-4 leave the top layer and lie
+    face up in front of the box (survey positions). Not modelled: the underside bone border (never seen).
+  - Solitaire (`living.solitaire`): burr-wood board dia 0.24 x 15 with field, bead, gutter and lip, 33 marbles of 20.5 mm
+    at 23.8 mm (centre filled), cream / honey / tan / pink solids and banded onyx, lattice turned 9 deg. Placed at
+    (2.56, 0.45) instead of the surveyed (2.57, 0.415): with the lamp at (2.62, 0.245) the two surveyed positions overlap
+    by 33 mm (board r 0.12 + gilt foot r 0.09 > 0.177 apart); the board moved 0.035 m north-west to clear the foot by 4 mm.
+- Table lamp rebuilt bottom to top as v10 (gilt acanthus ring foot dia 0.18, domed marble foot dia 0.145 x 35, marble
+  torus neck dia 50, inverted-cone marble body 45 mm -> 0.13 at a gilt rose-garland collar 0.25 above the ring, swags,
+  roses and pendants 40 mm below); the shoulder, gilt stem and toile shade above the collar kept (not in v10); moved to
+  (2.62, 0.245). Marble map generated (#B5846B seen, base darkened because the room light lifts it).
+- Curtains: hem 0.27 (was 0.12), both states; tartan red bands turned raspberry-wine (#9A4A55, `tartan_wine.jpg`);
+  return-drop hooks reach the plaster (no window timber there).
+- Rug centre x 2.65 (east edge 3.35, west edge 1.95). Footstool at (2.50, 1.05) in front of the lamp table (v10), which
+  also frees the lane between the sofa and the coffee table. East armchair: no loose cushion (v10).
+- Armchairs: two-tier arms (flat pad with gimp at its lower edge, a thick velvet roll on it), front post rising to a ball
+  finial (g1309, t42).
+- Brass magazine rack (`living.magazine_rack`) 0.30 x 0.15 x 0.26 against the east cheek by the nib (3.83, 0.78),
+  empty; its divider top 0.258 stays 12 mm under the curtain hem in both curtain states.
+- Coffee / side table top: generated long plain-sawn grain with broad cathedral arches over four boards, lower contrast,
+  roughness 0.26 (`oak_top.jpg`). Velvet map turned from burnt orange toward the v10 daylight rose (median #8C4C42 base;
+  `velvet_rose*.jpg`; low-medium confidence, as the survey says).
+- Not changed here: shutter louvre pitch (joinery; survey 70 +- 8 mm vs 52 mm, low-medium confidence), rug texture (a
+  daylight crop from t00_f0021 / g1309 would be better than the night crop; not done).
+- Fixer pass (round 3 critic):
+  - Xiangqi glyphs centred on their ink (DFKai-SB's textbbox was up to 46 px / 6 mm off), font 160 px: every glyph
+    within r 90 px of the 118 px disc top, about 20 mm high (`games_pieces.jpg`).
+  - Coffee / side table top regenerated: open cathedral arches along each of four boards (nested parabolas, never
+    closed), straight grain at the board edges, dense dark pore streaks along the length (#4F3E30 ground, #1E150F
+    pores); it tiles end to end, so the 1.60 m top no longer shows a seam at its middle (`oak_top.jpg`).
+  - Solitaire board: burr map darker than the lamp table under it, as in t46 / g1369 (field #4E3121 in the map,
+    mottled blotches and curling veins swirled round clusters of dark eyes, golden patches); roughness 0.25. Marbles
+    12 x 6 (smooth-shaded); banded onyx marbles carry straight tilted strata by planar projection, not latitude rings.
+  - Lamp foot: a gilt cove from the table (r 0.09) in and up to under the marble rim (r 0.073, z 0.019) with 22 lobed
+    leaves standing on it tip-up, the dark core showing between them as the piercing; nothing above the marble rim.
+    Collar swags thicker, two more cast roses on each.
+  - Domino box base is a `trigger` of `living.domino_box` (clicking the box side opens it); the magazine rack has plan
+    symbol `bin` (small, soft: on the plan, not a walk block).
+  - Open (spec / foundation): the west return light. f_0127 shows it between the front-corner drop and the return drop,
+    in a dark timber casing flush with the bay face; the spec (porch-07) puts it at y 0.63 behind a 0.20 m white reveal,
+    wholly behind the return drop.

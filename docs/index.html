@@ -49,7 +49,7 @@
   </div>
 </header>
 
-<section id="plan" aria-label="Floor plan">
+<section id="plan" aria-label="Floor plans and sections">
   <div class="plan-head">
     <button id="plan-toggle" type="button" class="plan-name" aria-expanded="true" aria-controls="plan-body" title="Show / hide plan (P)">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
@@ -70,15 +70,15 @@
   </div>
   <div id="plan-tabs" class="plan-tabs" role="group" aria-label="Plan sheet" hidden></div>
   <div id="plan-body" class="plan-body">
-    <canvas id="plan-canvas" tabindex="0" aria-label="Floor plan. Click or tap to move there. Drag to pan, wheel or pinch to zoom, + - 0 keys."></canvas>
+    <canvas id="plan-canvas" tabindex="0" aria-label="Floor plan or cross-section. On a plan, click or tap to move there. Drag to pan, wheel or pinch to zoom, + - 0 keys."></canvas>
     <div class="plan-empty" hidden>Floor plan not available yet.</div>
   </div>
   <div class="plan-foot">
     <span id="plan-title">GROUND FLOOR PLAN</span>
     <span id="plan-xy"></span>
     <span class="dl">
-      <a id="dl-dxf" href="assets/house-plans.dxf" download title="AutoCAD DXF, millimetres, true scale">DXF</a>
-      <a id="dl-pdf" href="assets/house-plans.pdf" download title="Vector PDF drawing sheets">PDF</a>
+      <a id="dl-dxf" href="assets/house-plans.dxf" download title="AutoCAD DXF: plans and cross-sections, millimetres, true scale">DXF</a>
+      <a id="dl-pdf" href="assets/house-plans.pdf" download title="Vector PDF: one A3 sheet per plan and cross-section">PDF</a>
     </span>
   </div>
 </section>
@@ -126,10 +126,11 @@
     </dl></section>
     <section><h3>Plan</h3><dl>
       <dt>Tabs</dt><dd>Basement, floors, site; the plan follows you</dd>
+      <dt>A-A B-B C-C</dt><dd>Cross-sections through the house, on the lines marked on the plans; the marker shows your eye height</dd>
       <dt>Click / tap</dt><dd>Move there (on that sheet's floor)</dd>
       <dt>Drag, wheel, pinch</dt><dd>Pan and zoom</dd>
       <dt><kbd>+</kbd><kbd>-</kbd><kbd>0</kbd></dt><dd>Zoom, fit</dd>
-      <dt>DXF / PDF</dt><dd>Download the drawing</dd>
+      <dt>DXF / PDF</dt><dd>Download the drawings: plans and sections</dd>
     </dl></section>
   </div>
   <p class="note">Drawn from video walkthroughs; dimensions are estimates. The plan shows doors as they stand; a closed door cannot be walked through until you open it. Double-click on another floor walks you there by the stairs.</p>

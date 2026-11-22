@@ -34,7 +34,14 @@ CAMS = [
     ('step', (4.0, 19.0, 0.45), (4.0, 16.8, -0.3), 90, 'v2:f_0233'),
     ('passage', (3.95, 16.4, 1.6), (4.3, 9.5, 0.7), 100, 'v2:f_0319'),
     ('gate', (3.75, 11.0, 1.5), (4.55, 9.3, 0.6), 100, 'v2:f_0343'),
-    ('alley', (4.95, 3.0, 1.6), (4.8, 9.6, 0.8), 90, None),
+    ('alley', (4.95, 3.0, 1.6), (4.8, 9.6, 0.8), 90, 'v11:f_0128'),
+    ('street_gate', (4.9, -1.6, 1.5), (5.25, 1.7, 1.2), 90, 'v8:f_0067'),
+    ('street_gate_in', (5.25, 4.6, 1.15), (5.2, 1.7, 0.9), 90, 'v11:f_0107'),
+    ('pier', (0.3, -6.3, 1.25), (-0.8, -5.0, 0.5), 90, 'v8:f_0014'),
+    ('border', (1.2, -2.2, 1.4), (1.6, -0.3, -0.1), 90, 'v9:f_0063'),
+    ('tarmac', (3.4, -4.4, 1.5), (4.9, -1.3, -0.1), 90, 'v8:f_0033'),
+    ('border_down', (1.5, -0.9, 2.2), (1.5, -0.6, -0.1), 70, None),
+    ('soldier', (2.0, 23.6, 1.3), (2.2, 25.4, -0.4), 90, 'v13:t215'),
     ('front_wall', (-0.2, -0.9, 1.4), (-0.75, -5.0, 0.2), 100, 'v2:f_0949'),
     ('street', (2.2, -11.5, 1.6), (2.0, 0.0, 1.8), 90, None),
     ('above', (2.0, 17.6, 8.0), (1.6, 22.6, -0.4), 100, 'v4:f_0467'),
@@ -90,7 +97,7 @@ def check(ctx, objs):
         assert o.data.uv_layers and len(o.data.polygons), o.name
     shed = [o.name for o in objs if o['room'] == 'shed']
     for n in ('shed.shed_veranda', 'shed.walls', 'shed.roof', 'shed.soffit', 'shed.workshop.walls', 'shed.workshop.floor',
-              'shed.workshop.ceiling', 'shed.store.walls', 'shed.heads', 'shed.fascia'):
+              'shed.workshop.ceiling', 'shed.store.walls', 'shed.heads', 'shed.fascia', 'shed.roof.coping', 'shed.roof.felt'):
         assert n in shed, f'missing {n}'
     assert all(o['room'] == 'shed' for o in objs if o.name.startswith('shed.'))
     assert by['neighbours.backdrop'].get('no_export') == 1 and not site.MISSING, site.MISSING
@@ -158,22 +165,46 @@ def check(ctx, objs):
         assert ray(0.0) is None, f'{oid}: the hole is blocked'
         assert any(ray(sg * (fr['width'] / 2 + 0.06)) for sg in (1, -1)), f'{oid}: no wall beside the hole'
 
-    # side gate: tagged, leaf bottom 20 mm over the tread corner it sweeps, both poses clear of everything
-    g = next(b for b in ext['boundaries'] if b['type'] == 'gate')
-    leaf = by[f"{g['room']}.{g['id']}"]
-    ix = json.loads(leaf['ix'])
-    assert ix['t'] == 'hinge' and ix['blocks'] == g['id'] and abs(ix['deg']) == 50 and ix['a'] == [0, 0, 1], ix
-    zl = min(v.co.z for v in leaf.data.vertices)
-    assert abs(zl - (-0.14)) < 1e-6, f'leaf bottom {zl:.3f} is not 20 mm over the lower kitchen tread it sweeps (-0.16)'
-    others = bvh([o for o in objs if o is not leaf])
-    assert not bvh([leaf]).overlap(others), 'closed gate leaf intersects something'
-    keep = leaf.matrix_world.copy()
-    IX.pose([leaf], 1)
-    hits = bvh([leaf], {leaf.name: leaf.matrix_world}).overlap(others)
-    tip = leaf.matrix_world @ Vector(max((v.co for v in leaf.data.vertices), key=lambda p: (p - Vector(ix['p'])).length))
-    leaf.matrix_world = keep
-    assert not hits, f'open gate leaf intersects something ({len(hits)} pairs)'
-    assert C.poly_contains(tip.x, tip.y, ctx.zones[g['swingInto']]['polygon']), f'gate opens the wrong way: tip {tip}'
+    # gates: tagged, leaf bottom 20 mm over what it sweeps on the way to 50 degrees (the side gate's 1.03 leaf hung on
+    # the K corner reaches the lower kitchen tread, -0.16: MULTILEVEL.md 6; the street gate sweeps the -0.30 alley),
+    # leaf as wide as the spec says, both poses clear of everything, opening into `swingInto`
+    for g in (b for b in ext['boundaries'] if b['type'] == 'gate'):
+        leaf = by[f"{g['room']}.{g['id']}"]
+        ix = json.loads(leaf['ix'])
+        assert ix['t'] == 'hinge' and ix['blocks'] == g['id'] and abs(ix['deg']) == 50 and ix['a'] == [0, 0, 1], ix
+        zl = min(v.co.z for v in leaf.data.vertices)
+        want = {'side_gate': -0.14}.get(g['id'], g['baseZ'] + 0.02)
+        assert abs(zl - want) < 0.01, f"{g['id']}: leaf bottom {zl:.3f}, want {want}"     # (the apron falls under the far face)
+        a, e = (Vector(p) for p in g['line'])
+        u = (e - a).normalized()
+        board = [leaf.data.vertices[i].co.xy.dot(u) for p in leaf.data.polygons if p.material_index == 0 for i in p.vertices]
+        span = max(board) - min(board)                             # the boards (first material) along the gate line
+        assert abs(span - g['width']) < 0.03, f"{g['id']}: leaf {span:.3f} wide, spec width {g['width']}"
+        others = bvh([o for o in objs if o is not leaf])
+        assert not bvh([leaf]).overlap(others), f"{g['id']}: closed leaf intersects something"
+        keep = leaf.matrix_world.copy()
+        IX.pose([leaf], 1)
+        hits = bvh([leaf], {leaf.name: leaf.matrix_world}).overlap(others)
+        tip = leaf.matrix_world @ Vector(max((v.co for v in leaf.data.vertices), key=lambda p: (p - Vector(ix['p'])).length))
+        leaf.matrix_world = keep
+        assert not hits, f"{g['id']}: open leaf intersects something ({len(hits)} pairs)"
+        assert C.poly_contains(tip.x, tip.y, ctx.zones[g['swingInto']]['polygon']), f"{g['id']} opens the wrong way: tip {tip}"
+
+    # pier cap: `size` square, apex at the pier's top (front.md 2.2)
+    for b in (b for b in ext['boundaries'] if b['type'] == 'pier' and b.get('cap')):
+        vs = [v.co for v in by[f"{b['room']}.{b['id']}.cap"].data.vertices]
+        top, size = max(v.z for v in vs), max(v.x for v in vs) - min(v.x for v in vs)
+        assert abs(top - b['baseZ'] - b['height']) < 0.01 and abs(size - b['cap']['size']) < 0.01, (b['id'], top, size)
+    # shed roof: felt plane from `felt.frontZ` at the front to `rearZ` at the back, copings level at `coping.topZ`
+    for bd in ext.get('buildings', []):
+        rf, room = bd['roof'], bd.get('room', bd['id'])
+        _, y0, _, y1 = site._bbox(bd['outline'])
+        roof = [v.co for v in by[f'{room}.roof'].data.vertices]
+        for yy, want in ((y0, rf['felt']['frontZ']), (y1, rf['felt']['rearZ'])):
+            got = max(v.z for v in roof if abs(v.y - yy) < 1e-4)
+            assert abs(got - want) < 1e-4, f'{room} felt at y {yy}: {got} != {want}'
+        got = max(v.co.z for v in by[f'{room}.roof.coping'].data.vertices)
+        assert abs(got - rf['coping']['topZ']) < 0.005, f'{room} coping top {got}'
 
     # budget
     tris = {}
@@ -260,7 +291,7 @@ def render(a, tag=''):
         sc.render.resolution_x, sc.render.resolution_y = 400, 960
         for o in bpy.data.objects:                          # look into the shed and past the neighbours
             o.hide_render = o.name in ('shed.roof', 'shed.soffit', 'shed.workshop.ceiling', 'shed.store.ceiling',
-                                       'shed.roof.kerb', 'shed.fascia') or o.name.startswith('standin')
+                                       'shed.roof.kerb', 'shed.roof.coping', 'shed.roof.felt', 'shed.fascia')                 or o.name.startswith('standin')
         sc.render.filepath = str(Path(a.out) / f'top{tag}.jpg')
         bpy.ops.render.render(write_still=True)
         print(f'[test] wrote {sc.render.filepath}  (ref spec/plan_site.png)')

@@ -245,3 +245,29 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - 5.2 / 10 I2 The west vanity door opens about 80 degrees (its pull reaches the bath rim beyond that).
 - Wall paint #AEB6CE (the spec's #B3BEC8 rendered teal) is now the shell finish.
 - 2.2 `glass_obscure` is now alpha 0.85 / roughness 0.40, so the window reads frosted from both sides.
+
+## Round 3 re-fit (21 Nov footage round; RECONCILE3 dims_1-04)
+- West wall face x 0.50 -> **0.57** (room 2.33 x 1.70). Nothing was re-measured inside the room this round; the
+  south-wall run is re-done by fixture arithmetic: **bath 1700 x 700 nominal** (modelled 0.688 + 5 mm rim lip, so its
+  north-end rim stops 2 mm short of the door's west architrave at x 1.265) / 37 mm / **vanity x 1.29..1.89** / 50 mm /
+  **towel rail x 1.94..2.44** (centre 2.19) / roll-holder zone 0.46 (holder x 2.62). Mirror and wall accessories stay
+  centred on the vanity (mirror centre x 1.59, soap dish x 1.81, tumbler holder x 1.37). Shelf x 0.62..1.17, handset
+  bracket on the west wall (0.57, 11.35, Z 4.14), deck mixer 0.055 off the west wall.
+- Shower: the tray stays 0.80 x 1.10 (x 2.10..2.898); the **glass front stands 30 mm in from the tray edge (x 2.13)**
+  so the sliding pane clears the door's east architrave (outer edge x 2.101); the back-wall slab starts at that edge.
+- Mirror size checked against t358 / t412: the towel-rail ratio in t358 supports 0.50 wide; t412 alone reads W/H 0.80
+  (0.57 x 0.72 or 0.50 x 0.63) - left at 0.50 x 0.72 (no better evidence).
+- The south wall tiles are the same 300 x 100 metro as the west wall (t358: 100 mm courses behind the vanity and the
+  roll holder); t412 is too blurred to read.
+
+## Round 3 fixer (critic findings)
+- Cladding: the en-suite now uses its own generated slab texture (`blender/rooms/blue_ensuite_slab.py`, numpy, cached in
+  build/tex/blue_ensuite/, 1.2 x 2.4 m tile): branching mid-grey / olive-grey veins (#9C9888, cores #878370) with soft
+  olive-gold halos (#C8BC90) on #EDE9E0. The library `porcelain_calacatta_slab` (sparse tan bands) rendered orange under
+  the 3000 K light (f_0387 / f_0391 / t384.5 show grey-dominant veining); other rooms keep the library slab.
+- East-wall vertical slab joint: **y 11.325**, 30 mm south of the flush plate's south edge (11.355), floor to the
+  recess and recess head to ceiling (t384.5: the joint runs down from the 1.20 course joint just south of the plate, the
+  slab north of it heavily veined, the narrow slab south of it calm). It was at 11.40, behind the plate.
+- Bath hose: swings from the bracket out over the tub, crosses the rim and runs back along the deck behind the south
+  pillar (28 mm wall gap) to the union (t364); it no longer dips through the tap deck.
+- Aloe: greyer fleshy leaves (#6F8A63, V-section); leaves stay south of the shower return pane (y < 11.735).

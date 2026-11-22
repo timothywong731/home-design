@@ -6,7 +6,7 @@ import math
 import bpy
 from mathutils import Matrix
 
-from lib import interact as IX, materials as M, mouldings as mo, props as P
+from lib import interact as IX, materials as M, mouldings as mo, props as P, shell
 
 RM = 'basement'
 ZF = -2.31
@@ -58,15 +58,15 @@ def _wall_prop(ctx, ob, x, y, h, facing, kind='fit'):
 
 # ------------------------------------------------------------------------------------------- wall E-north
 def _board(ctx):
-    cu = C('copper', '#A86F45', 0.32, 1.0)
+    cu = C('copper', '#8C5C3C', 0.5, 1.0)
     mb = mo.MB()
     mb.box((XB, 7.05, Z(0.12)), (X1, 8.70, Z(2.0)), PLY, grain=2)
     # ponytail: the ragged ceiling slot and the boiler notch are a black panel under the shell ceiling, the sealed
     # recess a stained panel on the wall (both need a shell feature to be real openings)
     mb.box((4.08, 6.60, Z(2.0) - 0.003), (X1, Y1, Z(2.0) - 0.0005), BLK)
     mb.box((3.93, 8.28, Z(2.0) - 0.003), (4.08, Y1, Z(2.0) - 0.0005), BLK)
-    mb.box((X1 - 0.003, 6.60, Z(1.25)), (X1, 7.05, Z(1.85)), C('recess', '#6E6654', 0.95))
     _add(ctx, mb, 'basement.backboard')
+    _recess(ctx)
 
     xd, xh = 4.218, 4.200                                    # drops against the board, headers in front of them
     drops = (7.42, 7.55, 7.68, 7.80, 7.92, 8.02)
@@ -74,6 +74,9 @@ def _board(ctx):
     for y in drops:
         pipe(mb, [(xd, y, 1.999), (xd, y, 0.45)], 0.011, cu)
     pipe(mb, [(xd, 7.42, 0.45), (xd, 8.10, 0.45), (xd, 8.10, 0.22)], 0.011, cu)
+    for y in drops:                                                                           # white saddle clips
+        for h in (0.62, 1.48):
+            mb.box((xd - 0.014, y - 0.016, Z(h)), (XB, y + 0.016, Z(h + 0.012)), WHITE, bev=0.002)
     pipe(mb, [(xh, 7.36, 1.72), (xh, 8.25, 1.72), (xh, 8.25, 1.63)], 0.011, cu)                # header into the boiler
     pipe(mb, [(xh, 7.36, 1.84), (xh, 8.10, 1.84), (xh, 8.30, 1.995)], 0.011, cu)               # header into the notch
     for h, y1 in ((1.90, 8.12), (1.95, 8.05)):                                                # across the recess head
@@ -117,6 +120,29 @@ def _board(ctx):
         _wall_prop(ctx, P.switch_plate(1, name=f'basement.boiler_switch.{i}'), 4.185, y, 0.895, (-1, 0))
 
 
+def _recess(ctx):
+    """The sealed recess in wall E-north, y 6.60..7.05, h 1.25..1.85 (basement.md 3.5, f_0179, f_0227): rendered white,
+    its floor a slope rising ~35 deg away from the room, stained dusty brown. When the shell cuts it (requested
+    feature basement_sealed_recess) the slope stands inside it; until then a two-tone flat stand-in on the wall."""
+    stain = C('recess_stain', '#8A7F66', 0.95)
+    xr = next((X1 + 0.01 * (i - 1) for i in range(1, 60) if shell.is_solid(ctx, X1 + 0.01 * i - 0.005, 6.82, Z(1.55))),
+              X1)
+    mb = mo.MB()
+    if xr - X1 > 0.05:                                       # a real recess, back at xr (+ 9 mm into its back wall)
+        dz, xr = (xr - X1) * math.tan(math.radians(35)), xr + 0.009
+        mb.prism([(X1 + 0.002, 6.601, Z(1.25)), (xr, 6.601, Z(1.25)), (xr, 6.601, Z(1.25) + dz)], (0, 0.448, 0), stain)
+    else:                                                    # ponytail: flat stand-in until the shell cuts the recess
+        # tones of the shadowed niche against the lit wall in f_0179 (back 0.58, slope 0.54 of the wall's value),
+        # framed by a 6 mm white render lip so it reads as an opening, not a painted stripe
+        mb.box((X1 - 0.003, 6.60, Z(1.25)), (X1, 7.05, Z(1.40)), stain)
+        mb.box((X1 - 0.003, 6.60, Z(1.40)), (X1, 7.05, Z(1.85)), C('recess_shade', '#8A8274', 0.95))
+        lip, w, t = M.paint('#EDE7DA'), 0.02, 0.006
+        for y0, y1, h0, h1 in ((6.60 - w, 6.60, 1.25 - w, 1.85 + w), (7.05, 7.05 + w, 1.25 - w, 1.85 + w),
+                               (6.60, 7.05, 1.25 - w, 1.25), (6.60, 7.05, 1.85, 1.85 + w)):
+            mb.box((X1 - t, y0, Z(h0)), (X1, y1, Z(h1)), lip, bev=0.002)
+    _add(ctx, mb, 'basement.recess')
+
+
 def _boiler(ctx):
     mb = mo.MB()
     white = C('boiler_white', '#F2F2EF', 0.3)
@@ -151,7 +177,7 @@ def _boiler(ctx):
 
 def _cylinder(ctx):
     cx, cy, R = 3.93, 7.20, 0.2775
-    white, blue, cu = C('cyl_white', '#F3F2EC', 0.25), C('cyl_blue', '#2D4FA3', 0.4), C('copper', '#A86F45', 0.32, 1.0)
+    white, blue, cu = C('cyl_white', '#F3F2EC', 0.25), C('cyl_blue', '#2D4FA3', 0.4), C('copper', '#8C5C3C', 0.5, 1.0)
     mb = mo.MB()
     mb.box((cx - 0.31, cy - 0.31, Z(0)), (cx + 0.31, cy + 0.31, Z(0.02)), PLY)
     mb.box((cx - 0.30, cy - 0.30, Z(0.02)), (cx + 0.30, cy + 0.30, Z(0.07)), C('slab', '#CFC8B4', 0.9), bev=0.005)
@@ -169,7 +195,11 @@ def _cylinder(ctx):
     x, y, _ = at(115, 0)                                                                      # T&P relief valve, red cap
     mb.box((x - 0.03, y - 0.005, Z(1.53)), (x + 0.02, y + 0.04, Z(1.575)), BRASS, bev=0.005)
     mb.box((x - 0.022, y + 0.04, Z(1.535)), (x + 0.012, y + 0.058, Z(1.57)), C('valve_C2261C', '#C2261C', 0.4), bev=0.004)
-    pipe(mb, [(x - 0.005, y + 0.02, 1.53), (x - 0.005, y + 0.02, 0.30)], 0.0075, cu)          # discharge to the tundish
+    pipe(mb, [(x - 0.005, y + 0.02, 1.53), (x - 0.005, y + 0.02, 0.36)], 0.0075, cu)          # discharge to the tundish
+    mb.at(T(x - 0.005, y + 0.02, 0.24))
+    mb.lathe([(0.011, 0), (0.011, 0.04), (0.02, 0.06), (0.02, 0.10), (0.012, 0.11), (0.0075, 0.12)], BRASS, 10)
+    mb.at()
+    pipe(mb, [(x - 0.005, y + 0.02, 0.24), (x - 0.005, y + 0.02, 0.05)], 0.011, cu)
     x, y, _ = at(68, 0)
     pipe(mb, [(x, y - 0.01, 1.60), (x, 7.55, 1.60), (4.218, 7.55, 1.60)], 0.011, cu)          # 22 mm flow to the board
     x, y, _ = at(98, 0)
@@ -193,6 +223,10 @@ def _electrics(ctx):
     mb.box((X0, 7.45, Z(1.855)), (X0 + 0.05, 7.50, Z(1.885)), WHITE)
     mb.box((X0 + 0.052, 7.00, Z(1.975)), (X0 + 0.102, Y1, Z(1.9995)), WHITE, bev=0.002)
     mb.box((X0 + 0.05, Y1 - 0.025, Z(1.94)), (3.93, Y1, Z(1.98)), WHITE, bev=0.002)
+    for i in range(3):                                        # black cables leave its end into the notch (f_0165)
+        y = Y1 - 0.007 - 0.006 * i
+        mb.tube([(3.93, y, Z(1.955 + 0.008 * i)), (3.98, y - 0.01, Z(1.965 + 0.008 * i)),
+                 (4.02 + 0.015 * i, y - 0.03, Z(1.998))], 0.0035, BLK, 5, up=(0, 0, 1))
     _add(ctx, mb, 'basement.electrics')
 
     _wall_prop(ctx, P.socket(2, name='basement.socket_w'), X0, 6.21, 0.30, (1, 0))
@@ -240,7 +274,8 @@ def _netcab(ctx):
     d.lathe([(0, 0), (0.011, 0), (0.011, 0.006), (0, 0.006)], 'chrome', 10)                   # cam lock, south stile
     door = d.finish('basement.netcab.door')
     g = mo.MB()
-    g.box((xb + 0.007, ya + fw, Z(ha + fw)), (xb + 0.010, yb - fw, Z(hb - fw)), P.two_sided(M.mat('glass_clear')))
+    smoke = P.two_sided(M.solid('bs_cab_glass', '#26292C', 0.05, 0, 0.5))                  # leads show through (f_0198)
+    g.box((xb + 0.007, ya + fw, Z(ha + fw)), (xb + 0.010, yb - fw, Z(hb - fw)), smoke)
     glass = g.finish('basement.netcab.door.glass')
     # viewer faces west: the hinge (north) is on the right -> positive; 95 deg keeps the leaf 0.09 clear of wall N
     IX.tag_many([door, glass], 'hinge', g='basement.netcab.door', label='Network cabinet',
@@ -249,11 +284,12 @@ def _netcab(ctx):
         ctx.add(o, RM, 'fit', lm='dynamic')
 
     n = mo.MB()                                                                               # 6-bay NAS, no logo
-    n.box((1.42, 8.15, Z(hb)), (1.65, 8.38, Z(hb + 0.17)), blk, bev=0.004)
+    n.box((1.41, 8.13, Z(hb)), (1.65, 8.41, Z(hb + 0.166)), blk, bev=0.004)
     for i in range(6):
-        y = 8.165 + i * 0.0345
-        n.box((1.65, y, Z(hb + 0.03)), (1.6515, y + 0.030, Z(hb + 0.155)), grey)
-    n.box((1.65, 8.17, Z(hb + 0.012)), (1.651, 8.176, Z(hb + 0.018)), green)
+        y = 8.175 + i * 0.038
+        n.box((1.65, y, Z(hb + 0.03)), (1.6515, y + 0.034, Z(hb + 0.15)), grey)
+    for i in range(4):
+        n.box((1.65, 8.142, Z(hb + 0.04 + 0.022 * i)), (1.651, 8.148, Z(hb + 0.046 + 0.022 * i)), green)
     _add(ctx, n, 'basement.nas', 'decor')
 
 
@@ -261,9 +297,11 @@ def _plaque(ctx):
     """D1: an old oak arch-panel cabinet door hung landscape as a key board, y 6.21..6.96, h 1.10..1.70."""
     # ponytail: plain golden-oak colour; the library oaks render pale pink here next to L-A (oak_rustic #E0C8B2,
     # oak_table #A3806A against the filmed #846E4D), and no darker golden oak texture exists
-    oak, ya, yb, ha, hb, fr = C('plaque_oak', '#554827', 0.45), 6.21, 6.96, 1.10, 1.70, 0.07
+    # frame lighter and yellower than the arched field (f_0193: frame #C2AE7D lit, field #8E7551)
+    oak, ya, yb, ha, hb, fr = C('plaque_oak', '#685226', 0.45), 6.21, 6.96, 1.10, 1.70, 0.07
+    field = C('plaque_field', '#493920', 0.5)
     mb = mo.MB()
-    mb.box((X0, ya, Z(ha)), (X0 + 0.012, yb, Z(hb)), oak, grain=1)                            # back / sunk field
+    mb.box((X0, ya, Z(ha)), (X0 + 0.012, yb, Z(hb)), field, grain=1)                          # back / sunk field
     for y0, y1, h0, h1, gr in ((ya, ya + fr, ha, hb, 2), (yb - fr, yb, ha, hb, 2), (ya + fr, yb - fr, ha, ha + fr, 1)):
         mb.box((X0, y0, Z(h0)), (X0 + 0.02, y1, Z(h1)), oak, bev=0.004, grain=gr)
     # cathedral top rail: lower edge 0.13 down at the stiles, a shoulder, then an arch rising 0.09 to the centre
@@ -279,8 +317,8 @@ def _plaque(ctx):
     mb.prism([(X0, y, Z(h)) for y, h in rail], (0.02, 0, 0), oak, grain=1)
     for x0, dx, gap in ((X0 + 0.012, 0.006, 0.03), (X0 + 0.018, 0.008, 0.045)):               # raised field, 2 steps
         top = edge(gap, gap)
-        field = [(top[0][0], ha + fr + gap)] + top + [(top[-1][0], ha + fr + gap)]
-        mb.prism([(x0, y, Z(h)) for y, h in field], (dx, 0, 0), oak, grain=1)
+        pts = [(top[0][0], ha + fr + gap)] + top + [(top[-1][0], ha + fr + gap)]
+        mb.prism([(x0, y, Z(h)) for y, h in pts], (dx, 0, 0), field, grain=1)
     xf = X0 + 0.026                                                                           # face of the field
     for row, h in enumerate((1.48, 1.34)):                                                    # 6 + 6 brass hooks
         for i in range(6):
@@ -363,44 +401,63 @@ def _racks(ctx):
 
 
 def _gas(ctx):
-    galv, cu = C('galv', '#8C8C88', 0.5, 0.7), C('copper', '#A86F45', 0.32, 1.0)
-    y, yb = Y0, Y0 - 0.08                        # wall face; back of the niche (house.json basement_meter_niche)
+    """Meter niche (shell feature basement_meter_niche: read here, so the fittings follow it), smart meter on its floor,
+    meter bar, regulator, copper tail up through the niche head, flexible connector to the lever valve at the open
+    end of the gas bulkhead (hr_249, f_0256)."""
+    galv, cu = C('galv', '#8C8C88', 0.5, 0.7), C('copper', '#8C5C3C', 0.5, 1.0)
+    nf = next(f for f in ctx.features if f['id'] == 'basement_meter_niche')
+    xa, xb = min(p[0] for p in nf['polygon']), max(p[0] for p in nf['polygon'])
+    hb, ht = nf['z'][0] - ZF, nf['z'][1] - ZF                # niche bottom / top above the basement floor
+    y, yb = Y0, min(p[1] for p in nf['polygon'])             # wall face; back of the niche
     mb = mo.MB()
-    for lo, hi in (((1.55, yb, 1.45), (1.85, yb + 0.002, 1.88)), ((1.55, yb, 1.45), (1.552, y, 1.88)),
-                   ((1.848, yb, 1.45), (1.85, y, 1.88)), ((1.55, yb, 1.878), (1.85, y, 1.88)),
-                   ((1.55, yb, 1.45), (1.85, y, 1.452))):                                     # galvanised niche lining
+    lining = [((xa, yb, hb), (xb, yb + 0.002, ht)), ((xa, yb, hb), (xa + 0.002, y, ht)),
+              ((xb - 0.002, yb, hb), (xb, y, ht)), ((xa, yb, hb), (xb, y, hb + 0.002))]
+    if ht < 1.995:                                           # a niche head below the ceiling gets a lining too
+        lining.append(((xa, yb, ht - 0.002), (xb, y, ht)))
+    for lo, hi in lining:                                                                     # galvanised lining
         mb.box((lo[0], lo[1], Z(lo[2])), (hi[0], hi[1], Z(hi[2])), galv)
     # landscape smart meter on the niche floor, its face 7 mm proud of the wall (f_0247); facing south, west (low x)
     # is on the right
-    mb.box((1.565, yb + 0.002, Z(1.453)), (1.835, y + 0.007, Z(1.615)), C('meter', '#DAD9D6', 0.4), bev=0.012)
+    mb.box((xa + 0.015, yb + 0.002, Z(hb + 0.003)), (xb - 0.015, y + 0.007, Z(hb + 0.165)), C('meter', '#DAD9D6', 0.4),
+           bev=0.012)
     f = y + 0.007
-    mb.box((1.651, f, Z(1.558)), (1.724, f + 0.0008, Z(1.585)), C('lcd', '#7E9A6A', 0.3))                 # blank LCD
-    mb.box((1.585, f, Z(1.48)), (1.630, f + 0.0008, Z(1.545)), C('warn_yellow', '#E6C82A', 0.5))          # plain label
-    for x in (1.603, 1.625):
-        mb.at(T(x, f, 1.572) @ RX(-90))
+    mb.box((xa + 0.101, f, Z(hb + 0.108)), (xa + 0.174, f + 0.0008, Z(hb + 0.135)), C('lcd', '#7E9A6A', 0.3))   # LCD
+    mb.box((xa + 0.035, f, Z(hb + 0.03)), (xa + 0.08, f + 0.0008, Z(hb + 0.095)), C('warn_yellow', '#E6C82A', 0.5))
+    for x in (xa + 0.053, xa + 0.075):                                                        # two round buttons
+        mb.at(T(x, f, hb + 0.122) @ RX(-90))
         mb.lathe([(0, 0), (0.008, 0), (0.008, 0.003), (0, 0.003)], galv, 8)
     mb.at()
     yp = yb + 0.035                                                                           # pipe line in the niche
-    mb.box((1.60, yp - 0.019, Z(1.64)), (1.80, yp + 0.019, Z(1.66)), BRASS, bev=0.003)       # meter bar on two unions
-    for x in (1.63, 1.77):
-        pipe(mb, [(x, yp, 1.614), (x, yp, 1.645)], 0.016, BRASS)
-    pipe(mb, [(1.63, yp, 1.655), (1.63, yp, 1.90)], 0.011, cu)                 # copper tail up through the niche head
-    pipe(mb, [(1.77, yp, 1.655), (1.77, yp, 1.74)], 0.012, BRASS)
-    mb.at(T(1.77, yp, 1.735))                                                                 # regulator, east side
+    xw, xe = xa + 0.08, xa + 0.22                                                             # west tail, east regulator
+    mb.box((xa + 0.05, yp - 0.019, Z(hb + 0.19)), (xb - 0.05, yp + 0.019, Z(hb + 0.21)), BRASS, bev=0.003)  # meter bar
+    for x in (xw, xe):
+        pipe(mb, [(x, yp, hb + 0.164), (x, yp, hb + 0.195)], 0.016, BRASS)                    # unions
+    pipe(mb, [(xw, yp, hb + 0.205), (xw, yp, ht + 0.02)], 0.011, cu)            # copper tail up through the niche head
+    pipe(mb, [(xe, yp, hb + 0.205), (xe, yp, hb + 0.29)], 0.012, BRASS)
+    mb.at(T(xe, yp, hb + 0.285))                                                              # regulator, east side
     mb.lathe([(0, 0), (0.03, 0), (0.034, 0.012), (0.034, 0.03), (0.02, 0.045)], C('reg_grey', '#8E9494', 0.5), 12)
     mb.lathe([(0.02, 0.045), (0.02, 0.07), (0, 0.072)], C('reg_green', '#4F8F5A', 0.5), 10)
     mb.at()
-    # flexible connector out of the niche's west side to the valve on the wall face
-    flex = [(1.745, 1.775), (1.70, 1.765), (1.64, 1.762), (1.58, 1.785), (1.53, 1.825), (1.49, 1.84)]
-    mb.tube([(x, yb + 0.06 if x > 1.56 else y + 0.05, Z(h)) for x, h in flex], 0.0125, 'silver_satin', 8, up=(0, 1, 0))
-    mb.tube([(x, y + 0.05, Z(h)) for x, h in ((1.545, 1.812), (1.52, 1.83))], 0.0135,
+    # lever valve at the bulkhead's open end, its pipe entering the box; red lever below the box. The box ends at
+    # x 1.40 (spec 1.45 +/- 0.10): f_0246 / f_0256 show the flex running ~0.1 along the wall outside the niche
+    xbh, hv, yv = 1.40, 1.925, y + 0.06
+    mb.box((xbh + 0.002, yv - 0.02, Z(hv - 0.02)), (xbh + 0.06, yv + 0.02, Z(hv + 0.02)), BRASS, bev=0.005)
+    mb.box((xbh + 0.028, yv + 0.02, Z(hv - 0.006)), (xbh + 0.036, y + 0.124, Z(hv + 0.002)), BRASS)   # spindle
+    mb.box((xbh - 0.05, y + 0.124, Z(1.882)), (xbh + 0.06, y + 0.131, Z(1.896)), C('valve_C2261C', '#C2261C', 0.4))
+    # corrugated stainless flexible connector: out of the regulator, west across the niche, out of it and up to the
+    # valve, with a yellow tape band and a blue sleeve at the valve
+    hr = hb + 0.325
+    flex = [(xe - 0.025, hr), (xe - 0.07, hr - 0.008), (xa + 0.09, hr - 0.008), (xa + 0.03, hr + 0.012),
+            (xa - 0.01, (2 * hr + hv) / 3 + 0.01), (xbh + 0.11, hv - 0.012), (xbh + 0.06, hv)]
+    mb.tube([(x, yb + 0.06 if x > xa + 0.01 else yv, Z(h)) for x, h in flex], 0.0125, 'silver_satin', 8, up=(0, 1, 0))
+    mb.tube([(x, yv, Z(h)) for x, h in ((xbh + 0.11, hv - 0.012), (xbh + 0.085, hv - 0.004))], 0.0135,
             C('warn_yellow', '#E6C82A', 0.5), 8, up=(0, 1, 0))                                # yellow tape band
-    mb.box((1.43, y + 0.025, Z(1.82)), (1.49, y + 0.065, Z(1.86)), BRASS, bev=0.005)          # lever ball valve
-    mb.box((1.40, y + 0.066, Z(1.80)), (1.51, y + 0.072, Z(1.814)), C('valve_C2261C', '#C2261C', 0.4))
+    mb.tube([(x, yv, Z(hv)) for x in (xbh + 0.072, xbh + 0.062)], 0.0145, C('valve_blue', '#2748B0', 0.4), 8,
+            up=(0, 1, 0))
     # boxed bulkhead carrying the gas pipe west, with its open square end; boxing in the opening's south reveal
     wall = M.paint('#F3F2EE')
-    mb.box((X0, y, Z(1.85)), (1.45, y + 0.12, Z(2.0) - 0.0005), wall)
-    mb.box((1.4495, y + 0.02, Z(1.87)), (1.451, y + 0.10, Z(1.985)), BLK)
+    mb.box((X0, y, Z(1.85)), (xbh, y + 0.12, Z(2.0) - 0.0005), wall)
+    mb.box((xbh - 0.0005, y + 0.02, Z(1.87)), (xbh + 0.001, y + 0.10, Z(1.985)), BLK)
     mb.box((1.10, y, ZF + 0.211), (1.20, y + 0.05, Z(1.8495)), wall)
     _add(ctx, mb, 'basement.gas_meter')
 
@@ -436,7 +493,7 @@ def _stools(ctx):
     ctx.add(first, RM, 'furn', plan_sym='stool')
     for i in range(4):                                                                        # the stack of four
         o = bpy.data.objects.new(f'basement.stool.{i + 1}', first.data)
-        o.location = (3.55, 6.25, ZF + 0.05 * i)
+        o.location = (3.25, 6.35, ZF + 0.05 * i)                                # spec 6 (f_0151 bearing)
         ctx.add(o, RM, 'furn', plan_sym='stool' if i == 0 else None)
 
 

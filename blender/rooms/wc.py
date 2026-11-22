@@ -427,6 +427,11 @@ def build(ctx):
     # ---- anthracite towel rail, 0.40 x 1.20, bars 8 / 7 / 5 from the bottom up
     rail = P.radiator_towel_rail(0.4, 1.2, groups=(8, 7, 5), mat='anthracite', name='wc.towel_rail')
     ctx.add(P.place(rail, (1.80, Y0, 0.18), facing=(0, 1)), ROOM, 'fit', plan_sym='towel_rail')
+    mb = mo.MB()                                            # chrome bleed-valve caps on both uprights (hr_0502)
+    for x in (1.80 - 0.185, 1.80 + 0.185):
+        _lathe(mb, (x, Y0 + 0.08, 0.18 + 1.2), Z, [(0, 0), (0.0095, 0), (0.0095, 0.007), (0.007, 0.009), (0.0045, 0.010),
+                                                   (0.0045, 0.017), (0, 0.017)], 'chrome', 12)
+    ctx.add(mb.finish('wc.towel_rail.caps', sharp_deg=50), ROOM, 'fit', lm='dynamic')
 
     # ---- gilt mirror over the basin
     ctx.add(_mirror(), ROOM, 'decor', plan_sym='mirror', lm='dynamic')

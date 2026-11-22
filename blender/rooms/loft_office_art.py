@@ -1,11 +1,13 @@
 """Textures for the loft office -> blender/textures/art/loft_office_<name>.jpg
 
-Synthetic (no reference pixels): union (Union flag, 3:5, drawn landscape), ensign (plain blue ensign, hung
-portrait, no badge), periodic (colour-block periodic table grid, no text).
+Synthetic (no reference pixels): union (Union flag, 3:5, drawn landscape), ensign (plain blue ensign, 3 x 2 ft hung
+portrait, no badge), periodic (colour-block periodic table grid, no text), stripe (the piano stool's cream / mauve
+striped cover, one 0.12 m repeat), weave (seagrass basket weave of the plant pot, one 0.06 m repeat).
 Rectified crops of the owner's footage (art only, no people, no writing): carving (hardwood relief of a bird
 among flowers, v5 still 172), cat1 / cat2 (two cat paintings leaning against the TV wall, v5 still 344).
 
-Run with the system Python (numpy, Pillow, OpenCV):   python blender/rooms/loft_office_art.py
+Run with the system Python (numpy, Pillow, OpenCV):   python blender/rooms/loft_office_art.py [name ...]
+(names: only those files are written; default all)
 """
 from pathlib import Path
 
@@ -38,11 +40,44 @@ def union(w=1000, h=600):
     return im.resize((w, h), Image.LANCZOS)
 
 
-def ensign(w=500, h=820):
-    """Hung vertically: the union stands upright over the top half of the hoist (north) side, as filmed (hr_346)."""
+def ensign(w=600, h=900):
+    """3 x 2 ft, hung vertically: the union stands upright over the top half of the hoist (north) side, as filmed
+    (hr_346, v12 f43-44)."""
     im = Image.new('RGB', (w, h), (35, 43, 92))
-    im.paste(union(450, 250).rotate(90, expand=True), (w - 250, 0))
+    im.paste(union(h // 2, w // 2).rotate(90, expand=True), (w - w // 2, 0))
     return im
+
+
+def stripe(w=512, h=512):
+    """Piano-stool cover (hr_183, hr_235): cream ground with broad mauve-grey bands edged by thin plum and grey lines;
+    the bands run along V (the stool's length). One repeat = 0.12 m across."""
+    im = Image.new('RGB', (w, h), (230, 224, 214))
+    d = ImageDraw.Draw(im)
+    u = w / 120.0                                          # pixels per mm
+    for x0, x1, c in ((0, 26, (164, 140, 150)), (26, 30, (230, 224, 214)), (30, 33, (120, 92, 108)),
+                      (52, 56, (150, 146, 150)), (60, 86, (176, 154, 162)), (86, 89, (120, 92, 108)),
+                      (104, 108, (150, 146, 150))):
+        d.rectangle([int(x0 * u), 0, int(x1 * u) - 1, h], fill=c)
+    a = np.asarray(im).astype(np.float32)
+    rng = np.random.default_rng(7)
+    a *= 1 + 0.035 * rng.standard_normal((h, 1, 1)).repeat(w, 1)    # weft texture across the bands
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+
+
+def weave(w=256, h=256):
+    """Seagrass basket (hr_183): twisted rush rows passing over and under upright stakes, golden straw; 8 rows of
+    7.5 mm and 6 stakes per 0.06 m repeat."""
+    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
+    r = y / (h / 8)
+    row, k = r % 1.0, np.floor(r)
+    col = (x / (w / 6) + 0.5 * (k % 2)) % 1.0
+    over = np.abs(col - 0.5) * 2                           # 0 where the rush passes over a stake, 1 between stakes
+    v = 0.62 + 0.38 * np.sin(np.pi * row) ** 0.6 * (1.0 - 0.45 * over ** 2)
+    v += 0.06 * np.sin(2 * np.pi * (x / 9.0 + y / 23.0))   # twist of the rush
+    v -= 0.30 * (row < 0.07)                               # dark gaps between the rows
+    base = np.array((182, 156, 106), np.float32)
+    a = np.clip(base[None, None, :] * v[..., None], 0, 255).astype(np.uint8)
+    return Image.fromarray(a)
 
 
 def periodic(w=900, h=620):
@@ -73,11 +108,15 @@ def crop(still, quad, size):
 
 
 if __name__ == '__main__':
-    made = dict(union=union(), ensign=ensign(), periodic=periodic())
-    if REF.exists():                                       # the footage is private: crops only where it is present
+    import sys
+    want = set(sys.argv[1:])
+    made = dict(union=union(), ensign=ensign(), periodic=periodic(), stripe=stripe(), weave=weave())
+    if REF.exists() and (not want or want & {'carving', 'cat1', 'cat2'}):                                       # the footage is private: crops only where it is present
         made['carving'] = crop('hr_172.jpg', [(233.5, 746), (344, 812.5), (334, 1104), (200, 1065)], (256, 512))
         made['cat1'] = crop('hr_344.jpg', [(550, 1201.7), (626.7, 1178.3), (638.3, 1281.7), (563.3, 1310)], (288, 384))
         made['cat2'] = crop('hr_344.jpg', [(671.7, 1156.7), (740.7, 1138.3), (755, 1238.3), (685, 1260)], (288, 384))
     for name, im in made.items():
+        if want and name not in want:
+            continue
         im.save(OUT / f'loft_office_{name}.jpg', quality=90)
         print('wrote', OUT / f'loft_office_{name}.jpg', im.size)

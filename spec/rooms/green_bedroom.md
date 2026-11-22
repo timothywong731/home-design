@@ -162,7 +162,8 @@ Two identical white-gloss doorcases flank the big wardrobe (v3_f524, v4_f95, v3:
 - **Bay**: a ceiling-fixed pelmet box follows the three bay walls, **0.15 deep × 0.17 drop** (underside
   z 2.78), faced with the room cornice profile so it reads as a deeper cornice; the curtain track is hidden
   behind it (v3:f_0686–f_0702, v4_f75, v4:f_0077).
-- **West window**: the same boxed pelmet across the window, x −0.52 → 0.34, projecting 0.12 from the wall;
+- **West window**: the same boxed pelmet across the window, x −0.52 → 0.34, projecting 0.12 from the wall (round 3: its
+  east return face stands at x 0.35, clear of the sconce's west shade, as v4_f11 shows);
   the wall cornice steps forward round it (v4_f11, v4:f_0009).
 
 ## 4. Surfaces & colours
@@ -226,7 +227,7 @@ Footprints are plan rectangles in world coordinates; `h` = height above the floo
 | # | item | wall / position | size (m) | description |
 |---|---|---|---|---|
 | A1 | **Picture over the bed** | W-east, centre y 2.29, z 1.52 → 2.38 | 0.92 w × 0.86 h | Wide gilt frame (≈ 70 mm stepped, bright gold #C9B26A) with a 60 mm ivory mount. The real image is a monochrome photograph of a couple — **do NOT reproduce**; use a neutral grey-toned abstract / architectural wash (v3:f_0520, f_0656). |
-| A2 | **Big mirror** ("there's a mirror in here") | W-west, y 3.62 → 4.40, z 0.28 → 2.08 | 0.78 w × 1.80 h | Plain mirror in a **90 mm dark-brown (espresso) stepped / ogee moulded frame**, hung flat on the dark wall next to door 1 (v3:f_0532–f_0534, v4:f_0205–f_0207). Render a real reflection; never bake the video reflection (it shows the owner). |
+| A2 | **Big mirror** ("there's a mirror in here") | W-west, y 3.62 → 4.40, z 0.42 → 2.22 (round 3: was 0.28 → 2.08) | 0.78 w × 1.80 h | Plain mirror in a **90 mm dark-brown (espresso) stepped / ogee moulded frame**, hung flat on the dark wall next to door 1 (v3:f_0532–f_0534, v4:f_0205–f_0207). Render a real reflection; never bake the video reflection (it shows the owner). |
 | A3 | Photo frames ×3 | on the bureau top, z 1.02 | 0.20 × 0.16, 0.26 × 0.22, 0.24 × 0.20 | Cream frame; frame with a grey / white diamond (ikat) pattern; dark-walnut frame. **Blank / abstract inserts** — family photographs are not reproduced. |
 | A4 | **Tantalus** | on the chest, (−0.40, 2.05) | 0.32 × 0.15 × 0.33 | Oak and brass tantalus with two square cut-crystal decanters under a brass locking bar and handle (v3:f_0620). |
 | A5 | **Whisky glasses** | on the chest, (−0.40, 1.75) | tray 0.34 × 0.24 | Oval pierced-rim silver tray carrying six cut-crystal tumblers / small stemmed glasses (v3:f_0620–f_0622). |
@@ -376,3 +377,43 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 ## Round 3 corrections (core owner, from build/rooms2_open.md)
 - 8 S3 is a 2-gang plate (two rockers on one 86 mm plate, v3 f_0646 / f_0648), not 3-gang.
 - 2.5 / 10 w_green_west's lower casement opens outward to 60 degrees on the west stile (house.json sash angle 60).
+
+## Round 3 (re-fit to the round-3 shell; RECONCILE3 dims_1-01, front-05, envelope-01/-02)
+- Ceiling 2.77 above the floor (Z 6.19), cornice 2.67..2.77. The module reads the room frame from house.json at build
+  time (`_measure`: polygon, `green_bay` feature, `ceil_z`), so the ceiling items follow the shell: downlight trims and
+  emitters, rose (0.60, relief 0.049), chandelier (cup 0.040 below the ceiling, on the rose boss; bottom 2.07),
+  pelmets (0.15 deep x 0.17 drop, underside 2.60), curtain headings 2.60 with the hem kept at 0.62.
+- Bay x 1.11..3.85 (axis 2.48): bay curtains, cords, radiator (centred on 2.48), the bay socket (x 1.45, under the
+  window's west jamb), the two bay downlights (1.80 / 3.15, 0.55), armchair (3.22), drum table (2.51) and corner chair
+  (1.94) moved 0.05 west with it; all drapes now hang 0.03 off the plaster, clear of the sill nosings.
+- Sill boards rebuilt from the opening frames: a 5 mm slab on each reveal bottom from the frame's inside face to the
+  plaster (bay front y -0.04..0.14, cheek reveals x 0.83..1.11 and 3.85..4.18 through the thicker cheek walls, west
+  window y 0.81..0.99) and a 25 mm board with a rounded nosing 28 mm proud, swept round the bay and across the west
+  window.
+- Pier between the west window reveal (0.23) and the bay (1.11) is now 0.88 wide, centre 0.67: the sconce is centred
+  on it; the bureau stands with its east end at the foot of the bay chamfer (x 0.265..1.025, as v4 f_0011 shows), its
+  photo frames with it. The closed west drape now covers x -0.50..0.26 (it stopped at the bureau's old west end).
+- Bed headboard and nightstands stand 20 / 10 mm off the east wall, clear of the skirting.
+- Air-con kept at z 2.36..2.65: in v3 f_0562 / f_0564 its top sits right under the cornice (0.02 gap now).
+- Detail: wardrobe cornices are a frieze plus a returned ogee crown (52 x 34 mm) instead of two boxes; linenfold folds
+  end in scalloped curls (two per fold, on the ridges); three iron butterfly hinges per wardrobe door (foot, under the
+  carved rail, head; v4 f_0218 / f_0222); armchair arms are flaring upholstered panels with a padded roll, gimp and a
+  show-wood front post scrolling outward, crest rail with high ears and a pierced dip, fretted slots in the seat front
+  rail (v3 f_0666 / f_0672); pineapple shades cut as rows of pointed diamonds; air-con panel joint, round sensor and
+  lamp dot.
+- Walking: the west window is reached through the 0.39 m gap between the bureau's NW corner and the chest of drawers'
+  SE corner (the plant there is a soft obstacle), as the furniture stands in the room; every other doorway / openable
+  thing has a lane of 0.5 m or more (the south nightstand through the armchair, which is a soft obstacle).
+- Not mine, requested: the bedroom-side doorcases (`pediment_scrolled`, joinery) still rise to 2.60 above the floor,
+  0.07 under the cornice; the round-3 brief puts the shelf top at about 2.29 and the apex at about 2.48.
+- Fixer round (critic GB-2..GB-6): the hanging garments in both wardrobes are full and packed (thickness 0.05-0.11,
+  blunt closed side edges, an open hem; 18 on the big rail and 14 on the small one at about 0.06 pitch, v3 f_0556 /
+  f_0558). Mirror A2 raised 0.14 to z 0.42..2.22: in v4 f_0206 its top is level with the doorcase consoles (brief:
+  shelf top about 2.29) and in v4 f_0207 the horizon of its converging edges with the 2.67 floor-to-cornice height
+  puts its centre at about 1.31 (tolerance 0.05). The west pelmet's east return now ends at x 0.35 (was 0.49, over
+  the sconce's west shade). The pineapple lights' swan-neck arm is a smooth Catmull-Rom curve, 24 mm across (was a
+  16 mm kinked polyline), with a 14 mm inner scroll (v3 f_0644 / f_0648).
+- The 0.39 m lane to the west window stays: v4 f_0025 shows the chest's south end level with the TV's south edge
+  (1.55 / 1.50) and v4 f_0011 the bureau's east end at the foot of the bay chamfer, so neither moves; the walker
+  (0.30) passes.
+- Round-3 whole-house check: the blanket-chest lid opens 55 deg (was 75): from 60 its back edge swings into the bed end 0.02 behind the chest.

@@ -1,14 +1,17 @@
-"""CAD plan drafter: house.json (schema 2) + footprints.json -> plan.json (schema 2), house-plans.dxf, house-plans.pdf.
+"""CAD plan drafter: house.json (schema 2) + footprints.json + sections.json -> plan.json (schema 2), house-plans.dxf,
+house-plans.pdf.
 
-    python tools/plan/draft.py [--house PATH] [--footprints FILE] [--out DIR]
-        # defaults: spec/house.json, docs/assets/footprints.json, docs/assets
+    python tools/plan/draft.py [--house PATH] [--footprints FILE] [--sections FILE] [--out DIR]
+        # defaults: spec/house.json, docs/assets/footprints.json, sections.json beside the footprints, docs/assets
     python tools/plan/check.py [--assets DIR]     # audits every sheet, rasterises them into build/plan/
 
 Sheets B, G, 1, 2 at 1:50 and the site plan X at 1:100, all A3 and all in world coordinates (blender/MULTILEVEL.md
-11.1). One entity list per sheet (world metres, +Y = rear = up the sheet) feeds plan.json, the DXF (every sheet side
-by side in one model space) and the PDF (one A3 page per sheet), so the on-screen plan, the downloads and the model
-cannot drift. Spec geometry (chamfers, stair treads, zone falls, opening frames) comes from blender/lib/ctx.py, which
-imports without Blender. Needs shapely, ezdxf, matplotlib.
+11.1), then one sheet per cross-section of sections.json (AA, BB, CC: SECTION_SHEETS; planes in section_planes.py;
+cut from the built model by blender/export_sections.py) in section coordinates: x = metres along the plane, y = world
+Z. Without a sections.json the set is the five plans. One entity list per sheet feeds plan.json, the DXF (every sheet
+side by side in one model space) and the PDF (one A3 page per sheet), so the on-screen plan, the downloads and the
+model cannot drift. Spec geometry (chamfers, stair treads, zone falls, opening frames) comes from blender/lib/ctx.py,
+which imports without Blender. Needs shapely, ezdxf, matplotlib.
 
 Footprints: [{name, room, plan_sym, obb: [[x, y] x 4], level?, front?}]. A record without `level` takes its room's
 (pseudo-rooms and building rooms X, unknown rooms G). `front` = optional facing vector (2D, or 3D with z dropped;
@@ -50,23 +53,29 @@ LAYERS = [
     ("A-ANNO-TTLB-BORD", "#ffffff", "#000000", 7, 0.70),
 ]
 DASHED_LAYERS = {"L-SITE-BNDY", "L-SITE-CTXT"}           # DXF layer linetype DASHED; every entity on it also carries ls "dashed"
+# DXF linetype of the layers that hold one linetype only (their entities carry it too): what a CAD user who draws on
+# such a layer gets
+LAYER_LINETYPE = {"L-SITE-BNDY": "DASHED", "L-SITE-CTXT": "DASHED", "A-SECT-HIDN": "HIDDEN", "A-ANNO-SECT-CUTL": "CENTER"}
 # id, title, scale, drawing number. PDF page order = this order.
 SHEETS = [("B", "BASEMENT PLAN", 50, "GA-000"), ("G", "GROUND FLOOR PLAN", 50, "GA-001"),
           ("1", "FIRST FLOOR PLAN", 50, "GA-002"), ("2", "SECOND FLOOR (LOFT) PLAN", 50, "GA-003"),
           ("X", "SITE PLAN", 100, "GA-004")]
+SITE_PAD = 0.3                            # site window = plot bounds + this (model m)
+SITE_ROWS = (22.5, 7.0)                   # paper mm from the plot to the FRONT / REAR note rows (rear: no chain to clear)
 DXF_PITCH = 40000                         # DXF mm between the origins of consecutive sheets in model space
 A3 = (297.0, 420.0)
 TAG = {"vestibule": "VESTIBULE", "hallway": "HALLWAY", "living": "LIVING ROOM", "kitchen": "KITCHEN", "wc": "WC",
        "utility": "UTILITY", "dining": "DINING ROOM", "basement": "BASEMENT", "landing1_front": "LANDING",
        "landing1_rear": "LANDING", "landing2_head": "LANDING", "bathroom2": "BATHROOM", "eaves_front": "EAVES",
-       "eaves_rear": "EAVES", "blue_ensuite": "EN-SUITE", "shed_workshop": "WORKSHOP", "shed_store": "STORE"}
+       "eaves_rear": "EAVES", "blue_ensuite": "EN-SUITE", "shed_workshop": "WORKSHOP", "shed_store": "STORE",
+       "landing2_platform": "LANDING", "landing1_ql": "LANDING"}        # these two: on the section sheets only (NO_TAG)
 NO_TAG = {"landing1_ql", "landing2_platform"}           # too small for a tag: FFL datum mark only (stairwells: nothing)
 TAG_AT = {"vestibule": (0.0, 1.02), "hallway": (0.0, 3.1), "living": (2.0, 1.42), "kitchen": (2.83, 7.3),
           "wc": (1.72, 9.82), "utility": (1.95, 11.05), "dining": (2.33, 12.86),
           "balcony": (2.95, 17.9),                    # beside it: the French door leaves fill the deck
           "landing1_ql": (0.6, 8.64), "landing2_platform": (-0.25, 7.75)}   # else the pole of inaccessibility
 SURF = {"concrete_setts_grey_buff": "CONCRETE SETTS", "concrete_flags": "CONCRETE FLAGS", "asphalt": "ASPHALT",
-        "concrete_or_flags": "CONCRETE", "sandstone_flags_grey": "SANDSTONE FLAGS", "grass": "GRASS",
+        "concrete_or_flags": "CONCRETE", "concrete_insitu": "CONCRETE", "sandstone_flags_grey": "SANDSTONE FLAGS", "grass": "GRASS",
         "composite_deck_dark_brown": "COMPOSITE DECK", "timber_box_dark": "TIMBER STEP", "soil_lavender": "PLANTED",
         "clay_block_paving_red_herringbone": "CLAY PAVERS"}
 ZONE_NAME = {"forecourt_alley_mouth": None, "deck_step_n": None, "deck_step_e": None, "road": None,
@@ -630,6 +639,7 @@ def draw_features(P, L):
 
 def draw_ceilings(P, L):
     """Sloped ceilings: dashed lines where ceiling planes meet, dash-dot 1.5 m headroom line on each sloped plane."""
+    labels = []                                                   # one label where lines end together (eaves corners)
     for rid in HC.rooms_on(L):
         planes = (ROOMS[rid].get("ceiling") or {}).get("planes", [])
         if not planes:
@@ -655,7 +665,10 @@ def draw_ceilings(P, L):
             P.geom(ln, "A-FLOR-OVHD", "center")
             x0, y0, x1, y1 = ln.bounds                            # label on the low side, at the line's east end
             up = -1 if z["cy"] > 0 else 1
-            P.text("A-FLOR-OVHD", (x1 - 0.05, y1 + up * 0.04 - (1.5 * MM if up < 0 else 0)), 1.5 * MM, "1500 HEADROOM", "right")
+            at = (x1 - 0.05, y1 + up * 0.04 - (1.5 * MM if up < 0 else 0))
+            if all(math.hypot(at[0] - a[0], at[1] - a[1]) > 0.6 for a in labels):
+                labels.append(at)
+                P.text("A-FLOR-OVHD", at, 1.5 * MM, "1500 HEADROOM", "right")
 
 
 def draw_roofs_below(P, L, regions, mask):
@@ -1098,11 +1111,13 @@ def draw_symbol(P, r, sym, lay, c, u, v, w, d, labs, obst):
         full()
 
 
-def mask_under_text(P, boxes, layers=("A-FURN", "A-FLOR-FIXT", "A-FLOR-OVHD")):
-    """Break linework where it would run under a tag (CAD text-mask look)."""
+def mask_under_text(P, boxes, layers=("A-FURN", "A-FLOR-FIXT", "A-FLOR-OVHD"), crumb=0.0):
+    """Break linework where it would run under a tag (CAD text-mask look). crumb = pieces shorter than this that the
+    break leaves are swept up."""
     if boxes:
         m = unary_union([box(*b) for b in boxes])
-        P.e = [x for e in P.e for x in (clip([e], m) if e["layer"] in layers else [e])]
+        keep = lambda e, x: x is e or not crumb or LineString(x["pts"]).length >= crumb
+        P.e = [x for e in P.e for x in ([x for x in clip([e], m) if keep(e, x)] if e["layer"] in layers else [e])]
 
 
 def ent_line(e):
@@ -1369,8 +1384,9 @@ def datum(P, x, y, s):
     return (x - hw, y - 1.7 * MM - T_SUB, x + hw, y + 2.3 * MM)
 
 
-def draw_sheet(P, sh, notes, levels, footsrc, date, n_sheets):
-    """Border, title block (100 x 44 mm), scale bar, notes + line key at the top of the title column."""
+def draw_sheet(P, sh, notes, levels, footsrc, date, n_sheets, key=None):
+    """Border, title block (100 x 44 mm), scale bar, notes + line key: down the title column of a portrait sheet, in
+    columns along the bottom strip of a landscape one. key = the line key of a section sheet (plans have their own)."""
     L, LB, m = "A-ANNO-TTLB", "A-ANNO-TTLB-BORD", 10 * MM
     SX0, SY0, SX1, SY1 = sh["sheetBounds"]["minX"], sh["sheetBounds"]["minY"], sh["sheetBounds"]["maxX"], sh["sheetBounds"]["maxY"]
     bx0, by0, bx1, by1 = SX0 + m, SY0 + m, SX1 - m, SY1 - m
@@ -1406,38 +1422,55 @@ def draw_sheet(P, sh, notes, levels, footsrc, date, n_sheets):
         P.line(L, (tx0 + v * u, sy), (tx0 + v * u, sy + bh + 0.8 * MM))
         P.text(L, (tx0 + v * u, sy + bh + 1.6 * MM), 1.8 * MM, ("%g" % (v * u)) + (" m" if v == 4 else ""), "center")
     P.text(L, (tx0, sy - 3.4 * MM), 1.8 * MM, "SCALE %s AT A3" % sh["scale"], "left")
+    section = sh.get("kind") == "section"
     common = ["NOTES", "",
               "1. ALL DIMENSIONS IN MILLIMETRES, LEVELS IN METRES",
               "   ABOVE GROUND FLOOR FFL ±0.000.",
-              "2. PLAN RECONSTRUCTED FROM VIDEO WALKTHROUGHS.",
+              "2. %s RECONSTRUCTED FROM VIDEO WALKTHROUGHS." % ("SECTION" if section else "PLAN"),
               "   DIMENSIONS ARE ESTIMATES: DO NOT SCALE FOR",
-              "   CONSTRUCTION, VERIFY ON SITE.",
-              "3. ORIENTATION: NO NORTH POINT (BEARING NOT",
-              "   SURVEYED). STREET AT THE BOTTOM OF EVERY SHEET.",
-              "4. FIXTURES AND FURNITURE: " + footsrc]
-    y = by1 - 8 * MM
-    numbered, k = [], 5
+              "   CONSTRUCTION, VERIFY ON SITE."]
+    if not section:
+        common += ["3. ORIENTATION: NO NORTH POINT (BEARING NOT",
+                   "   SURVEYED). STREET AT THE BOTTOM OF EVERY SHEET.",
+                   "4. FIXTURES AND FURNITURE: " + footsrc]
+    numbered, k = [], 3 if section else 5
     for t in notes:                                               # "   ..." continues the note above
         numbered.append(t if t.startswith(" ") else "%d. %s" % (k, t))
         k += not t.startswith(" ")
-    for s in common + numbered + ["", "KEY", ""]:
+    if key is None:
+        key = [("A-WALL", None, "WALL, CUT (HATCHED)"), ("A-FLOR-FIXT", None, "FIXED FITTINGS"), ("A-FURN", None, "LOOSE FURNITURE"),
+               ("A-FLOR-OVHD", "dashed", "OVERHEAD: ARCH, VAULT, CEILING BREAK"), ("A-FLOR-OVHD", "hidden", "OVERHEAD: WALL UNITS, SHELVES"),
+               ("A-DOOR", "hidden", "POCKET DOOR LEAF IN WALL")]
+        if sh["id"] == "2":
+            key.append(("A-FLOR-OVHD", "center", "1.5 M HEADROOM UNDER SLOPED CEILING"))
+        if sh["id"] in ("1", "2"):
+            key.append(("A-ROOF", None, "ROOF BELOW"))
+        if sh["id"] == "X":
+            key = [("A-WALL", None, "BUILDING OUTLINE / SHED WALL, CUT"), ("A-ROOF", None, "ROOF PLAN: EAVES, RIDGES, VALLEYS"),
+                   ("L-SITE", None, "EXTERNAL SURFACES, STEPS"), ("L-SITE-BNDY", "dashed", "PLOT / BOUNDARY: WALL, FENCE"),
+                   ("L-SITE-CTXT", "dashed", "NEIGHBOURING BUILDINGS (CONTEXT)"), ("A-FURN", None, "CARS, GARDEN ITEMS (INDICATIVE)")]
+        if SECS:
+            key.append(("A-ANNO-SECT-CUTL", "center", "SECTION LINE, ARROWS = DIRECTION OF VIEW"))
+    # flow: one column down the title column (portrait), or columns along the strip left of the title block (landscape)
+    if sh.get("orientation") == "landscape":
+        x, top, bottom, pitch = bx0 + 4 * MM, by0 + 60 * MM, by0 + 3 * MM, 98 * MM
+    else:
+        x, top, bottom, pitch = tx0, by1 - 8 * MM, by0 + 60 * MM, 0
+    y = top
+    for s in common + numbered:
+        if y < bottom and pitch:                                  # next column
+            x, y = x + pitch, top - 5.5 * MM
         if s:
-            P.text(L if s in ("NOTES", "KEY") else "A-ANNO-TEXT", (tx0, y), 2.0 * MM, s, "left")
+            P.text(L if s == "NOTES" else "A-ANNO-TEXT", (x, y), 2.0 * MM, s, "left")
         y -= (4.0 if s else 1.5) * MM
-    key = [("A-WALL", None, "WALL, CUT (HATCHED)"), ("A-FLOR-FIXT", None, "FIXED FITTINGS"), ("A-FURN", None, "LOOSE FURNITURE"),
-           ("A-FLOR-OVHD", "dashed", "OVERHEAD: ARCH, VAULT, CEILING BREAK"), ("A-FLOR-OVHD", "hidden", "OVERHEAD: WALL UNITS, SHELVES"),
-           ("A-DOOR", "hidden", "POCKET DOOR LEAF IN WALL")]
-    if sh["id"] == "2":
-        key.append(("A-FLOR-OVHD", "center", "1.5 M HEADROOM UNDER SLOPED CEILING"))
-    if sh["id"] in ("1", "2"):
-        key.append(("A-ROOF", None, "ROOF BELOW"))
-    if sh["id"] == "X":
-        key = [("A-WALL", None, "BUILDING OUTLINE / SHED WALL, CUT"), ("A-ROOF", None, "ROOF PLAN: EAVES, RIDGES, VALLEYS"),
-               ("L-SITE", None, "EXTERNAL SURFACES, STEPS"), ("L-SITE-BNDY", "dashed", "PLOT / BOUNDARY: WALL, FENCE"),
-               ("L-SITE-CTXT", "dashed", "NEIGHBOURING BUILDINGS (CONTEXT)"), ("A-FURN", None, "CARS, GARDEN ITEMS (INDICATIVE)")]
+    y -= 1.5 * MM
+    if pitch and y - (5.5 + 4.0 * len(key)) * MM < bottom:        # the key stays in one piece
+        x, y = x + pitch, top
+    P.text(L, (x, y), 2.0 * MM, "KEY", "left")
+    y -= 5.5 * MM
     for lay, ls, s in key:
-        P.line(lay, (tx0, y + 1.0 * MM), (tx0 + 14 * MM, y + 1.0 * MM), ls)
-        P.text("A-ANNO-TEXT", (tx0 + 17 * MM, y), 2.0 * MM, s, "left")
+        P.line(lay, (x, y + 1.0 * MM), (x + 14 * MM, y + 1.0 * MM), ls)
+        P.text("A-ANNO-TEXT", (x + 17 * MM, y), 2.0 * MM, s, "left")
         y -= 4.0 * MM
 
 
@@ -1469,19 +1502,20 @@ def sheet_frame(sid, hb, bottom):
 def floor_layout(sid, P, hb):
     """Vertical layout of a 1:50 sheet in paper mm: dimension rows clear the leaves of doors that swing out past the
     front / rear face; when the standard rows do not fit A3 (level 1 with its balcony) the compact one drops the rear
-    chain. -> dict(r1, r2, front (note), rear (chain or None), rear_note, bottom (margin))."""
+    chain. The west / east rows (s1, s2) stay put: front leaves push the front rows only.
+    -> dict(r1, r2 (front rows), s1, s2 (side rows), front (note), rear (chain or None), rear_note, bottom (margin))."""
     ys = [p[1] for e in P.e if e["layer"] == "A-DOOR" and e["type"] == "polyline" for p in e["pts"]]
     pf = max(0.0, (hb["minY"] - min(ys, default=hb["minY"])) / MM)            # paper mm in front of the house
     pr = max(0.0, (max(ys, default=hb["maxY"]) - hb["maxY"]) / MM)
     hh = (hb["maxY"] - hb["minY"]) / MM
     r1 = max(9.0, pf + 3)
     r2 = r1 + 8 if r1 == 9 else r1 + 5.5
-    lay = dict(r1=r1, r2=r2, front=r2 + 5.5 if r1 == 9 else r2 + 4.3, rear=max(15.0, pr + 3))
+    lay = dict(r1=r1, r2=r2, s1=9.0, s2=17.0, front=r2 + 5.5 if r1 == 9 else r2 + 4.3, rear=max(15.0, pr + 3))
     lay["rear_note"] = lay["rear"] + 5.5
     need_b, need_t = lay["front"] + 11.5, lay["rear_note"] + 13.8        # note descenders + 10 mm frame margin
     if hh + need_b + need_t > A3[1]:                              # compact: 7 / 13 mm rows, no rear chain
         r1 = max(7.0, pf + 3)
-        lay = dict(r1=r1, r2=r1 + 6, front=r1 + 10.5, rear=None, rear_note=3.5)
+        lay = dict(r1=r1, r2=r1 + 6, s1=7.0, s2=13.0, front=r1 + 10.5, rear=None, rear_note=3.5)
         need_b, need_t = lay["front"] + 11.5, lay["rear_note"] + 13.8
     slack = A3[1] - hh - need_b - need_t
     assert slack >= -1e-6, f"sheet {sid} does not fit A3 at 1:{SCALE}"
@@ -1524,15 +1558,19 @@ def floor_sheet(sid, title, number, recs, regions):
     mask_under_text(P, boxes)
     L_ = "A-ANNO-TEXT"
     cx = (hb["minX"] + hb["maxX"]) / 2
-    P.text(L_, (cx, hb["maxY"] + lay["rear_note"] * MM), T_NOTE, "REAR (GARDEN)")
-    P.text(L_, (cx, hb["minY"] - lay["front"] * MM), T_NOTE, "FRONT (STREET)")
+    yb, yt = hb["minY"] - lay["front"] * MM, hb["maxY"] + lay["rear_note"] * MM
+    region = unary_union([env] + [rpoly(r) for r in rids if HC.kind(r) == "exterior"])
+    taken = section_marks(P, region, yb, yt, hb["minX"] - (lay["s2"] + 8) * MM, hb["maxX"] + (lay["s2"] + 8) * MM)
+    P.text(L_, (note_x(cx, "REAR (GARDEN)", hb["minX"], hb["maxX"], taken), yt), T_NOTE, "REAR (GARDEN)")
+    P.text(L_, (note_x(cx, "FRONT (STREET)", hb["minX"], hb["maxX"], taken), yb), T_NOTE, "FRONT (STREET)")
     rows = []
     rms = [rpoly(r) for r in rids if HC.kind(r) != "exterior"]
     for side in ("west", "east"):
-        side_chain(P, side, env, rms, lay["r1"] * MM, lay["r2"] * MM, rows)
+        side_chain(P, side, env, rms, lay["s1"] * MM, lay["s2"] * MM, rows)
     side_chain(P, "front", env, rms, lay["r1"] * MM, lay["r2"] * MM, rows)
     if lay["rear"]:
         side_chain(P, "rear", env, rms, lay["rear"] * MM, None, rows)
+    mask_cutting_lines(P, boxes)
     floors = sorted({ROOMS[r]["floorZ"] for r in rids if HC.kind(r) in ("room", "exterior", "void")})
     levels = "FFL ±0.000 THROUGHOUT" if floors == [0] else "FFL " + " / ".join(lvl(z) for z in floors)
     notes = ["ROOM SIZES ARE BETWEEN FINISHED WALL FACES;", "   AREAS ARE NET INTERNAL FLOOR AREAS.",
@@ -1548,8 +1586,10 @@ def floor_sheet(sid, title, number, recs, regions):
     sh = {"id": sid, "level": L, "title": title, "number": number, "scale": "1:%d" % SCALE, "paper": "A3",
           "orientation": "portrait", "sheetBounds": sb}
     return P, sh, rooms, dict(cut=cut, rows=rows, leaves=leaf_count(oids), notes=notes, levels=levels, footsrc=footsrc,
-                              hb=hb, bounds={"minX": hb["minX"] - 22 * MM, "minY": hb["minY"] - (lay["front"] + 0.5) * MM,
-                                             "maxX": hb["maxX"] + 21 * MM, "maxY": hb["maxY"] + (lay["rear_note"] + 3.5) * MM})
+                              hb=hb, bounds={"minX": hb["minX"] - (lay["s2"] + 10.5 if taken or SECS else 22) * MM,
+                                             "minY": hb["minY"] - (lay["front"] + 0.5) * MM,
+                                             "maxX": hb["maxX"] + (lay["s2"] + 11.5 if taken or SECS else 21) * MM,
+                                             "maxY": hb["maxY"] + (lay["rear_note"] + 3.5) * MM})
 
 
 def fsrc(fps):
@@ -1560,7 +1600,7 @@ def fsrc(fps):
 
 def site_window():
     x0, y0, x1, y1 = Polygon(EXT["plot"]["polygon"]).bounds
-    return (round(x0 - 0.3, 3), round(y0 - 0.3, 3), round(x1 + 0.3, 3), round(y1 + 0.3, 3))
+    return (round(x0 - SITE_PAD, 3), round(y0 - SITE_PAD, 3), round(x1 + SITE_PAD, 3), round(y1 + SITE_PAD, 3))
 
 
 def site_sheet(sid, title, number, recs, regions):
@@ -1571,8 +1611,13 @@ def site_sheet(sid, title, number, recs, regions):
     win_t = site_window()
     win = box(*win_t)
     hb = dict(zip(("minX", "minY", "maxX", "maxY"), win_t))
-    assert (win_t[3] - win_t[1]) / MM + 2 * 30 <= A3[1], "site window does not fit A3 at 1:100"
-    sb = sheet_frame(sid, hb, (A3[1] - (win_t[3] - win_t[1]) / MM) / 2)
+    # paper mm the annotation reaches past the window: below, the two chains and the FRONT row (marks to its row - 0.5);
+    # above, only the REAR row (no chain there), its cutting-line ends to row + 3.5. The window plus both, centred,
+    # must stay 3 mm inside the 10 mm border.
+    below, above = SITE_ROWS[0] + 0.5 - SITE_PAD / MM, SITE_ROWS[1] + 3.5 - SITE_PAD / MM
+    slack = A3[1] - (win_t[3] - win_t[1]) / MM - below - above
+    assert slack >= 2 * 13, "site window does not fit A3 at 1:100 (%.1f mm short)" % (2 * 13 - slack)
+    sb = sheet_frame(sid, hb, slack / 2 + below)
     house = envelope("G")
     shed_cut, shed_solid = shed_poche()
     MASS = unary_union([house, shed_solid])
@@ -1622,7 +1667,14 @@ def site_sheet(sid, title, number, recs, regions):
             rot = rot - 180 if rot > 90 else rot + 180 if rot <= -90 else rot     # readable from below / the right
             up = (-math.sin(math.radians(rot)), math.cos(math.radians(rot)))       # the text's up, beside the arrow
             h = 1.5 * MM
-            for p, s, k in ((a2, lvl(HC.zone_z(z["id"], *a2)), 0.6), (b2, lvl(HC.zone_z(z["id"], *b2)), -0.8)):
+            ends = ((a2, lvl(HC.zone_z(z["id"], *a2)), 0.6), (b2, lvl(HC.zone_z(z["id"], *b2)), -0.8))
+            if math.dist(a2, b2) - 1.4 < (tw(ends[0][1], h) + tw(ends[1][1], h)) / 2 + 0.1:   # too short for one at each end:
+                rd = (math.cos(math.radians(rot)), math.sin(math.radians(rot)))                # both mid-arrow, in reading order
+                s = " / ".join(e[1] for e in (ends[::-1] if rd[0] * d[0] + rd[1] * d[1] < 0 else ends))
+                m = mid(a2, b2)
+                P.text("L-SITE", (m[0] - up[0] * (0.1 + h), m[1] - up[1] * (0.1 + h)), h, s, "center", round(rot, 3))
+                continue
+            for p, s, k in ends:
                 q = (p[0] + d[0] * k - up[0] * (0.1 + h), p[1] + d[1] * k - up[1] * (0.1 + h))
                 P.text("L-SITE", q, h, s, "center", round(rot, 3))
     # steps: treads and single riser lines
@@ -1702,8 +1754,11 @@ def site_sheet(sid, title, number, recs, regions):
     chain(P, "y", [ys[0], ys[-1]], px0 - 9 * MM, px0 - 17 * MM, rows)
     chain(P, "x", [px0, house.bounds[2], px1], py0, py0 - 9 * MM, rows)
     chain(P, "x", [px0, px1], py0 - 9 * MM, py0 - 17 * MM, rows)
-    P.text("A-ANNO-TEXT", ((px0 + px1) / 2, py1 + 21.2 * MM), T_NOTE, "REAR (GARDEN)")
-    P.text("A-ANNO-TEXT", ((px0 + px1) / 2, py0 - 22.5 * MM), T_NOTE, "FRONT (STREET)")
+    yf, yr = py0 - SITE_ROWS[0] * MM, py1 + SITE_ROWS[1] * MM
+    taken = section_marks(P, win, yf, yr, px0 - 25 * MM, px1 + 8 * MM)
+    mask_cutting_lines(P, boxes)
+    for s, y in (("REAR (GARDEN)", yr), ("FRONT (STREET)", yf)):
+        P.text("A-ANNO-TEXT", (note_x((px0 + px1) / 2, s, px0, px1 + 30 * MM, taken), y), T_NOTE, s)
     site_rooms = []
     for pr in ("front", "side_passage", "garden", "shed"):        # as manifest rooms[]: largest walkable zone / workshop
         if pr == "shed" and EXT.get("buildings"):
@@ -1723,7 +1778,7 @@ def site_sheet(sid, title, number, recs, regions):
              "   ARROW = ROOF PITCH, DOWN THE SLOPE.", "RWP / SVP: RAINWATER / SOIL PIPE."]
     sh = {"id": sid, "level": "X", "title": title, "number": number, "scale": "1:%d" % SCALE, "paper": "A3",
           "orientation": "portrait", "sheetBounds": sb}
-    return P, sh, rooms + site_rooms, dict(cut=shed_cut, rows=rows, leaves=leaf_count(shed_ops) + 1, notes=notes, slopes=slopes,
+    return P, sh, rooms + site_rooms, dict(cut=shed_cut, rows=rows, leaves=leaf_count(shed_ops) + sum(b["type"] == "gate" for b in EXT["boundaries"]), notes=notes, slopes=slopes,
                                            levels="SURFACES -0.450 TO ±0.000", footsrc=fsrc(fps), hb=hb, bounds=hb)
 
 
@@ -1777,6 +1832,601 @@ def text_block(P, layer, pt, lines, rot=0, gap=None):
     return (pt[0] - hw, pt[1] - hh, pt[0] + hw, pt[1] + hh)
 
 
+# ------------------------------------------------------------------ cross-sections (blender/export_sections.py -> sections.json)
+# Sheets after the plans: id, title, drawing number. The planes themselves are data in tools/plan/section_planes.py; the
+# scale is the largest of SECTION_SCALES at which the drawing fits A3 (portrait when it fits beside the title column).
+SECTION_SHEETS = [("AA", "SECTION A-A", "GA-005"), ("BB", "SECTION B-B", "GA-006"), ("CC", "SECTION C-C", "GA-007")]
+SECTION_SCALES = (50, 100, 200)
+SECTION_LAYERS = [
+    ("A-SECT-PATT", "#808080", "#555555", 8, 0.09),          # poche of what is cut: fabric ANSI31, ground EARTH
+    ("A-SECT-BYND", "#c0c0c0", "#222222", 9, 0.13),          # beyond the plane, hidden lines removed
+    ("A-SECT-HIDN", "#808080", "#555555", 8, 0.13),          # hidden beyond (rooms the plane misses), linetype hidden
+    ("A-SECT-FIXT", "#ffff00", "#000000", 2, 0.25),          # joinery and fittings cut by the plane
+    ("A-SECT", "#ffffff", "#000000", 7, 0.50),               # cut outline: walls, floors, roof, ground line
+    ("A-ANNO-LEVL", "#00bfff", "#000000", 140, 0.18),        # level marks
+    ("A-ANNO-SECT-CUTL", "#ff7f7f", "#000000", 11, 0.13),    # cutting line on the plans, linetype center
+    ("A-ANNO-SECT", "#ff7f7f", "#000000", 11, 0.50),         # its heavy ends, arrows and letters
+]
+VIEW = {(1, 0): "VIEWED FROM THE PARTY WALL SIDE", (-1, 0): "VIEWED FROM THE FLANK SIDE",
+        (0, 1): "LOOKING TO THE REAR", (0, -1): "LOOKING TO THE FRONT"}
+ENDS = {(0, -1): "FRONT (STREET)", (0, 1): "REAR (GARDEN)", (1, 0): "FLANK (SIDE PASSAGE)", (-1, 0): "PARTY WALL"}
+SECS = {}               # id -> section of sections.json (set by build)
+
+
+def load_sections(path):
+    """{id: section} of a sections.json, {} when there is none (the set is then the plan sheets alone)."""
+    path = Path(path)
+    if not path.exists():
+        return {}
+    import section_planes as SP
+    out = {s["id"]: s for s in json.loads(path.read_text(encoding="utf-8"))["sections"]}
+    for d in SP.SECTIONS:                                         # the marks on the plans show the planes as cut
+        if d["id"] in out:
+            try:
+                now = SP.resolve(H, d)["at"]
+            except (KeyError, ValueError) as ex:                  # an id of `through` gone, or no common span left
+                print("  plan: section %s: its plane no longer fits house.json (%s): revise section_planes.py" % (d["id"], ex))
+                continue
+            if abs(now - out[d["id"]]["at"]) > 1e-3:
+                print("  plan: section %s was cut at %s = %+.3f, house.json now puts it at %+.3f: re-run the export"
+                      % (d["id"], d["axis"], out[d["id"]]["at"], now))
+    return out
+
+
+def sec_s(sec, x, y):
+    return (x - sec["origin"][0]) * sec["right"][0] + (y - sec["origin"][1]) * sec["right"][1]
+
+
+def sec_xy(sec, s):
+    return (sec["origin"][0] + sec["right"][0] * s, sec["origin"][1] + sec["right"][1] * s)
+
+
+def sec_spans(sec, poly):
+    """[(s0, s1)] where the section line runs inside a plan polygon."""
+    g = LineString([sec_xy(sec, sec["frame"][0] - 50), sec_xy(sec, sec["frame"][2] + 50)]).intersection(poly)
+    out = []
+    for part in getattr(g, "geoms", [g]):
+        if part.geom_type == "LineString" and part.length > 1e-6:
+            a, b = sec_s(sec, *part.coords[0]), sec_s(sec, *part.coords[-1])
+            out.append((min(a, b), max(a, b)))
+    return sorted(out)
+
+
+def sec_polys(sec, cls):
+    return unary_union([Polygon(c["outer"], c["holes"]).buffer(0) for c in sec["cut"] if c["class"] == cls])
+
+
+def ents_bounds(E):
+    """(x0, y0, x1, y1) of entities, text and dimension values included."""
+    xs, ys = [], []
+    for e in E:
+        if e["type"] == "text":
+            b = text_box(e).bounds
+            xs += [b[0], b[2]]; ys += [b[1], b[3]]
+        elif e["type"] == "dim":
+            (x1, y1), (x2, y2), o = e["p1"], e["p2"], e["offset"]
+            L = math.dist(e["p1"], e["p2"])
+            nx, ny = -(y2 - y1) / L, (x2 - x1) / L
+            k = o + (1 if o >= 0 else -1) * 1.6 * e["h"]
+            xs += [x1, x2, x1 + nx * k, x2 + nx * k]; ys += [y1, y2, y1 + ny * k, y2 + ny * k]
+        else:
+            for k in ("p1", "p2"):
+                if k in e:
+                    xs.append(e[k][0]); ys.append(e[k][1])
+            for p in e.get("pts", []):
+                xs.append(p[0]); ys.append(p[1])
+            if "c" in e:
+                xs += [e["c"][0] - e["r"], e["c"][0] + e["r"]]; ys += [e["c"][1] - e["r"], e["c"][1] + e["r"]]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def level_marks(P, x, side, marks):
+    """Column of datum marks at x: a tick on the level, the triangle standing on it, the value beside, just above the
+    level (side -1: to the left). Levels within 30 mm of each other share one mark; values closer than a line of text
+    move up along a leader. marks = [(z, text)]."""
+    L, h = "A-ANNO-LEVL", T_SUB
+    step, ty, merged = h + 0.9 * MM, None, []
+    for z, s in sorted(marks):
+        if merged and z - merged[-1][0] < 0.03:
+            merged[-1] = (merged[-1][0], merged[-1][1] + " / " + s)
+        else:
+            merged.append((z, s))
+    for z, s in merged:
+        P.line(L, (x, z), (x + side * 5 * MM, z))
+        cx = x + side * 2.5 * MM
+        P.pl(L, [(cx - 1.0 * MM, z + 1.8 * MM), (cx + 1.0 * MM, z + 1.8 * MM), (cx, z)], True)
+        base = z + 0.4 * MM                                       # the value's baseline
+        ty = base if ty is None or base >= ty + step else ty + step
+        tx = x + side * 6.2 * MM
+        if ty > base + 1e-9:                                      # displaced: dog-leg to the text
+            P.line(L, (x + side * 5 * MM, z), (tx + side * 0.6 * MM, ty + h / 2))
+            tx += side * 1.2 * MM
+        P.text(L, (tx, ty), h, s, "left" if side > 0 else "right")
+
+
+def dim_text_box(e):
+    """(x0, y0, x1, y1) a dim entity's value covers where the renderers put it; None when it was lifted (that value is
+    a text entity of its own)."""
+    if not e["text"]:
+        return None
+    from render import dim_geometry
+    _, tp, rot = dim_geometry(e, DIMSTYLE)
+    return text_box({"text": e["text"], "h": e.get("h", DIMSTYLE["h"]), "p": tp, "align": "center", "rot": rot}).bounds
+
+
+FIT_CLOSE = 0.35        # m: the cut of one fitting is closed over gaps of up to twice this -> its outline
+
+
+def fit_outline(lines):
+    """A cut fitting as its outline: what the plane cuts of it, holes filled. Where that is loose parts (shelves and
+    uprights of a rack, the panels of an open carcass: closing them adds 30 % or more) they are closed over gaps of
+    2 x FIT_CLOSE into one block, square corners throughout (a round one would notch the result); a piece that is
+    whole already keeps its true profile. -> [Polygon] without holes."""
+    g = unary_union(list(shapely.ops.polygonize(unary_union(lines))) + [unary_union(lines).buffer(2e-3, cap_style=3, join_style=2)])
+    whole = [Polygon(q.exterior) for q in parts(g)]
+    block = [Polygon(q.exterior) for q in parts(g.buffer(FIT_CLOSE, join_style=2).buffer(-FIT_CLOSE, join_style=2).simplify(1e-3))]
+    return block if sum(q.area for q in block) > 1.3 * sum(q.area for q in whole) else whole
+
+
+def mask_hatch(P, boxes, layer, pattern):
+    """Clear a patterned hatch under text (boxes): its polygons are cut round them."""
+    if not boxes:
+        return
+    m, out = unary_union([box(*b) for b in boxes]), []
+    for e in P.e:
+        if e["type"] == "hatch" and e["layer"] == layer and e["pattern"] == pattern and Polygon(e["pts"]).intersects(m):
+            for q in parts(Polygon(e["pts"]).buffer(0).difference(m)):
+                out += [{**e, "pts": [list(p) for p in piece.exterior.coords[:-1]]} for piece in split_holes(q) if piece.area > 1e-6]
+        else:
+            out.append(e)
+    P.e = out
+
+
+def section_sheet(sid, title, number, sec):
+    """One cross-section, drawn in section coordinates: x = s along the plane (the viewer's right), y = world Z.
+    -> None when it does not fit A3 at the current scale (build tries the next one)."""
+    P = Plan()
+    f0, z0, f1, z1 = sec["frame"]
+    frame = box(f0, z0, f1, z1)
+    fabric, earth = sec_polys(sec, "fabric"), sec_polys(sec, "earth")
+    solid = unary_union([fabric, earth])
+    env = unary_union([envelope(L) for L in HC.levels])
+    faces = sec_spans(sec, env)
+    xl, xr = faces[0][0], faces[-1][1]                             # the house's outer faces on the section line
+    xm = (xl + xr) / 2
+    tiny = 0.6 * MM                                                # detail below this on paper is not drawn
+    (nx, ny), (rx, ry) = sec["normal"], sec["right"]
+    cline = LineString([sec_xy(sec, f0 - 50), sec_xy(sec, f1 + 50)])   # the cutting line in plan
+
+    # 1. poche: fabric as on the plans, the ground as a band of earth under the ground line and round the basement
+    for poly in parts(fabric):
+        for piece in split_holes(poly):
+            P.hatch("A-SECT-PATT", list(piece.exterior.coords)[:-1], "ANSI31")
+    band = earth.intersection(frame.difference(earth).buffer(6 * MM, join_style=2))
+    for poly in parts(band):
+        for piece in split_holes(poly.simplify(1e-4)):
+            if piece.area > 1e-5:
+                P.hatch("A-SECT-PATT", list(piece.exterior.coords)[:-1], "EARTH")
+
+    # 2. joinery, trim and fittings cut by the plane; a cut fitting is its outline only, and nothing of its inside
+    # (shelves, what is kept in it) is drawn beyond
+    cutfix, boxed = [], []
+    for fx in sec["fixtures"]:
+        lines = [LineString(pl) for pl in fx["lines"] if len(pl) >= 2]
+        if fx["class"] == "fit" and lines:
+            outl = fit_outline(lines)
+            boxed += outl
+            lines = [q.exterior for q in outl]
+        cutfix += lines
+    boxed = unary_union(boxed) if boxed else Polygon()
+
+    # 3. beyond the plane: thin; a line that only repeats a cut line is left out
+    edge = unary_union([fabric.boundary, earth.boundary]).buffer(3e-3)
+    seen = [LineString(pl) for cls in sec["beyond"] for pl in sec["beyond"][cls]]
+    seen = [g for g in seen if math.hypot(g.bounds[2] - g.bounds[0], g.bounds[3] - g.bounds[1]) >= tiny]
+    g = snap(unary_union(seen)).difference(edge).difference(boxed)   # lines drawn twice by two objects dissolve into one
+    g = linemerge(g) if g.geom_type == "MultiLineString" else g
+    for part in getattr(g, "geoms", [g]):
+        if part.geom_type == "LineString" and part.length > tiny:
+            P.pl("A-SECT-BYND", list(part.simplify(5e-4).coords))
+
+    # 4. rooms the plane misses, cut on a plane of their own: dashed where the cut hides them; then the cut pieces
+    hid = []
+    for r in sec["hidden"]:
+        ring = LineString(r["outer"] + [r["outer"][0]])
+        P.geom(ring.intersection(solid.buffer(1e-3)), "A-SECT-HIDN", "hidden")
+        if r["id"] in ROOMS and HC.kind(r["id"]) == "room":
+            hid.append(r)
+    for g in cutfix:
+        x0, y0, x1, y1 = g.bounds
+        c = list(g.coords)
+        if math.hypot(x1 - x0, y1 - y0) >= tiny:
+            P.pl("A-SECT-FIXT", c, c[0] == c[-1] and len(c) > 3)
+
+    # 5. the cut: outlines of the fabric and the ground line, heaviest
+    P.geom(fabric, "A-SECT")
+    gl = earth.boundary.difference(fabric.buffer(2e-3)).difference(frame.boundary.buffer(2e-3))
+    P.geom(linemerge(gl) if gl.geom_type == "MultiLineString" else gl, "A-SECT")
+
+    def sliced(r):
+        """(clear height on the section line, greatest clear height) of a cut room whose ceiling slopes across the
+        plane: the cut runs level through the slope, so what it shows is the height on this line only. Else None."""
+        spec = ROOMS.get(r["id"]) or {}
+        for pl in (spec.get("ceiling") or {}).get("planes", []):
+            if abs(pl["z"]["cx"] * nx + pl["z"]["cy"] * ny) > 1e-6 and spec.get("ceilingZ") is not None                     and cline.intersection(Polygon(pl["polygon"])).length > 0.05:
+                return r["top"] - r["floor"], float(spec["ceilingZ"]) - float(spec["floorZ"])
+        return None
+
+    f5 = lambda v: round(round(float(v) / 0.005) * 0.005, 3)        # heights are dimensioned to 5 mm
+
+    # 6. room names in capitals with their floor level
+    rooms, boxes, cut_rooms = [], [], []
+    for r in sec["rooms"]:
+        rid, poly = r["id"], max(parts(Polygon(r["outer"]).buffer(0)), key=lambda q: q.area)
+        kind = HC.kind(rid) if rid in ROOMS else "room"
+        spec = ROOMS.get(rid) or HC.building_rooms[rid]
+        rooms.append({"id": rid, "name": spec["name"], "polygon": r["outer"], "floorZ": r["floor"],
+                      "label": list(label_point(poly)), "area": round(poly.area, 2)})
+        cut_rooms.append(dict(r, kind=kind, level=HC.level(rid), poly=poly, house=rid in ROOMS, sliced=sliced(r) if kind == "room" else None))
+        if kind == "stairwell":
+            continue
+        lines = [(room_name(rid), T_NAME), (ffl(r["floor"]), T_SUB)] if kind == "room" else [(room_name(rid), T_SUB)]
+        if cut_rooms[-1]["sliced"]:
+            lines.append(("CEILING SLOPES: %d AT SECTION, %d MAX" % tuple(round(f5(v) * 1000) for v in cut_rooms[-1]["sliced"]), T_SUB))
+        x0, y0, x1, y1 = poly.bounds
+        fit = None
+        for k in (1.0, 0.85, 0.7, 0.6):                           # smaller where the room is narrow; turned at last
+            ls = [(s, max(h * k, 1.4 * MM)) for s, h in lines]
+            for rot in (0, 90):
+                hw, hh = block_half(ls, rot)
+                if 2 * hw <= (x1 - x0) and 2 * hh <= (y1 - y0) and fit is None:
+                    fit = (ls, rot)
+        if fit is None:
+            fit = ([(lines[0][0], 1.4 * MM)], 0)
+        boxes.append(text_block(P, "A-ANNO-TEXT", block_point(poly, *fit), fit[0], fit[1]))
+    hid_low = []
+    for r in hid:                                                  # named clear of the other hidden outlines, else under its own
+        ls = [(room_name(r["id"]) + " BEYOND", T_SUB), (ffl(r["floor"]), T_SUB)]
+        own = Polygon(r["outer"]).buffer(0).intersection(solid)
+        if own.is_empty:
+            continue
+        others = unary_union([Polygon(q["outer"]).buffer(0) for q in sec["hidden"] if q is not r] + [Polygon()])
+        hw, hh = block_half(ls)
+        spot = None
+        for q in sorted(parts(own.difference(others.buffer(0.8 * MM))), key=lambda q: -q.area):
+            pt = block_point(q, ls)
+            if spot is None and q.contains(box(pt[0] - hw, pt[1] - hh, pt[0] + hw, pt[1] + hh)):
+                spot = pt
+        if spot is None:
+            x0, y0, x1, y1 = own.bounds
+            spot = ((x0 + x1) / 2, y0 - hh - 0.8 * MM)
+        boxes.append(text_block(P, "A-ANNO-TEXT", spot, ls))
+        hid_low.append(boxes[-1][1])
+
+    # a roof slope the plane cuts parallel to its ridge shows as a level band: named on it. A chimney beyond is named.
+    gable, band_note = (H["roof"].get("gable") or {}).get("id"), False
+    for p in H["roof"]["planes"]:
+        cx, cy = p["z"]["cx"], p["z"]["cy"]
+        if abs(cx * nx + cy * ny) < 1e-6 or abs(cx * rx + cy * ry) > 1e-6:
+            continue                                               # flat, or cut in profile
+        for a, b in sec_spans(sec, Polygon(p["polygon"])):
+            x, y = sec_xy(sec, (a + b) / 2)
+            z = p["z"]["c0"] + cx * x + cy * y
+            if not fabric.contains(Point((a + b) / 2, z - 0.05)) or solid.contains(Point((a + b) / 2, z + 0.05)):
+                continue                                           # not the roof surface on this line
+            name = "%s ROOF" % gable.replace("_", " ").upper() if gable and p["id"].startswith(gable) else "ROOF SLOPE"
+            see = next((q["letter"] for q in SECS.values() if q["axis"] != sec["axis"] and sec_spans(q, Polygon(p["polygon"]))), None)
+            full = "%s CUT PARALLEL TO RIDGE%s" % (name, " - SEE %s-%s" % (see, see) if see else "")
+            s = next((s for s in (full, name) if 1.1 * tw(s, T_SUB) <= b - a), None)
+            if s:
+                P.text("A-ANNO-TEXT", ((a + b) / 2, z + 1.2 * MM), T_SUB, s)
+                boxes.append(text_box(P.e[-1]).buffer(0.4 * MM).bounds)
+                band_note = True
+    for f in EXT.get("features", []):
+        if f.get("type") != "chimney":
+            continue
+        ss = [sec_s(sec, *q) for q in f["polygon"]]
+        c, top = Polygon(f["polygon"]).centroid, f["z"][1]
+        seen_top = any(min(ss) - 0.05 <= q[0] <= max(ss) + 0.05 and abs(q[1] - top) < 0.05
+                       for e in P.e if e["layer"] == "A-SECT-BYND" for q in e["pts"])
+        if (c.x - sec["origin"][0]) * nx + (c.y - sec["origin"][1]) * ny > 0 and seen_top:
+            left = (min(ss) + max(ss)) / 2 > (f0 + f1) / 2             # the text on the side with room for it
+            P.text("A-ANNO-TEXT", (min(ss) - 1.5 * MM if left else max(ss) + 1.5 * MM, top - 0.35 - T_SUB / 2), T_SUB,
+                   "CHIMNEY BEYOND", "right" if left else "left")
+            boxes.append(text_box(P.e[-1]).buffer(0.4 * MM).bounds)
+    mask_under_text(P, boxes, ("A-SECT-BYND", "A-SECT-FIXT"))
+
+    # 7. levels and heights. A wide drawing (the house in its plot) carries them beside the house at both ends, where
+    # the floors differ (split levels); a narrow one has the level marks on the left and the heights on the right.
+    wide = (f1 - f0) / MM > 180
+    house = [r for r in cut_rooms if r["house"] and r["kind"] in ("room", "void")]
+    fz = lambda v: round(float(v), 3)
+
+    def on_side(r, side):
+        a, b = (xl, xm) if side < 0 else (xm, xr)
+        return min(r["s"][1], b) - max(r["s"][0], a) >= min(1.0, 0.5 * (r["s"][1] - r["s"][0])) if wide else True
+
+    def roof_top(side):
+        a, b = ((xl, xm) if side < 0 else (xm, xr)) if wide else (xl, xr)
+        zs = [p[1] for q in parts(fabric) for p in q.exterior.coords if a - 0.6 <= p[0] <= b + 0.6]
+        return fz(max(zs))
+
+    ridge = H["roof"]["ridge"]["z"]
+    flats = [p["z"]["c0"] for p in H["roof"]["planes"] if not p["z"]["cx"] and not p["z"]["cy"]]
+    roof_name = lambda z: "RIDGE" if abs(z - ridge) < 0.03 else "FLAT ROOF" if any(abs(z - f) < 0.03 for f in flats) else "ROOF"
+
+    def ground_marks(side):
+        """[(z, text)] of the ground on that side of the house, the first the ground at the house itself (DECK on a
+        deck, else GL: what the overall height stands on), then the lowest level stretch of a metre or more where
+        that is another level (the garden below the deck)."""
+        g = [q for q in sec["ground"] if (q[2] <= xl + 1e-6 if side < 0 else q[0] >= xr - 1e-6)]
+        if not g:
+            return []
+        q = max(g, key=lambda q: q[2]) if side < 0 else min(g, key=lambda q: q[0])
+        at = f5(q[3] if side < 0 else q[1])
+        pt = Point(sec_xy(sec, xl - 0.3 if side < 0 else xr + 0.3))
+        zone = max((z for z in EXT["zones"] if Polygon(z["polygon"]).contains(pt)), key=lambda z: z["z"], default=None)
+        out = [(at, "%s %s" % ("DECK" if zone and "deck" in zone["id"] + zone.get("surface", "") else "GL", lvl(at)))]
+        runs = []                                                 # level stretches, joined across the slabs
+        for a, za, b, zb in sorted(g):
+            if abs(za - zb) < 1e-3:
+                if runs and abs(runs[-1][2] - za) < 1e-3 and abs(runs[-1][1] - a) < 1e-3:
+                    runs[-1][1] = b
+                else:
+                    runs.append([a, b, za])
+        low = min((f5(z) for a, b, z in runs if b - a >= 1.0), default=at)
+        if low < at - 0.03:
+            out.append((low, "GL %s" % lvl(low)))
+        return out
+
+    marks = {-1: {}, 1: {}}                                         # side -> {z: text}: floors, ridge / flat roof, eaves, ground
+    for side in (-1, 1):
+        ms = marks[side if wide else -1]
+        for r in house:
+            if on_side(r, side) and r["kind"] == "room":
+                ms.setdefault(fz(r["floor"]), ffl(r["floor"]))
+        top = roof_top(side)
+        if roof_name(top) != "ROOF":                              # a slope cut part-way up is no datum
+            ms.setdefault(top, "%s %s" % (roof_name(top), lvl(top)))
+        for z, s in ground_marks(side):
+            ms.setdefault(z, s)
+    for e in H["roof"].get("eaves", []):                           # an eaves gutter the plane crosses
+        if "gutterZ" in e and sec_spans(sec, LineString(e["line"]).buffer(0.02, cap_style=2)):
+            s = sec_s(sec, *mid(*e["line"]))
+            marks[(-1 if s < xm else 1) if wide else -1].setdefault(fz(e["gutterZ"]), "EAVES %s" % lvl(e["gutterZ"]))
+    def level_run(z):
+        """Longest run along s of level pieces within 0.1 of z, pieces up to 0.02 apart joined (a capping of tiles)."""
+        iv = sorted((min(a[0], b[0]), max(a[0], b[0])) for k in ("shell", "trim") for pl in sec["beyond"].get(k, [])
+                    for a, b in zip(pl, pl[1:]) if abs(a[1] - z) < 0.1 and abs(b[1] - z) < 0.1)
+        best, run = 0.0, None
+        for a, b in iv:
+            run = [run[0], max(run[1], b)] if run and a <= run[1] + 0.02 else [a, b]
+            best = max(best, run[1] - run[0])
+        return best
+    if not any(abs(z - ridge) < 0.03 for ms in marks.values() for z in ms) and level_run(ridge) > 1.0:   # the ridge (its capping) seen beyond the cut
+        marks[1 if wide else -1][fz(ridge)] = "RIDGE %s" % lvl(ridge)
+
+    def stack(side):
+        """Floor and top of the room nearest that end on every level -> (space heights, floor levels). A room sliced
+        through a sloped ceiling has no height to give (that is said in the room), and a roof slope cut part-way up
+        is no top: the levels then run to the ridge seen beyond, and the space heights stop at the last floor."""
+        face = xl if side < 0 else xr
+        fl, sp, open_top = [], [], False
+        for L in HC.levels:
+            c = [r for r in house if r["level"] == L and r["kind"] == "room" and on_side(r, side)]
+            if c:
+                r = min(c, key=lambda r: min(abs(r["s"][0] - face), abs(r["s"][1] - face)))
+                fl.append(f5(r["floor"]))
+                sp += [f5(r["floor"])] + ([] if r["sliced"] else [f5(r["top"])])
+                open_top = bool(r["sliced"])
+        top = roof_top(side)
+        if roof_name(top) == "ROOF":
+            top = fz(ridge) if any(abs(z - ridge) < 0.03 for z in marks[side if wide else -1]) else None
+        tops = [] if top is None else [f5(top)]
+        return sorted(set(sp + ([] if open_top else tops))), sorted(set(fl + tops))
+
+    # chains stand clear of the house (16 mm at the rear: the balcony), 9.5 mm apart so that a value too small for its
+    # own space, lifted to the far side of its line, keeps clear of the next chain; witness lines are 3 mm stubs.
+    # A narrow drawing has its level marks first: its chains then stand past what is seen beside the house (gate and
+    # condenser in the side passage), as far as the portrait sheet has room.
+    rows = []
+    if wide:
+        level_marks(P, xl - 32 * MM, -1, list(marks[-1].items()))
+        level_marks(P, xr + 29 * MM, 1, list(marks[1].items()))
+        cols = {-1: (xl - 16 * MM, -1), 1: (xr + 8 * MM, 1)}
+    else:
+        level_marks(P, f0 - 3 * MM, -1, list(marks[-1].items()))
+        near = [q[0] for e in P.e if e["layer"] in ("A-SECT-BYND", "A-SECT-FIXT") for q in e["pts"] if xr + 1e-3 < q[0] <= xr + 1.5 and q[1] > 0.3]
+        room = ents_bounds(P.e)[0] + (169 - 16.5) * MM              # the outer chain takes 9.5 + 5.6 mm past the inner line
+        cols = {1: (max(xr + 9 * MM, min(max(near, default=xr) + 4.6 * MM, room)), 1)}
+    for side, (x, out) in cols.items():
+        sp, fl = stack(side)
+        lifted = chain(P, "y", sp, x - out * 3 * MM, x, rows) if len(sp) > 1 else []
+        chain(P, "y", fl, x + out * 6.5 * MM, x + out * 9.5 * MM, rows, lifted)
+        g = ground_marks(side)[:1] if side > 0 and wide else []
+        if g and fl[-1] > g[0][0]:                                 # overall height above the ground at the front
+            chain(P, "y", [g[0][0], fl[-1]], x + out * 13 * MM, x + out * 16 * MM, rows)
+    # a value lifted beside its line must not sit on the ground line: it slides down its line, under all of the
+    # ground line that runs across its width
+    heavy = unary_union([ent_line(e) for e in P.e if e["layer"] == "A-SECT" and not e.get("closed")] + [LineString()])
+    for i, e in enumerate(P.e):
+        if e["type"] == "dim" and e.get("tp") and abs(e["p1"][0] - e["p2"][0]) < 1e-9:
+            t = P.e[i + 1]                                         # its value: the text entity that follows (Plan.dim)
+            b = text_box(t).buffer(0.5 * MM).bounds
+            if box(*b).intersects(heavy):
+                dz = heavy.intersection(box(b[0], z0 - 1, b[2], b[3])).bounds[1] - b[3]
+                e["tp"][1] += dz
+                t["p"][1] += dz
+    # dimension lines and level marks stand in front of what is seen beyond: the thin lines break along every chain
+    # (the strip its values take), under every value and every mark (marks stacked closer than 2.5 mm as one block);
+    # the earth hatch clears under the values
+    vals = [text_box(e).buffer(0.4 * MM).bounds for e in P.e if e["layer"] in ("A-ANNO-DIMS", "A-ANNO-LEVL") and e["type"] == "text"] \
+        + [b for b in (dim_text_box(e) for e in P.e if e["type"] == "dim") if b]
+    mk = sorted((text_box(e).bounds for e in P.e if e["layer"] == "A-ANNO-LEVL" and e["type"] == "text"), key=lambda b: (round(b[0] + b[2], 1), b[1]))
+    strips = [(min(a[0], b[0]), a[3], max(a[2], b[2]), b[1]) for a, b in zip(mk, mk[1:])
+              if 0 < b[1] - a[3] < 2.5 * MM and a[0] < b[2] and b[0] < a[2]]
+    for e in P.e:
+        if e["type"] == "dim" and abs(e["p1"][0] - e["p2"][0]) < 1e-9:
+            x = e["p1"][0] - e["offset"]
+            strips.append((x - 0.7 * e["h"] - T_DIM / 2 - 0.4 * MM, min(e["p1"][1], e["p2"][1]), x + 0.6 * MM, max(e["p1"][1], e["p2"][1])))
+        elif e["layer"] == "A-ANNO-LEVL" and e["type"] == "line":
+            strips.append((min(e["p1"][0], e["p2"][0]) - 0.4 * MM, min(e["p1"][1], e["p2"][1]) - 0.4 * MM,
+                           max(e["p1"][0], e["p2"][0]) + 0.4 * MM, max(e["p1"][1], e["p2"][1]) + 2.2 * MM))
+    mask_under_text(P, vals + strips, ("A-SECT-BYND", "A-SECT-FIXT"), crumb=3 * MM)
+    mask_hatch(P, vals, "A-SECT-PATT", "EARTH")
+
+    # 8. lengths under the drawing: plot, outbuildings and the house on the section line; the ends named
+    low = min([p[1] for q in parts(band) for p in q.exterior.coords] + [p[1] for r in sec["hidden"] for p in r["outer"]] + hid_low)
+    pts = {round(xl, 3), round(xr, 3)}
+    plot = sec_spans(sec, Polygon(EXT["plot"]["polygon"]))
+    if plot:
+        pts |= {round(max(plot[0][0], f0), 3), round(min(plot[-1][1], f1), 3)}
+    for bld in EXT.get("buildings", []):
+        for a, b in sec_spans(sec, Polygon(bld["outline"])):
+            pts |= {round(max(a, f0), 3), round(min(b, f1), 3)}
+    pts = sorted(p for p in pts if f0 - 1e-6 <= p <= f1 + 1e-6)
+    y1r, y2r = low - 9 * MM, low - 16 * MM
+    chain(P, "x", pts, y1r + 3 * MM, y1r, rows)
+    if len(pts) > 2:
+        chain(P, "x", [pts[0], pts[-1]], y2r + 3 * MM, y2r, rows)
+    yn = (y2r if len(pts) > 2 else y1r) - 7.5 * MM
+    P.text("A-ANNO-TEXT", (f0, yn), T_NOTE, ENDS[(-rx, -ry)], "left")
+    P.text("A-ANNO-TEXT", (f1, yn), T_NOTE, ENDS[(rx, ry)], "right")
+    view = "%s - %s" % (title, VIEW[tuple(sec["normal"])])
+    P.text("A-ANNO-TEXT", ((f0 + f1) / 2, yn - (0 if wide else 6 * MM)), T_NAME, view)
+
+    # the sheet: portrait beside the title column when the drawing is narrow enough, else landscape over a title strip
+    bx0, by0, bx1, by1 = ents_bounds(P.e)
+    w, h = (bx1 - bx0) / MM, (by1 - by0) / MM
+    if w <= 169 and h <= 392:
+        orient, (pw, ph), (ax, ay, aw, ah) = "portrait", A3, (14, 14, 169, 392)
+    elif w <= 392 and h <= 205:
+        orient, (pw, ph), (ax, ay, aw, ah) = "landscape", (A3[1], A3[0]), (14, 78, 392, 205)
+    else:
+        return None
+    sx0, sy0 = bx0 - (ax + (aw - w) / 2) * MM, by0 - (ay + (ah - h) / 2) * MM
+    sb = {"minX": sx0, "minY": sy0, "maxX": sx0 + pw * MM, "maxY": sy0 + ph * MM}
+    floors = sorted({fz(r["floor"]) for r in house if r["kind"] == "room"})
+    notes = ["CUT FROM THE 3D MODEL ON THE LINE MARKED", "   %s-%s ON THE PLANS; %s." % (sec["letter"], sec["letter"], VIEW[tuple(sec["normal"])]),
+             "CUT WALLS, FLOORS AND ROOF HATCHED; WHAT LIES", "   BEYOND THE PLANE IN THIN LINE. LOOSE", "   FURNITURE IS NOT SHOWN.",
+             "CONSTRUCTION INSIDE FLOORS, WALLS AND ROOF AND", "   BELOW GROUND NOT SURVEYED: SHOWN SOLID."]
+    if band_note:
+        notes += ["ROOF SLOPE CUT PARALLEL TO ITS RIDGE: LEVEL BAND."]
+    if sec["hidden"]:
+        notes += ["DASHED: ROOMS BEYOND THE PLANE, BELOW GROUND."]
+    key = [("A-SECT", None, "CUT: WALL, FLOOR, ROOF, GROUND LINE"), ("A-SECT-FIXT", None, "JOINERY AND FITTINGS, CUT"),
+           ("A-SECT-BYND", None, "BEYOND THE SECTION PLANE"), ("A-ANNO-LEVL", None, "LEVEL MARK")]
+    if sec["hidden"]:
+        key.append(("A-SECT-HIDN", "hidden", "HIDDEN BEYOND"))
+    plane = {k: sec[k] for k in ("id", "letter", "axis", "at", "look", "origin", "right", "normal")}
+    sh = {"id": sid, "kind": "section", "level": None, "title": title, "number": number, "scale": "1:%d" % SCALE, "paper": "A3",
+          "orientation": orient, "sheetBounds": sb, "section": plane}
+    bounds = {"minX": bx0 - 2 * MM, "minY": by0 - 2 * MM, "maxX": bx1 + 2 * MM, "maxY": by1 + 2 * MM}
+    # where a small panel first looks (docs/js/plan2d.js fit): the house, 2 m to either side, a metre under its lowest
+    # floor and over its roof, when that is a good deal less than the whole drawing (the plot is illegible at 300 px)
+    zs = [p[1] for q in parts(fabric) for p in q.exterior.coords if xl - 0.6 <= p[0] <= xr + 0.6] + [r["floor"] for r in house]
+    fit = {"minX": max(xl - 2.0, bounds["minX"]), "minY": max(min(zs) - 1.0, bounds["minY"]),
+           "maxX": min(xr + 2.0, bounds["maxX"]), "maxY": min(max(zs) + 1.0, bounds["maxY"])}
+    if fit["maxX"] - fit["minX"] < 0.8 * (bounds["maxX"] - bounds["minX"]):
+        sh["fitBounds"] = fit
+    return P, sh, rooms, dict(cut=fabric, rows=rows, notes=notes, key=key, footsrc="", marks=marks, cut_rooms=cut_rooms, boxed=boxed,
+                              levels="FFL " + " / ".join(lvl(z) for z in floors) if len(floors) < 6 else "FFL %s TO %s" % (lvl(floors[0]), lvl(floors[-1])),
+                              bounds=bounds)
+
+
+def section_registration(secs=None):
+    """How far the sections (cut from the model) stand from house.json -> [(section, room, what, model, spec)], metres.
+    what 'floor': the level a cut room stands on against its floorZ. what 'face-' / 'face+': the wall faces at the two
+    ends of the clear run through the room along the section line, CUT above its floor (0.5 m under a sloped ceiling),
+    in section coordinates, against the poche of that level's plan sheet (walls, piers, breasts, openings of
+    house.json). An end is compared by the room it bounds: where the run leaves the room through an opening (its end
+    lies more than 0.35 m past the room's own polygon) or the house, that end belongs to another room or to none."""
+    rows, cuts = [], {}
+    env = unary_union([envelope(L) for L in HC.levels])
+    for sid, sec in (SECS if secs is None else secs).items():
+        solid = unary_union([sec_polys(sec, "fabric"), sec_polys(sec, "earth")])
+        f0, _, f1, _ = sec["frame"]
+        faces = sec_spans(sec, env)
+        xl, xr = faces[0][0], faces[-1][1]
+        runs = lambda g: [q for q in getattr(g, "geoms", [g]) if q.geom_type == "LineString" and q.length > 1e-6]
+        for r in sec["rooms"]:
+            rid = r["id"]
+            if rid not in ROOMS or HC.kind(rid) != "room":
+                continue
+            rows.append((sid, rid, "floor", r["floor"], float(ROOMS[rid]["floorZ"])))
+            L, sm = HC.level(rid), (r["s"][0] + r["s"][1]) / 2
+            zc = r["floor"] + (0.5 if (ROOMS[rid].get("ceiling") or {}).get("planes") else CUT)
+            a = [(q.bounds[0], q.bounds[2]) for q in runs(LineString([(f0, zc), (f1, zc)]).difference(solid))]
+            if L not in cuts:
+                cuts[L] = poche(L)[0]
+            b = [tuple(sorted((sec_s(sec, *q.coords[0]), sec_s(sec, *q.coords[-1]))))
+                 for q in runs(LineString([sec_xy(sec, f0), sec_xy(sec, f1)]).difference(cuts[L]))]
+            a = next((q for q in a if q[0] <= sm <= q[1]), None)
+            b = next((q for q in b if q[0] <= sm <= q[1]), None)
+            own = next((q for q in sec_spans(sec, rpoly(rid)) if q[0] <= sm <= q[1]), None)
+            if a is None or b is None or own is None:
+                rows.append((sid, rid, "clear run", 0.0, 1.0))             # solid where the other has the room
+                continue
+            for k, what in ((0, "face-"), (1, "face+")):
+                if abs(b[k] - own[k]) < 0.35 and xl + 0.01 < b[k] < xr - 0.01:
+                    rows.append((sid, rid, what, round(a[k], 4), round(b[k], 4)))
+    return rows
+
+
+def section_marks(P, region, yb, yt, xw, xe):
+    """Cutting lines on a plan sheet for every section whose plane crosses `region` (a plan polygon): thin centre line
+    from end to end, heavy end strokes, arrows showing the direction of view, the letter at both ends. Planes along Y
+    end on the rows yb / yt (the FRONT / REAR notes' rows), planes along X on the columns xw / xe.
+    -> [(x0, x1)] the stretches of the note rows the marks take."""
+    taken = []
+    L, LC = "A-ANNO-SECT", "A-ANNO-SECT-CUTL"
+    for sid, _, _ in SECTION_SHEETS:
+        sec = SECS.get(sid)
+        if not sec:
+            continue
+        at, look, s = sec["at"], sec["look"], sec["letter"]
+        if sec["axis"] == "x":
+            if not LineString([(at, -1e3), (at, 1e3)]).intersects(region):
+                continue
+            P.line(LC, (at, yb + 3.5 * MM), (at, yt - 0.5 * MM), "center")
+            for y in (yb, yt):
+                P.line(L, (at, y - 0.5 * MM), (at, y + 3.5 * MM))
+                P.line(L, (at, y + 1.5 * MM), (at + look * 2.2 * MM, y + 1.5 * MM))
+                P.arrowhead(L, (at + look * 4.5 * MM, y + 1.5 * MM), (look, 0), 2.4 * MM, 0.8 * MM)
+                P.text(L, (at + look * 5.6 * MM, y), 3.0 * MM, s, "left" if look > 0 else "right")
+            a, b = sorted((at - look * 1.5 * MM, at + look * (5.6 * MM + tw(s, 3.0 * MM) + 4.0 * MM)))
+            taken.append((a, b))
+        else:
+            if not LineString([(-1e3, at), (1e3, at)]).intersects(region):
+                continue
+            P.line(LC, (xw + 2 * MM, at), (xe - 2 * MM, at), "center")
+            for x in (xw, xe):
+                P.line(L, (x - 2 * MM, at), (x + 2 * MM, at))
+                P.line(L, (x, at), (x, at + look * 2.2 * MM))
+                P.arrowhead(L, (x, at + look * 4.5 * MM), (0, look), 2.4 * MM, 0.8 * MM)
+                P.text(L, (x, at + look * 5.6 * MM - (0 if look > 0 else 3.0 * MM)), 3.0 * MM, s, "center")
+    return taken
+
+
+def mask_cutting_lines(P, boxes):
+    """Break the cutting lines under room tags (boxes) and under every dimension value drawn so far."""
+    dims = [b for b in (dim_text_box(e) for e in P.e if e["type"] == "dim") if b]
+    dims += [text_box(e).bounds for e in P.e if e["type"] == "text" and e.get("of") == "dim"]
+    mask_under_text(P, list(boxes) + dims, ("A-ANNO-SECT-CUTL",))
+
+
+def note_x(cx, s, lo, hi, taken):
+    """Centre for an orientation note of text s (T_NOTE) on a row that also holds section marks: cx when it is clear of
+    them, else the nearest clear place between lo and hi."""
+    hw = tw(s, T_NOTE) / 2 + 1.0 * MM
+    clear = lambda c: all(c + hw <= a or c - hw >= b for a, b in taken)
+    for k in range(0, 400):
+        for c in (cx + k * MM, cx - k * MM):
+            if lo + hw <= c <= hi - hw and clear(c):
+                return c
+    return cx
+
+
 # ------------------------------------------------------------------ assemble + writers
 def rnd(o):
     if isinstance(o, float):
@@ -1788,31 +2438,79 @@ def rnd(o):
     return o
 
 
-def build(house, footprints):
+PACKED = ("A-SECT-BYND", "A-SECT-FIXT")    # layers of many short polylines: one `paths` entity each in plan.json
+
+
+def pack(E):
+    """Every plain polyline of a PACKED layer into one entity {type: 'paths', paths: [[x0, y0, x1, y1, ...]]} (a
+    closed one repeats its first point; millimetre precision), at the place of the layer's first polyline."""
+    out, at = [], {}
+    for e in E:
+        if e["type"] == "polyline" and e["layer"] in PACKED and not e.get("ls"):
+            if e["layer"] not in at:
+                at[e["layer"]] = {"layer": e["layer"], "type": "paths", "paths": []}
+                out.append(at[e["layer"]])
+            pts = e["pts"] + ([e["pts"][0]] if e["closed"] else [])
+            at[e["layer"]]["paths"].append([round(v, 3) for p in pts for v in p])
+        else:
+            out.append(e)
+    return out
+
+
+def build(house, footprints, sections=None):
+    """-> (plan dict, per-sheet check data). sections = a sections.json; default: the one beside the footprints file
+    (none there: the five plan sheets alone)."""
+    global SECS
     setup(house)
     recs, src = load_footprints(Path(footprints))
+    SECS = load_sections(Path(sections) if sections else Path(footprints).parent / "sections.json")
     regions = roof_regions()
     date = datetime.date.fromtimestamp(Path(house).stat().st_mtime).isoformat()
     sheets, checks = [], []
-    for i, (sid, title, scale, number) in enumerate(SHEETS):
-        set_scale(scale)
-        P, sh, rooms, ex = (site_sheet if sid == "X" else floor_sheet)(sid, title, number, recs, regions)
+    todo = list(SHEETS) + [(sid, title, None, number) for sid, title, number in SECTION_SHEETS if sid in SECS]
+    right = None                                                   # DXF mm: right edge of the last sheet placed
+    for i, (sid, title, scale, number) in enumerate(todo):
+        if scale is None:                                          # a section: the largest scale that fits A3
+            for scale in SECTION_SCALES:
+                set_scale(scale)
+                got = section_sheet(sid, title, number, SECS[sid])
+                if got:
+                    break
+            else:
+                raise SystemExit("section %s does not fit A3 at 1:%d" % (sid, SECTION_SCALES[-1]))
+            P, sh, rooms, ex = got
+        else:
+            set_scale(scale)
+            P, sh, rooms, ex = (site_sheet if sid == "X" else floor_sheet)(sid, title, number, recs, regions)
         sh["index"] = i + 1
-        draw_sheet(P, sh, ex["notes"], ex["levels"], ex["footsrc"], date, len(SHEETS))
-        walls = [e for e in P.e if e["layer"] == "A-WALL" and e["type"] == "polyline"]
+        draw_sheet(P, sh, ex["notes"], ex["levels"], ex["footsrc"], date, len(todo), ex.get("key"))
+        section = sh.get("kind") == "section"
+        walls = [e for e in P.e if e["layer"] == ("A-SECT" if section else "A-WALL") and e["type"] == "polyline"]
         xs = [p[0] for e in walls for p in e["pts"]]
         ys = [p[1] for e in walls for p in e["pts"]]
+        sb = sh["sheetBounds"]
+        if section:                                                # after the plans, frames 8 m apart, bottoms level
+            off = [round(right + 8000 - sb["minX"] * 1000), round(low - sb["minY"] * 1000)]
+        else:
+            off = [i * DXF_PITCH, 0]
+            low = min(sb["minY"] * 1000, low) if i else sb["minY"] * 1000
+        right = off[0] + sb["maxX"] * 1000
         sh.update(bounds=ex["bounds"], houseBounds={"minX": min(xs), "minY": min(ys), "maxX": max(xs), "maxY": max(ys)},
-                  linestyles=LINESTYLES, hatch={"ANSI31": "45 deg lines through the origin", "spacing": HATCH_SPACING},
-                  dimstyle=DIMSTYLE, dxfOffset=[i * DXF_PITCH, 0], entities=P.e, rooms=rooms)
+                  linestyles=LINESTYLES, hatch={"ANSI31": "45 deg lines through the origin", "spacing": HATCH_SPACING,
+                                                "EARTH": "cells of 2 x spacing, three lines each, alternately along x and y"},
+                  dimstyle=DIMSTYLE, dxfOffset=off, entities=pack(P.e) if section else P.e, rooms=rooms)
         sheets.append(rnd(sh))
         checks.append(dict(ex, mm=MM))
+    layers = LAYERS + (SECTION_LAYERS if SECS else [])
     return {"schema": 2, "units": "m",
-            "layers": [{"name": n, "color": c, "paper": p, "aci": a, "lineweight": lw} for n, c, p, a, lw in LAYERS],
+            "layers": [{"name": n, "color": c, "paper": p, "aci": a, "lineweight": lw} for n, c, p, a, lw in layers],
             "textNote": "text: h = font size (em) in metres, capitals are 0.72 h; p = anchor at the vertical middle of the "
                         "capitals (canvas textBaseline 'middle'), align = horizontal anchor, rot = deg CCW. dim: h likewise, "
-                        "optional tp = text middle when lifted off its default place. Per sheet: linestyles (dash, gap, ...), "
-                        "hatch spacing and dimstyle in model metres; dxfOffset = where the sheet sits in the DXF, in mm.",
+                        "optional tp = text middle when lifted off its default place. paths: several polylines in one "
+                        "entity, each a flat list x0, y0, x1, y1, ... Per sheet: linestyles (dash, gap, ...), hatch "
+                        "spacing and dimstyle in model metres; dxfOffset = where the sheet sits in the DXF, in mm. A sheet "
+                        "of kind 'section' is drawn in section coordinates: x = (p - section.origin) . section.right in "
+                        "plan metres, y = world Z; its rooms[].polygon likewise.",
             "footprintSource": src.replace(str(ROOT), "."), "sheets": sheets}, checks
 
 
@@ -1837,7 +2535,7 @@ def write_dxf(plan, path):
     doc.styles.add("ISO", font="isocp.shx")
     for l in plan["layers"]:
         doc.layers.add(l["name"], color=l["aci"], lineweight=round(l["lineweight"] * 100),
-                       linetype="DASHED" if l["name"] in DASHED_LAYERS else "Continuous")
+                       linetype=LAYER_LINETYPE.get(l["name"], "Continuous"))
     for s in plan["sheets"]:
         st, nm = s["dimstyle"], "PLAN" + s["scale"].split(":")[1]
         if nm not in doc.dimstyles:
@@ -1863,6 +2561,11 @@ def write_dxf(plan, path):
                 msp.add_line(K(e["p1"]), K(e["p2"]), dxfattribs=at)
             elif t == "polyline":
                 msp.add_lwpolyline([K(p) for p in e["pts"]], close=e["closed"], dxfattribs=at)
+            elif t == "paths":
+                for q in e["paths"]:
+                    pts = [K(q[k:k + 2]) for k in range(0, len(q), 2)]
+                    closed = len(pts) > 3 and pts[0] == pts[-1]
+                    msp.add_lwpolyline(pts[:-1] if closed else pts, close=closed, dxfattribs=at)
             elif t == "arc":
                 msp.add_arc(K(e["c"]), e["r"] * 1000, e["a0"], e["a1"], dxfattribs=at)
             elif t == "circle":
@@ -1871,6 +2574,8 @@ def write_dxf(plan, path):
                 h = msp.add_hatch(color=256, dxfattribs={"layer": e["layer"]})
                 if e["pattern"] == "SOLID":
                     h.set_solid_fill(color=256)
+                elif e["pattern"] == "EARTH":                   # its cell is 6.35 mm at scale 1; ours 2 x the hatch spacing
+                    h.set_pattern_fill("EARTH", color=256, scale=2 * s["hatch"]["spacing"] * 1000 / 6.35)
                 else:                                           # ISO ANSI31 is 3.175 mm apart at scale 1
                     h.set_pattern_fill(e["pattern"], color=256, scale=s["hatch"]["spacing"] * 1000 / 3.175)
                 h.paths.add_polyline_path([K(p) for p in e["pts"]], is_closed=True)
@@ -1897,9 +2602,10 @@ def write_dxf(plan, path):
 def self_check(plan, checks):
     """Cheap invariants per sheet; the visual check is tools/plan/check.py."""
     layers = {l["name"] for l in plan["layers"]}
-    assert [s["id"] for s in plan["sheets"]] == [s[0] for s in SHEETS]
+    assert [s["id"] for s in plan["sheets"]] == [s[0] for s in SHEETS] + [s[0] for s in SECTION_SHEETS if s[0] in SECS]
     for sh, ex in zip(plan["sheets"], checks):
         E, sid = sh["entities"], sh["id"]
+        section = sh.get("kind") == "section"
         assert all(e["layer"] in layers for e in E), sid
         assert all(e.get("ls") in (None, *sh["linestyles"]) for e in E), sid
         for e in E:
@@ -1916,13 +2622,18 @@ def self_check(plan, checks):
         for axis in ("x", "y"):                                 # ... and the rows of one side agree with each other
             sums = [v for (a, _), v in rows.items() if a == axis]
             assert sums, (sid, axis)
-        hatched = sum(Polygon(e["pts"]).area for e in E if e["layer"] == "A-WALL-PATT" and e["type"] == "hatch")
-        assert abs(hatched - ex["cut"].area) < 2e-3, (sid, hatched, ex["cut"].area)
-        assert sum(e["type"] == "arc" and e["layer"] == "A-DOOR" for e in E) == ex["leaves"], sid
+        hatched = sum(Polygon(e["pts"]).area for e in E if e["layer"] == ("A-SECT-PATT" if section else "A-WALL-PATT")
+                      and e["type"] == "hatch" and e["pattern"] == "ANSI31")
+        assert abs(hatched - ex["cut"].area) < (2e-2 if section else 2e-3), (sid, hatched, ex["cut"].area)
         sb, b = sh["sheetBounds"], sh["bounds"]
         m = 10 * ex["mm"]
         assert sb["minX"] + m <= b["minX"] and b["maxX"] <= sb["maxX"] - m and sb["minY"] + m <= b["minY"] and b["maxY"] <= sb["maxY"] - m, (sid, b, sb)
-        assert abs((sb["maxX"] - sb["minX"]) / ex["mm"] - A3[0]) < 0.01 and abs((sb["maxY"] - sb["minY"]) / ex["mm"] - A3[1]) < 0.01, sid
+        pw, ph = (A3[1], A3[0]) if sh["orientation"] == "landscape" else A3
+        assert abs((sb["maxX"] - sb["minX"]) / ex["mm"] - pw) < 0.01 and abs((sb["maxY"] - sb["minY"]) / ex["mm"] - ph) < 0.01, sid
+        if section:
+            section_check(sh, ex)
+            continue
+        assert sum(e["type"] == "arc" and e["layer"] == "A-DOOR" for e in E) == ex["leaves"], sid
         if sid != "X":
             assert len(sh["rooms"]) == len(HC.rooms_on(sid)), sid
             edge = ex["cut"].boundary                           # chamfers of both kinds drawn true at the cut
@@ -1944,9 +2655,45 @@ def self_check(plan, checks):
             want = [q for q in H["roof"]["planes"] if (q["z"]["cx"] or q["z"]["cy"]) and rg[q["id"]].area >= 1.0]
             assert len(ex["slopes"]) == len(want), (len(ex["slopes"]), [q["id"] for q in want])
             assert all(not a.intersects(b) for i, a in enumerate(ex["slopes"]) for b in ex["slopes"][i + 1:])
-    site = plan["sheets"][-1]
+    site = next(s for s in plan["sheets"] if s["id"] == "X")
     assert site["scale"] == "1:100" and tuple(site["bounds"][k] for k in ("minX", "minY", "maxX", "maxY")) == site_window()
-    assert all(f["scale"] == "1:50" for f in plan["sheets"][:-1])
+    assert all(f["scale"] == "1:50" for f in plan["sheets"] if f["id"] in HC.levels)
+
+
+def section_check(sh, ex):
+    """A section sheet as drafted: the cut is closed outlines (each ring of the fabric one closed heavy polyline),
+    every cut room is named, every cut floor of the house has its level mark, the roof has one. Whether the levels
+    and wall faces are those of house.json is section_registration: said by draft.py, asserted by check.py (an old
+    sections.json must not stop the plans from being drafted)."""
+    E, sid = sh["entities"], sh["id"]
+    rings = sum(1 + len(q.interiors) for q in parts(ex["cut"]))
+    closed = [e for e in E if e["layer"] == "A-SECT" and e["type"] == "polyline" and e["closed"]]
+    assert len(closed) == rings and rings > 0, (sid, len(closed), rings)
+    texts = [e["text"] for e in E if e["type"] == "text"]
+    marked = {t for e in E if e["layer"] == "A-ANNO-LEVL" and e["type"] == "text" for t in e["text"].split(" / ")}
+    for r in ex["cut_rooms"]:
+        if r["kind"] == "room":
+            assert room_name(r["id"]) in texts, (sid, r["id"], "not named")
+            assert not r["house"] or ffl(r["floor"]) in marked, (sid, r["id"], ffl(r["floor"]), "has no level mark")
+    assert any(t.startswith(("RIDGE", "FLAT ROOF")) for t in marked), (sid, "no roof level")
+    assert any(t.startswith(("GL", "DECK")) for t in marked), (sid, "no ground level")
+    vdims = [e for e in E if e["type"] == "dim" and abs(e["p1"][0] - e["p2"][0]) < 1e-9]
+    for r in ex["cut_rooms"]:                                     # a ceiling sliced along its slope is no height: said, not dimensioned
+        if r.get("sliced"):
+            top = round(round(r["top"] / 0.005) * 0.005, 3)
+            assert not any(abs(p[1] - top) < 2e-3 for e in vdims for p in (e["p1"], e["p2"])), (sid, r["id"], "a chain stops on a sliced ceiling")
+            assert any(t.startswith("CEILING SLOPES") for t in texts), (sid, r["id"], "sloped ceiling not said")
+    inside = shapely.prepared.prep(ex["boxed"].buffer(-5e-3))     # a cut fitting is its outline: nothing of its inside beyond
+    for e in E:
+        if e["layer"] == "A-SECT-BYND" and e["type"] == "paths":
+            for q in e["paths"]:
+                for k in range(0, len(q) - 2, 2):
+                    assert not inside.contains(Point((q[k] + q[k + 2]) / 2, (q[k + 1] + q[k + 3]) / 2)), (sid, "a line beyond runs inside a cut fitting", q[k:k + 4])
+    ground = unary_union([LineString(e["pts"]) for e in E if e["layer"] == "A-SECT" and e["type"] == "polyline" and not e["closed"]] + [LineString()])
+    for e in E:                                                   # no lifted dimension value sits on the ground line
+        assert not (e["type"] == "text" and e.get("of") == "dim" and text_box(e).intersects(ground)), (sid, e["text"], "on the ground line")
+    fb, b = sh.get("fitBounds"), sh["bounds"]
+    assert not fb or (b["minX"] <= fb["minX"] < fb["maxX"] <= b["maxX"] and b["minY"] <= fb["minY"] < fb["maxY"] <= b["maxY"]), (sid, fb)
 
 
 if __name__ == "__main__":
@@ -1954,18 +2701,20 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--house", default=str(ROOT / "spec" / "house.json"), help="house.json, schema 2 (default spec/house.json)")
     ap.add_argument("--footprints", default=str(OUT / "footprints.json"), help="exported footprints (default docs/assets/footprints.json)")
+    ap.add_argument("--sections", help="cross-sections cut from the model (default: sections.json beside the footprints)")
     ap.add_argument("--out", default=str(OUT), help="output directory (default docs/assets)")
     a = ap.parse_args()
-    plan, checks = build(a.house, a.footprints)
+    plan, checks = build(a.house, a.footprints, a.sections)
     self_check(plan, checks)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    was = (out / "plan.json").stat().st_size if (out / "plan.json").exists() else None
+    was = (out / "plan.json").stat().st_size if (out / "plan.json").exists() else 0
     write_json(plan, out / "plan.json")
-    # [round 4] manifest.firstView.bytes counts plan.json as the export found it: carry the size change over, so the
-    # plan step can follow the export (export_fixture allows 64 bytes; the count's own digits may shift by one)
+    # [round 4] manifest.firstView.bytes counts plan.json as the export found it (not at all in a fresh folder): carry
+    # the size change over, so the plan step can follow the export (export_fixture allows 64 bytes; the count's own
+    # digits may shift by one)
     man = out / "manifest.json"
-    if was is not None and man.exists():
+    if man.exists():
         m = json.loads(man.read_text(encoding="utf-8"))
         fv = m.get("firstView") or {}
         if "plan.json" in fv.get("files", []) and (out / "plan.json").stat().st_size != was:
@@ -1980,4 +2729,9 @@ if __name__ == "__main__":
         for e in s["entities"]:
             n[e["type"]] = n.get(e["type"], 0) + 1
         print("  sheet %-2s %-26s %s  %s" % (s["id"], s["title"], s["scale"], n))
+    if not SECS:
+        print("  no sections.json beside the footprints: plan sheets only (blender/export_sections.py cuts the sections)")
+    for sid, rid, what, got, want in section_registration():      # an old sections.json: said here, failed by check.py
+        if abs(got - want) > 0.02:
+            print("  plan: section %s, %s %s: the model has %.3f, house.json %.3f - re-run the export" % (sid, rid, what, got, want))
     print("PLAN OK  %d sheets on A3  footprints: %s" % (len(plan["sheets"]), plan["footprintSource"]))

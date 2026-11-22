@@ -66,6 +66,10 @@ def _shaft(ctx):
     mb.face([(X_SP, yn, z0), (0.99, yn, z0), (0.99, y4, z1), (X_SP, y4, z1)], sof, hint=(0, 0, -1))
     # the 60 mm strip of hall floor left on top of the lintel beside the foot of the flight (x 0.93..0.99) is plaster
     mb.box((X_E, yn, 0.0), (0.99, 6.0, 0.002), M.paint('#F2F0EA'))
+    # soft cove where the soffit turns into the south end wall (f_0121, f_0133, t_133): r 0.12 under the flat lining
+    r = 0.12
+    cove = [(r - r * math.cos(math.radians(a)), -r + r * math.sin(math.radians(a))) for a in range(0, 91, 15)]
+    mb.sweep(cove, [(X_SP, Y_S, z0), (0.99, Y_S, z0)], sof, caps=False)
     ctx.add(mb.finish('basement_stair.lining'), ST, 'fit')
 
     # white bullnosed cap board on the west shelf, cavetto bed mould under the oversail
@@ -113,58 +117,73 @@ def _steps(ctx):
 
 
 def _extinguisher(ctx):
-    x, y, z = X_JOG + 0.067, 7.38, 0.38
+    """1 kg powder extinguisher tight on the upper west wall just inside the door, centre y 7.38 (spec 5.1; in hr_142 it
+    only meets the architrave in perspective), Z 0.38..0.75, width ~0.10 against the 0.61 opening. Hose and lever on
+    the wall / south side so nothing reaches past x 0.30 into the opening (jamb x 0.265)."""
+    r = 0.05
+    x, y, z = X_JOG + r + 0.004, 7.38, 0.38
     red, blk = M.solid('bs_ext_red', '#C8281E', 0.3), 'black_matt'
     mb = mo.MB()
     mb.box((X_JOG, y - 0.02, z + 0.17), (x, y + 0.02, z + 0.20), blk)        # wall bracket + strap
     mb.at(Matrix.Translation((x, y, z)))
-    mb.lathe([(0, 0), (0.056, 0), (0.057, 0.004), (0.057, 0.022)], blk, 16)
-    mb.lathe([(0.055, 0.022), (0.055, 0.27), (0.046, 0.305), (0.022, 0.33), (0.02, 0.345)], red, 16)
-    mb.lathe([(0.057, 0.17), (0.057, 0.20)], blk, 16)
-    mb.box((-0.018, -0.018, 0.34), (0.018, 0.018, 0.362), blk, bev=0.003)
-    mb.box((-0.012, -0.012, 0.362), (0.07, 0.012, 0.37), blk)                # squeeze lever
-    mb.tube([(0.03, 0.03, 0.345), (0.062, 0.045, 0.27), (0.066, 0.04, 0.13), (0.062, 0.03, 0.06)], 0.008, blk, 6)
+    mb.lathe([(0, 0), (r - 0.001, 0), (r, 0.004), (r, 0.022)], blk, 16)
+    mb.lathe([(r - 0.002, 0.022), (r - 0.002, 0.27), (r - 0.01, 0.305), (0.02, 0.33), (0.018, 0.345)], red, 16)
+    mb.lathe([(r, 0.17), (r, 0.20)], blk, 16)
+    mb.box((-0.016, -0.016, 0.34), (0.016, 0.016, 0.362), blk, bev=0.003)
+    mb.box((-0.011, -0.065, 0.362), (0.011, 0.011, 0.37), blk)                # squeeze lever, pointing south
+    mb.box((-0.004, -0.03, 0.348), (0.004, -0.012, 0.356), M.solid('bs_ext_pin', '#E8C21E', 0.4))  # safety pin tag
+    mb.tube([(-0.006, -0.02, 0.345), (-0.012, -0.05, 0.29), (-0.016, -0.058, 0.13), (-0.012, -0.055, 0.06)],
+            0.007, blk, 6)                                                    # hose down the south flank
     ctx.add(mb.finish('basement_stair.extinguisher'), ST, 'fit')
 
 
 def _ornaments(ctx):
-    """D3..D8 on the wide part of the shelf. Moved ~0.4 north of the spec so they clear the model's soffit."""
+    """D3..D8 on the wide part of the shelf (t_133, f_0135). South to north as filmed: cork lying at the front edge,
+    bottle, box, card, cream tile and a dark square leaning on the wall. They stand ~0.3 north of the spec (the
+    model's soffit meets the shelf at y 5.45); the bottle's cork comes within ~0.03 of the soffit, as in f_0135."""
     zc, x = SHELF_Z + CAP_T, 0.218
     oak, cream = 'dark_oak_antique', M.solid('bs_card', '#EFE8D2', 0.8)
     mb = mo.MB()
-    mb.at(Matrix.Translation((x, 5.63, zc + 0.0125)) @ Matrix.Rotation(math.radians(90), 4, 'X'))
+    mb.at(Matrix.Translation((x + 0.03, 5.48, zc + 0.0125)) @ Matrix.Rotation(math.radians(90), 4, 'X'))
     mb.lathe([(0, -0.022), (0.0125, -0.022), (0.0125, 0.022), (0, 0.022)], 'cork', 8)             # D7 cork on its side
-    mb.at(Matrix.Translation((x, 5.74, zc)))                                                       # D3 green bottle
+    mb.at(Matrix.Translation((x, 5.56, zc)))                                                       # D3 olive bottle
     mb.lathe([(0, 0.004), (0.034, 0), (0.0375, 0.01), (0.0375, 0.15), (0.03, 0.185), (0.014, 0.215), (0.0125, 0.28),
-              (0.016, 0.283), (0.016, 0.292), (0.0125, 0.295)], M.solid('bs_bottle_green', '#24402A', 0.06), 14)
+              (0.016, 0.283), (0.016, 0.292), (0.0125, 0.295)], M.solid('bs_bottle_olive', '#3E5A36', 0.1), 14)
+    mb.lathe([(0.0378, 0.012), (0.0378, 0.05)], M.solid('bs_bottle_label', '#1E1C19', 0.7), 14,
+             a0=math.radians(150), a1=math.radians(230))                                           # dark label band
     mb.lathe([(0, 0.27), (0.0115, 0.27), (0.0115, 0.305), (0, 0.305)], 'cork', 8)
     mb.at()
-    mb.box((x - 0.05, 5.80, zc), (x + 0.05, 5.94, zc + 0.065), oak, bev=0.003)                     # D4 box, stepped lid
-    mb.box((x - 0.054, 5.796, zc + 0.065), (x + 0.054, 5.944, zc + 0.078), oak, bev=0.003)
-    mb.box((x - 0.04, 5.81, zc + 0.078), (x + 0.04, 5.93, zc + 0.09), oak, bev=0.004)
+    y0 = 5.62                                                                                      # D4 box, stepped lid
+    mb.box((x - 0.05, y0, zc), (x + 0.05, y0 + 0.14, zc + 0.065), oak, bev=0.003)
+    mb.box((x - 0.054, y0 - 0.004, zc + 0.065), (x + 0.054, y0 + 0.144, zc + 0.078), oak, bev=0.003)
+    mb.box((x - 0.04, y0 + 0.01, zc + 0.078), (x + 0.04, y0 + 0.13, zc + 0.09), oak, bev=0.004)
+    mb.at(Matrix.Translation((x, y0 + 0.07, zc + 0.09)))
+    mb.dome(0.032, 0.05, 0.022, oak, segs=8, rings=2)                                              # worn carved knob
     # leaning on the wall: foot `off` out, top on the wall
     lean = lambda y, off, deg: Matrix.Translation((X_UP + off, y, zc)) @ Matrix.Rotation(math.radians(-deg), 4, 'Y')
-    mb.at(lean(6.03, 0.028, 14))
+    mb.at(lean(5.86, 0.028, 14))
     mb.box((0, -0.07, 0), (0.002, 0.07, 0.10), cream)                                              # D5 card: blank
-    mb.at(lean(6.15, 0.022, 16))
-    mb.box((0, -0.035, 0), (0.015, 0.035, 0.07), M.solid('bs_tile', '#E9E2CF', 0.15), bev=0.002)   # D6 tile
+    mb.at(lean(5.97, 0.022, 16))
+    mb.box((0, -0.035, 0), (0.012, 0.035, 0.07), M.solid('bs_tile', '#E9E2CF', 0.15), bev=0.002)   # D6 cream tile
+    mb.at(lean(6.06, 0.026, 15))
+    mb.box((0, -0.04, 0), (0.02, 0.04, 0.08), oak, bev=0.003)                                      # D6 dark square
     mb.at()
-    mb.box((x - 0.04, 6.22, zc), (x + 0.04, 6.30, zc + 0.03), oak, bev=0.003)                      # D6 block
     ctx.add(mb.finish('basement_stair.shelf_ornaments'), ST, 'decor')
 
-    # D8 narrow gilt frame with a two-pronged fork, slightly askew on the upper wall
+    # D8 narrow reeded gilt board with a two-pronged fork laid over it, slightly askew on the upper wall (t_133)
     fr = mo.MB()
-    w, h, d, fw = 0.09, 0.36, 0.03, 0.018
-    fr.at(Matrix.Translation((X_UP, 6.06, 0.46)) @ Matrix.Rotation(math.radians(-3), 4, 'X'))
-    for ya, yb, za, zb in ((-w / 2, -w / 2 + fw, -h / 2, h / 2), (w / 2 - fw, w / 2, -h / 2, h / 2),
-                           (-w / 2, w / 2, -h / 2, -h / 2 + fw), (-w / 2, w / 2, h / 2 - fw, h / 2)):
-        fr.box((0, ya, za), (d, yb, zb), 'gilt_bright', bev=0.004)
-    fr.box((0, -w / 2 + 0.01, -h / 2 + 0.01), (0.012, w / 2 - 0.01, h / 2 - 0.01), M.solid('bs_frame_back', '#2E3A30', 0.9))
-    fr.box((0.012, -0.006, -0.15), (0.02, 0.006, -0.03), oak, bev=0.002)                           # handle
-    fr.box((0.013, -0.003, -0.03), (0.018, 0.003, 0.04), 'silver_satin')                           # shank
-    for s in (-1, 1):
-        fr.box((0.013, s * 0.009 - 0.002, 0.04), (0.018, s * 0.009 + 0.002, 0.15), 'silver_satin')  # prongs
-    fr.box((0.013, -0.011, 0.035), (0.018, 0.011, 0.043), 'silver_satin')
+    w, h, d = 0.09, 0.36, 0.012
+    fr.at(Matrix.Translation((X_UP, 5.95, 0.46)) @ Matrix.Rotation(math.radians(-3), 4, 'X'))
+    fr.box((0, -w / 2, -h / 2), (d, w / 2, h / 2), 'gilt_bright', bev=0.003)
+    for i in range(5):                                                                             # five reeds
+        yr = -w / 2 + 0.012 + i * (w - 0.024) / 4
+        fr.tube([(d, yr, -h / 2 + 0.008), (d, yr, h / 2 - 0.008)], 0.0075, 'gilt_bright', 6)
+    xf, steel = d + 0.012, M.solid('bs_fork_steel', '#6A6964', 0.45, 1.0)                          # fork, over the reeds
+    fr.box((xf - 0.004, -0.024, -0.16), (xf + 0.006, -0.012, -0.05), oak, bev=0.002)               # dark handle
+    fr.box((xf - 0.002, -0.021, -0.05), (xf + 0.003, -0.015, 0.06), steel)                          # shank
+    for dy in (-0.009, 0.009):
+        fr.box((xf - 0.002, -0.018 + dy - 0.002, 0.06), (xf + 0.003, -0.018 + dy + 0.002, 0.17), steel)
+    fr.box((xf - 0.002, -0.030, 0.055), (xf + 0.003, -0.006, 0.063), steel)
     ctx.add(fr.finish('basement_stair.fork_frame'), ST, 'decor')
 
 

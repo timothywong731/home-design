@@ -3,8 +3,10 @@
     python tools/plan/render.py [--json docs/assets/plan.json] [--out build/plan] [--sheet G] [--bounds x0,y0,x1,y1] [--zoom 2] [--tag crop]
 
 writes <out>/<sheet>_plan_dark[_tag].png and <out>/<sheet>_plan_paper[_tag].png for every sheet (or --sheet). Doubles
-as the reference for how a viewer should interpret every plan.json entity type (dim layout, hatch, text height = cap
-height, line styles). plan.json schema 2 keeps linestyles / hatch / dimstyle per sheet; schema 1 is read as one sheet.
+as the reference for how a viewer should interpret every plan.json entity type (dim layout, hatches ANSI31 / EARTH /
+SOLID, text height = cap height, line styles, `paths` = several polylines in one entity). plan.json schema 2 keeps
+linestyles / hatch / dimstyle per sheet; schema 1 is read as one sheet. A sheet is drawn in its own frame at its own
+size: the plans A3 portrait, a cross-section sheet (kind 'section', x = metres along the plane, y = Z) as it says.
 """
 import argparse, json, math
 from pathlib import Path
@@ -14,7 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Arc, Circle, Polygon as MPoly
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon, LineString, MultiLineString
 
 FONT, CAP = "DejaVu Sans Mono", 0.72             # cap height / font size; text "h" is the font size (em)
 BG = {"dark": "#0b0d10", "paper": "#ffffff"}
@@ -76,6 +78,22 @@ def hatch_lines(pts, spacing):
     return out
 
 
+def earth_lines(pts, spacing):
+    """EARTH: square cells of 2 x spacing on a grid through the origin, three lines in each, alternately along x and
+    along y, clipped to pts (docs/js/plan2d.js draws the same; the DXF carries AutoCAD's EARTH at that cell size)."""
+    poly = Polygon(pts)
+    c = 2 * spacing
+    x0, y0, x1, y1 = poly.bounds
+    segs = []
+    for i in range(math.floor(x0 / c), math.ceil(x1 / c)):
+        for j in range(math.floor(y0 / c), math.ceil(y1 / c)):
+            for k in (1, 3, 5):
+                t = k * c / 6
+                segs.append(((i * c, j * c + t), (i * c + c, j * c + t)) if (i + j) % 2 == 0 else ((i * c + t, j * c), (i * c + t, j * c + c)))
+    g = MultiLineString(segs).intersection(poly.buffer(0)) if segs else LineString()
+    return [list(part.coords) for part in getattr(g, "geoms", [g]) if part.geom_type == "LineString" and not part.is_empty]
+
+
 def figure(sh, layers, theme="paper", bounds=None, zoom=1.0):
     """Draw every entity of one sheet. At zoom 1 one model metre is 1000/scale paper mm, so a page is true to scale."""
     mm = int(sh["scale"].split(":")[1]) / 1000.0                       # model metres per paper mm
@@ -99,6 +117,8 @@ def figure(sh, layers, theme="paper", bounds=None, zoom=1.0):
         elif t == "polyline":
             pts = e["pts"] + ([e["pts"][0]] if e["closed"] else [])
             ax.plot(*zip(*pts), **kw)
+        elif t == "paths":
+            ax.add_collection(LineCollection([list(zip(q[0::2], q[1::2])) for q in e["paths"]], colors=col, linewidths=lw, zorder=z))
         elif t == "arc":
             ax.add_patch(Arc(e["c"], 2 * e["r"], 2 * e["r"], theta1=e["a0"], theta2=e["a1"], **kw))
         elif t == "circle":
@@ -107,7 +127,8 @@ def figure(sh, layers, theme="paper", bounds=None, zoom=1.0):
             if e["pattern"] == "SOLID":
                 ax.add_patch(MPoly(e["pts"], closed=True, fc=col, ec="none", zorder=z))
             else:
-                ax.add_collection(LineCollection(hatch_lines(e["pts"], sh["hatch"]["spacing"]), colors=col, linewidths=lw, zorder=z))
+                lines = (earth_lines if e["pattern"] == "EARTH" else hatch_lines)(e["pts"], sh["hatch"]["spacing"])
+                ax.add_collection(LineCollection(lines, colors=col, linewidths=lw, zorder=z))
         elif t == "text":
             draw_text(ax, e["p"], e["h"], e["text"], col, k, e.get("align", "left"), e.get("rot", 0), z)
         elif t == "dim":

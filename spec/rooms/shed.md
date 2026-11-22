@@ -240,3 +240,49 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - Veranda soffit `mahogany_mid` (#6A452C) with the boards running E-W; workshop floor `wood_tile_floor_grey`
   (#6B6A66 planks 0.20 wide running N-S) - lib/site.py SOFFIT / SHED_FIN.
 - The store doors open 90 degrees (at 95 the north leaf ran 10 mm into the front wall).
+
+## Round 3 re-fit (21 Nov footage; spec/phase3/briefs/shed.md, RECONCILE3 garden-12..-18)
+
+The tables above are phase-2 values in the old shed-local frame; the building now stands at y 25.02..30.75 (veranda
+25.02..26.70, workshop 26.98..30.47, store 25.35..26.68, soffit Z 2.02, workshop ceiling Z 2.13). `rooms/shed.py` and
+`rooms/shed_workshop.py` read every y from the spec (veranda zone, store and workshop rooms, `shed_d1` / `shed_w2`
+frames); x is as measured (the building did not move sideways).
+
+- **Veranda** (survey v13 f_0215-0217, garden.md 3.3): two folded teak chairs x 0.45..1.47 against the wall under W1
+  (tops Z 0.53, below the cill at 0.67); the oval slatted top on its end x 1.50..2.10 behind the box (v2_t188 / t194;
+  hidden from above); pine box x 1.49..2.33, y 26.00..26.50, 0.45 high (fixer: g216_ver 173 px/m, front edge 145 px,
+  top depth 63 px; v2_t188 h/w 0.54), with four clad front boards, a 0.15 x 0.18 doorway 0.18..0.33 from its east end
+  and a slatted lid; black glazed lidded pot Ø 0.42 x 0.38 at (1.25, 25.80) (g216_ver 72 px; v2_t188 h/w 0.9), plan
+  symbol `plant`; stone cats at (1.68, 25.74) / (1.84, 25.77); grey mat 1.00 x 0.60 centred (3.05, 26.36) in front of
+  the west leaf; new-pine rack (#CDB884) x 3.85..4.20, y 25.25..26.60, posts at the two ends only, grey plank shelves at
+  0.48 / 0.75 / 1.00 and nothing under the lowest (v2_t304: 312 : 170 : 170 px up the front post), terracotta bowl on
+  its saucer at the north end of the middle shelf, black bowl on the lowest; coat-hook rail y 25.22..26.47 on the
+  wing-wall face x 4.22.
+- **Measured here**: hook-rail board 1.76..1.95 above the paving (2.4 brick courses tall in v2_t304; top 2.0 +/- 0.1
+  by ratio against the 2.33 door in v2_t188); nest box 0.20 wide, body 1.85..2.12 above the paving, gable roof to 2.20
+  (v2_t194: the pier is 2.40 to the fascia = 615 px, box rows 320..405, px 360..415 at the pier's west edge, west of the
+  downpipe). shed.py reads the downpipe from the built `shed.fascia` and puts the box at x -0.85..-0.65 when the pipe
+  leaves room (site fixed: pipe at -0.53), else just east of it (now: x -0.70..-0.50, pipe at -0.76); doorbell centre
+  x 2.30 (v2_t188: 0.6 of the 0.485 brick pier from the window), 1.25 above the paving (survey).
+- **Store**: three shelves on the west wall, 0.34 deep (x -0.77..-0.43: the inside of the closed leaves stays clear),
+  tops 0.75 / 1.25 / 1.70 above the paving, bearers on three walls, the lower two lined black; LED batten on the south
+  jamb; tins, bowls, hose coil, cans and the black tub as v2_t264. Plan symbol `shelf` (not a walk obstacle).
+- **Soffit**: four downlights at Z 2.02 - three on y 25.87 (x 0.33 / 2.03 / 3.43), one at (0.25, 25.40); V-joints
+  at 95 mm from the front edge, skipping the vent strip (y 25.12..25.19).
+- **Workshop** (layout of 6.2 kept, clearances stretched): island x 0.33..2.73, y 28.06..29.26 (1.08 to the front wall,
+  0.61 to the back bench); back bench x 0.73..3.50 against the back wall (y 29.87..30.45) with pillar drill, thicknesser,
+  extractor drum and a grey workshop vacuum beneath, a pale hose to the table saw (v2 f_0282); east bench on castors
+  x 3.58..4.16, y 28.05..30.45 (2.40 long as 6.2; starts 1.07 inside the doors) with the CNC, red tray and a white
+  crate on its shelf; an open white-primed frame and a plywood board leaning on its south end (v2 f_0279 / f_0281; plan
+  symbol `rack`, a walk obstacle); racking x -0.52..0.38 and
+  clamps at the back wall; disc rack mid west wall; cove at Z 2.13, skirting stopping at the French doors; 2 x 3
+  downlights on y 28.00 / 29.45, round fitting at (3.33, 27.50); switch inside on the east wall at y 27.22, Z 0.88.
+- **Lanes**: lawn -> doors x 2.33..3.84 (between the box and the rack); store doors <- veranda behind the pier, 1.1
+  between the open leaves; doors -> workshop middle 0.54 between island and the leaning sheet goods, 0.93 west of the
+  island, 0.57 between island and back bench.
+- **Open questions**: the rack and the hook rail stand in the east French-door leaf's sweep (it can open about 25
+  degrees in reality; joinery opens it 100, into the wing wall); the 0.40-deep store cannot be walked into (spec
+  `walk: false`, which docs/js/geom.js no longer honours); the downpipe position depends on lib/site.py (now x -0.76,
+  intended -0.53); joinery's W1 transom (0.58 fixed pane under 0.64 fanlights; v11 f_0055 / v2_t188 have about 0.72
+  under 0.45) and the French-door mid-rail (0.75..0.85; v2_t188 reads 0.85..0.99, the survey 0.93..1.06).
+- Round-3 whole-house check: the east French leaf (`shed.shed_d1.leaf.1`) now opens 25 deg (shed.py `leaf_stop`; it clears the veranda rack up to 30, at joinery's 100 it ran through the rack, bowls, hook rail and wing wall). The west leaf keeps 100. Drop `leaf_stop` once joinery takes a per-leaf angle.

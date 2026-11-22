@@ -125,8 +125,11 @@ for i in range(int((max(xs) - min(xs)) / 0.1) + 1):
                   f'{s[0].z if s[0] else None} != {rz:.3f}')
 print(f'[test] roof points from above: {n_top}')
 
-# ---- 3. slab undersides: pitched 0.30, flat 0.24
+# ---- 3. slab undersides: pitched 0.30, flat 0.24; over a top-floor room whose ceiling is flatter than the roof the
+#         underside stays 1 cm above that ceiling (the front loft: 30-degree roof, 1.08 knee wall, RECONCILE3 open 1)
 n_under = {}
+ceils = E._ceilings(h)
+lifted = lambda x, y, z: max([z] + [h.ceil_z(rid, x, y) + 0.01 for rid, poly, _ in ceils if C.point_in_poly(x, y, poly)])
 for p in h.spec['roof']['planes']:
     if p.get('level') == 'G':
         continue
@@ -142,6 +145,7 @@ for p in h.spec['roof']['planes']:
             zf = E._floor_under(vols, x, y, under)
             if zf is not None and under < zf + 0.02:
                 continue
+            under = lifted(x, y, under) if zf is not None else under
             hit = slabbvh.ray_cast(Vector((x, y, under - 0.3)), Vector((0, 0, 1)))
             check(hit[0] is not None and abs(hit[0].z - under) < 2e-3,
                   f'{p["id"]} underside at ({x:.2f}, {y:.2f}): {hit[0].z if hit[0] else None} != {under:.3f}')
@@ -271,6 +275,11 @@ VIEWS = {   # name: (ortho?, pos, look, scale or fov, portrait)
     'bay': (False, (0.0, -2.6, 1.5), (2.4, -0.1, 1.9), 95, True),               # v2:f_0954
     'gable_ortho': (True, (2.5, -30, 6.3), (2.5, 0, 6.3), 4.6, False),
     'eaves_k': (False, (5.2, 12.5, 4.0), (3.9, 9.0, 6.8), 70, True),            # v4:f_0422 (from below)
+    'porch_up': (False, (-0.2, -2.4, 1.6), (0.35, 0.2, 4.2), 75, True),         # v8 f_0126
+    'gable_full': (True, (2.48, -30, 6.6), (2.48, 0, 6.6), 4.6, True),          # v8 t135
+    'alley': (False, (5.35, -1.6, 1.6), (4.5, 2.5, 2.4), 85, True),             # v8 f_0061 / f_0067
+    'rear_down': (False, (1.25, 17.75, 8.3), (1.25, 18.9, 3.0), 90, True),      # v13 t214
+    'verge_e': (False, (4.6, -2.2, 6.6), (3.4, -0.4, 7.4), 60, False),
 }
 if not A.no_render:
     sc = bpy.context.scene

@@ -340,7 +340,7 @@ the tower.
 
 | Item | Wall / place | Position (local) | Size (W × H) | Description | Texture source |
 |---|---|---|---|---|---|
-| **Peacock relief plaque** | nook wall pier | centre x 1640, z 1920 | 440 × 590, ≈ 35 relief | One-piece cast plaque in antique bronze-brown. Wavy scalloped "cartouche" outline with scrolled corners and a raised rolled border; inside, in high relief, a **peacock perched facing right, head turned back, long tail sweeping down to the lower left with overlapping eyed feathers**, surrounded by open roses and leaves and a few beaded dots. Sampled #5f5441 → neutral **#5c4b3a**, low-sheen metallic (metallic 0.6, roughness 0.5), darker in the recesses. | **f_0332**, quad TL (268,478) TR (497,478) BR (497,778) BL (268,778) in the 720×1280 frame (full-res: t = 331 s, multiply by 1.5). Use as albedo + derive a height/bump map; cut to the scalloped outline. Alt: f_0766 (460,318)–(605,525). |
+| **Peacock relief plaque** | nook wall pier | centre x 1640, z 1970 | 470 × 630 (round 3; was 440 × 590), ≈ 35 relief | One-piece cast plaque in antique bronze-brown. Wavy scalloped "cartouche" outline with scrolled corners and a raised rolled border; inside, in high relief, a **peacock perched facing right, head turned back, long tail sweeping down to the lower left with overlapping eyed feathers**, surrounded by open roses and leaves and a few beaded dots. Sampled #5f5441 → neutral **#5c4b3a**, low-sheen metallic (metallic 0.6, roughness 0.5), darker in the recesses. | **f_0332**, quad TL (268,478) TR (497,478) BR (497,778) BL (268,778) in the 720×1280 frame (full-res: t = 331 s, multiply by 1.5). Use as albedo + derive a height/bump map; cut to the scalloped outline. Alt: f_0766 (460,318)–(605,525). |
 | **Glass memo board** | hob wall, in the clear zone H0 | y 3350 → 2550, z 950 → 1950 | 800 × 1000, 5 thick | Frameless frosted pale-green/white glass board on 4 satin-chrome stand-off buttons 30 in from the corners; stands 15 off the wall. Sampled #c0c2b4 → neutral **#dfe6e0**, slight translucency, glossy. **Render it blank** — the hand-written meal planner must not be reproduced (privacy rule). A small black magnetic eraser 60 × 30 at the top right is optional. | none (do not crop) |
 | Hanging stemware | nook, under soffit | see §4.5 | — | ≈ 14 clear wine glasses and 2 martini glasses hanging bowl-down in two rows. | — |
 | **Shelf mugs and glassware** (owner: "lots of wine glasses, mugs" — required) | nook glass shelves | — | — | Upper shelf: a row of clear tumblers/tankards and three small blue-and-white patterned tea canisters at the +X end; a chrome cocktail shaker and a silver teapot at the −X end. **Lower shelf: ≈ 6 mugs (two lime-yellow, the rest white) plus ≈ 8 clear glass tankards** (f_0311, f_0314). No branded bottles. | — |
@@ -460,3 +460,28 @@ Camera positions are local (x, y) in mm, eye height ≈ 1450–1550; "looking" i
 - 6 The plaque centre is about 70 mm right of the pier centre (v1 f_0766, v6 f_0073); the nook-pier socket is a DOUBLE
   switched socket under the left part of the tread plate, behind the black bin (v2 f_0434, v7 f_0039-0041), not the
   single at 0.60 (that is the cat flap); the tread plate is 0.54 wide, centred on the pier.
+
+## Round 3 (21 Nov footage, kitchen unit)
+- Back door (joinery, from the spec): frame 0.79 at x 3.49..4.28, reveal x 3.48..4.29; the hinge side meets the east wall
+  (0.02). Nothing of the module stands between the door and the east wall; the memo board (east wall, y 7.86..8.66) is
+  clear of the leaf swung 90 deg (checked with --pose 1). The pier group (tread plate, bin, plaque, thermostat, socket)
+  is read from the reveal and the nook feature, so it follows both.
+- Floor planks 0.245 wide (dims_G; confirmed at t=765 s: plank joints along the nook plinth at 102 px with the base doors
+  at 310 px = 0.715, i.e. 0.24 m). The library tile is 0.2035; the module rescales U of the shell's kitchen floor, a
+  joint on the door wall (x 1.25), and stays right if the library key is widened.
+- **Nook width (open, requested)**: the full-res still at t=765 s (reference/work/critic_kitchen/full_765.jpg, camera square
+  to the nook wall) has a scale of 2.31 mm/px from the base-door height 0.715 (310 px) and 2.36 from the worktop 0.91
+  (385 px); on it the nook base doors run 15..668 px = 1.50 m (opening 10..680 = 1.55 at the arrises), the pier to the
+  back-door reveal 680..950 = 0.62 m, the tread plate 690..925 = 0.54 (as kitchen.md). The nook wall then closes:
+  0.12 + 1.49 + 0.62 + 0.81 (reveal) + 0.01 = 3.05. Spec: nook 1.25 (x 1.37..2.62), pier 0.86. Proposed: nook x 1.37..2.86.
+  The module reads the nook from feature `kitchen_nook` (doors split 0.30 / 0.26 / 0.44 of the width as measured, 190 /
+  170 / 283 px; shelf contents spread with the width; the stemware rack keeps its size against the right reveal), so a
+  spec change needs no module change (tested with a scratch spec: build/rooms3/kitchen/house_nook.json).
+- Teapot on the upper nook shelf no longer pierces the back mirror; the freezer and the drawn-out warming drawer are an
+  interlocked pair (10 mm).
+- Fixer round: (a) the hall doorway floor. The shell paints the floor of the door hole white where two floor finishes
+  meet (a white 90 mm band on each side of the 75 mm hardwood bar, x 0.99..1.25). Since the round-3 follow-up the shell
+  gives each half of the door-hole bottom its own room's floor (hall oak, kitchen planks, the bar between); the interim
+  `kitchen.floor.doorway` is gone. (b) The peacock plaque is 0.47 x
+  0.63 (was 0.44 x 0.59; full_765: 205 x 272 px against the tread plate's 235 px = 0.54, aspect 0.75), centre z 1.97:
+  bottom 1.655 at the upper glass shelf, top 2.285. Vertical values +/- 0.05 (phone pitched, see the note above).

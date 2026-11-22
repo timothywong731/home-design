@@ -482,7 +482,7 @@ GREY = dict(
 WHITE = dict(
     L=3.46, track=1.42, axles=(0.66, 3.00), tyre_r=0.285, tyre_w=0.175, rim_r=0.195,
     paint=('car_paint_white', '#F0F1F1', 0.14, 0.0), alloy_dark=('car_alloy_black', '#17181A', 0.35, 0.6),
-    mirror_cap=('car_mirror_red', '#D2452F', 0.2, 0.0),
+    mirror_cap=('car_mirror_red', '#C8452F', 0.2, 0.0),                    # 21 Nov survey: red-orange caps, stripe and lip
     top=[(0, .50), (.006, .61, .004), (.035, .70, .012), (.12, .77, .03), (.50, .885, .15), (.87, .96, .05),
          (1.52, 1.405, .12), (2.0, 1.46, .3), (2.85, 1.44, .2), (3.11, 1.395, .03), (3.33, 1.02, .04), (3.42, .74, .04),
          (3.455, .62, .006), (3.46, .50)],
@@ -494,16 +494,25 @@ WHITE = dict(
           (3.38, .71, .05), (3.445, .62, .02), (3.46, .50)],
     ws=(0.92, 1.47), side_glass=(0.92, 3.12), rear_glass=(3.12, 3.40), pillars=[(1.88, 1.96), (2.62, 3.12)],
     stations=(0.92, 1.47, 3.12, 3.40, 1.88, 1.96, 2.62, 1.00, 1.92, 2.72, 0.28, 0.44, 3.16, 3.425, 1.02, 2.64),
-    patches=[(1.47, 3.40, 'R', 0, NR, 'trim'), (3.12, 3.40, 'G', 0, NG, 'trim'), (1.02, 2.64, 'S', NS - 2, NS, 'trim')],
+    # black A-pillar flash running on along the bonnet shoulder to the headlamps (v8 f91-97), black roof rails and
+    # C-pillar, black sill strip
+    patches=[(0.30, 3.40, 'R', 0, NR, 'trim'), (0.30, 0.92, 'G', 0, NG, 'trim'), (3.12, 3.40, 'G', 0, NG, 'trim'),
+             (1.02, 2.64, 'S', NS - 2, NS, 'trim')],
     lamps=_front(([(0.32, 0.64), (0.56, 0.63), (0.80, 0.665), (1.04, 0.75), (1.08, 0.79), (0.84, 0.78), (0.58, 0.725),
                    (0.36, 0.68)],
                   [(0.52, 0.65), (0.66, 0.65), (0.70, 0.705), (0.56, 0.70)]),
                  [(-0.24, 0.62), (0.24, 0.62), (0.28, 0.665), (-0.28, 0.665)],
-                 [(-0.46, 0.26), (0.46, 0.26), (0.44, 0.31), (0.30, 0.52), (-0.30, 0.52), (-0.44, 0.31)], turn=40)
+                 [(-0.46, 0.30), (0.46, 0.30), (0.44, 0.33), (0.30, 0.52), (-0.30, 0.52), (-0.44, 0.33)], turn=40)
     + [dict(m='red', view='rear', turn=-50, off=0.004,
             pts=[(0.70, 0.78), (0.80, 0.78), (0.86, 1.05), (0.96, 1.36), (0.88, 1.38), (0.76, 1.08)]),
        dict(m='trim', view='rear', off=0.002, pts=[(-0.46, 0.30), (0.46, 0.30), (0.49, 0.41), (-0.49, 0.41)], mirror=False),
-       dict(m='red', view='rear', off=0.003, pts=[(-0.42, 0.365), (0.42, 0.365), (0.42, 0.38), (-0.42, 0.38)], mirror=False)],
+       dict(m='red', view='rear', off=0.003, pts=[(-0.42, 0.365), (0.42, 0.365), (0.42, 0.38), (-0.42, 0.38)], mirror=False),
+       # red-orange lower lip under the front intake and a thin red-orange stripe low along both doors, rising to the
+       # rear (v8 f31-36, f91-97)
+       dict(m='cap', view='front', off=0.003, sub=8, rings=2, mirror=False,
+            pts=[(-0.53, 0.256), (0.53, 0.256), (0.49, 0.300), (-0.49, 0.300)]),
+       dict(m='cap', view='side', off=0.0025, sub=10, rings=1, rim=False,
+            pts=[(-0.72, 0.352), (0.86, 0.405), (0.86, 0.428), (-0.72, 0.374)])],
     shut_i=[(1.00, J_SIDE, J_UNDER), (1.92, J_SIDE, J_UNDER), (2.72, J_SIDE, J_UNDER - 4), (0.065, 0, J_RAIL + 1)],
     shut_j=[(J_RAIL, 0.44, 0.87)],
     handles=(1.76, 2.56), extras=(_aerial, _white_tail))

@@ -336,23 +336,24 @@ def bed(ctx):
 
 # ------------------------------------------------------------------------------------------ F3 / F4 nightstands
 def nightstand(ctx, i, yc):
-    """French provincial light-oak bedside cabinet 0.42 x 0.34 x 0.60: moulded top, carved door (opens, hinged
-    right), shaped apron, short cabriole legs."""
-    O, X, Yf = 'oak_rustic', 0.185, -0.325
+    """French provincial light-oak bedside cabinet 0.39 x 0.34 x 0.60: moulded top, carved door (opens, hinged
+    right), shaped apron, short cabriole legs. 0.39 along the wall (spec 0.42): the pair stands in the 0.41 gap
+    between the wardrobe and the bed's side rail with the duvet hanging over the bed edge."""
+    O, H, Yf = 'oak_rustic', 0.195, -0.325                                                 # H: half the top
+    X = H - 0.025
     pc = Piece(ctx, f'blue_bedroom.nightstand.{i}', 3.078, yc, (-1, 0))
 
     def carcass(mb):
         b = mb.box
-        b((-0.21, -0.34, 0.575), (0.21, 0, 0.60), O, bev=0.007, grain=0)                   # top
-        b((-0.20, -0.332, 0.562), (0.20, -0.004, 0.577), O, bev=0.004, grain=0)
+        b((-H, -0.34, 0.575), (H, 0, 0.60), O, bev=0.007, grain=0)                         # top
+        b((-H + 0.01, -0.332, 0.562), (H - 0.01, -0.004, 0.577), O, bev=0.004, grain=0)
         b((-X, -0.012, 0.16), (X, -0.002, 0.565), O, grain=2)                              # back
         b((-X, Yf, 0.16), (X, -0.012, 0.18), O)
         for sx in (-1, 1):
             b((sx * X, Yf, 0.16), (sx * (X - 0.02), -0.012, 0.565), O, grain=2)
-            b((sx * (X - 0.02), Yf, 0.18), (sx * 0.165, Yf + 0.018, 0.565), O, grain=2)    # front stiles
-        b((-0.165, Yf, 0.555), (0.165, Yf + 0.018, 0.565), O, grain=0)
-        apron = [(-X, Yf, 0.16), (-X, Yf, 0.115), (-0.12, Yf, 0.135), (-0.05, Yf, 0.118), (0, Yf, 0.10), (0.05, Yf, 0.118),
-                 (0.12, Yf, 0.135), (X, Yf, 0.115), (X, Yf, 0.16)]
+        b((-(X - 0.02), Yf, 0.555), (X - 0.02, Yf + 0.018, 0.565), O, grain=0)
+        apron = [(-X, Yf, 0.16), (-X, Yf, 0.115), (-0.11, Yf, 0.135), (-0.045, Yf, 0.118), (0, Yf, 0.10), (0.045, Yf, 0.118),
+                 (0.11, Yf, 0.135), (X, Yf, 0.115), (X, Yf, 0.16)]
         mb.prism(apron, (0, 0.018, 0), O)
         leg = [(0, 0.165), (0.05, 0.165), (0.056, 0.13), (0.04, 0.07), (0.036, 0.03), (0.05, 0.0), (0.022, 0.0),
                (0.012, 0.035), (0.006, 0.09)]
@@ -365,7 +366,7 @@ def nightstand(ctx, i, yc):
         mb.box((-X + 0.021, Yf + 0.03, 0.36), (X - 0.021, -0.013, 0.372), 'oak_light')
 
     def door(mb):
-        x, z0, z1 = 0.163, 0.182, 0.553
+        x, z0, z1 = X - 0.022, 0.182, 0.553
         mb.box((-x, Yf, z0), (x, Yf + 0.018, z1), O, bev=0.002, grain=2)
         mb.prism([(-x + 0.03, Yf, z0 + 0.03), (x - 0.03, Yf, z0 + 0.03), (x - 0.03, Yf, z1 - 0.06), (x - 0.07, Yf, z1 - 0.03),
                   (-x + 0.07, Yf, z1 - 0.03), (-x + 0.03, Yf, z1 - 0.06)], (0, -0.005, 0), O)
@@ -381,7 +382,7 @@ def nightstand(ctx, i, yc):
     pc.add('', carcass, plan_sym='bedside', key='ns.carcass')
     pc.add('inner', inner, lm='dynamic', key='ns.inner')
     d = pc.add('door', door, lm='dynamic', key='ns.door')
-    pc.hinge([d], 'door', 'Nightstand', (0.163, Yf, 0), 100 if i == 0 else 88)   # the north door stops on the duvet
+    pc.hinge([d], 'door', 'Nightstand', (X - 0.022, Yf, 0), 95 if i == 0 else 88)    # south: clear of the wardrobe, north: the duvet
     return pc
 
 
@@ -492,13 +493,13 @@ def stool(ctx):
 
 
 # ------------------------------------------------------------------------------------------ F7 TV cabinet
-def tv_cabinet(ctx):
+def tv_cabinet(ctx, x):
     """Georgian-style flame-mahogany cabinet 0.59 x 0.45 x 1.02 against the block face: two doors (open, burgundy
     lining, one shelf) over two long drawers, reeded quarter columns, bracket feet; a blank remote on top."""
     C, INL, X, Yf = 'mahogany', 'oak_light', 0.285, -0.44
     LN = M.solid('blue_bedroom_cab_lining', '#5B1F33', 0.7)
     FLAME = art('flame', None, 0.2)                          # flame-figured veneer, fills 0..1 UV once
-    pc = Piece(ctx, 'blue_bedroom.tv_cabinet', 0.715, 12.972, (0, 1))
+    pc = Piece(ctx, 'blue_bedroom.tv_cabinet', x, 12.972, (0, 1))
 
     def stringing(mb, x0, x1, z0, z1, y):
         for a, b in (((x0, z0), (x1, z0 + 0.003)), ((x0, z1 - 0.003), (x1, z1)), ((x0, z0), (x0 + 0.003, z1)),

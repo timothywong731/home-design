@@ -100,8 +100,13 @@ function stepTreads(s) {
 // Body radius: small enough for the 0.61 m doors and the gaps round the dining table, still > the distance from the
 // eye to the near-plane corners at 90 deg fov on a 2.4:1 screen (0.14 m), so the camera never clips into a wall.
 export const BODY = 0.15;
-const PASSABLE = new Set(['door', 'double_door', 'french_door', 'arch', 'opening']);
-const HEADROOM = 1.25;           // under sloped ceilings a point with less headroom is not free (loft knee walls)
+const PASSABLE = new Set(['door', 'double_door', 'french_door', 'arch', 'opening', 'hatch']);
+// Low places (round 3, owner: "get into narrow spaces, such as the eaves storage"): a point is free down to CLEAR m of
+// headroom; the eye follows the headroom (eyeAt: headroom - EYE_GAP, never under EYE_MIN), so the walker ducks through a
+// 0.90 hatch and crouches under a slope. Ceilings: flat ceilingZ, ceilingZones, sloped planes, and under the roof the
+// lining: min(ceilingZ, roof surface + ceiling.offset, ceiling.planes) (blender/lib/ctx.py ceil_z; the slab underside is
+// 1 cm above it) - the camera never enters a ceiling or the roof.
+export const CLEAR = 0.8, EYE_MIN = 0.55, EYE_GAP = 0.15;   // 0.15: the head clears the bulkhead in the 1.70 eaves tunnel (near plane 0.05)
 
 // rect around a wall opening: along = clear width minus the body, across = wall thickness + body + overlap
 function portalFor(o, wall, r) {
@@ -111,12 +116,13 @@ function portalFor(o, wall, r) {
   const [cx, cy] = o.center;
   const p = (s, t) => [cx + ux * s + nx * t, cy + uy * s + ny * t];
   return { id: o.id, center: [cx, cy], normal: [nx, ny], depth: (wall.thickness || 0) / 2,
-    width: o.width, poly: [p(-ha, -hc), p(ha, -hc), p(ha, hc), p(-ha, hc)], open: o.openAngle !== 0 };
+    width: o.width, poly: [p(-ha, -hc), p(ha, -hc), p(ha, hc), p(-ha, hc)], open: o.openAngle !== 0,
+    ...(typeof o.height === 'number' && typeof o.floorZ === 'number' ? { head: o.floorZ + (o.sill || 0) + o.height } : {}) };
 }
 
 // house = house.json (schema 1 or 2). obstacles / soft = {layer: [[x, y], ...polygons]} (an array = layer G), the
 // furniture footprints from obstaclesFrom; soft ones are walked through, slowed. Returns the structure of 11.2.
-export function buildWalk(house, { radius = BODY, obstacles = {}, soft = {} } = {}) {
+export function buildWalk(house, { radius = BODY, obstacles = {}, soft = {}, pens = {} } = {}) {
   const r = radius, ext = house.exterior || {};
   const stairs = stairsOf(house), flights = stairs.filter((s) => s.kind === 'flight' && s.walk), steps = stairs.filter((s) => s.kind === 'steps');
   const levels = house.levels?.length ? house.levels.map((l) => l.id) : ['G'];
@@ -124,16 +130,29 @@ export function buildWalk(house, { radius = BODY, obstacles = {}, soft = {} } = 
   const roomById = new Map((house.rooms || []).map((q) => [q.id, q]));
   const lv = (id) => levelOf(house, id);
   const cells = [];
-  for (const rm of house.rooms || []) {                    // 1. level cells: rooms of kind room / exterior
-    if (!['room', 'exterior'].includes(kindOf(rm))) continue;
-    const c = { id: rm.id, layer: lv(rm.id), level: lv(rm.id), kind: 'room', room: rm.id, polygon: rm.polygon, z: rm.floorZ ?? 0, ...(kindOf(rm) === 'exterior' ? { ext: true } : {}) };
+  // the roof over an under_roof room: the highest roof plane there (the porch lean-to is the ground floor's) plus the
+  // room's lining `ceiling.offset`; no offset: minus the slab (structure.thickness - 0.01).
+  // ponytail: flat planes keep the full slab here (ctx thins them over the ceilings below): lower = on the safe side.
+  const roofPl = (house.roof?.planes || []).filter((p) => p.level !== 'G'), slab = (house.roof?.structure?.thickness ?? 0.31) - 0.01;
+  for (const rm of house.rooms || []) {                    // 1. level cells: rooms of kind room / exterior / void (eaves)
+    const kd = kindOf(rm);
+    if (!['room', 'exterior', 'void'].includes(kd)) continue;
+    const c = { id: rm.id, layer: lv(rm.id), level: lv(rm.id), kind: 'room', room: rm.id, polygon: rm.polygon, z: rm.floorZ ?? 0, ...(kd === 'exterior' ? { ext: true } : {}), ...(kd === 'void' ? { void: true } : {}) };
     const tr = steps.filter((s) => s.toRoom === rm.id).flatMap(stepTreads);
     if (tr.length) c.treads = tr;
-    if (rm.ceiling?.type === 'planes') c.planes = rm.ceiling.planes;
+    const fs = (house.features || []).filter((f) => f.type === 'floor_step' && f.room === rm.id && f.line);
+    if (fs.length) c.fsteps = fs.map((f) => ({ at: f.line[0], side: f.lowSide, z: f.zLow }));
+    if (typeof rm.ceilingZ === 'number') c.top = rm.ceilingZ;
+    if (rm.ceilingZones?.length) c.czones = rm.ceilingZones.filter((q) => q.polygon && typeof q.z === 'number');
+    if (rm.ceiling?.planes?.length) c.planes = rm.ceiling.planes;         // type planes, or the linings of an under_roof room
+    if (rm.ceiling?.type === 'under_roof' && roofPl.length) c.roof = { planes: roofPl, off: rm.ceiling.offset ?? -slab };
     cells.push(c);
   }
-  for (const b of ext.buildings || []) for (const br of b.rooms || []) {   // walkable building rooms: cells of G
-    if (br.walk) cells.push({ id: br.id, layer: 'G', level: 'X', kind: 'room', room: b.room || b.id, polygon: br.polygon, z: br.floorZ ?? 0 });
+  // building rooms are cells of G; `walk: false` is not honoured since round 3 (owner: the shed store is walked into).
+  // Their walls block inside them too (`bw`), so a room polygon that runs into a wall stops at the wall's face
+  const bwOf = (b, skip) => (b.walls || []).filter((w) => w.id !== skip).map((w) => ({ a: w.a, b: w.b, half: (w.thickness || 0) / 2 }));
+  for (const b of ext.buildings || []) for (const br of b.rooms || []) {
+    cells.push({ id: br.id, layer: 'G', level: 'X', kind: 'room', room: b.room || b.id, polygon: br.polygon, z: br.floorZ ?? 0, bw: bwOf(b), ...(typeof br.ceilingZ === 'number' ? { top: br.ceilingZ } : {}) });
   }
   const byArea = (a, b) => Math.abs(polyArea(a.polygon)) - Math.abs(polyArea(b.polygon));
   const bWalls = (ext.buildings || []).flatMap((b) => b.walls || []), bOpenings = (ext.buildings || []).flatMap((b) => b.openings || []);
@@ -170,8 +189,9 @@ export function buildWalk(house, { radius = BODY, obstacles = {}, soft = {} } = 
   for (const o of [...(house.openings || []), ...bOpenings]) {
     if (!PASSABLE.has(o.type) || !walls.has(o.wall)) continue;
     const ends = (o.connects || []).map((e) => resolve(e, o.id));
-    if (ends.length !== 2 || !ends.every(Boolean)) continue;
-    portals.push({ ...portalFor(o, walls.get(o.wall), r), layers: ends.map((c) => c.layer), cells: ends.map((c) => c.id), ...(/door/.test(o.type) ? { door: true } : {}) });
+    if (ends.length !== 2 || !ends.every(Boolean) || (typeof o.height === 'number' && o.height < CLEAR)) continue;
+    const bld = (ext.buildings || []).find((b) => (b.openings || []).includes(o));     // its building's other walls block in it
+    portals.push({ ...portalFor(o, walls.get(o.wall), r), layers: ends.map((c) => c.layer), cells: ends.map((c) => c.id), ...(/door|hatch/.test(o.type) ? { door: true } : {}), ...(bld ? { bw: bwOf(bld, o.wall) } : {}) });
   }
   for (const s of steps) {                                   // single steps / step pairs: a thin portal on riserLines[0]
     const line = s.riserLines?.[0], a = roomCell.get(s.fromRoom), b = roomCell.get(s.toRoom);
@@ -188,13 +208,14 @@ export function buildWalk(house, { radius = BODY, obstacles = {}, soft = {} } = 
   }
   // obstacles per layer: furniture footprints + structural projections standing on the floor (piers, breasts, ducts)
   const perLayer = (o) => { const m = {}; for (const [k, v] of Object.entries(Array.isArray(o) ? { G: o } : o || {})) m[k] = v.slice(); return m; };
-  const obs = perLayer(obstacles), sft = perLayer(soft);
+  const obs = perLayer(obstacles), sft = perLayer(soft), pn = [];
+  for (const [L, list] of Object.entries(perLayer(pens))) for (const poly of list) { (obs[L] ||= []).push(poly); pn.push({ layer: L, poly, open: false }); }
   for (const f of house.features || []) {
     const c = roomCell.get(f.room);
     if (!c || !f.polygon || !Array.isArray(f.z) || !['pier', 'pilaster', 'chimney_breast', 'boxing'].includes(f.type)) continue;
     if (f.z[0] <= c.z + 0.1 && f.z[1] >= c.z + 1.0) (obs[c.layer] ||= []).push(f.polygon.map((p) => [p[0], p[1]]));
   }
-  return { radius: r, layers, cells, portals, obstacles: obs, soft: sft };
+  return { radius: r, layers, cells, portals, obstacles: obs, soft: sft, pens: pn };
 }
 
 // per-walk lookup tables (cells / portals by layer, obstacle boxes); built once, portals stay live objects
@@ -213,9 +234,23 @@ function idx(walk) {
   return I;
 }
 const planeZ = (pl, x, y) => pl.z.c0 + (pl.z.cx || 0) * x + (pl.z.cy || 0) * y;
-function ceilingAt(c, x, y) {                    // lowest ceiling plane over (x, y) of a cell with sloped planes
-  let z = Infinity;
+// ceiling Z of a cell over (x, y): min(ceilingZ, ceilingZones, sloped planes, the roof of an under_roof room); a flight or
+// the ground: Infinity
+function ceilingAt(c, x, y) {
+  let z = c.top ?? Infinity;
+  for (const q of c.czones || []) if (q.z < z && inTol(x, y, q.polygon)) z = q.z;
   for (const pl of c.planes || []) if (inTol(x, y, pl.polygon)) z = Math.min(z, planeZ(pl, x, y));
+  if (c.roof) {
+    let t = -Infinity;
+    for (const pl of c.roof.planes) if (inTol(x, y, pl.polygon)) t = Math.max(t, planeZ(pl, x, y));
+    if (t > -Infinity) z = Math.min(z, t + c.roof.off);
+  }
+  return z;
+}
+// floor Z of a room cell off its treads: the low side of a floor_step (eaves_rear: 0.12 down east of x 2.35)
+function floorZ(c, x, y) {
+  let z = c.z;
+  for (const f of c.fsteps || []) if ({ east: x > f.at[0], west: x < f.at[0], north: y > f.at[1], south: y < f.at[1] }[f.side]) z = f.z;
   return z;
 }
 // floor Z of a flight: a ramp over its riser lines (11.2.3); k = consecutive risers passed (point left of a->b)
@@ -235,7 +270,7 @@ const nearFrom = (c, z) => Math.abs(z - c.fromZ) < Math.abs(c.toZ - z);      // 
 function pieceOf(c, x, y, within) {
   const P = c.kind === 'ground' ? [...c.treads.map((t) => [t.polygon, () => t.z]), ...c.zones.map((zn) => [zn.polygon, () => zoneZ(zn, x, y)])]
     : c.kind === 'flight' ? [[c.polygon, () => rampZ(c, x, y)]]
-    : [...(c.treads || []).map((t) => [t.polygon, () => t.z]), [c.polygon, () => c.z]];
+    : [...(c.treads || []).map((t) => [t.polygon, () => t.z]), [c.polygon, () => floorZ(c, x, y)]];
   let zf = null, bd = Infinity;
   for (const [poly, f] of P) {
     const d = within ? (inTol(x, y, poly) ? 0 : Infinity) : polyDist(x, y, poly);
@@ -268,11 +303,27 @@ export function cellAt(walk, L, x, y) {
 const hit = (c, p) => ({ cell: c, z: p.z, room: p.room, level: c.kind === 'flight' ? c.level[nearFrom(c, p.z) ? 0 : 1] : c.level });
 export const zAt = (walk, L, x, y) => cellAt(walk, L, x, y)?.z ?? null;
 export const levelAt = (walk, L, x, y) => cellAt(walk, L, x, y)?.level ?? null;
+// clear height over (x, y) on layer L: the cell's ceiling, and inside an open doorway / hatch its head (Infinity: none)
 export function headroomAt(walk, L, x, y) {
   const h = cellAt(walk, L, x, y);
-  return h?.cell.planes ? ceilingAt(h.cell, x, y) - h.z : Infinity;
+  if (!h) return Infinity;
+  let z = ceilingAt(h.cell, x, y);
+  for (const p of idx(walk).portals.get(L) || []) if (p.head !== undefined && p.head < z && p.open !== false && pointInPoly(x, y, p.poly)) z = p.head;
+  return z - h.z;
+}
+// eye height above the floor at (x, y): the headroom over the body (its centre and 8 points round it, so the walker ducks
+// before the lintel reaches the eye) less EYE_GAP, between EYE_MIN and `eye`
+export function eyeAt(walk, L, x, y, eye = 1.6) {
+  const r = walk.radius;
+  let h = headroomAt(walk, L, x, y);
+  for (let k = 0; k < 8; k++) {
+    const a = (k * Math.PI) / 4, px = x + r * Math.cos(a), py = y + r * Math.sin(a);
+    if (cellAt(walk, L, px, py)) h = Math.min(h, headroomAt(walk, L, px, py));
+  }
+  return Math.max(EYE_MIN, Math.min(eye, h - EYE_GAP));
 }
 
+const wallHit = (bw, x, y, r) => !!bw && bw.some((w) => segDist(x, y, w.a[0], w.a[1], w.b[0], w.b[1]) < r + w.half);
 function cellFree(walk, c, x, y) {
   const r = walk.radius;
   if (c.kind === 'ground') {
@@ -284,14 +335,47 @@ function cellFree(walk, c, x, y) {
     }
     return true;
   }
-  if (!pointInPoly(x, y, c.polygon) || edgeDist(x, y, c.polygon) < r) return false;
-  return !c.planes || ceilingAt(c, x, y) - (pieceOf(c, x, y, true)?.z ?? c.z) >= HEADROOM;
+  if (!pointInPoly(x, y, c.polygon) || edgeDist(x, y, c.polygon) < r || wallHit(c.bw, x, y, r)) return false;
+  return ceilingAt(c, x, y) - (pieceOf(c, x, y, true)?.z ?? c.z) >= CLEAR;
 }
 // moving obstacles: door leaves at their resting pose (interact.js), set again on every toggle; poly null removes
 export function setObstacle(walk, id, layers, poly) {
   const d = (walk.dynamic ||= []), i = d.findIndex((o) => o.id === id);
   if (i >= 0) d.splice(i, 1);
   if (poly?.length >= 3) d.push({ id, layers, poly, bb: bbox(poly) });
+}
+// Pens (a sauna cabin: footprints of PENS): solid until interact.js finds the door leaf hung in its outline. `leaf` = the
+// leaf's plan outline shut; when it lies along an edge of a pen of layer L (every point within 0.08 of that edge, at
+// least 0.3 long), the pen becomes its walls (strips PEN_WALL thick inside the outline) with a gap the leaf's length,
+// which the leaf itself fills while shut (a moving obstacle, setObstacle). -> true when a pen took the leaf.
+const PEN_WALL = 0.04;
+export function penDoor(walk, L, leaf) {
+  for (const pen of walk.pens || []) {
+    if (pen.layer !== L || pen.open) continue;
+    const P = pen.poly, ccw = polyArea(P) > 0;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (!leaf.every((q) => segDist(q[0], q[1], ...a, ...b) < 0.08)) continue;
+      const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len, t = leaf.map((q) => (q[0] - a[0]) * ux + (q[1] - a[1]) * uy);
+      const t0 = Math.max(0, Math.min(...t)), t1 = Math.min(len, Math.max(...t));
+      if (t1 - t0 < 0.3) continue;
+      const strip = (p, q) => {          // p -> q along the outline, PEN_WALL into the pen
+        const l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, nx = ((ccw ? -1 : 1) * (q[1] - p[1])) / l, ny = ((ccw ? 1 : -1) * (q[0] - p[0])) / l;
+        return [p, q, [q[0] + nx * PEN_WALL, q[1] + ny * PEN_WALL], [p[0] + nx * PEN_WALL, p[1] + ny * PEN_WALL]];
+      };
+      const at = (s) => [a[0] + ux * s, a[1] + uy * s], walls = [];
+      for (let j = 0; j < P.length; j++) {
+        const p = P[j], q = P[(j + 1) % P.length];
+        if (j !== i) walls.push(strip(p, q));
+        else { if (t0 > 0.01) walls.push(strip(a, at(t0))); if (len - t1 > 0.01) walls.push(strip(at(t1), b)); }
+      }
+      const obs = walk.obstacles[L], k = obs.indexOf(P);
+      if (k >= 0) obs.splice(k, 1, ...walls);
+      pen.open = true; pen.walls = walls; IDX.delete(walk);      // the obstacle boxes are rebuilt on the next lookup
+      return true;
+    }
+  }
+  return false;
 }
 // distance from (x, y) to the nearest moving obstacle of layer L (0 inside one)
 export const dynDist = (walk, L, x, y) => Math.min(Infinity, ...(walk.dynamic || []).filter((o) => o.layers.includes(L)).map((o) => polyDist(x, y, o.poly)));
@@ -309,7 +393,7 @@ export function isFree(walk, L, x, y) {
     if (x < b[0] - r || y < b[1] - r || x > b[2] + r || y > b[3] + r || !o.layers.includes(L)) continue;
     if (pointInPoly(x, y, o.poly) || edgeDist(x, y, o.poly) < r - 1e-4) return false;
   }
-  for (const p of I.portals.get(L) || []) if (p.open !== false && pointInPoly(x, y, p.poly)) return true;
+  for (const p of I.portals.get(L) || []) if (p.open !== false && pointInPoly(x, y, p.poly) && !wallHit(p.bw, x, y, r)) return true;
   for (const c of I.cells.get(L) || []) if (cellFree(walk, c, x, y)) return true;
   return false;
 }
@@ -500,7 +584,7 @@ export function viewpoints(walk, spawn) {
   const sp = spawn && (Array.isArray(spawn) ? { pos: spawn, layer: walk.layers.includes('G') ? 'G' : walk.layers[0] } : spawn);
   const I = idx(walk), spots = [], out = {};
   for (const c of walk.cells) {
-    if (c.kind === 'room') spots.push({ key: c.room, layer: c.layer, polygon: c.polygon, cell: c.id, ext: !!c.ext });
+    if (c.kind === 'room' && !c.void) spots.push({ key: c.room, layer: c.layer, polygon: c.polygon, cell: c.id, ext: !!c.ext });   // the eaves: through a hatch
     else if (c.kind === 'ground') {
       const big = new Map();
       for (const zn of c.zones) { const a = Math.abs(polyArea(zn.polygon)); if (zn.room && !(big.get(zn.room)?.a >= a)) big.set(zn.room, { a, zn }); }
@@ -549,6 +633,11 @@ export function viewpoints(walk, spawn) {
         if (far > 2 * near) yaw = y2;
         else if (far < 1.5 && door && !door.p.door) { yaw = dirYaw(-door.n[0], -door.n[1]); pitch = -0.35; }
       }
+    }
+    const ahead = (a) => isFree(walk, s.layer, pos[0] + 0.3 * yawDir(a)[0], pos[1] + 0.3 * yawDir(a)[1]);
+    if (!pitch && !ahead(yaw)) for (let d = 0.1; d < 1.05; d += 0.1) {   // not square at a jamb or a riser edge 0.3 m on
+      if (ahead(yaw + d)) { yaw = wrapA(yaw + d); break; }
+      if (ahead(yaw - d)) { yaw = wrapA(yaw - d); break; }
     }
     out[s.key] = { pos, yaw, layer: s.layer, ...(pitch ? { pitch } : {}), ...(door ? { into: door.n } : {}) };
   }
@@ -650,16 +739,18 @@ export function seenRooms(graph, from, project, maxDepth = 8) {
 // footprints.json -> obstacle polygons per layer {layer: [poly]}. Accepts {items|footprints|objects:[...]} or a bare
 // array; each entry gives a polygon ("poly"|"pts"|"corners"|"obb") or center+size+rot(deg). Level = f.level, else the
 // level of f.room in house.json (pseudo / building rooms X, unknown G); level X -> layer G. Non-blocking symbols are
-// skipped; soft = true returns the small furniture instead (chairs, stools, bins, plants under 1.3 m): walkable, slowed.
+// skipped; soft = true returns the small furniture instead (chairs, stools, bins, plants under 1.3 m): walkable, slowed;
+// soft = 'pen' returns the cabins of PENS (buildWalk's `pens`), which the other two leave out.
 // A shower tray is walked into (owner: "you can enter the shower"); its screen is glass the walker passes like a curtain.
 const NONBLOCKING = new Set(['rug', 'mirror', 'tv', 'wall_unit', 'airer', 'shelf', 'towel_rail', 'radiator', 'stair', 'trellis', 'flagpole', 'condenser', 'shower']);
-const SMALL = new Set(['chair', 'armchair', 'stool', 'bin', 'plant', 'office_chair', 'bedside']);
+export const PENS = new Set(['sauna']);       // cabins walked into through their door (penDoor): obstaclesFrom(fp, 'pen')
+const SMALL = new Set(['chair', 'armchair', 'stool', 'bin', 'plant', 'office_chair', 'bedside', 'bench']);   // bench: the sauna seat, edged past at the door
 export function obstaclesFrom(fp, soft = false, house = null) {
   const list = Array.isArray(fp) ? fp : (fp && (fp.items || fp.footprints || fp.objects)) || [];
   const out = {};
   for (const f of list) {
     const sym = f.sym || f.plan_sym || f.key || f.type;
-    if (NONBLOCKING.has(sym) || soft !== (SMALL.has(sym) && !(f.height > 1.3))) continue;
+    if (NONBLOCKING.has(sym) || (soft === 'pen' ? !PENS.has(sym) : PENS.has(sym) || soft !== (SMALL.has(sym) && !(f.height > 1.3)))) continue;
     let poly = f.poly || f.pts || f.corners || f.obb || f.polygon;
     if (!poly && f.center && f.size) {
       const a = ((f.rot ?? f.angle ?? 0) * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);

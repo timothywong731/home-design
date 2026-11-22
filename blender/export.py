@@ -1,6 +1,6 @@
 """Export a saved build to the web viewer: one GLB per level, lightmaps (lights on and off), probes, sky, manifest
-(schema 2), footprints, hero renders. Documented in blender/lib/README.md; contract: blender/MULTILEVEL.md
-section 10; interaction tags: blender/INTERACT.md.
+(schema 2), footprints, cross-sections (sections.json, by export_sections.py), hero renders. Documented in
+blender/lib/README.md; contract: blender/MULTILEVEL.md section 10; interaction tags: blender/INTERACT.md.
 
 blender -b [--factory-startup] build/home.blend --python blender/export.py -- --out docs/assets [--house spec/house.json]
         [--levels G,1] [--rooms a,b] [--bake-res 4096] [--samples 256] [--density 160] [--probe-res 1024] [--skip-bake]
@@ -636,6 +636,13 @@ def main():
 
     # 2. one GLB per level (plan footprints first: they need the parent-child links that flatten() removes)
     fp = footprints(h)
+    try:                                         # sections.json for the drawing set, cut from this scene (before flatten:
+        import export_sections                   # the parts of a fitting are found by their parent)
+        export_sections.write(h, out)
+    except Exception:                            # the export goes on; the traceback in the log is the signal
+        traceback.print_exc()
+        (out / 'sections.json').unlink(missing_ok=True)
+        log('WARNING: no cross-sections written (traceback above): the drawing set will hold the plan sheets only')
     boxes = tagged_boxes(tagged)
     heroes_ = hero_names()
     log(f'{len(heroes_)} hero art images keep up to 2048 px, other colour maps {COLOUR_MAX}')

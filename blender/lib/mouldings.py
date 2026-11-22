@@ -373,6 +373,10 @@ def _scale(p, sd=1.0, sh=1.0):
     return [(d * sd, h * sh) for d, h in p]
 
 
+# dining cornice drawn at 150 x 130, built at 90 x 120: lower edge 2.53 under the 2.62 ceiling (RECONCILE3 dimsG-01)
+DINING_SCALE = (0.120 / 0.130, 0.090 / 0.150)
+
+
 def _build_profiles():
     P = {}
     # ---- skirtings: (d = thickness from wall, h = height from floor), base z = floor
@@ -385,8 +389,10 @@ def _build_profiles():
                       + [(0.006, 0.170), (0, 0.170)])
     P['sk_utility'] = ([(0.018, 0), (0.018, 0.125), (0.012, 0.128)] + _half((0.012, 0.128), (0.012, 0.140), 4)
                        + _s((0.012, 0.140), (0.004, 0.166), 4, 'v') + [(0.004, 0.170), (0, 0.170)])
-    P['sk_dining'] = ([(0.020, 0), (0.020, 0.105), (0.014, 0.107)] + _half((0.014, 0.107), (0.014, 0.122), 4)
-                      + [(0.012, 0.125)] + _s((0.012, 0.125), (0.004, 0.147), 4, 'v') + [(0.004, 0.150), (0, 0.150)])
+    # dining: top 0.18 (dims_G 8, v2 t26.27 on the door plane; dimsG-01 homography 0.19), not dining.md's 0.15: the plain
+    # face takes the 30 mm, the torus / ogee on top is as drawn
+    P['sk_dining'] = ([(0.020, 0), (0.020, 0.135), (0.014, 0.137)] + _half((0.014, 0.137), (0.014, 0.152), 4)
+                      + [(0.012, 0.155)] + _s((0.012, 0.155), (0.004, 0.177), 4, 'v') + [(0.004, 0.180), (0, 0.180)])
     # ---- dado rails: base z = top of rail - height
     P['dado_hall'] = ([(0, 0), (0.008, 0), (0.008, 0.004)] + _q((0.008, 0.004), (0.016, 0.024), 'vh')
                       + [(0.016, 0.030)] + _half((0.016, 0.030), (0.016, 0.058), 6)
@@ -396,8 +402,10 @@ def _build_profiles():
         p += _half((0.018, 0.009 + 0.008 * i), (0.018, 0.017 + 0.008 * i), 3)
     P['dado_dining'] = p + [(0.016, 0.049)] + _half((0.016, 0.049), (0.016, 0.055), 3) + [(0, 0.055)]  # 55 x 22
     # ---- cornices: (d = projection along the ceiling, h = below ceiling, negative), base z = ceiling
-    P['cornice_hall'] = ([(0, -0.220), (0.010, -0.220), (0.010, -0.205)]
-                         + _s((0.010, -0.205), (0.040, -0.170), 5, 'v')
+    # hall: wall edge 2.76 under the 2.95 ceiling (dims_vert, v1 t778), so a 0.19 drop: the bed mould under the modillion
+    # fascia is 30 mm shorter than drawn; fascia, corona and crown as drawn (the modillions end 3 mm above the bed mould)
+    P['cornice_hall'] = ([(0, -0.190), (0.008, -0.190), (0.008, -0.181)]
+                         + _s((0.008, -0.181), (0.040, -0.168), 5, 'v')
                          + [(0.040, -0.095), (0.130, -0.095), (0.130, -0.055), (0.136, -0.055)]
                          + _s((0.136, -0.055), (0.192, -0.010), 6, 'h') + [(0.200, -0.010), (0.200, 0)])
     P['cornice_living'] = ([(0, -0.150), (0.012, -0.150)] + _half((0.012, -0.150), (0.012, -0.144), 3)
@@ -411,12 +419,16 @@ def _build_profiles():
                             + _s((0.008, -0.072), (0.052, -0.013), 6, 'h')
                             + [(0.056, -0.013), (0.056, -0.005), (0.086, -0.005), (0.086, 0)])
     P['cornice_wc'] = P['cornice_utility']
-    P['cornice_dining'] = ([(0, -0.150), (0.008, -0.150), (0.008, -0.140)]
-                           + _q((0.008, -0.140), (0.026, -0.115), 'vh') + [(0.030, -0.115)]
-                           + _half((0.030, -0.115), (0.030, -0.105), 3)
-                           + [(0.032, -0.105), (0.087, -0.050), (0.092, -0.050), (0.092, -0.042)]
-                           + _s((0.092, -0.042), (0.115, -0.012), 5, 'h')
-                           + [(0.115, -0.006), (0.130, -0.006), (0.130, 0)])
+    P['cornice_dining'] = _scale([(0, -0.150), (0.008, -0.150), (0.008, -0.140)]
+                                 + _q((0.008, -0.140), (0.026, -0.115), 'vh') + [(0.030, -0.115)]
+                                 + _half((0.030, -0.115), (0.030, -0.105), 3)
+                                 + [(0.032, -0.105), (0.087, -0.050), (0.092, -0.050), (0.092, -0.042)]
+                                 + _s((0.092, -0.042), (0.115, -0.012), 5, 'h')
+                                 + [(0.115, -0.006), (0.130, -0.006), (0.130, 0)], *DINING_SCALE)
+    # rear corridor (ceiling 2.70): the hall cornice itself, modillions and all (v1 f_0560, v2 f_0516), lower edge 2.51:
+    # 0.073 over the 0.20 clock dial in f_0560 (2.51-2.53), 2.55 in f_0516, hallway.py's 0.18 over the dial centre 2.33.
+    # Not vert-03's half-size 2.60 / 2.71.
+    P['cornice_corridor'] = P['cornice_hall']
     # ---- architraves: (d = across the face from the opening edge outward, h = projection off the
     #      wall); listed outer edge first. Sweep with up = wall normal, path right leg up -> head -> left leg down.
     P['arch_hall'] = ([(0.070, 0), (0.070, 0.020), (0.064, 0.020)] + _s((0.064, 0.020), (0.042, 0.012), 5, 'h')
@@ -469,6 +481,13 @@ def _build_profiles():
                          + [(0.012, -0.118)] + _q((0.012, -0.118), (0.070, -0.062), 'vh', 6)
                          + [(0.074, -0.062), (0.074, -0.036)] + _s((0.074, -0.036), (0.118, -0.008), 5, 'h')
                          + [(0.130, -0.008), (0.130, 0)])
+    # Rose Room (study): small stepped ogee - fillet, cyma, bead, fillet - lower edge 2.46, projection 0.10 (floor2_b 29,
+    # v13 t147 / t193.4). The survey's drop of about 0.10 hangs from its 2.55 ceiling; the model keeps 2.60 (inside the
+    # tolerance), so the lower fillet and the cyma take the extra 40 mm.
+    P['cornice_rose'] = ([(0, -0.140), (0.005, -0.140), (0.005, -0.126)] + _s((0.005, -0.126), (0.048, -0.072), 6, 'v')
+                         + [(0.051, -0.072)] + _half((0.051, -0.072), (0.051, -0.058), 3)
+                         + [(0.057, -0.058), (0.057, -0.050), (0.068, -0.050)] + _q((0.068, -0.050), (0.092, -0.016), 'vh', 4)
+                         + [(0.092, -0.008), (0.100, -0.008), (0.100, 0)])
     P['dado_landing'] = _scale(P['dado_hall'], 0.028 / 0.022, 0.065 / 0.070)
     P['sk_loft'] = _scale(P['sk_hall'], 1.0, 0.150 / 0.170)
     P['arch_upper'] = _scale(P['arch_kitchen'], 1.0, 1.0)                        # 80 mm ogee (landing1.md 2)
@@ -485,7 +504,8 @@ def _build_profiles():
 PROFILES = _build_profiles()
 # cornice enrichment data: where the modillion band / acanthus face sits in the profile
 HALL_BAND = dict(d=0.040, top=-0.095, w=0.055, h=0.070, proj=0.060, pitch=0.13)
-DINING_FACE = dict(p0=(0.032, -0.105), p1=(0.087, -0.050), repeat=0.075)
+DINING_FACE = dict(p0=(0.032 * DINING_SCALE[0], -0.105 * DINING_SCALE[1]),
+                   p1=(0.087 * DINING_SCALE[0], -0.050 * DINING_SCALE[1]), repeat=0.060)
 # ponytail: the "small enriched band" of the two bedroom cornices (leaf / egg ornament ~25 mm) is a row of beads on a
 # fascia of the profile: (d, h) of the bead centre on that face, radius, pitch. Model leaves if a close-up ever needs them.
 BEADS = {'cornice_green': dict(d=0.006, h=-0.086, r=0.009, pitch=0.030),
@@ -1169,20 +1189,27 @@ def trim_runs(ctx, rooms, z, cfg=None):
 # inside those boxes. Open edges (virtual walls, room-to-room boundaries) never carry trim, so they need no box.
 # Heights are above the room's own floorZ. Raking trim beside flights and steps belongs to the room modules.
 _UP = dict(profile='sk_hall')                               # 170 mm torus / ogee skirting of the upper floors
+# vestibule cheek wall (face x 0.75): dado and skirting stop 2 mm north of joinery's corner cover board
+# (vestibule.d_street.cover, y 0..0.070) with returned ends (porch survey 2.3.3; v9 f_0036). The run is cut where the
+# 22 mm return meets the face, so the moulding's front ends at y 0.072; the return leg runs on into the wall.
+_VY = 0.072 + 0.022
+_VEST_CHEEK = dict(skip=[(0.74, -0.10, 0.76, _VY)], returns=[((0.75, _VY), (0.77, _VY))])
 _DADO1, _DADO2 = dict(profile='dado_landing', top=0.975), dict(profile='dado_landing', top=0.99)
 TRIM = {
-    'vestibule': dict(skirting=dict(profile='sk_vest'), dado=dict(profile='dado_hall', top=0.965)),
+    'vestibule': dict(skirting=dict(profile='sk_vest', **_VEST_CHEEK), dado=dict(profile='dado_hall', top=0.965, **_VEST_CHEEK)),
     'hallway': dict(
         skirting=dict(profile='sk_hall', skip=[(0.14, 7.57, 0.16, 7.69)]),      # end of the understairs wall
         dado=dict(profile='dado_hall', top=0.965, skip=[(0.14, 7.57, 0.16, 7.69)]),
         cornice=[                                           # front hall + the diagonal; not along the stair flank
             # x 0.15 from the understairs wall to the drop post is the open top of the flight, not a wall (stairs S5)
             dict(profile='cornice_hall', rooms=('hallway', 'stairs'),
-                 skip=[(0.98, 5.38, 1.00, 7.59), (0.14, 7.57, 1.00, 7.59), (-0.70, 1.82, 0.70, 1.84),
+                 skip=[(0.98, 5.38, 1.00, 7.59), (0.14, 7.57, 1.00, 7.59), (-0.70, 1.95, 0.70, 1.97),
                        (0.14, 7.57, 0.16, 8.14)]),
-            dict(profile='cornice_hall', zone='rear_hall',   # lobby west + rear corridor (ceiling 2.84), not on the arch wall;
+            dict(profile='cornice_hall', zone='rear_hall',   # lobby west (ceiling 2.84), not on the arch wall;
                  skip=[(-0.70, 8.72, 1.00, 8.74), (-0.70, 9.02, 1.00, 9.04),      # the lobby-edge run starts at the
-                       (0.14, 8.10, 0.16, 8.18)])]),                              # drop post's north face (basement.md 3.6)
+                       (0.14, 8.10, 0.16, 8.18)]),                                # drop post's north face (basement.md 3.6)
+            dict(profile='cornice_corridor', zone='rear_corridor',               # rear corridor y 9.03..12.23 (2.70)
+                 skip=[(-0.70, 9.02, 1.00, 9.04)])]),
     'living': dict(skirting=dict(profile='sk_living'), cornice=dict(profile='cornice_living')),
     # ponytail: the return follows kitchen_backdoor_reveal (west side x 3.39) by hand; move it with the reveal
     'kitchen': dict(skirting=dict(profile='sk_kitchen', only=[(4.29, 7.82, 4.31, 8.74), (1.24, 8.72, 3.40, 8.74),
@@ -1193,7 +1220,7 @@ TRIM = {
                     cornice=dict(profile='cornice_utility')),
     'wc': dict(cornice=dict(profile='cornice_wc')),
     'dining': dict(skirting=dict(profile='sk_dining', mat='dark_stain'), dado=dict(profile='dado_dining', top=1.05),
-                   cornice=dict(profile='cornice_dining', solids=[(-0.65, 16.68, 3.10, 16.86)])),
+                   cornice=dict(profile='cornice_dining', solids=[(-0.59, 16.68, 3.10, 16.86)])),
     # ---- first floor (spec/rooms/landing1.md 3.5, green_bedroom.md 3.1, blue_bedroom.md 3, ...)
     'landing1_front': dict(skirting=_UP, dado=dict(_DADO1, skip=[(0.98, 5.96, 1.00, 6.08)]), cornice=dict(profile='cove_70')),
     'landing1_rear': dict(skirting=_UP, dado=_DADO1, cornice=dict(profile='cove_70')),
@@ -1208,11 +1235,11 @@ TRIM = {
     'landing2_head': dict(skirting=_UP, dado=_DADO2, cornice=dict(profile='cove_100')),
     'landing2_platform': dict(skirting=_UP, dado=_DADO2, cornice=dict(profile='cove_100')),
     'purple_room': dict(skirting=_UP, cornice=dict(profile='cove_120')),
-    'study': dict(skirting=_UP, cornice=dict(profile='cove_120')),
+    'study': dict(skirting=_UP, cornice=dict(profile='cornice_rose')),
     'bathroom2': dict(cornice=dict(profile='cove_80')),
     'loft_office': dict(skirting=dict(profile='sk_loft')),   # sloped ceilings: no cornice
 }
-ROSE_AT = {'living': (2.55, 2.73), 'dining': (1.225, 14.61)}       # world xy of the rose centres
+ROSE_AT = {'living': (2.55, 2.73), 'dining': (1.255, 14.61)}       # world xy of the rose centres
 
 
 def _extras_vestibule(ctx):

@@ -71,6 +71,9 @@ CAMERAS = [
     dict(name='ix_switch', pos=(2.0, 7.95, 1.45), look=(1.25, 7.62, 1.0), fov_deg=80, ref='v2 f_0370'),
     dict(name='pier', pos=(2.95, 7.55, 1.25), look=(3.05, 8.73, .55), fov_deg=95, ref='v2 f_0434'),
     dict(name='backdoor', pos=(3.0, 6.9, 1.5), look=(4.1, 8.4, 1.0), fov_deg=100, ref='v6 f_0073'),
+    # round 3: the moved back door from inside (state 0) and swung open against the memo board (state 1)
+    dict(name='backdoor_in', pos=(3.45, 7.55, 1.6), look=(3.8, 8.85, .7), fov_deg=100, ref='v11 f_0001'),
+    dict(name='backdoor_open', pos=(3.15, 8.05, 1.6), look=(4.25, 8.45, .9), fov_deg=100, ref='v11 f_0016-0020'),
 ]
 
 
@@ -367,6 +370,20 @@ def metro():
         bsdf = next(n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
         bsdf.inputs['Base Color'].links[0].from_node.image = bpy.data.images.load(os.path.join(ART, 'metro_grey_dark.jpg'))
     return m
+
+
+PLANK_W = 0.245     # floor plank width (round 3, dims_G v6 t73.1; t=765 s: 102 px joints against 310 px base doors = 0.24)
+
+
+def floor_planks(ob):
+    """ponytail: the library wood_tile_floor is 6 planks across its tile (0.2035 wide); the kitchen planks are 0.245.
+    Rescale U of the kitchen floor only, a joint on the door wall (x 1.25). Reads the tile width from the
+    material, so it stays right (a no-op re-anchor) once the library key is widened (requested)."""
+    if ob is None or not ob.data.uv_layers:
+        return
+    s = ob.data.materials[0]['size_m'][0]                   # U = X / s (uv_box, floor origin 0, planks along Y)
+    for l in ob.data.uv_layers[0].data:
+        l.uv.x = (l.uv.x * s - X0) / (6 * PLANK_W)
 
 
 def tiles(ctx, name, x0, x1, y0, y1, z0, z1, origin):
@@ -885,11 +902,24 @@ def door_wall(ctx):
 
 
 # ----------------------------------------------------------------------------- bar nook (recess d < 0)
+NOOK_SPLIT = (.30, .56)          # door joints as fractions of the nook width: 190 / 170 / 283 px at t=765 s (round 3)
+
+
+def nook_span(ctx):
+    """(a, b, back) of the bar nook in the nook-wall frame, read from the spec (feature kitchen_nook), so the units follow
+    the recess when it is re-measured (round 3 reads it 1.49 wide, the spec has 1.25: requested)."""
+    pts = ctx.feature('kitchen_nook')['polygon']
+    return (min(x for x, y in pts) - X0, max(x for x, y in pts) - X0, -(max(y for x, y in pts) - (Y0 + SY)))
+
+
 def nook(ctx):
-    a, b, back = .12, 1.37, -.52
-    r = Run(ctx, WN, 'kitchen.nook.base')                     # 350 + 350 + 550 (t=765 s), faces 10 behind the wall face
+    a, b, back = nook_span(ctx)
+    ks = (b - a) / 1.25                                       # shelf contents were set out on the 1.25 nook: spread them
+    sx = lambda u: a + (u - .12) * ks
+    j1, j2 = (round(a + f * (b - a), 3) for f in NOOK_SPLIT)
+    r = Run(ctx, WN, 'kitchen.nook.base')                     # three doors (t=765 s), faces 10 behind the wall face
     r.box(a, b, back, -.07, 0, .15)
-    for n, (u0, u1, hd) in enumerate(((a, .47, 'R'), (.47, .82, 'R'), (.82, b, 'L'))):       # drinks and bags (v2 t=438 s)
+    for n, (u0, u1, hd) in enumerate(((a, j1, 'R'), (j1, j2, 'R'), (j2, b, 'L'))):           # drinks and bags (v2 t=438 s)
         c = r.cab(f'kitchen.nook.base.{n}.in', u0, u1, back, -.03, .15, BASE_TOP, 1)
         # the end doors stop square to the reveals (skirting on one side, the black bin on the other)
         r.front(u0, u1, .15, .868, -.03, hd, g=f'kitchen.nook.base.{n}', deg=95 if n == 1 else 90)
@@ -934,14 +964,14 @@ def nook(ctx):
     r = Run(ctx, WN, 'kitchen.nook.rack')                     # brass stemware rack: 9 slots, two rows deep
     zs = 2.018
     zw = zs - .055
-    slots = [.395 + i * .105 for i in range(9)]
+    slots = [b - .975 + i * .105 for i in range(9)]           # a fixed-size rack against the right reveal (t=765 s)
     for uc in slots:
         for sg in (-1, 1):                                    # pair of wires per slot, flared at the front
             r.mb.tube([(uc + sg * .042, .035, zw), (uc + sg * .016, .08, zw), (uc + sg * .016, .37, zw)], .0025, 'brass', 6)
     for y in (.085, .225, .365):
-        r.mb.tube([(.33, y, zw + .005), (1.30, y, zw + .005)], .0025, 'brass', 6)
+        r.mb.tube([(b - 1.04, y, zw + .005), (b - .07, y, zw + .005)], .0025, 'brass', 6)
     for y in (.085, .365):
-        for u in (.345, .66, .975, 1.285):
+        for u in (b - 1.025, b - .71, b - .395, b - .085):
             r.mb.tube([(u, y, zw + .005), (u, y, zs)], .0025, 'brass', 6)
     r.done(lm='dynamic')
     # glassware: library glass_clear (alpha 0.10) left the glasses as dark ghosts; the bar's sparkle needs more body
@@ -972,9 +1002,9 @@ def nook(ctx):
             ob = kinds[k]
         else:
             ob = bpy.data.objects.new(f'kitchen.nook.mug.{n}', kinds[k].data)
-        stand(ob, .19 + n * .10, .36, 1.474, rz)
+        stand(ob, sx(.19 + n * .10), .36, 1.474, rz)
     for n in range(8):
-        stand(P.tumbler(.12, .08, mat=gl, name=f'kitchen.nook.tankard.{n}'), .80 + (n % 4) * .088, .31 + (n // 4) * .11, 1.474)
+        stand(P.tumbler(.12, .08, mat=gl, name=f'kitchen.nook.tankard.{n}'), sx(.80 + (n % 4) * .088), .31 + (n // 4) * .11, 1.474)
     blue = M.solid('kitchen_canister_blue', '#2E4A8C', .2)
     can = None
     for n, u in enumerate((1.16, 1.24, 1.315)):               # tea canisters (plain blue, white lid)
@@ -985,18 +1015,18 @@ def nook(ctx):
             can = ob = mb.finish('kitchen.nook.canister.0')
         else:
             ob = bpy.data.objects.new(f'kitchen.nook.canister.{n}', can.data)
-        stand(ob, u, .37, 1.474)
+        stand(ob, sx(u), .37, 1.474)
     for n in range(7):                                        # upper shelf: tumblers, shaker, teapot
-        stand(P.tumbler(mat=gl, name=f'kitchen.nook.tumbler.{n}'), .50 + n * .095, .43, 1.652)
+        stand(P.tumbler(mat=gl, name=f'kitchen.nook.tumbler.{n}'), sx(.50 + n * .095), .43, 1.652)
     stand(P.lathe([(0, 0), (.036, 0), (.044, .13), (.042, .14), (.030, .17), (.022, .20), (.020, .22), (0, .22)], 16, 'chrome',
-                  name='kitchen.nook.shaker'), .19, .42, 1.652)
+                  name='kitchen.nook.shaker'), sx(.19), .42, 1.652)
     mb = mo.MB()
     mb.lathe([(0, 0), (.04, 0), (.058, .03), (.06, .06), (.045, .10), (.03, .115), (.03, .12), (.012, .13), (.012, .14), (0, .145)],
              'silver_satin', 16)
     mb.sweep(circle(.007, 6), [(.05, 0, .04), (.085, 0, .07), (.10, 0, .11)], 'silver_satin', up=(0, 1, 0))
     mb.sweep(circle(.005, 6), [(-.05, 0, .10), (-.085, 0, .095), (-.095, 0, .065), (-.085, 0, .035), (-.055, 0, .03)],
              'silver_satin', up=(0, 1, 0))
-    stand(mb.finish('kitchen.nook.teapot'), .30, .44, 1.652, .4)
+    stand(mb.finish('kitchen.nook.teapot'), sx(.30), .42, 1.652, .15)    # spout along the shelf, clear of the mirror
 
 
 # ----------------------------------------------------------------------------- decor
@@ -1061,11 +1091,14 @@ def decor(ctx):
     # Nook-wall pier: from the nook's +X reveal to the back-door reveal, read from the shell so the group follows the
     # door set. Laid out as filmed (v1 f_0766, v6 f_0073, v2 f_0434, v7 f_0039): tread plate and black bin centred,
     # the plaque 70 right of centre (its edge almost at the reveal), the thermostat between the two. On the 620 pier
-    # of kitchen.md this gives its numbers: plate 1410..1950, thermostat x 1700. (The shell pier is 740 for now.)
-    p0 = 1.37
+    # of kitchen.md this gives its numbers: plate 1410..1950, thermostat x 1700. Round 3: the full-res still at t=765 s
+    # reads the pier 0.62 (plate margins 0.02 / 0.06) and the nook 1.49; the spec has 0.86 / 1.25 for now (requested).
+    p0 = nook_span(ctx)[1]
     p1 = min(x for x, y in ctx.feature('kitchen_backdoor_reveal')['polygon']) - X0
     pc = (p0 + p1) / 2
-    ctx.add(WN.put(plaque('kitchen.plaque'), pc + .07, 0, 1.92), ROOM, 'decor')
+    # round 3: 0.47 x 0.63 (full_765: 205 x 272 px against the 0.54 tread plate's 235 px; aspect 0.75 as filmed), bottom
+    # at the upper glass shelf (1.655), top 2.285 (t=765 s puts it ~0.1 above the nook cornice; vertical +/- 0.05)
+    ctx.add(WN.put(plaque('kitchen.plaque', w=.47, h=.63), pc + .07, 0, 1.97), ROOM, 'decor')
 
     # wireless thermostat: landscape rounded 120 x 100 x 24 with a small blank display window (k_765: 0.27 of the
     # plaque width, wider than tall). Body = sweep round the R16 outline in the wall plane, chamfered front edge.
@@ -1155,7 +1188,8 @@ def lights(ctx):
         p = WE.p(u, .08, 1.515)
         lighting.downlight(ctx, ROOM, p.x, p.y, z=p.z, watts=3, kelvin=3000, spot_deg=100, radius=.02,
                            name=f'kitchen.hood_spot.{i}')
-    lighting.strip(ctx, ROOM, WN.p(.45, -.49, 1.62), WN.p(1.05, -.49, 1.62), watts_per_m=NOOK_STRIP_W, kelvin=2900,
+    a, b, back = nook_span(ctx)
+    lighting.strip(ctx, ROOM, WN.p(a + .33, back + .03, 1.62), WN.p(b - .32, back + .03, 1.62), watts_per_m=NOOK_STRIP_W, kelvin=2900,
                    name='kitchen.strip.nook')                 # bar under the upper glass shelf
     # ponytail: two soft point lights stand in for the multi-bounce glow off the white worktops and the floor
     # (same trick as lighting.fill). One at mid height so the ceiling stays even (a light 450 under the ceiling
@@ -1177,6 +1211,7 @@ EXCL = (
     ('kitchen.tower.top', 'kitchen.wall.t3'), ('kitchen.wall.corner', 'kitchen.wall.t5'),
     # the freezer at 110 deg (v2 f_0418-0424) crosses the outer corner of both dropped oven doors by up to 50 mm
     ('kitchen.fridge.freezer', 'kitchen.oven.mid'), ('kitchen.fridge.freezer', 'kitchen.oven.top'),
+    ('kitchen.fridge.freezer', 'kitchen.oven.low'),          # 10 mm at the drawn-out warming drawer's corner
 )
 
 
@@ -1199,6 +1234,7 @@ def interlock():
 def build(ctx):
     global NAVY
     NAVY = navy()
+    floor_planks(bpy.data.objects.get(f'{ROOM}.floor'))
     hob_wall(ctx)
     hob(ctx)
     hood(ctx)

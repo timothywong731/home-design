@@ -338,3 +338,59 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - 3.2 / doubt 4 The pier front_pier_w is 1.20 high (baseZ -0.14, cap top about 1.06): about 15 courses plus the cap,
   standing 3-4 courses above the timber troughs (v2 t946 / t948, v4 t63).
 - The forecourt setts' brindle tone is #A19288 (it rendered salmon at #A98C7C), still about 20 % of the units.
+
+## Round 3 module notes (rooms/front.py, 21 Nov footage; supersedes the positions above where they differ)
+
+Built by `rooms/front.py` / `front_parts.py` / `front_car.py` on the round-3 foundation (forecourt falling -0.06 -> -0.36,
+setts to x 4.40, tarmac strip and apron east of them, pier 1.40, wall top +0.54):
+
+- **Planter troughs** stand on the brick top (+0.54): end boards and soil from +0.54, side boards from `planter.bottomZ`
+  +0.47 (lapping 70 mm over both brick faces, 7 mm clear of them) to the rim `planter.rimZ` +0.76; y -4.825 (under the
+  pier cap overhang) to -0.218 (8 mm short of the wall end, the canopy downpipe stands beyond it). Boards in four
+  weathered browns #5B4A3A..#8F7C65. Bellflower cushion to about Z 1.0 (flowers to 1.05), light yellow-green leaves,
+  violet flowers (v8 t100-102). The open west street-door leaf (90 deg in the viewer) stands 5 cm off the boards.
+- **Bins** (v8 f31-36, f61-66): grey (#4A4C4B) at (4.42, -0.475), navy (#3F4868, lid #68759A) at (4.42, -1.075), fronts
+  west, half on the setts and half on the tarmac strip, 1 cm off the corner pilaster's base block (face y -0.20) and
+  5-8 cm clear of the white car's flank (x <= 4.00 at its tail, 21 Nov position). Pale sage caddy (body #93A597, pale grey lid #C4CBC8: v8 t30 / t60 lid #B6BEBD / #A4ADAF) at
+  (4.215, -1.64), front to the street, wholly on the setts beside the car's rear wheel. All stand on the ground through their wheels / feet (fitted plane, <= 1 mm).
+  The spec's `features.bins.items` still hold the round-2 positions (4.21, ...): they would put the navy bin inside the
+  21 Nov white car.
+- **Doorbell** (v9 f45-48): on the flat wall strip between the door frame and the west pilaster's reeds, x 0.785, centre
+  Z 1.30 (the modelled reeds start at x 0.83, so the survey's x 0.80-0.85 would sit on a reed). **Outdoor socket** at
+  x 1.27, Z 0.42 (survey 1.22: the modelled pilaster base block runs to x 1.17).
+- **East cheek** (v8 t69, f68-79): meter box 0.41 x 0.53 x 0.21 at y 0.19..0.60 (its south edge in line with the cheek
+  window's frame, measured on v8 t69; the brief's 0.28..0.69 would leave no room for the cable box before the corner at
+  0.74), z 0.015..0.548 (top 4 mm under the sill underside 0.552; the survey's 0.58 is above the modelled sill bottom);
+  white pipe from its bottom into the ground; cable box 0.09 x 0.13 x 0.055 at y 0.61..0.70, Z 0.08..0.21. Clear of the
+  east downpipe (4.295, -0.02).
+- **Security light** (fixer round, v8 t69 / t70 cropped): one white floodlight camera on the return (y 0.74) at x 4.40:
+  round wall plate r 0.055 with a hub, two round flood heads with frosted lenses splayed left / right and tipped down, a
+  camera body with a black lens window below them, the cable hanging from the hub; about 0.24 wide x 0.20 high (+30 %
+  on the first build). Plate top 5 mm under the return trim's soffit (Z 2.70), so it spans about Z 2.50..2.695. In the
+  footage the plate touches the cornice's lowest moulding and the light's centre is level with the cheek window head,
+  with about 0.15 of plain wall between window head and cornice; the model's trim starts on the window head (envelope
+  request), so the light sits about 0.1 lower than in the footage. The round-2 black camera on the west side is not in
+  the 21 Nov footage; removed.
+- **Covers**: two 0.48 x 0.58 at (4.67, -2.0) and (5.21, -2.0), bright galvanised frames (#A9ABAA, metallic), cool grey
+  trays #8A8C8C (v8 t30 / t60 sample #8F9090 / #75777A: a little lighter and cooler than the tarmac, not darker), two key
+  holes, in one pale cast-concrete haunch (site concrete texture) on the tarmac fall: 0.04 on the north and east, 0.06
+  between the covers, the sett edge (x 4.40) on the west and a broken edge 0.04-0.15 wide to the south (v8 t30). Footway cover 0.30 sq at (1.9, -5.7).
+  **Gullies** 0.15 sq with gratings at (-0.62, -0.30) (canopy downpipe shoe) and (2.40, -0.20) (bay foot).
+- **Pier plaque**: black 0.22 x 0.065 on the street face, centre Z 0.80 (second course below the cap), raised white bars
+  standing for its two lines of capitals (deliberately illegible).
+- **White car** (21 Nov): red-orange mirror caps #C8452F, the same colour for a lower front lip and a thin stripe low along
+  both doors rising to the rear; black A-pillar flash running on along the bonnet shoulder to the headlamps; roof aerial.
+  No plates, no badges. Tail 0.88 from the bay face.
+- **Tarmac strip** (`forecourt_alley_mouth`, `forecourt_alley_apron`): the site lays the road's asphalt (#55565A, it
+  read near-black at half the setts' value); front.py swaps it on these two zones for the same texture recoloured to
+  #77756C, a shade lighter than the brief's #6B6A64, so that the strip renders about 0.7 of the setts as in v8 t30 / t60
+  (0.72 in shade, 0.89 sunlit; #6B6A64 rendered 0.63). The road keeps the dark asphalt.
+- **Sett patch under the meter box** (brief (a); v8 t69 / t70 / f77): setts over x 4.25..4.65, y 0.03..0.74, courses
+  along the cheek, 4 mm proud of the apron fall (`front.setts_patch`). The footage starts it just north of the east
+  downpipe (y about 0.04 at the wall, measured against the 0.41 meter box in v8 t70), not at the zone note's y 0.25.
+- **Backdrop**: lamp column at (7.5, -7.0), street tree at (-1.2, -7.0) (trunk 0.2 forking at 2.4-2.8 m into five limbs,
+  four branches and three twigs each, leaves clustered within 0.12 of the twigs; crown about 4 m across, v8 f49), two black tarmac
+  patches in the footway (x -1.3..-0.2, y -6.5..-5.2 in front of the pier; a 0.2 strip along the plot edge), the east
+  neighbour's corrugated-steel raised bed (0.9 x 2.0 x 0.5 at x 6.0..6.9, y -5.0..-3.0, room `neighbours`) filled by a
+  dense mounded yellow-green shrub about 0.55 above the rim, spilling over it (v8 t60). The opposite
+  row's road and footway extensions follow the zone levels (road -0.50, footway -0.38).

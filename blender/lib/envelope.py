@@ -1,10 +1,11 @@
 """Envelope (blender/MULTILEVEL.md section 7): the outside of the house. Outer skin with holes, reveals and sills,
-roof slabs (upper envelope of roof.planes), roof steps, fascias, gutters, ridges, roof windows, chimney stack, the
-street-front trim, pipes and the steel balcony. Reads exterior.envelope / facades, roof, features and
-ctx.opening_frame only; needs no shell and no site. API: build(ctx), roof_surface(x, y). Notes: blender/lib/README.md.
+roof slabs (upper envelope of roof.planes), roof steps, fascias, gutters, ridges, valleys, roof windows, chimney stack,
+the external-insulation foot, pipes and the steel balcony; the street-front trim is lib/envelope_front.py. Reads
+exterior.envelope / facades, roof, features and ctx.opening_frame only; needs no shell and no site. API: build(ctx),
+roof_surface(x, y). Notes: blender/lib/README.md.
 
-Literal positions that are not in house.json (pilasters, cornice, pipes) come from spec/phase2/front_elevation.md
-and rear_elevation.md and are kept in the tables below."""
+Literal positions that are not in house.json (pipes, sills, the porch soffit) come from spec/phase3/briefs/envelope.md
+and spec/phase2/*_elevation.md and are kept in the tables below."""
 import math
 
 import bmesh
@@ -17,42 +18,62 @@ from . import materials as M
 
 EPS = 0.002
 STEP = 0.01             # sampling step along a wall when looking for changes (features narrower than this are lost)
+CHIMNEY_SHAFT, CHIMNEY_HAUNCH = 0.26, 0.29   # brick shaft width, haunch reach east of it at roof level
 PLINTH_TOP = -0.08      # black plinth band on the rendered faces (rear_elevation.md 5: Z -0.30 .. -0.08)
-BRICK_X = -0.50         # rear_R: exposed stock brick west of this x (MULTILEVEL 7)
-PORCH_SOFFIT_Z = 2.62   # flat canopy soffit (front_elevation.md 3.4)
-SILL = dict(t=0.07, out=0.06, side=0.06)
-GUTTER = dict(w=0.114, h=0.07, t=0.008)
+BRICK_X = -0.77         # rear_R: the neighbour's stock brick west of this x (junction 4.22 from the flank corner, envelope-04)
+PORCH_SOFFIT = (-0.12, 2.63, -0.55, 2.40)   # raked boarded canopy soffit: (y, z) at the door head and at the fascia
+PORCH_VERGE = 0.25      # depth of the boxed verge board of the lean-to behind the front plane
+SILL = dict(t=0.07, out=0.06, side=0.06, mat='sill_stone')
+SILLS = {               # per opening (brief (b), v11 / v13 / v2): thickness, projection, beyond each jamb, material
+    'w_wc': dict(t=0.10, out=0.07, side=0.08),
+    'w_utility': dict(t=0.03, out=0.035, side=0.05, mat='upvc_white'),
+    'w_dining_e_s': dict(t=0.10, side=0.06), 'w_dining_e_n': dict(t=0.10, side=0.06),
+    'w_study': dict(t=0.14, out=0.06, side=0.10),
+}
+GUTTER = dict(w=0.114, h=0.075, t=0.008, drop=0.03, drop_porch=0.05)
+GUTTER_BRACKET = 0.6     # fascia bracket spacing (v8 f126)
 TRANSOM = 0.13          # masonry transom of the ground-floor bay lights (front_elevation.md 2.2: Z 1.80 .. 1.93)
 EDGE_TRIM = (0.035, 0.03)   # flat-roof edge trim on a fascia board: height above it, projection (rear_elevation.md 3)
-# sunk panels of the first-floor bay corner piers (front_elevation.md 3.5, +0.19 for the 3.42 floor):
-# (x centre on front_A, width, z0, z1, depth)
-PIER_PANELS = [(1.20, 0.27, 4.34, 5.59, 0.015), (3.855, 0.27, 4.34, 5.59, 0.015)]
+RIDGE = dict(w=0.15, h=0.03, t=0.018, joint=0.45)  # ridge tiles: half width, rise above the apex, thickness, length
+VALLEY_W = 0.10         # lead valley lining, each side of the valley line
 
 # key -> (hex, roughness) used when materials.mat(key) does not know the key (the spec colours win over the hex)
 FALLBACK = {
     'white_masonry_paint': ('#F2F2EE', 0.9), 'render_sandstone': ('#D2C596', 0.9), 'plinth_black': ('#2A2A2C', 0.8),
     'slate': ('#474A52', 0.7), 'fibre_cement_slate': ('#4B4E57', 0.75), 'flat_felt': ('#3A3C40', 0.9),
     'roof_underside': ('#6B5A45', 0.9), 'stock_brick_grey': ('#A99873', 0.9), 'red_brick': ('#A4553A', 0.9),
-    'steel_chequer_plate': ('#2E3033', 0.45),
+    'red_brick_dark': ('#7A4A3C', 0.9), 'steel_chequer_plate': ('#3A3C40', 0.45),
     'sill_stone': ('#EDEDE8', 0.8), 'pipe_black': ('#18181A', 0.35), 'pipe_old': ('#3A3B3E', 0.6),
-    'steel_black': ('#33373A', 0.5), 'dormer_panel': ('#3F4146', 0.6), 'sill_board': ('#4A3F38', 0.7),
-    'lead': ('#7C8087', 0.6), 'velux_grey': ('#5A5D62', 0.5), 'lamp_amber': ('#E8B45A', 0.3),
+    'steel_black': ('#33373A', 0.5), 'rail_grey': ('#6B7076', 0.45), 'dormer_panel': ('#3F4146', 0.6),
+    'sill_board': ('#4A3F38', 0.7), 'lead': ('#7C8087', 0.6), 'lead_dark': ('#45484E', 0.6), 'velux_grey': ('#5A5D62', 0.5),
+    'lamp_amber': ('#E8B45A', 0.3), 'ridge_tile': ('#3D3F45', 0.7), 'chimney_render': ('#8E8C86', 0.9),
     'velux_white': ('#F4F3EF', 0.35),           # roof-window frame / sash faces below the roof plane (v5 hr_313, hr_194)
-    'edge_trim': ('#1F2A24', 0.5),
+    'edge_trim': ('#5F6066', 0.5),              # dark flat-roof edge trim over the white fascia (v2 t248.5)
+    'fascia_white': ('#DBD9DB', 0.5), 'pipe_grey': ('#B9BBB8', 0.5),
 }
 
-# rear_elevation.md 5.3 / 6 and front_elevation.md 5: (material, diameter, square, [(x, y, z), ...]);
-# z None = on the paving, 'porch' = on the lean-to roof
+# brief (b) and rear_elevation.md 5.3 / 6: (material, diameter, square, [(x, y, z), ...]);
+# z None = on the paving, 'porch' = on the lean-to roof. Flank face x 3.45, face K y 9.03, rear y 17.36.
 PIPES = [
-    ('pipe_black', 0.068, False, [(4.38, 9.08, -0.28), (4.38, 9.08, 6.56)]),               # main-roof downpipe, face K, ends just over the gully
-    ('pipe_black', 0.068, False, [(3.45, 9.08, 3.35), (3.45, 9.08, 8.58)]),                # flank gutter, F / K corner
-    ('pipe_black', 0.110, False, [(4.25, 9.10, 3.30), (3.47, 9.10, 3.30), (3.47, 12.35, 3.10)]),   # first-floor waste
-    ('pipe_black', 0.050, False, [(3.44, 13.40, 4.05), (3.44, 12.42, 3.45)]),              # second branch
-    ('pipe_old', 0.110, False, [(3.47, 9.70, -0.20), (3.47, 12.30, -0.20)]),               # old drain along the foot
-    ('pipe_black', 0.070, False, [(3.44, 17.40, 6.0), (0.15, 17.40, 6.0), (0.15, 17.40, 8.6)]),    # a/c trunking, R
-    ('pipe_black', 0.070, False, [(3.44, 17.36, 6.2), (3.44, 11.0, 6.2)]),                 # the same along F
-    ('upvc_white', 0.065, True, [(-0.68, -0.20, None), (-0.68, -0.20, 2.75)]),             # canopy downpipe (clear of the front wall, x <= -0.7225)
-    ('upvc_white', 0.065, True, [(0.83, 0.08, 'porch'), (0.83, 0.08, 6.22), (0.56, 0.08, 6.40)]),   # main eaves, bay west cheek, offset bend to the gutter
+    # main rear slope over K: between the treads' east end (4.38) and the corner, its shoe over the gully (4.45, 9.12)
+    ('pipe_black', 0.068, False, [(4.45, 9.15, -0.21), (4.45, 9.08, -0.13), (4.45, 9.08, 6.08)]),
+    ('pipe_black', 0.068, False, [(3.50, 9.08, 3.35), (3.50, 9.08, 8.58)]),                # flank gutter, F / K corner
+    ('pipe_black', 0.110, False, [(4.25, 9.10, 3.30), (3.52, 9.10, 3.30), (3.52, 12.07, 3.10)]),   # first-floor soil branch
+    ('pipe_black', 0.050, False, [(3.49, 13.40, 4.05), (3.49, 12.20, 3.45)]),              # second branch
+    ('pipe_old', 0.110, False, [(3.52, 9.70, -0.20), (3.52, 12.07, -0.20)]),               # old drain along the foot
+    # twin black ribbed a/c conduits: rear wall 0.35 under the study sill, then up the party side to the roof edge;
+    # flank from the K corner at second-floor sill level, dropping north of the yellow-room window to Z 3.9
+    ('pipe_black', 0.045, False, [(3.45, 17.39, 6.27), (0.28, 17.39, 6.27), (0.28, 17.39, 8.60)]),
+    ('pipe_black', 0.045, False, [(3.45, 17.39, 6.22), (0.22, 17.39, 6.22), (0.22, 17.39, 8.60)]),
+    ('pipe_black', 0.045, False, [(3.475, 9.03, 6.74), (3.475, 11.05, 6.74), (3.475, 11.05, 3.90), (3.475, 14.95, 3.90)]),
+    ('pipe_black', 0.045, False, [(3.475, 9.03, 6.69), (3.475, 11.00, 6.69), (3.475, 11.00, 3.85), (3.475, 14.95, 3.85)]),
+    ('upvc_white', 0.065, True, [(-0.78, -0.17, 0.06), (-0.78, -0.17, 2.02), (-0.78, -0.58, 2.36), (-0.78, -0.675, 2.44)]),  # canopy: running outlet, offset back to the wall
+    ('upvc_white', 0.065, True, [(0.62, -0.08, 'porch'), (0.68, -0.02, 3.30), (0.68, -0.02, 6.25), (0.55, -0.02, 6.42)]),  # gable west eaves down the bay west cheek corner (v8 f126): shoe on the lean-to
+    ('upvc_white', 0.065, True, [(4.295, -0.02, None), (4.295, -0.02, 6.25), (4.41, -0.02, 6.42)]),  # gable east eaves down the east cheek, 0.10 behind the corner
+]
+# small boxes on the walls (brief (b)): (material, centre (x, y, z), size (x, y, z))
+FITTINGS = [
+    ('upvc_white', (3.49, 12.57, 8.32), (0.08, 0.16, 0.16)),        # square extractor outlet over the bathroom2 window
 ]
 
 _CTX = None
@@ -274,6 +295,7 @@ def _skin(ctx, vols, ops, meshes):
     with holes at the openings. meshes: facade id | 'returns' -> _Mesh."""
     ext = ctx.spec['exterior']
     nbs = ext.get('neighbours', [])
+    rail = {f['id']: f['insulation']['baseRailZ'][0] for f in ext['facades'] if 'insulation' in f}
 
     def zone_base(x, y):
         zid = ctx.zone_at(x, y)
@@ -306,8 +328,8 @@ def _skin(ctx, vols, ops, meshes):
                 fid, fin = _finish(ctx, (x, y), (nx, ny))
                 if fid == 'rear_R' and x < BRICK_X:
                     fin = 'stock_brick_grey'
-                op = tuple(i for i, o in enumerate(mine)
-                           if abs((x - o['p0'][0]) * ux + (y - o['p0'][1]) * uy) < o['fr']['width'] / 2)
+                op = tuple(i for i, o in enumerate(mine)        # EPS narrower: the skin meets the reveal (_reveals)
+                           if abs((x - o['p0'][0]) * ux + (y - o['p0'][1]) * uy) < o['fr']['width'] / 2 - EPS)
                 base = zone_base(x + nx * 0.05, y + ny * 0.05) if vol['lowest'] else None
                 return (top and top[1]['id'], gtop and gtop[1]['id'], inside, nb, fid, fin, op, base)
 
@@ -334,8 +356,10 @@ def _skin(ctx, vols, ops, meshes):
                 if nb is not None:                              # party wall below the neighbour's roof
                     d = min(1e-4, (s1 - s0) / 4)
                     polys = _cut(polys, s0, s1, (-99.0, -99.0), [ctx.neighbour_top(nbs[nb[0]], *pt(s, EPS))[0] for s in (s0 + d, s1 - d)])
-                for i in op:
-                    polys = _cut(polys, s0, s1, [mine[i]['z0']] * 2, [mine[i]['z1']] * 2)
+                for i in op:                                    # no slot onto the room's own jamb at the arris
+                    polys = _cut(polys, s0, s1, [mine[i]['z0'] + EPS] * 2, [mine[i]['z1'] - EPS] * 2)
+                if fid in rail:                                 # insulated: the old face below the rail (_insulation)
+                    polys = _cut(polys, s0, s1, (-99.0, -99.0), [rail[fid]] * 2)
                 m = meshes.setdefault(fid or 'returns', _Mesh())
                 for P in polys:
                     parts = [(P, fin)]
@@ -370,7 +394,8 @@ def _reveals(ctx, ops, meshes, banded):
         sm = meshes.setdefault((fid or 'returns') + '.sills', _Mesh())
         F, wf = (o3, al, out, Vector((0, 0, 1))), fr['width'] / 2
         if o['id'] not in banded:
-            sm.box((-wf - SILL['side'], 0, z0 - SILL['t']), (wf + SILL['side'], SILL['out'], z0), 'sill_stone', F)
+            k = dict(SILL, **SILLS.get(o['id'], {}))
+            sm.box((-wf - k['side'], 0, z0 - k['t']), (wf + k['side'], k['out'], z0), k['mat'], F)
         lights = [(-wf, wf)]                                 # masonry mullions and transom, flush with the wall face;
         if fr.get('mullion'):                                # the transom runs light by light: no box overlaps another
             n, lw, mu = fr['lights'], fr['lightWidth'], fr['mullion']
@@ -402,13 +427,40 @@ def _edge_lines(poly):
             for p, q in zip(poly, poly[1:] + poly[:1])]
 
 
+def _ceilings(ctx):
+    """[(room id, room polygon, [ceiling plane dicts])] of the top level's rooms that have a ceiling of their own: the
+    slab underside stays 1 cm above ctx.ceil_z there where the roof is steeper than the ceiling (front loft), and
+    over an under_roof room with a lining `offset` (eaves: the slab thins to 0.16 over eaves_front, whose lining is
+    0.17 under the roof; its planes / ceilingZ only add cut lines, roof + offset runs parallel to the roof)."""
+    out = []
+    for rid, r in ctx.rooms.items():
+        c = r.get('ceiling') or {}
+        if r.get('level') != ctx.levels[-1] or ctx.kind(rid) == 'exterior' or \
+                (c.get('type') == 'under_roof' and 'offset' not in c):
+            continue
+        pl = list(c.get('planes', []))
+        if r.get('ceilingZ') is not None:
+            pl.append(dict(polygon=ctx.room_poly(rid), z=dict(c0=float(r['ceilingZ']), cx=0, cy=0)))
+        if pl:
+            out.append((rid, [tuple(q) for q in ctx.room_poly(rid)], pl))
+    return out
+
+
+def porch_soffit_z(y):
+    """Z of the raked canopy soffit (PORCH_SOFFIT) at y: the canopy downlights (rooms/vestibule.py) sit on it."""
+    y0, z0, y1, z1 = PORCH_SOFFIT
+    return z0 + (y - y0) * (z1 - z0) / (y1 - y0)
+
+
 def _roof(ctx, vols, steps):
     """Roof slabs: the upper envelope of the planes (cut along valleys and at every higher plane), fascias on free
     edges, soffits, undersides in the roof voids, gutters on pitched eaves. steps: _Mesh for the roof-step skin."""
     roof = ctx.spec['roof']
     wins = [f for f in ctx.features if f['type'] in ('roof_window', 'roof_opening')]
     floors = sorted({v['z0'] for v in vols if v['level'] == ctx.levels[-1]})
-    objs, gutters, runs = [], {}, []
+    ceils = _ceilings(ctx)
+    gid = (roof.get('gable') or {}).get('id', '-')
+    objs, gutters, runs, verge = [], {}, [], _Mesh()
 
     def eave(x, y):                                         # nearest roof.eaves entry within 0.3 m
         best = None
@@ -428,6 +480,14 @@ def _roof(ctx, vols, steps):
                 lines.add(_line(pz['cx'] - q['z']['cx'], pz['cy'] - q['z']['cy'], q['z']['c0'] - pz['c0']))
             for zf in floors:                               # where the underside meets the top floor
                 lines.add(_line(pz['cx'], pz['cy'], zf + ctx.roof_slab_t(p['id']) - pz['c0']))
+            if not ground:                                  # where the underside would meet a ceiling of the top level
+                for _, poly, cps in ceils:
+                    lines.update(_edge_lines(poly))
+                    for cp in cps:
+                        lines.update(_edge_lines([tuple(q) for q in cp['polygon']]))
+                        cz = cp['z']
+                        lines.add(_line(pz['cx'] - cz['cx'], pz['cy'] - cz['cy'],
+                                        cz['c0'] + 0.01 + ctx.roof_slab_t(p['id']) - pz['c0']))
         for v in vols:
             lines.update(_edge_lines(v['poly']))
         for f in wins:
@@ -461,12 +521,20 @@ def _roof(ctx, vols, steps):
                 c = f.calc_center_median()
                 zf = _floor_under(vols, c.x, c.y, c.z - t)
                 if ground:
-                    if zf is None:                          # the canopy's flat soffit
-                        m.face([(q.x, q.y, PORCH_SOFFIT_Z) for q in pts], 'upvc_white', (0, 0, -1))
+                    if zf is None:                          # the canopy's raked boarded soffit
+                        m.face([(q.x, q.y, porch_soffit_z(q.y)) for q in pts], 'upvc_white', (0, 0, -1))
                 elif zf is None:                            # overhang: soffit
                     m.face([q + down for q in pts], 'upvc_white', (0, 0, -1))
                 elif c.z - t >= zf - 1e-4:                  # inside the roof void, above the top floor
-                    m.face([q + down for q in pts], 'roof_underside', (0, 0, -1))
+                    rid = next((r for r, poly, _ in ceils if C.point_in_poly(c.x, c.y, poly)), None)
+
+                    def lift(q):                            # the ceiling of THIS face's side: a vertex on a ceiling
+                        if not rid:                         # step line (flat 8.61 / lobby 8.57 at y 5.38) is read
+                            return q.z - t                  # 10 um in toward the face centre, else it takes the
+                        d = (c - q).to_2d()                 # lower side and the slab dips through the higher one
+                        d = d / d.length * 1e-5 if d.length > 1e-9 else d
+                        return max(q.z - t, ctx.ceil_z(rid, q.x + d.x, q.y + d.y) + 0.01)
+                    m.face([(q.x, q.y, lift(q)) for q in pts], 'roof_underside', (0, 0, -1))
                 for l in f.loops:
                     if len(l.edge.link_faces) != 1:
                         continue
@@ -488,11 +556,20 @@ def _roof(ctx, vols, steps):
                     elif not wall:                          # free edge: fascia / bargeboard
                         ev = eave(mid.x, mid.y)
                         black = bool(ev) and ev.get('colour') == 'black'
-                        m.face([a, b, b + down, a + down], 'pipe_black' if black else 'upvc_white', (n.x, n.y, 0))
+                        if ground:                          # down to the soffit in front, a boxed verge behind
+                            front = mid.y < PORCH_SOFFIT[0]
+                            lo = lambda q: Vector((q.x, q.y, porch_soffit_z(q.y) if front else q.z - PORCH_VERGE))
+                            m.face([a, b, lo(b), lo(a)], 'upvc_white', (n.x, n.y, 0))
+                        else:
+                            m.face([a, b, b + down, a + down], 'pipe_black' if black else 'upvc_white', (n.x, n.y, 0))
                         slope = Vector((p['z']['cx'], p['z']['cy']))
-                        if pitched and abs(a.z - b.z) < 1e-4 and slope.dot(n) < 0 and e.length > 0.05:   # no stubs
-                            off = Vector((n.x, n.y, 0)) * (GUTTER['w'] / 2 + 0.004) - Vector((0, 0, 0.03))
+                        if pitched and abs(a.z - b.z) < 1e-4 and slope.dot(n) < 0:
+                            off = Vector((n.x, n.y, 0)) * (GUTTER['w'] / 2 + 0.004) - \
+                                Vector((0, 0, GUTTER['drop_porch' if ground else 'drop']))
                             runs.append([(ev['id'] if ev else p['id'], black), a + off, b + off])
+                    if not ground and pitched and abs(a.z - b.z) > 1e-3 and n.x > 0.5 and not p['id'].startswith(gid) \
+                            and not oth:                    # black dry verge on the blank east gable end
+                        verge.prism([(-0.012, -0.06), (0.035, -0.06), (0.035, 0.025), (-0.012, 0.025)], a, b, 'pipe_black')
             ob = m.obj(ctx, f"roof.{p['id']}", 'roof', 'shell')
             if ob:
                 if abs(p['z']['cx']) > abs(p['z']['cy']):   # slate courses run along the eaves
@@ -500,6 +577,18 @@ def _roof(ctx, vols, steps):
                 objs.append(ob)
         bm.free()
 
+    merged = True                                           # one run per straight eave (the slab is cut into pieces)
+    while merged:
+        merged = False
+        for r in runs:
+            q = next((q for q in runs if q is not r and q[0] == r[0] and (q[1] - r[2]).length < 1e-4
+                      and abs((r[2] - r[1]).normalized().dot((q[2] - q[1]).normalized())) > 0.9999), None)
+            if q:
+                r[2] = q[2]
+                runs.remove(q)
+                merged = True
+                break
+    runs = [r for r in runs if (r[2] - r[1]).length > 0.05]    # no stubs
     for r in runs:                                          # two eaves meeting in a valley: one gutter round the corner.
         for k in (1, 2):                                    # Each end that passes another run's line stops half a width
             for q in runs:                                  # beyond it, so the two troughs close on each other
@@ -533,22 +622,76 @@ def _roof(ctx, vols, steps):
     for (gid, _), g in gutters.items():
         objs.append(g.obj(ctx, f'roof.{gid}.gutter', 'roof', 'fit', solid=True))
 
-    m = _Mesh()                                             # ridge cappings
-    cap = [(-0.13, -0.06), (0.13, -0.06), (0.0, 0.03)]
+    objs.append(verge.obj(ctx, 'roof.verge', 'roof', 'trim', solid=True))
+    m = _Mesh()                                             # angled ridge tiles bedded on the two slopes, joint every 0.45
     ridges = [(roof['ridge']['line'], roof['ridge']['z'])]
     if roof.get('gable'):
         ridges.append((roof['gable']['ridge'], roof['gable']['ridgeZ']))
+    w, h, t, jl = RIDGE['w'], RIDGE['h'], RIDGE['t'], RIDGE['joint']
     for (a, b), z in ridges:
-        m.prism(cap, (a[0], a[1], z), (b[0], b[1], z), 'lead')
+        a, b = Vector((a[0], a[1], z)), Vector((b[0], b[1], z))
+        d = (b - a).normalized()
+        s = d.cross(Vector((0, 0, 1)))                      # the prism's +u
+        mid = (a + b) / 2
+        dr = [z - (ctx.roof_z(*(mid + s * sg * w).xy) or z - 0.6 * w) for sg in (1, -1)]
+        prof = [(-w, -dr[1]), (0, h), (w, -dr[0]), (w, -dr[0] - t), (0, h - 1.4 * t), (-w, -dr[1] - t)]
+        L, k = (b - a).length, 0
+        while k * jl < L - 1e-3:
+            m.prism(prof, a + d * (k * jl), a + d * min(L, (k + 1) * jl - 0.006), 'ridge_tile')
+            k += 1
     objs.append(m.obj(ctx, 'roof.ridge', 'roof', 'trim', solid=True))
+    objs.append(_valleys(ctx, gid))
     return objs
 
 
+def _valleys(ctx, gid):
+    """Lead lining along the valleys of the bay gable (its plane edges that run neither along x nor along y)."""
+    m = _Mesh()
+    for p in ctx.spec['roof']['planes']:
+        if not p['id'].startswith(gid):
+            continue
+        poly = [tuple(q) for q in p['polygon']]
+        for a, b in zip(poly, poly[1:] + poly[:1]):
+            if abs(a[0] - b[0]) < 1e-6 or abs(a[1] - b[1]) < 1e-6:
+                continue
+            a, b = Vector(a), Vector(b)
+            n = Vector(((b - a).y, -(b - a).x)).normalized() * VALLEY_W
+            for sg in (1, -1):
+                q = [a, b, b + n * sg, a + n * sg]
+                z = [ctx.roof_z(*v) for v in q]
+                if None not in z:
+                    m.face([(v.x, v.y, zz + 0.004) for v, zz in zip(q, z)], 'lead', (0, 0, 1))
+    return m.obj(ctx, 'roof.valleys', 'roof', 'trim')
+
+
 def _gutter(m, a, b, black):
-    """Open gutter with its top edge on the line a -> b."""
+    """Open gutter with its top edge on the line a -> b, a fascia bracket (a U strap under it) every GUTTER_BRACKET."""
     w, h, t = GUTTER['w'] / 2, GUTTER['h'], GUTTER['t']
     prof = [(-w, -h), (w, -h), (w, 0), (w - t, 0), (w - t, t - h), (t - w, t - h), (t - w, 0), (-w, 0)]
-    m.prism(prof, a, b, 'pipe_black' if black else 'upvc_white')
+    mat = 'pipe_black' if black else 'upvc_white'
+    m.prism(prof, a, b, mat)
+    k = 0.004
+    strap = [(-w - k, 0), (-w - k, -h - k), (w + k, -h - k), (w + k, 0), (w, 0), (w, -h), (-w, -h), (-w, 0)]
+    L, d = (b - a).length, (b - a).normalized()
+    for i in range(1, int(L / GUTTER_BRACKET) + 1):
+        c = a + d * min(i * GUTTER_BRACKET - GUTTER_BRACKET / 2, L - 0.05)
+        m.prism(strap, c - d * 0.0125, c + d * 0.0125, mat)
+
+
+def _clips(m, pts, d, mat, sq):
+    """Pipe clips along each straight run longer than 0.6: every 0.9 on conduits (saddle clips), 1.7 on downpipes."""
+    gap = 0.9 if d < 0.05 else 1.7
+    for a, b in zip(pts, pts[1:]):
+        a, b = Vector(a), Vector(b)
+        L = (b - a).length
+        if L < 0.6:
+            continue
+        u = (b - a) / L
+        s = 0.3
+        while s < L - 0.2:
+            c = a + u * s
+            m.pipe([c - u * 0.015, c + u * 0.015], d + 0.012, mat, square=sq)
+            s += gap
 
 
 def _roof_windows(ctx):
@@ -602,99 +745,47 @@ def _roof_windows(ctx):
 
 
 def _chimney(ctx):
-    """Stacks of roof.chimneys above the roof only (below it the pier is the brick strip of the skin)."""
+    """Stacks of roof.chimneys above the roof only (below it the pier is the neighbour's brick). The brick shaft is
+    CHIMNEY_SHAFT wide from the polygon's west side, under a stone cap; the rest of the polygon is a rendered haunch
+    sloping from under the cap down to the roof, reaching CHIMNEY_HAUNCH east of the shaft (v2 t248.5, envelope-04)."""
     objs = []
     for cid in ctx.spec['roof'].get('chimneys', []):
         f = next(q for q in ctx.spec['exterior']['features'] if q['id'] == cid)
         xs, ys = [q[0] for q in f['polygon']], [q[1] for q in f['polygon']]
         x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
         zr = max(z for z in (ctx.roof_z(x, y) for x in (x0, x1) for y in (y0, y1)) if z is not None)
+        zt, xb = f['z'][1], min(x1, x0 + CHIMNEY_SHAFT)
         m = _Mesh()
-        m.box((x0, y0, zr - 0.02), (x1, y1, f['z'][1] - 0.06), 'stock_brick_grey')
-        m.box((x0 - 0.03, y0 - 0.03, f['z'][1] - 0.06), (x1 + 0.03, y1 + 0.03, f['z'][1]), 'sill_stone')
+        m.box((x0, y0, zr - 0.02), (xb, y1, zt - 0.07), 'stock_brick_grey')
+        m.box((x0 - 0.03, y0 - 0.03, zt - 0.07), (xb + 0.03, y1 + 0.03, zt), 'sill_stone')
+        P = [(xb, zr - 0.02), (xb + CHIMNEY_HAUNCH, zr - 0.02), (xb + CHIMNEY_HAUNCH, zr + 0.01), (xb, zt - 0.09)]
+        m.prism([(-x, z) for x, z in P], (0, y1, 0), (0, y0, 0), 'chimney_render')
         objs.append(m.obj(ctx, f'roof.{cid}', 'roof', 'shell', solid=True))
     return objs
 
 
-# ---------------------------------------------------------------- street front trim (front_elevation.md 3)
-def _front_trim(ctx):
-    fac = {f['id']: f for f in ctx.spec['exterior']['facades']}
-    if not {'front_A', 'bay_cheek_w', 'bay_cheek_e'} <= fac.keys():
-        return [], set()
-    y0, xw, xe = fac['front_A']['at'], fac['bay_cheek_w']['at'], fac['bay_cheek_e']['at']
-    yb = fac['bay_cheek_e']['extent'][1]
-    base = ctx.zone_z('forecourt') - 0.11 if 'forecourt' in ctx.zones else -0.1
-    m, W = _Mesh(), 'white_masonry_paint'
-    for x0, x1, reeds in ((0.68, 1.07, 3), (3.955, xe, 0)):         # pilasters: base block, shaft, capital
-        m.box((x0, y0 - 0.06, base), (x1, y0, 2.90), W)
-        m.box((x0 - 0.015, y0 - 0.08, base), (x1 + 0.015, y0, 0.62), W)
-        m.box((x0 - 0.04, y0 - 0.10, 2.52), (x1 + 0.04, y0, 2.65), W)
-        reed = [(0.0275 * math.cos(math.pi * i / 6), 0.015 * math.sin(math.pi * i / 6)) for i in range(7)]
-        for i in range(reeds):
-            cx = (x0 + x1) / 2 + (i - 1) * 0.09
-            m.prism(reed, (cx, y0 - 0.06, 0.72), (cx, y0 - 0.06, 2.42), W, up=(0, -1, 0))
-    m.box((1.07, y0 - 0.02, base), (3.955, y0, 0.30), W)            # plinth, 20 mm proud
-    m.box((xe, y0, base), (xe + 0.02, yb, 0.30), W)
-    corn = [(0, 0), (0.03, 0), (0.03, 0.03), (0.08, 0.08), (0.10, 0.08), (0.10, 0.12), (0.16, 0.18), (0.18, 0.18),
-            (0.18, 0.20), (0, 0.20)]                                # bay cornice Z 2.90 .. 3.10, returned on the cheek
-    m.rings([[(x + u * kx, y - u * ky if ky else y, 2.90 + v) for u, v in corn]         # one sweep, mitred at the corner
-             for x, y, kx, ky in ((0.93, y0, 0, 1), (xe, y0, 1, 1), (xe, yb, 1, 0))], W)
-    banded = {o for fid in ('front_A', 'bay_cheek_w', 'bay_cheek_e') for o in fac[fid]['openings']
-              if ctx.openings[o].get('level') == '1'}
-    front = next((ctx.opening_frame(o) for o in fac['front_A']['openings'] if o in banded), None)
-    if front:
-        zs, zh = front['center'][2], front['z0'] + front['head']
-        led = [(0, -0.07), (0.12, -0.07), (0.12, 0), (0, 0)]        # first-floor sill ledge round the bay
-        m.rings([[(x + u * kx, y - u * ky if ky else y, zs + v) for u, v in led]       # round both corners, mitred
-                 for x, y, kx, ky in ((xw, fac['bay_cheek_w']['extent'][1], -1, 0), (xw, y0, -1, 1), (xe, y0, 1, 1), (xe, yb, 1, 0))], W)
-        g = ctx.spec['roof'].get('gable')
-        gp = [p for p in ctx.spec['roof']['planes'] if p['id'].startswith(g['id'])] if g else []
-        if len(gp) == 2:                                            # gable field: head rail and raking struts
-            t, xr, zt = ctx.roof_slab_t(gp[0]['id']), g['ridge'][0][0], zh + 0.09
-            m.box((xw, y0 - 0.03, zh), (xe, y0, zt), W)
-            # ponytail: struts are straight boards cut by the verge line; the two curved braces are left out
-            for sg, pl in ((-1, max(gp, key=lambda p: p['z']['cx'])), (1, min(gp, key=lambda p: p['z']['cx']))):
-                z1, z2 = (C.plane_z(pl, q, y0) - t - 0.02 for q in (0, 1))
-                for i in range(3):
-                    # foot on the rail, 0.35 apart; 60 degrees to the horizontal, leaning away from the centre until
-                    # the bargeboard stops it (crop_gable_t955 / t956: the tops lie on the verge, the feet fan out from
-                    # the middle of the window head)
-                    xa = xr + sg * (0.25 + 0.35 * i)
-                    dx, dz = sg * 3 * math.cos(math.radians(60)), 3 * math.sin(math.radians(60))
-                    P = [(xa - 0.052, zt), (xa + 0.052, zt), (xa + 0.052 + dx, zt + dz), (xa - 0.052 + dx, zt + dz)]
-                    P = C.clip_poly(P, (0, z1), (1, z2), left=False)        # under the verge
-                    P = C.clip_poly(P, (xr, 0), (xr, 1), left=sg < 0)       # on its own half
-                    if len(P) >= 3:
-                        m.prism([(-x, z) for x, z in P], (0, y0, 0), (0, y0 - 0.025, 0), W)
-    eav = next((e for e in ctx.spec['roof'].get('eaves', []) if e['id'] == 'front'), None)
-    kn = _Mesh()
-    if eav:                                                         # party-wall kneeler, west (3.8)
-        xk, yk = fac['front_B']['extent'][0], fac['front_B']['at']
-        zk = ctx.roof_under(xk + 0.1, yk - 0.29) - 0.50                # its cap sits under the eaves soffit
-        for i in range(6):
-            kn.box((xk, yk - 0.05 * (i + 1), zk + 0.075 * i), (xk + 0.22, yk, zk + 0.075 * (i + 1)), 'red_brick')
-        kn.box((xk, yk - 0.32, zk + 0.45), (xk + 0.22, yk, zk + 0.49), 'lead')
-    return [m.obj(ctx, 'facade.front_A.trim', 'facade', 'trim', solid=True),
-            kn.obj(ctx, 'facade.front_B.kneeler', 'facade', 'trim', solid=True)], banded
-
-
-def _pier_panels(ctx, meshes):
-    """Sunk panels PIER_PANELS in the street face: the recessed back and four returns go into the facade's mesh;
-    returns the pseudo-openings that make _skin leave the holes."""
-    f = next((q for q in ctx.spec['exterior']['facades'] if q['id'] == 'front_A'), None)
-    if f is None:
-        return []
-    y0, m, holes = f['at'], meshes.setdefault('front_A', _Mesh()), []
-    for xc, w, z0, z1, dep in PIER_PANELS:
-        xa, xb, yb = xc - w / 2, xc + w / 2, y0 + dep
-        m.face([(xa, yb, z0), (xb, yb, z0), (xb, yb, z1), (xa, yb, z1)], f['finish'], (0, -1, 0))
-        for pts, n in (([(xa, y0, z0), (xa, yb, z0), (xa, yb, z1), (xa, y0, z1)], (1, 0, 0)),
-                       ([(xb, y0, z0), (xb, yb, z0), (xb, yb, z1), (xb, y0, z1)], (-1, 0, 0)),
-                       ([(xa, y0, z0), (xb, y0, z0), (xb, yb, z0), (xa, yb, z0)], (0, 0, 1)),
-                       ([(xa, y0, z1), (xb, y0, z1), (xb, yb, z1), (xa, yb, z1)], (0, 0, -1))):
-            m.face(pts, f['finish'], n)
-        holes.append(dict(id='panel', fr=dict(outward=(0.0, -1.0), width=w), p0=(xc, y0), z0=z0, z1=z1))
-    return holes
+def _insulation(ctx, meshes):
+    """External wall insulation (facades[].insulation): the render stops at the base rail; below it the old face,
+    `proud` further in, painted `below`; a white bell-cast bead along the foot and a white stop board at the south end
+    (brief (b), v8 f77-79)."""
+    for f in ctx.spec['exterior']['facades']:
+        ins = f.get('insulation')
+        if not ins or f['axis'] != 'x':
+            continue
+        (xa, ya), (_, yb) = _facade_line(f)
+        n = _facade_n(f)[0]
+        x0, (zr0, zr1) = ins['oldFace'], ins['baseRailZ']
+        gz = [ctx.ground_z(xa + n * 0.1, ya + (yb - ya) * k / 20) for k in range(21)]
+        base = min([g for g in gz if g is not None] or [zr0 - 0.25]) - 0.05
+        meshes.setdefault(f['id'], _Mesh()).face([(x0, ya, base), (x0, yb, base), (x0, yb, zr0), (x0, ya, zr0)],
+                                                 ins.get('below', 'plinth_black'), (n, 0, 0))
+        tm = meshes.setdefault(f['id'] + '.sills', _Mesh())
+        h = zr1 - zr0
+        bead = [(-ins['proud'], 0), (0.035, 0), (0.035, 0.008), (0.012, h * 0.5), (0.004, h), (-ins['proud'], h)]
+        a, b = sorted((ya, yb), key=lambda v: n * v)        # travel so that the prism's +u is outward
+        tm.prism(bead, (xa, a, zr0), (xa, b, zr0), 'upvc_white')
+        ys = min(ya, yb)                                            # stop under the rail at the south end
+        tm.box((min(x0, xa + n * 0.025), ys, base), (max(x0, xa + n * 0.025), ys + 0.04, zr0), 'upvc_white')
 
 
 def _pipes(ctx):
@@ -707,12 +798,17 @@ def _pipes(ctx):
         fc = min(ctx.spec['exterior']['facades'], key=lambda q: _seg_dist(f['at'], *_facade_line(q)))
         n, r = _facade_n(fc), f['diameter'] / 2
         x, y = f['at'][0] + n[0] * (r + 0.03), f['at'][1] + n[1] * (r + 0.03)
-        m = _Mesh()
-        m.pipe([(x, y, f['z'][0]), (x, y, f['z'][1])], f['diameter'], 'pipe_black', n=12)
-        z = f['z'][0] + 1.0
-        while z < f['z'][1] - 0.3:                                  # ring-seal sockets about every 2 m
-            m.pipe([(x, y, z), (x, y, z + 0.12)], f['diameter'] + 0.024, 'pipe_black', n=12)
-            z += 2.0
+        m, (z0, z1), dd = _Mesh(), f['z'], f['diameter']
+        zg = z1 - (z1 - z0) / 3                                     # top third weathered pale grey (v11 f_0170)
+        m.pipe([(x, y, z0), (x, y, zg)], dd, 'pipe_black', n=12)
+        m.pipe([(x, y, zg), (x, y, z1)], dd, 'pipe_grey', n=12)
+        z = z0 + 1.0
+        while z < z1 - 0.3:                                         # ring-seal sockets every 1.75
+            m.pipe([(x, y, z), (x, y, z + 0.12)], dd + 0.024, 'pipe_black' if z < zg else 'pipe_grey', n=12)
+            z += 1.75
+        m.pipe([(x, y, z1), (x, y, z1 + 0.14)], dd + 0.02, 'pipe_grey', n=8)        # cage cowl
+        zb = (ctx.ground_z(x, y) if ctx.ground_z(x, y) is not None else z0) + 0.35
+        m.pipe([(x, y, zb), (x, y - 0.11, zb)], 0.07, 'pipe_black', n=10)            # capped access boss, south side
         ob = m.obj(ctx, f"facade.{f['id']}", 'facade', 'fit', solid=True, smooth=True)
         if ctx.ground_z(x, y) is not None and f['z'][0] < ctx.ground_z(x, y) + 0.5:
             ob['plan_sym'] = 'pipe'
@@ -727,21 +823,31 @@ def _pipes(ctx):
                 z = ctx.ground_z(x, y) if ctx.ground_z(x, y) is not None else 0.0
             pts.append((x, y, z))
         (x, y, z), g = pts[0], ctx.ground_z(*pts[0][:2])
-        if g is not None and z < g + 0.5 and pts[1][:2] == (x, y) and pts[1][2] - z > 1.0:      # a downpipe to the ground
+        if g is not None and z < g + 0.5 and math.dist(pts[1][:2], (x, y)) < 0.15 and \
+                max(p[2] for p in pts[:3]) - z > 1.0:                   # a downpipe to the ground (maybe with a shoe)
             m, n = _Mesh(), n + 1
             m.pipe(pts, d, mat, square=sq)
+            _clips(m, pts, d, mat, sq)
             ob = m.obj(ctx, f'facade.downpipe.{n}', 'facade', 'fit', solid=True, smooth=True)
             ob['plan_sym'] = 'pipe'
             objs.append(ob)
             continue
         by.setdefault(mat, _Mesh()).pipe(pts, d, mat, square=sq)
+        _clips(by[mat], pts, d, mat, sq)
     for mat, m in by.items():
         objs.append(m.obj(ctx, f'facade.pipes.{mat}', 'facade', 'fit', solid=True, smooth=True))
+    m = _Mesh()
+    for mat, (x, y, z), (sx, sy, sz) in FITTINGS:
+        m.box((x - sx / 2, y - sy / 2, z - sz / 2), (x + sx / 2, y + sy / 2, z + sz / 2), mat)
+    objs.append(m.obj(ctx, 'facade.fittings', 'facade', 'fit', solid=True))
     return objs
 
 
 # ---------------------------------------------------------------- balcony
 def _balcony(ctx):
+    """Chequer-plate deck (the room's floor), channel frame and soffit, railing, wall posts and struts, rain pipe. A
+    railing with section 'round_tube' has round posts and top rail in mid grey with collars at the joints and thin black
+    bars on a flat bottom rail (v13 t214)."""
     objs = []
     for f in ctx.features:
         if f['type'] != 'balcony':
@@ -759,26 +865,42 @@ def _balcony(ctx):
                        ((x1 - 0.06, y0 + 0.06, zt - th), (x1, y1 - 0.06, zt - 0.006)),
                        ((x0 + 0.06, y0 + 0.06, zt - th + 0.01), (x1 - 0.06, y1 - 0.06, zt - th + 0.016))):   # frame, soffit
             m.box(lo, hi, S)
+        for x in [x0 + 0.03 + k * 0.25 for k in range(int((x1 - x0 - 0.06) / 0.25) + 1)]:     # screw heads on the edges
+            for y in (y0 + 0.03, y1 - 0.03):
+                m.box((x - 0.006, y - 0.006, zt), (x + 0.006, y + 0.006, zt + 0.003), S)
         r = f['railing']
         H, ps, bar = r['height'], r['post'], r['bar']
+        tube = r.get('section') == 'round_tube'
+        RL, BR = ('rail_grey', 'pipe_black') if tube else (S, S)
         cl = lambda x, y: (min(max(x, x0 + ps / 2), x1 - ps / 2), min(max(y, y0 + ps / 2), y1 - ps / 2))
         posts = [cl(*q) for q in r['posts']]
+        zr = zt + H - ps / 2                                        # top rail axis
         for x, y in posts:
-            m.box((x - ps / 2, y - ps / 2, zt), (x + ps / 2, y + ps / 2, zt + H - 0.04), S)
+            if tube:
+                m.pipe([(x, y, zt), (x, y, zr)], ps, RL, n=12)
+                m.pipe([(x, y, zr - 0.05), (x, y, zr + 0.03)], ps + 0.012, RL, n=12)      # tee / elbow fitting
+            else:
+                m.box((x - ps / 2, y - ps / 2, zt), (x + ps / 2, y + ps / 2, zt + H - 0.04), S)
         yr, xa, xb = y1 - ps / 2, x0 + ps / 2, x1 - ps / 2
         runs = {'north': [(posts[i], posts[i + 1], r['barsPerFrontBay']) for i in range(len(posts) - 1)],
                 'west': [((xa, y0), (xa, yr), r['barsPerSide'])], 'east': [((xb, y0), (xb, yr), r['barsPerSide'])]}
         for side in r['sides']:
             for a, b, n in runs[side]:
                 a, b = Vector((a[0], a[1], zt)), Vector((b[0], b[1], zt))
-                m.prism([(-0.03, H - 0.04), (0.03, H - 0.04), (0.03, H), (-0.03, H)], a, b, S)          # top rail
-                m.prism([(-0.005, 0.10), (0.005, 0.10), (0.005, 0.14), (-0.005, 0.14)], a, b, S)        # bottom rail
+                if tube:
+                    m.pipe([a + Vector((0, 0, zr - zt)), b + Vector((0, 0, zr - zt))], ps, RL, n=12)
+                else:
+                    m.prism([(-0.03, H - 0.04), (0.03, H - 0.04), (0.03, H), (-0.03, H)], a, b, S)      # top rail
+                m.prism([(-0.004, 0.10), (0.004, 0.10), (0.004, 0.14), (-0.004, 0.14)], a, b, BR)     # bottom rail
                 for i in range(n):
                     q = a + (b - a) * ((i + 1) / (n + 1))
-                    m.box((q.x - bar / 2, q.y - bar / 2, zt + 0.14), (q.x + bar / 2, q.y + bar / 2, zt + H - 0.04), S)
+                    if tube:
+                        m.pipe([(q.x, q.y, zt + 0.10), (q.x, q.y, zr - ps / 2)], bar, BR, n=6)
+                    else:
+                        m.box((q.x - bar / 2, q.y - bar / 2, zt + 0.14), (q.x + bar / 2, q.y + bar / 2, zt + H - 0.04), S)
             if side != 'north':                                     # wall brackets of the side rails
                 x = xa if side == 'west' else xb
-                for z in (zt + 0.12, zt + H - 0.02):
+                for z in (zt + 0.12, zr):
                     m.box((x - 0.04, y0, z - 0.04), (x + 0.04, y0 + 0.006, z + 0.04), S)
         sup = f['supports']
         st = sup['struts']
@@ -786,7 +908,7 @@ def _balcony(ctx):
             m.box((px - 0.05, py, sup['postZ'][0]), (px + 0.05, py + 0.04, sup['postZ'][1]), S)
             m.prism([(-0.03, -0.03), (0.03, -0.03), (0.03, 0.03), (-0.03, 0.03)],
                     (px, py + 0.03, st['fromZ']), (px, py + st['reach'], st['toZ'] - 0.03), S)
-        objs.append(m.obj(ctx, f'{room}.structure', room, 'fit', solid=True))
+        objs.append(m.obj(ctx, f'{room}.structure', room, 'fit', solid=True, smooth=tube))
         if f.get('rainPipe'):
             px, py = f['rainPipe']
             p = _Mesh()
@@ -802,10 +924,12 @@ def build(ctx):
     """Build the whole envelope into the scene; returns the objects. Rooms: facade, roof, balcony."""
     global _CTX
     _CTX = ctx
+    from . import envelope_front as EF                             # it imports this module: not at the top
     vols, ops, meshes = _vols(ctx), _ext_openings(ctx), {}
-    objs, banded = _front_trim(ctx)
-    _skin(ctx, vols, ops + _pier_panels(ctx, meshes), meshes)
+    objs, banded = EF.build(ctx)
+    _skin(ctx, vols, ops + EF.pier_panels(ctx, meshes), meshes)
     _reveals(ctx, ops, meshes, banded)
+    _insulation(ctx, meshes)
     steps = meshes.setdefault('returns', _Mesh())
     objs += _roof(ctx, vols, steps)
     for o in ops:                                                   # the board under the French doors (rear 2)

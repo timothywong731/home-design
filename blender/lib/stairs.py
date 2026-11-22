@@ -156,7 +156,7 @@ def _finish(ctx, room, faces, plank=False):
 PLANK_UV = {'stair_basement'}
 _COLS = [round(1024 * i / 6) for i in range(7)]                 # wood_tile_floor(_dark)_col.jpg, 1024 x 2048 px:
 _STAGGER = (0.0, 0.34, 0.71, 0.12, 0.60, 0.88)                  # 6 columns x 3 planks (gen/woods.py wood_tile_floor)
-_TEX = (1.221, 3.6105)                                          # metres per repeat (manifest size_m)
+_TEX = (1.47, 3.6105)                                            # metres per repeat (manifest size_m)
 
 
 def _plank(i, length):

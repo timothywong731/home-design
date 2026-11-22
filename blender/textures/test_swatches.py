@@ -194,18 +194,20 @@ def export_and_check(M, sw, items, out):
 def check_uv(M):
     """uv_box self-check: true scale, direction, rotate, origin, per-slot size, moved object."""
     col = bpy.context.scene.collection
-    fl = mesh_obj('t.floor', [(0, 0, 0), (2.2, 0, 0), (2.2, 4.4, 0), (0, 4.4, 0)], [(0, 1, 2, 3)], col)
-    fl.data.materials.append(M.mat('oak_floor'))                     # size_m 2.2 x 4.4, boards along V
+    w, h = M.mat('oak_floor')['size_m']                              # 2.45 x 4.4, boards along V
+    fl = mesh_obj('t.floor', [(0, 0, 0), (w, 0, 0), (w, h, 0), (0, h, 0)], [(0, 1, 2, 3)], col)
+    fl.data.materials.append(M.mat('oak_floor'))
 
     def uvs(o):
         return [tuple(round(c, 4) for c in d.uv) for d in o.data.uv_layers[0].data]
     M.uv_box(fl)
     assert uvs(fl) == [(0, 0), (1, 0), (1, 1), (0, 1)], uvs(fl)       # U = +X, V = +Y, one repeat
     M.uv_box(fl, rotate=True)
-    assert uvs(fl) == [(0, 0), (0, -0.5), (2, -0.5), (2, 0)], uvs(fl)  # boards now along X
-    M.uv_box(fl, origin=(2.2, 4.4, 0))
+    r = lambda x, y: (round(y / w, 4), round(-x / h, 4))
+    assert uvs(fl) == [r(0, 0), r(w, 0), r(w, h), r(0, h)], uvs(fl)  # boards now along X
+    M.uv_box(fl, origin=(w, h, 0))
     assert uvs(fl) == [(-1, -1), (0, -1), (0, 0), (-1, 0)], uvs(fl)
-    fl.location = (2.2, 0, 0)                                         # no depsgraph update needed
+    fl.location = (w, 0, 0)                                           # no depsgraph update needed
     M.uv_box(fl)
     assert uvs(fl)[0] == (1, 0), uvs(fl)
     wl = mesh_obj('t.wall', [(0, 0, 0), (0.909, 0, 0), (0.909, 0, 0.618), (0, 0, 0.618),

@@ -127,14 +127,15 @@ def _ribbon(mb, pts, br, w=.014, t=.005):
 
 
 # ------------------------------------------------------------------------------ chandelier
-def chandelier(shade=(.07, .15, .13)):
-    """12-light brass and crystal chandelier, dia 0.80 over the shades, 0.75 from the ceiling to the lowest
-    crystal: pierced ceiling cup, wire fountain with drops, cut-crystal column on the stem, hub with 8 flat
-    S-scroll arms (C-scroll fillers between) + 4 short arms 0.09 higher; every light a star-cut bobeche bowl
-    with 6 drops and a bell shade; bead swags arm to arm (two tiers) and hub to arm, a teardrop under every
-    long arm, faceted ball + teardrop finial. Returns the root; P.bulb_points(root) gives the 12 lamps."""
+def chandelier(shade=(.07, .15, .13), zh=-.48):
+    """12-light brass and crystal chandelier, dia 0.80 over the shades, 0.71 from the ceiling to the lowest
+    crystal (f_0705: drop / width 0.75 seen 23 deg from below; `zh` = hub below the ceiling contact): pierced
+    ceiling cup, wire fountain with drops, cut-crystal column on the stem, hub with 8 flat S-scroll arms (C-scroll
+    fillers between) + 4 short arms 0.09 higher; every light a star-cut bobeche bowl with 6 drops and a bell shade;
+    bead swags arm to arm (two tiers) and hub to arm, a teardrop under every long arm, faceted ball + teardrop finial.
+    Returns the root; P.bulb_points(root) gives the 12 lamps."""
     br, cr = brass(), crystal()
-    zh, RL, RU = -.56, .325, .17                                                    # hub; radius of the lower / upper lights
+    RL, RU = .325, .17                                                              # radius of the lower / upper lights
     mb = mo.MB()
     mb.lathe([(0, -.055), (.02, -.055), (.048, -.036), (.06, -.01), (.06, 0)], br, 20)                # ceiling cup
     for k in range(14):                                                             # its ring of pierced dots
@@ -145,8 +146,9 @@ def chandelier(shade=(.07, .15, .13)):
     mb.lathe([(0, zh - .04), (.014, zh - .04), (.02, zh - .03), (.04, zh - .022), (.045, zh), (.04, zh + .022), (.02, zh + .032),
               (.012, zh + .04), (.012, zh + .075), (.03, zh + .082), (.033, zh + .095), (.03, zh + .108), (.012, zh + .115),
               (.008, zh + .125), (.008, -.172), (.017, -.16), (.008, -.146), (.007, -.055), (0, -.055)], br, 16)   # hubs + stem
-    turn(mb, [(.013, zh + .125), (.026, zh + .14), (.031, zh + .18), (.022, zh + .225), (.029, zh + .275), (.024, zh + .32),
-              (.012, zh + .34)], cr, 8, flat=True, stagger=True)                    # cut-crystal column round the stem
+    kc = (min(zh + .34, -.19) - zh - .125) / .215                                   # the column stops under the fountain collar
+    turn(mb, [(r, zh + .125 + kc * (z - .125)) for r, z in ((.013, .125), (.026, .14), (.031, .18), (.022, .225), (.029, .275),
+              (.024, .32), (.012, .34))], cr, 8, flat=True, stagger=True)         # cut-crystal column round the stem
     turn(mb, [(.004, zh - .094), (.02, zh - .086), (.028, zh - .067), (.02, zh - .048), (.004, zh - .04)], cr, 8, flat=True,
          stagger=True)                                                              # faceted ball finial
     _tear(mb, .10, cr, T((0, 0, zh - .094)))

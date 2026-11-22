@@ -6,14 +6,14 @@
  "bounds": {
   "minX": -0.88,
   "minY": -0.12,
-  "maxX": 4.53,
+  "maxX": 4.65,
   "maxY": 17.36
  },
  "siteBounds": {
   "minX": -3.0,
   "minY": -7.2,
   "maxX": 8.0,
-  "maxY": 28.9
+  "maxY": 31.0
  },
  "spawn": [
   0.0,
@@ -64,7 +64,7 @@
   "walls": "centreline a->b with thickness; rooms = [left, right] of a->b; baseZ + height = vertical extent (world); 'void' = solid ground / shaft / unseen zone; roomsBelow = rooms of the level below that an opening in this wall may connect; virtual walls (thickness 0) are open room boundaries (risers, balustrades)",
   "hinge": "side of the hinges seen from inside the room the leaf swings into (swingInto), facing the door; hingeAt = hinge jamb point on the centreline; openAngle = state to model",
   "heights": "opening height is the clear height above sill; transom.height = top of the fanlight above floor",
-  "reconcile": "spec/RECONCILE.md (ground floor, phase 1) and spec/RECONCILE2.md (phase 2); validate with python spec/validate_house2.py",
+  "reconcile": "spec/RECONCILE.md (ground floor, phase 1), spec/RECONCILE2.md (phase 2) and spec/RECONCILE3.md (phase 3: dimension audit); validate with python spec/validate_house.py",
   "level": "every room, wall, opening, feature and stairs flight has level B | G | 1 | 2; split levels are different floorZ within one level",
   "room.kind": "room | stairwell (plan region of a flight, exempt from stacking) | void (eaves storage bounded by roof planes) | exterior (balcony)",
   "ceiling": "ceilingZ = highest ceiling (world Z). Optional ceilingZones [{polygon, z}] lower parts of it; optional ceiling {type: planes, planes: [{polygon, z: {c0, cx, cy}}]} gives world z = c0 + cx*x + cy*y; {type: under_roof, offset} = roof surface + offset",
@@ -157,24 +157,24 @@
      0
     ],
     [
-     0.9,
+     0.75,
      0
     ],
     [
-     0.9,
-     0.74
+     0.75,
+     0.99
     ],
     [
      0.65,
-     0.74
+     0.99
     ],
     [
      0.65,
-     1.73
+     1.86
     ],
     [
      -0.65,
-     1.73
+     1.86
     ]
    ],
    "floorZ": 0,
@@ -185,7 +185,7 @@
    },
    "size": [
     1.3,
-    1.73
+    1.86
    ],
    "level": "G",
    "kind": "room"
@@ -196,11 +196,11 @@
    "polygon": [
     [
      -0.65,
-     1.83
+     1.96
     ],
     [
      0.65,
-     1.83
+     1.96
     ],
     [
      0.65,
@@ -243,7 +243,7 @@
    },
    "size": [
     1.3,
-    10.4
+    10.27
    ],
    "level": "G",
    "kind": "room",
@@ -291,6 +291,28 @@
       ],
       [
        0.45,
+       9.03
+      ],
+      [
+       -0.65,
+       9.03
+      ]
+     ],
+     "z": 2.84
+    },
+    {
+     "id": "rear_corridor",
+     "polygon": [
+      [
+       -0.65,
+       9.03
+      ],
+      [
+       0.45,
+       9.03
+      ],
+      [
+       0.45,
        12.23
       ],
       [
@@ -298,7 +320,7 @@
        12.23
       ]
      ],
-     "z": 2.84
+     "z": 2.7
     },
     {
      "id": "lobby_under_flight",
@@ -403,19 +425,19 @@
      0.99
     ],
     [
-     1.1,
+     1.03,
      0.99
     ],
     [
-     1.1,
+     1.03,
      0
     ],
     [
-     4.0,
+     3.93,
      0
     ],
     [
-     4.0,
+     3.93,
      0.99
     ],
     [
@@ -465,11 +487,11 @@
      8.73
     ],
     [
-     2.62,
+     2.86,
      8.73
     ],
     [
-     2.62,
+     2.86,
      9.25
     ],
     [
@@ -506,11 +528,11 @@
        8.73
       ],
       [
-       2.62,
+       2.86,
        8.73
       ],
       [
-       2.62,
+       2.86,
        9.25
       ],
       [
@@ -595,7 +617,7 @@
    "name": "Dining room",
    "polygon": [
     [
-     -0.65,
+     -0.59,
      12.36
     ],
     [
@@ -607,18 +629,18 @@
      16.86
     ],
     [
-     -0.65,
+     -0.59,
      16.86
     ]
    ],
    "floorZ": 0,
-   "ceilingZ": 2.8,
+   "ceilingZ": 2.62,
    "floor": {
     "material": "oak_plank",
     "direction": "y"
    },
    "size": [
-    3.75,
+    3.69,
     4.5
    ],
    "level": "G",
@@ -635,19 +657,19 @@
      0.99
     ],
     [
-     1.16,
+     1.11,
      0.99
     ],
     [
-     1.16,
+     1.11,
      0.14
     ],
     [
-     3.9,
+     3.85,
      0.14
     ],
     [
-     3.9,
+     3.85,
      0.99
     ],
     [
@@ -664,7 +686,7 @@
     ]
    ],
    "floorZ": 3.42,
-   "ceilingZ": 6.27,
+   "ceilingZ": 6.19,
    "floor": {
     "material": "carpet_pale",
     "direction": "y"
@@ -860,23 +882,15 @@
      8.73
     ],
     [
-     0.35,
+     0.54,
      8.73
     ],
     [
-     0.25,
-     8.83
+     0.47,
+     8.8
     ],
     [
-     0.25,
-     11.5
-    ],
-    [
-     0.4,
-     11.5
-    ],
-    [
-     0.4,
+     0.47,
      12.39
     ],
     [
@@ -885,13 +899,13 @@
     ]
    ],
    "floorZ": 3.04,
-   "ceilingZ": 5.49,
+   "ceilingZ": 5.64,
    "floor": {
     "material": "carpet_silver_beige",
     "direction": "y"
    },
    "size": [
-    0.9,
+    1.12,
     4.26
    ]
   },
@@ -902,7 +916,7 @@
    "name": "Yellow room (middle)",
    "polygon": [
     [
-     0.35,
+     0.57,
      9.03
     ],
     [
@@ -914,7 +928,7 @@
      11.05
     ],
     [
-     0.35,
+     0.57,
      11.05
     ]
    ],
@@ -925,7 +939,7 @@
     "direction": "y"
    },
    "size": [
-    2.75,
+    2.53,
     2.02
    ]
   },
@@ -936,7 +950,7 @@
    "name": "Blue en-suite",
    "polygon": [
     [
-     0.5,
+     0.57,
      11.15
     ],
     [
@@ -948,7 +962,7 @@
      12.85
     ],
     [
-     0.5,
+     0.57,
      12.85
     ]
    ],
@@ -959,7 +973,7 @@
     "direction": "y"
    },
    "size": [
-    2.4,
+    2.33,
     1.7
    ]
   },
@@ -974,11 +988,11 @@
      12.52
     ],
     [
-     0.4,
+     0.47,
      12.52
     ],
     [
-     0.4,
+     0.47,
      12.95
     ],
     [
@@ -1012,20 +1026,20 @@
    "name": "Balcony",
    "polygon": [
     [
-     0.0,
+     0.195,
      17.36
     ],
     [
-     2.3,
+     2.315,
      17.36
     ],
     [
-     2.3,
-     18.41
+     2.315,
+     18.48
     ],
     [
-     0.0,
-     18.41
+     0.195,
+     18.48
     ]
    ],
    "floorZ": 3.0,
@@ -1035,8 +1049,8 @@
     "direction": "y"
    },
    "size": [
-    2.3,
-    1.05
+    2.12,
+    1.12
    ]
   },
   {
@@ -1058,19 +1072,11 @@
      8.73
     ],
     [
-     0.22,
+     0.32,
      8.73
     ],
     [
-     0.22,
-     11.5
-    ],
-    [
-     0.3,
-     11.5
-    ],
-    [
-     0.3,
+     0.32,
      12.94
     ],
     [
@@ -1085,7 +1091,7 @@
     "direction": "y"
    },
    "size": [
-    0.87,
+    0.97,
     4.81
    ]
   },
@@ -1127,7 +1133,7 @@
    "id": "loft_office",
    "level": "2",
    "kind": "room",
-   "name": "Loft office (front)",
+   "name": "Slate Room",
    "polygon": [
     [
      -0.65,
@@ -1196,9 +1202,9 @@
        ]
       ],
       "z": {
-       "c0": 5.9435,
+       "c0": 6.3,
        "cx": 0,
-       "cy": 0.57735
+       "cy": 0.5
       }
      },
      {
@@ -1214,6 +1220,14 @@
        ],
        [
         4.3,
+        5.31
+       ],
+       [
+        1.25,
+        5.31
+       ],
+       [
+        1.25,
         5.38
        ],
        [
@@ -1232,11 +1246,11 @@
       "polygon": [
        [
         1.25,
-        5.38
+        5.31
        ],
        [
         4.3,
-        5.38
+        5.31
        ],
        [
         4.3,
@@ -1248,9 +1262,9 @@
        ]
       ],
       "z": {
-       "c0": 11.7147,
+       "c0": 12.33,
        "cx": 0,
-       "cy": -0.57735
+       "cy": -0.7
       }
      },
      {
@@ -1293,19 +1307,19 @@
      0.95
     ],
     [
-     1.43,
+     1.11,
      0.95
     ],
     [
-     1.43,
+     1.11,
      0.14
     ],
     [
-     3.63,
+     3.85,
      0.14
     ],
     [
-     3.63,
+     3.85,
      0.95
     ],
     [
@@ -1322,7 +1336,7 @@
     ]
    ],
    "floorZ": 6.49,
-   "ceilingZ": 8.0,
+   "ceilingZ": 8.19,
    "floor": {
     "material": "chipboard",
     "direction": "y"
@@ -1333,7 +1347,129 @@
    ],
    "ceiling": {
     "type": "under_roof",
-    "offset": -0.31
+    "offset": -0.17,
+    "planes": [
+     {
+      "id": "main_w",
+      "polygon": [
+       [
+        -0.65,
+        0.95
+       ],
+       [
+        1.1386,
+        0.95
+       ],
+       [
+        1.8605,
+        2.44
+       ],
+       [
+        -0.65,
+        2.44
+       ]
+      ],
+      "z": {
+       "c0": 6.0828,
+       "cx": 0,
+       "cy": 0.57735
+      }
+     },
+     {
+      "id": "tunnel_w",
+      "polygon": [
+       [
+        1.11,
+        0.14
+       ],
+       [
+        2.28,
+        0.14
+       ],
+       [
+        2.28,
+        2.44
+       ],
+       [
+        1.8605,
+        2.44
+       ],
+       [
+        1.1386,
+        0.95
+       ],
+       [
+        1.11,
+        0.95
+       ]
+      ],
+      "z": {
+       "c0": 5.4728,
+       "cx": 1.19175,
+       "cy": 0
+      }
+     },
+     {
+      "id": "tunnel_e",
+      "polygon": [
+       [
+        2.68,
+        0.14
+       ],
+       [
+        3.85,
+        0.14
+       ],
+       [
+        3.85,
+        0.95
+       ],
+       [
+        3.8214,
+        0.95
+       ],
+       [
+        3.0995,
+        2.44
+       ],
+       [
+        2.68,
+        2.44
+       ]
+      ],
+      "z": {
+       "c0": 11.3839,
+       "cx": -1.19175,
+       "cy": 0
+      }
+     },
+     {
+      "id": "main_e",
+      "polygon": [
+       [
+        3.8214,
+        0.95
+       ],
+       [
+        4.3,
+        0.95
+       ],
+       [
+        4.3,
+        2.44
+       ],
+       [
+        3.0995,
+        2.44
+       ]
+      ],
+      "z": {
+       "c0": 6.0828,
+       "cx": 0,
+       "cy": 0.57735
+      }
+     }
+    ]
    }
   },
   {
@@ -1360,7 +1496,7 @@
     ]
    ],
    "floorZ": 6.49,
-   "ceilingZ": 7.91,
+   "ceilingZ": 7.65,
    "floor": {
     "material": "chipboard",
     "direction": "y"
@@ -1378,23 +1514,23 @@
    "id": "purple_room",
    "level": "2",
    "kind": "room",
-   "name": "Purple room (unused)",
+   "name": "Lavender Room",
    "polygon": [
     [
-     0.32,
-     9.29
+     0.42,
+     9.55
     ],
     [
      3.1,
-     9.29
+     9.55
     ],
     [
      3.1,
-     11.2
+     11.5
     ],
     [
-     0.32,
-     11.2
+     0.42,
+     11.5
     ]
    ],
    "floorZ": 6.02,
@@ -1404,8 +1540,8 @@
     "direction": "y"
    },
    "size": [
-    2.78,
-    1.91
+    2.68,
+    1.95
    ]
   },
   {
@@ -1415,19 +1551,19 @@
    "name": "Second-floor bathroom (shower, sauna)",
    "polygon": [
     [
-     0.4,
-     11.5
+     0.42,
+     11.66
     ],
     [
      3.1,
-     11.5
+     11.66
     ],
     [
      3.1,
      13.7
     ],
     [
-     0.4,
+     0.42,
      13.7
     ]
    ],
@@ -1438,31 +1574,31 @@
     "direction": "y"
    },
    "size": [
-    2.7,
-    2.2
+    2.68,
+    2.04
    ]
   },
   {
    "id": "study",
    "level": "2",
    "kind": "room",
-   "name": "Study (rear)",
+   "name": "Rose Room",
    "polygon": [
     [
      -0.65,
      13.04
     ],
     [
-     0.3,
+     0.32,
      13.04
     ],
     [
-     0.3,
-     14.15
+     0.32,
+     13.84
     ],
     [
      3.1,
-     14.15
+     13.84
     ],
     [
      3.1,
@@ -1481,7 +1617,7 @@
    },
    "size": [
     3.75,
-    2.71
+    3.02
    ]
   }
  ],
@@ -1641,7 +1777,7 @@
    ],
    "b": [
     -0.765,
-    1.78
+    1.91
    ],
    "thickness": 0.23,
    "height": 2.85,
@@ -1658,7 +1794,7 @@
    "id": "w_party_w_hall",
    "a": [
     -0.765,
-    1.78
+    1.91
    ],
    "b": [
     -0.765,
@@ -1678,15 +1814,15 @@
   {
    "id": "w_party_w_dining",
    "a": [
-    -0.765,
+    -0.735,
     12.295
    ],
    "b": [
-    -0.765,
+    -0.735,
     17.11
    ],
-   "thickness": 0.23,
-   "height": 2.8,
+   "thickness": 0.29,
+   "height": 2.62,
    "exterior": true,
    "kind": "party",
    "rooms": [
@@ -1703,7 +1839,7 @@
     -0.06
    ],
    "b": [
-    1.0,
+    0.89,
     -0.06
    ],
    "thickness": 0.12,
@@ -1720,11 +1856,11 @@
   {
    "id": "w_front_bay",
    "a": [
-    1.0,
+    0.89,
     -0.06
    ],
    "b": [
-    4.075,
+    4.09,
     -0.06
    ],
    "thickness": 0.12,
@@ -1741,14 +1877,14 @@
   {
    "id": "w_bay_cheek_w",
    "a": [
-    1.0,
+    0.89,
     -0.06
    ],
    "b": [
-    1.0,
+    0.89,
     0.865
    ],
-   "thickness": 0.2,
+   "thickness": 0.28,
    "height": 2.95,
    "exterior": false,
    "kind": "internal",
@@ -1762,14 +1898,14 @@
   {
    "id": "w_bay_cheek_e",
    "a": [
-    4.075,
+    4.09,
     -0.06
    ],
    "b": [
-    4.075,
+    4.09,
     0.865
    ],
-   "thickness": 0.15,
+   "thickness": 0.32,
    "height": 2.95,
    "exterior": true,
    "kind": "external",
@@ -1787,7 +1923,7 @@
     0.865
    ],
    "b": [
-    1.1,
+    1.03,
     0.865
    ],
    "thickness": 0.25,
@@ -1804,11 +1940,11 @@
   {
    "id": "w_front_nib_e",
    "a": [
-    4.0,
+    4.09,
     0.865
    ],
    "b": [
-    4.415,
+    4.475,
     0.865
    ],
    "thickness": 0.25,
@@ -1826,11 +1962,11 @@
    "id": "w_screen_inner",
    "a": [
     -0.765,
-    1.78
+    1.91
    ],
    "b": [
     0.725,
-    1.78
+    1.91
    ],
    "thickness": 0.1,
    "height": 2.95,
@@ -1851,7 +1987,7 @@
    ],
    "b": [
     0.725,
-    1.78
+    1.91
    ],
    "thickness": 0.15,
    "height": 2.95,
@@ -1868,7 +2004,7 @@
    "id": "w_hall_living",
    "a": [
     0.725,
-    1.78
+    1.91
    ],
    "b": [
     0.725,
@@ -1892,7 +2028,7 @@
     5.25
    ],
    "b": [
-    4.415,
+    4.475,
     5.25
    ],
    "thickness": 0.12,
@@ -1909,14 +2045,14 @@
   {
    "id": "w_party_e_living",
    "a": [
-    4.415,
+    4.475,
     0.865
    ],
    "b": [
-    4.415,
+    4.475,
     5.25
    ],
-   "thickness": 0.23,
+   "thickness": 0.35,
    "height": 2.95,
    "exterior": true,
    "kind": "external",
@@ -1930,14 +2066,14 @@
   {
    "id": "w_party_e_kitchen",
    "a": [
-    4.415,
+    4.475,
     5.25
    ],
    "b": [
-    4.415,
+    4.475,
     8.88
    ],
-   "thickness": 0.23,
+   "thickness": 0.35,
    "height": 2.95,
    "exterior": true,
    "kind": "external",
@@ -2063,7 +2199,7 @@
     9.045
    ],
    "b": [
-    3.25,
+    3.275,
     9.045
    ],
    "thickness": 0.63,
@@ -2080,11 +2216,11 @@
   {
    "id": "w_kitchen_n_ext",
    "a": [
-    3.25,
+    3.275,
     8.88
    ],
    "b": [
-    4.415,
+    4.475,
     8.88
    ],
    "thickness": 0.3,
@@ -2147,7 +2283,7 @@
     10.2
    ],
    "b": [
-    3.25,
+    3.275,
     10.2
    ],
    "thickness": 0.12,
@@ -2164,14 +2300,14 @@
   {
    "id": "w_flank_wc",
    "a": [
-    3.25,
+    3.275,
     8.88
    ],
    "b": [
-    3.25,
+    3.275,
     10.2
    ],
-   "thickness": 0.3,
+   "thickness": 0.35,
    "height": 2.4,
    "exterior": true,
    "kind": "external",
@@ -2185,14 +2321,14 @@
   {
    "id": "w_flank_utility",
    "a": [
-    3.25,
+    3.275,
     10.2
    ],
    "b": [
-    3.25,
+    3.275,
     12.295
    ],
-   "thickness": 0.3,
+   "thickness": 0.35,
    "height": 2.4,
    "exterior": true,
    "kind": "external",
@@ -2206,15 +2342,15 @@
   {
    "id": "w_flank_dining",
    "a": [
-    3.25,
+    3.275,
     12.295
    ],
    "b": [
-    3.25,
+    3.275,
     17.11
    ],
-   "thickness": 0.3,
-   "height": 2.8,
+   "thickness": 0.35,
+   "height": 2.62,
    "exterior": true,
    "kind": "external",
    "rooms": [
@@ -2252,11 +2388,11 @@
     12.295
    ],
    "b": [
-    3.25,
+    3.275,
     12.295
    ],
    "thickness": 0.13,
-   "height": 2.8,
+   "height": 2.62,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -2273,11 +2409,11 @@
     17.11
    ],
    "b": [
-    3.25,
+    3.275,
     17.11
    ],
    "thickness": 0.5,
-   "height": 2.8,
+   "height": 2.62,
    "exterior": true,
    "kind": "external",
    "rooms": [
@@ -2419,14 +2555,14 @@
    "id": "w_east_1a",
    "level": "1",
    "a": [
-    4.415,
+    4.475,
     0.865
    ],
    "b": [
-    4.415,
+    4.475,
     4.89
    ],
-   "thickness": 0.23,
+   "thickness": 0.35,
    "baseZ": 3.42,
    "height": 3.07,
    "exterior": true,
@@ -2440,14 +2576,14 @@
    "id": "w_east_1b",
    "level": "1",
    "a": [
-    4.415,
+    4.475,
     4.89
    ],
    "b": [
-    4.415,
+    4.475,
     8.88
    ],
-   "thickness": 0.23,
+   "thickness": 0.35,
    "baseZ": 3.42,
    "height": 3.07,
    "exterior": true,
@@ -2465,7 +2601,7 @@
     0.865
    ],
    "b": [
-    1.03,
+    0.93,
     0.865
    ],
    "thickness": 0.25,
@@ -2482,11 +2618,11 @@
    "id": "w_front_1_e",
    "level": "1",
    "a": [
-    4.025,
+    4.05,
     0.865
    ],
    "b": [
-    4.415,
+    4.475,
     0.865
    ],
    "thickness": 0.25,
@@ -2503,11 +2639,11 @@
    "id": "w_bay_front_1",
    "level": "1",
    "a": [
-    1.03,
+    0.93,
     0.01
    ],
    "b": [
-    4.025,
+    4.05,
     0.01
    ],
    "thickness": 0.26,
@@ -2524,14 +2660,14 @@
    "id": "w_bay_cheek_w_1",
    "level": "1",
    "a": [
-    1.03,
+    0.93,
     0.01
    ],
    "b": [
-    1.03,
+    0.93,
     0.865
    ],
-   "thickness": 0.26,
+   "thickness": 0.36,
    "baseZ": 3.42,
    "height": 3.07,
    "exterior": true,
@@ -2545,14 +2681,14 @@
    "id": "w_bay_cheek_e_1",
    "level": "1",
    "a": [
-    4.025,
+    4.05,
     0.01
    ],
    "b": [
-    4.025,
+    4.05,
     0.865
    ],
-   "thickness": 0.25,
+   "thickness": 0.4,
    "baseZ": 3.42,
    "height": 3.07,
    "exterior": true,
@@ -2575,7 +2711,7 @@
    ],
    "thickness": 0.12,
    "baseZ": 3.42,
-   "height": 2.85,
+   "height": 2.77,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -2591,12 +2727,12 @@
     4.89
    ],
    "b": [
-    4.415,
+    4.475,
     4.89
    ],
    "thickness": 0.12,
    "baseZ": 3.42,
-   "height": 2.85,
+   "height": 2.77,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -2671,7 +2807,7 @@
    "id": "w_main_rear_1a",
    "level": "1",
    "a": [
-    0.3,
+    0.52,
     8.88
    ],
    "b": [
@@ -2696,7 +2832,7 @@
     8.88
    ],
    "b": [
-    3.25,
+    3.275,
     8.88
    ],
    "thickness": 0.3,
@@ -2713,11 +2849,11 @@
    "id": "w_main_rear_1c",
    "level": "1",
    "a": [
-    3.25,
+    3.275,
     8.88
    ],
    "b": [
-    4.415,
+    4.475,
     8.88
    ],
    "thickness": 0.3,
@@ -2734,16 +2870,16 @@
    "id": "w_corr_yellow",
    "level": "1",
    "a": [
-    0.3,
+    0.52,
     8.88
    ],
    "b": [
-    0.3,
-    11.35
+    0.52,
+    11.42
    ],
    "thickness": 0.1,
    "baseZ": 3.04,
-   "height": 2.45,
+   "height": 2.6,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -2756,15 +2892,15 @@
    "level": "1",
    "a": [
     -0.765,
-    11.35
+    11.42
    ],
    "b": [
-    0.45,
-    11.35
+    0.52,
+    11.42
    ],
-   "thickness": 0.3,
+   "thickness": 0.12,
    "baseZ": 3.04,
-   "height": 2.45,
+   "height": 2.6,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -2776,11 +2912,11 @@
    "id": "w_yellow_n",
    "level": "1",
    "a": [
-    0.3,
+    0.52,
     11.1
    ],
    "b": [
-    3.25,
+    3.275,
     11.1
    ],
    "thickness": 0.1,
@@ -2797,16 +2933,16 @@
    "id": "w_bay_ensuite",
    "level": "1",
    "a": [
-    0.45,
+    0.52,
     11.1
    ],
    "b": [
-    0.45,
+    0.52,
     12.455
    ],
    "thickness": 0.1,
    "baseZ": 3.04,
-   "height": 2.5,
+   "height": 2.6,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -2818,11 +2954,11 @@
    "id": "w_recess_ensuite",
    "level": "1",
    "a": [
-    0.45,
+    0.52,
     12.455
    ],
    "b": [
-    0.45,
+    0.52,
     12.9
    ],
    "thickness": 0.1,
@@ -2843,7 +2979,7 @@
     12.455
    ],
    "b": [
-    0.45,
+    0.52,
     12.455
    ],
    "thickness": 0.13,
@@ -2860,11 +2996,11 @@
    "id": "w_ensuite_n",
    "level": "1",
    "a": [
-    0.45,
+    0.52,
     12.9
    ],
    "b": [
-    3.25,
+    3.275,
     12.9
    ],
    "thickness": 0.1,
@@ -2881,14 +3017,14 @@
    "id": "w_flank_1_yellow",
    "level": "1",
    "a": [
-    3.25,
+    3.275,
     8.88
    ],
    "b": [
-    3.25,
+    3.275,
     11.1
    ],
-   "thickness": 0.3,
+   "thickness": 0.35,
    "baseZ": 3.04,
    "height": 2.98,
    "exterior": true,
@@ -2902,14 +3038,14 @@
    "id": "w_flank_1_ensuite",
    "level": "1",
    "a": [
-    3.15,
+    3.175,
     11.1
    ],
    "b": [
-    3.15,
+    3.175,
     12.9
    ],
-   "thickness": 0.5,
+   "thickness": 0.55,
    "baseZ": 3.04,
    "height": 2.98,
    "exterior": true,
@@ -2923,14 +3059,14 @@
    "id": "w_flank_1_blue",
    "level": "1",
    "a": [
-    3.25,
+    3.275,
     12.9
    ],
    "b": [
-    3.25,
+    3.275,
     17.11
    ],
-   "thickness": 0.3,
+   "thickness": 0.35,
    "baseZ": 3.04,
    "height": 2.98,
    "exterior": true,
@@ -2948,7 +3084,7 @@
     17.11
    ],
    "b": [
-    3.25,
+    3.275,
     17.11
    ],
    "thickness": 0.5,
@@ -3057,7 +3193,7 @@
     8.73
    ],
    "b": [
-    0.35,
+    0.54,
     8.73
    ],
    "thickness": 0.0,
@@ -3202,14 +3338,14 @@
    "id": "w_east_2a",
    "level": "2",
    "a": [
-    4.415,
+    4.475,
     0.865
    ],
    "b": [
-    4.415,
+    4.475,
     2.49
    ],
-   "thickness": 0.23,
+   "thickness": 0.35,
    "baseZ": 6.49,
    "height": 1.0,
    "exterior": true,
@@ -3223,14 +3359,14 @@
    "id": "w_east_2b",
    "level": "2",
    "a": [
-    4.415,
+    4.475,
     2.49
    ],
    "b": [
-    4.415,
+    4.475,
     6.64
    ],
-   "thickness": 0.23,
+   "thickness": 0.35,
    "baseZ": 6.49,
    "height": 2.4,
    "exterior": true,
@@ -3244,14 +3380,14 @@
    "id": "w_east_2c",
    "level": "2",
    "a": [
-    4.415,
+    4.475,
     6.64
    ],
    "b": [
-    4.415,
+    4.475,
     8.88
    ],
-   "thickness": 0.23,
+   "thickness": 0.35,
    "baseZ": 6.49,
    "height": 1.5,
    "exterior": true,
@@ -3269,12 +3405,12 @@
     2.49
    ],
    "b": [
-    4.415,
+    4.475,
     2.49
    ],
    "thickness": 0.1,
    "baseZ": 6.49,
-   "height": 0.92,
+   "height": 1.08,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -3290,12 +3426,12 @@
     6.64
    ],
    "b": [
-    4.415,
+    4.475,
     6.64
    ],
    "thickness": 0.1,
    "baseZ": 6.49,
-   "height": 1.42,
+   "height": 1.23,
    "exterior": false,
    "kind": "internal",
    "rooms": [
@@ -3433,14 +3569,14 @@
    "id": "w_addition_s_2",
    "level": "2",
    "a": [
-    0.27,
-    9.01
+    0.37,
+    9.2
    ],
    "b": [
-    3.25,
-    9.01
+    3.275,
+    9.2
    ],
-   "thickness": 0.56,
+   "thickness": 0.7,
    "baseZ": 6.02,
    "height": 2.85,
    "exterior": true,
@@ -3455,12 +3591,12 @@
    "id": "w_hall_purple",
    "level": "2",
    "a": [
-    0.27,
-    9.01
+    0.37,
+    9.2
    ],
    "b": [
-    0.27,
-    11.35
+    0.37,
+    11.58
    ],
    "thickness": 0.1,
    "baseZ": 6.02,
@@ -3477,13 +3613,13 @@
    "level": "2",
    "a": [
     -0.765,
-    11.35
+    11.58
    ],
    "b": [
-    0.35,
-    11.35
+    0.37,
+    11.58
    ],
-   "thickness": 0.3,
+   "thickness": 0.16,
    "baseZ": 6.02,
    "height": 2.6,
    "exterior": false,
@@ -3497,14 +3633,14 @@
    "id": "w_purple_n",
    "level": "2",
    "a": [
-    0.35,
-    11.35
+    0.37,
+    11.58
    ],
    "b": [
-    3.25,
-    11.35
+    3.275,
+    11.58
    ],
-   "thickness": 0.3,
+   "thickness": 0.16,
    "baseZ": 6.02,
    "height": 2.6,
    "exterior": false,
@@ -3518,11 +3654,11 @@
    "id": "w_hall_bath2",
    "level": "2",
    "a": [
-    0.35,
-    11.35
+    0.37,
+    11.58
    ],
    "b": [
-    0.35,
+    0.37,
     12.99
    ],
    "thickness": 0.1,
@@ -3539,12 +3675,12 @@
    "id": "w_neck_bath2",
    "level": "2",
    "a": [
-    0.35,
+    0.37,
     12.99
    ],
    "b": [
-    0.35,
-    13.925
+    0.37,
+    13.77
    ],
    "thickness": 0.1,
    "baseZ": 6.02,
@@ -3564,7 +3700,7 @@
     12.99
    ],
    "b": [
-    0.35,
+    0.37,
     12.99
    ],
    "thickness": 0.1,
@@ -3581,14 +3717,14 @@
    "id": "w_bath2_study",
    "level": "2",
    "a": [
-    0.35,
-    13.925
+    0.37,
+    13.77
    ],
    "b": [
-    3.25,
-    13.925
+    3.275,
+    13.77
    ],
-   "thickness": 0.45,
+   "thickness": 0.14,
    "baseZ": 6.02,
    "height": 2.6,
    "exterior": false,
@@ -3602,14 +3738,14 @@
    "id": "w_flank_2_purple",
    "level": "2",
    "a": [
-    3.25,
-    9.01
+    3.275,
+    9.2
    ],
    "b": [
-    3.25,
-    11.35
+    3.275,
+    11.58
    ],
-   "thickness": 0.3,
+   "thickness": 0.35,
    "baseZ": 6.02,
    "height": 2.85,
    "exterior": true,
@@ -3623,14 +3759,14 @@
    "id": "w_flank_2_bath",
    "level": "2",
    "a": [
-    3.25,
-    11.35
+    3.275,
+    11.58
    ],
    "b": [
-    3.25,
-    13.925
+    3.275,
+    13.77
    ],
-   "thickness": 0.3,
+   "thickness": 0.35,
    "baseZ": 6.02,
    "height": 2.85,
    "exterior": true,
@@ -3644,14 +3780,14 @@
    "id": "w_flank_2_study",
    "level": "2",
    "a": [
-    3.25,
-    13.925
+    3.275,
+    13.77
    ],
    "b": [
-    3.25,
+    3.275,
     17.11
    ],
-   "thickness": 0.3,
+   "thickness": 0.35,
    "baseZ": 6.02,
    "height": 2.85,
    "exterior": true,
@@ -3669,7 +3805,7 @@
     17.11
    ],
    "b": [
-    3.25,
+    3.275,
     17.11
    ],
    "thickness": 0.5,
@@ -3734,7 +3870,7 @@
     8.73
    ],
    "b": [
-    0.22,
+    0.32,
     8.73
    ],
    "thickness": 0.0,
@@ -3803,11 +3939,11 @@
    "wall": "w_front_vest",
    "type": "double_door",
    "center": [
-    0,
+    0.025,
     -0.06
    ],
-   "width": 1.18,
-   "height": 2.03,
+   "width": 1.39,
+   "height": 1.95,
    "sill": 0,
    "connects": [
     "outside",
@@ -3817,7 +3953,7 @@
    "swingInto": "outside",
    "style": "white_glazed_double",
    "transom": {
-    "height": 2.5
+    "height": 2.57
    },
    "surround": {
     "vestibule": "white_upvc_frame"
@@ -3833,7 +3969,7 @@
    "type": "double_door",
    "center": [
     0,
-    1.78
+    1.91
    ],
    "width": 1.22,
    "height": 1.981,
@@ -3926,7 +4062,7 @@
     8.88
    ],
    "width": 0.94,
-   "height": 2.75,
+   "height": 2.55,
    "sill": 0,
    "connects": [
     "hallway",
@@ -3937,8 +4073,8 @@
    "style": "segmental_arch_corbels",
    "transom": null,
    "surround": {},
-   "springing": 2.4,
-   "crown": 2.75,
+   "springing": 2.08,
+   "crown": 2.55,
    "level": "G",
    "floorZ": 0.0
   },
@@ -3947,10 +4083,10 @@
    "wall": "w_kitchen_n_ext",
    "type": "door",
    "center": [
-    3.82,
+    3.885,
     8.88
    ],
-   "width": 0.84,
+   "width": 0.79,
    "height": 2.04,
    "sill": 0,
    "connects": [
@@ -3967,7 +4103,7 @@
     "kitchen": "plaster_reveal"
    },
    "hingeAt": [
-    4.24,
+    4.28,
     8.88
    ],
    "openAngle": 0,
@@ -4072,7 +4208,7 @@
    "wall": "w_dining_n",
    "type": "french_door",
    "center": [
-    1.225,
+    1.255,
     17.11
    ],
    "width": 1.19,
@@ -4086,7 +4222,7 @@
    "swingInto": "outside",
    "style": "white_glazed_double",
    "transom": {
-    "height": 2.32
+    "height": 2.35
    },
    "surround": {
     "dining": "dark_screen"
@@ -4101,11 +4237,11 @@
    "wall": "w_dining_n",
    "type": "window",
    "center": [
-    -0.09,
+    -0.185,
     17.11
    ],
-   "width": 0.52,
-   "height": 1.83,
+   "width": 0.65,
+   "height": 2.0,
    "sill": 0.37,
    "connects": [
     "dining",
@@ -4120,7 +4256,7 @@
    },
    "level": "G",
    "floorZ": 0.0,
-   "transomBar": 1.4,
+   "transomBar": 1.32,
    "sashes": [
     {
      "light": "upper",
@@ -4135,11 +4271,11 @@
    "wall": "w_dining_n",
    "type": "window",
    "center": [
-    2.54,
+    2.695,
     17.11
    ],
-   "width": 0.52,
-   "height": 1.83,
+   "width": 0.65,
+   "height": 2.0,
    "sill": 0.37,
    "connects": [
     "dining",
@@ -4154,14 +4290,14 @@
    },
    "level": "G",
    "floorZ": 0.0,
-   "transomBar": 1.4
+   "transomBar": 1.32
   },
   {
    "id": "w_dining_e_s",
    "wall": "w_flank_dining",
    "type": "window",
    "center": [
-    3.25,
+    3.275,
     13.02
    ],
    "width": 0.52,
@@ -4179,14 +4315,15 @@
     "dining": "dark_aedicule"
    },
    "level": "G",
-   "floorZ": 0.0
+   "floorZ": 0.0,
+   "extReveal": 0.15
   },
   {
    "id": "w_dining_e_n",
    "wall": "w_flank_dining",
    "type": "window",
    "center": [
-    3.25,
+    3.275,
     16.2
    ],
    "width": 0.52,
@@ -4204,19 +4341,20 @@
     "dining": "dark_aedicule"
    },
    "level": "G",
-   "floorZ": 0.0
+   "floorZ": 0.0,
+   "extReveal": 0.15
   },
   {
    "id": "w_utility",
    "wall": "w_flank_utility",
    "type": "window",
    "center": [
-    3.25,
+    3.275,
     11.61
    ],
-   "width": 0.56,
-   "height": 0.82,
-   "sill": 1.05,
+   "width": 0.7,
+   "height": 0.98,
+   "sill": 0.92,
    "connects": [
     "utility",
     "outside"
@@ -4238,19 +4376,19 @@
      "angle": 25
     }
    ],
-   "extReveal": 0.01
+   "extReveal": 0.06
   },
   {
    "id": "w_wc",
    "wall": "w_flank_wc",
    "type": "window",
    "center": [
-    3.25,
+    3.275,
     9.58
    ],
    "width": 0.34,
-   "height": 0.7,
-   "sill": 1.22,
+   "height": 0.82,
+   "sill": 1.1,
    "connects": [
     "wc",
     "outside"
@@ -4264,14 +4402,14 @@
    },
    "level": "G",
    "floorZ": 0.0,
-   "extReveal": 0.215
+   "extReveal": 0.265
   },
   {
    "id": "w_bay_front",
    "wall": "w_front_bay",
    "type": "bay_window",
    "center": [
-    2.55,
+    2.48,
     -0.06
    ],
    "width": 2.66,
@@ -4300,10 +4438,10 @@
    "wall": "w_bay_cheek_w",
    "type": "window",
    "center": [
-    1.0,
+    0.89,
     0.37
    ],
-   "width": 0.5,
+   "width": 0.45,
    "height": 2.08,
    "sill": 0.62,
    "connects": [
@@ -4328,8 +4466,8 @@
    "wall": "w_bay_cheek_e",
    "type": "window",
    "center": [
-    4.075,
-    0.37
+    4.09,
+    0.43
    ],
    "width": 0.5,
    "height": 2.08,
@@ -4501,7 +4639,7 @@
    "wall": "w_corr_yellow",
    "type": "door",
    "center": [
-    0.3,
+    0.52,
     10.53
    ],
    "width": 0.762,
@@ -4521,7 +4659,7 @@
     "yellow_room": "plain_architrave"
    },
    "hingeAt": [
-    0.3,
+    0.52,
     10.911
    ],
    "openAngle": 95
@@ -4532,11 +4670,11 @@
    "wall": "w_arch1",
    "type": "arch",
    "center": [
-    -0.18,
-    11.35
+    -0.09,
+    11.42
    ],
-   "width": 0.8,
-   "height": 2.05,
+   "width": 1.0,
+   "height": 2.12,
    "sill": 0,
    "floorZ": 3.04,
    "connects": [
@@ -4548,8 +4686,8 @@
    "style": "plain_semicircular_arch",
    "transom": null,
    "surround": {},
-   "springing": 1.65,
-   "crown": 2.05
+   "springing": 1.62,
+   "crown": 2.12
   },
   {
    "id": "d_blue",
@@ -4619,7 +4757,7 @@
    "wall": "w_rear_1",
    "type": "french_door",
    "center": [
-    1.29,
+    1.255,
     17.11
    ],
    "width": 1.5,
@@ -4695,7 +4833,7 @@
    "wall": "w_bay_front_1",
    "type": "window",
    "center": [
-    2.53,
+    2.48,
     0.01
    ],
    "width": 2.06,
@@ -4747,7 +4885,7 @@
    "wall": "w_bay_cheek_w_1",
    "type": "window",
    "center": [
-    1.03,
+    0.93,
     0.43
    ],
    "width": 0.48,
@@ -4778,7 +4916,7 @@
    "wall": "w_bay_cheek_e_1",
    "type": "window",
    "center": [
-    4.025,
+    4.05,
     0.43
    ],
    "width": 0.48,
@@ -4843,7 +4981,7 @@
    "wall": "w_main_rear_1c",
    "type": "window",
    "center": [
-    3.82,
+    3.875,
     8.88
    ],
    "width": 0.8,
@@ -4877,7 +5015,7 @@
    "wall": "w_flank_1_yellow",
    "type": "window",
    "center": [
-    3.25,
+    3.275,
     10.475
    ],
    "width": 0.95,
@@ -4906,7 +5044,8 @@
      "type": "top_hung",
      "swing": "out"
     }
-   ]
+   ],
+   "extReveal": 0.15
   },
   {
    "id": "w_ensuite",
@@ -4914,7 +5053,7 @@
    "wall": "w_flank_1_ensuite",
    "type": "window",
    "center": [
-    3.15,
+    3.175,
     11.48
    ],
    "width": 0.4,
@@ -4978,8 +5117,8 @@
    "wall": "w_hall_purple",
    "type": "door",
    "center": [
-    0.27,
-    10.795
+    0.37,
+    11.095
    ],
    "width": 0.61,
    "height": 1.981,
@@ -4995,8 +5134,8 @@
    "transom": null,
    "surround": {},
    "hingeAt": [
-    0.27,
-    11.1
+    0.37,
+    11.4
    ],
    "openAngle": 90
   },
@@ -5006,10 +5145,10 @@
    "wall": "w_hall_bath2",
    "type": "door",
    "center": [
-    0.35,
-    11.951
+    0.37,
+    12.055
    ],
-   "width": 0.762,
+   "width": 0.686,
    "height": 1.981,
    "sill": 0,
    "floorZ": 6.02,
@@ -5023,8 +5162,8 @@
    "transom": null,
    "surround": {},
    "hingeAt": [
-    0.35,
-    11.57
+    0.37,
+    11.71
    ],
    "openAngle": 90
   },
@@ -5062,10 +5201,10 @@
    "wall": "w_arch2",
    "type": "arch",
    "center": [
-    -0.215,
-    11.35
+    -0.2,
+    11.58
    ],
-   "width": 0.87,
+   "width": 0.9,
    "height": 2.17,
    "sill": 0,
    "floorZ": 6.02,
@@ -5078,7 +5217,7 @@
    "style": "plain_semicircular_arch",
    "transom": null,
    "surround": {},
-   "springing": 1.74,
+   "springing": 1.72,
    "crown": 2.17
   },
   {
@@ -5091,8 +5230,8 @@
     2.49
    ],
    "width": 1.05,
-   "height": 0.7,
-   "sill": 0.15,
+   "height": 0.9,
+   "sill": 0.03,
    "floorZ": 6.49,
    "connects": [
     "loft_office",
@@ -5111,12 +5250,12 @@
    "wall": "w_knee_front",
    "type": "hatch",
    "center": [
-    2.975,
+    2.48,
     2.49
    ],
    "width": 1.05,
-   "height": 0.7,
-   "sill": 0.15,
+   "height": 0.9,
+   "sill": 0.03,
    "floorZ": 6.49,
    "connects": [
     "loft_office",
@@ -5139,8 +5278,8 @@
     6.64
    ],
    "width": 1.05,
-   "height": 1.03,
-   "sill": 0.17,
+   "height": 0.91,
+   "sill": 0.15,
    "floorZ": 6.49,
    "connects": [
     "loft_office",
@@ -5159,10 +5298,10 @@
    "wall": "w_flank_2_purple",
    "type": "window",
    "center": [
-    3.25,
-    10.25
+    3.275,
+    10.47
    ],
-   "width": 0.75,
+   "width": 0.82,
    "height": 1.42,
    "sill": 0.76,
    "floorZ": 6.02,
@@ -5175,14 +5314,13 @@
    "style": "white_upvc_casement",
    "transom": null,
    "surround": {},
-   "transomBar": 1.6,
+   "transomBar": 1.5,
    "sashes": [
     {
      "light": "lower",
-     "type": "side_hung",
-     "hinge": "south",
+     "type": "top_hung",
      "swing": "out",
-     "angle": 80,
+     "angle": 30,
      "handle": "bottom"
     },
     {
@@ -5190,7 +5328,7 @@
      "type": "fixed"
     }
    ],
-   "extReveal": 0.02
+   "extReveal": 0.07
   },
   {
    "id": "w_bath2",
@@ -5198,8 +5336,8 @@
    "wall": "w_flank_2_bath",
    "type": "window",
    "center": [
-    3.25,
-    12.48
+    3.275,
+    12.57
    ],
    "width": 0.64,
    "height": 1.34,
@@ -5226,7 +5364,7 @@
      "swing": "out"
     }
    ],
-   "extReveal": 0.01
+   "extReveal": 0.06
   },
   {
    "id": "w_study",
@@ -5234,12 +5372,12 @@
    "wall": "w_rear_2",
    "type": "window",
    "center": [
-    1.26,
+    1.255,
     17.11
    ],
-   "width": 1.0,
-   "height": 1.4,
-   "sill": 0.68,
+   "width": 1.55,
+   "height": 1.56,
+   "sill": 0.58,
    "floorZ": 6.02,
    "connects": [
     "study",
@@ -5250,20 +5388,22 @@
    "style": "white_upvc_casement",
    "transom": null,
    "surround": {},
-   "transomBar": 1.75,
+   "transomBar": 1.7,
    "lights": 2,
    "sashes": [
     {
      "light": "lower_w",
-     "type": "side_hung",
-     "hinge": "west",
-     "swing": "out"
+     "type": "top_hung",
+     "swing": "out",
+     "angle": 35,
+     "handle": "bottom"
     },
     {
      "light": "lower_e",
-     "type": "side_hung",
-     "hinge": "east",
-     "swing": "out"
+     "type": "top_hung",
+     "swing": "out",
+     "angle": 35,
+     "handle": "bottom"
     },
     {
      "light": "fanlights",
@@ -5272,7 +5412,7 @@
      "angle": 20
     }
    ],
-   "extReveal": 0.24
+   "extReveal": 0.19
   },
   {
    "id": "o_stairs2_head",
@@ -5310,9 +5450,9 @@
    ],
    "width": 0.84,
    "clearWidth": 0.78,
-   "risers": 15,
-   "rise": 0.19,
-   "going": 0.23,
+   "risers": 14,
+   "rise": 0.20357142857142857,
+   "going": 0.253,
    "winders": {
     "type": "kite_winders_from_newel",
     "steps": 3,
@@ -5397,7 +5537,7 @@
     "z": 2.85,
     "soffitZ": 2.6
    },
-   "straightRisers": 12,
+   "straightRisers": 11,
    "risersBeforeStraight": 3,
    "lastStraightRiserY": 8.13,
    "id": "stair_main",
@@ -5479,101 +5619,91 @@
      [
       [
        0.15,
-       5.83
+       5.853
       ],
       [
        0.99,
-       5.83
+       5.853
       ]
      ],
      [
       [
        0.15,
-       6.06
+       6.106
       ],
       [
        0.99,
-       6.06
+       6.106
       ]
      ],
      [
       [
        0.15,
-       6.29
+       6.359
       ],
       [
        0.99,
-       6.29
+       6.359
       ]
      ],
      [
       [
        0.15,
-       6.52
+       6.612
       ],
       [
        0.99,
-       6.52
+       6.612
       ]
      ],
      [
       [
        0.15,
-       6.75
+       6.865
       ],
       [
        0.99,
-       6.75
+       6.865
       ]
      ],
      [
       [
        0.15,
-       6.98
+       7.118
       ],
       [
        0.99,
-       6.98
+       7.118
       ]
      ],
      [
       [
        0.15,
-       7.21
+       7.371
       ],
       [
        0.99,
-       7.21
+       7.371
       ]
      ],
      [
       [
        0.15,
-       7.44
+       7.624
       ],
       [
        0.99,
-       7.44
+       7.624
       ]
      ],
      [
       [
        0.15,
-       7.67
+       7.877
       ],
       [
        0.99,
-       7.67
-      ]
-     ],
-     [
-      [
-       0.15,
-       7.9
-      ],
-      [
-       0.99,
-       7.9
+       7.877
       ]
      ],
      [
@@ -5837,7 +5967,7 @@
       8.73
      ],
      [
-      0.35,
+      0.54,
       8.73
      ]
     ]
@@ -6224,8 +6354,36 @@
     ]
    ],
    "z": [
-    -0.86,
-    -0.43
+    -0.74,
+    -0.31
+   ]
+  },
+  {
+   "id": "basement_sealed_recess",
+   "level": "B",
+   "type": "recess",
+   "room": "basement",
+   "polygon": [
+    [
+     4.25,
+     6.6
+    ],
+    [
+     4.48,
+     6.6
+    ],
+    [
+     4.48,
+     7.05
+    ],
+    [
+     4.25,
+     7.05
+    ]
+   ],
+   "z": [
+    -1.06,
+    -0.46
    ]
   },
   {
@@ -6235,19 +6393,19 @@
    "polygon": [
     [
      -0.65,
-     0.74
+     0.99
     ],
     [
      -0.55,
-     0.74
+     0.99
     ],
     [
      -0.55,
-     1.29
+     1.44
     ],
     [
      -0.65,
-     1.29
+     1.44
     ]
    ],
    "z": [
@@ -6263,19 +6421,19 @@
    "polygon": [
     [
      0.55,
-     0.74
+     0.99
     ],
     [
      0.65,
-     0.74
+     0.99
     ],
     [
      0.65,
-     1.29
+     1.44
     ],
     [
      0.55,
-     1.29
+     1.44
     ]
    ],
    "z": [
@@ -6291,19 +6449,19 @@
    "polygon": [
     [
      -0.55,
-     0.74
+     0.99
     ],
     [
      0.55,
-     0.74
+     0.99
     ],
     [
      0.55,
-     1.29
+     1.44
     ],
     [
      -0.55,
-     1.29
+     1.44
     ]
    ],
    "springing": 2.43,
@@ -6335,7 +6493,7 @@
    ],
    "z": [
     0,
-    2.95
+    2.84
    ],
    "level": "G"
   },
@@ -6363,7 +6521,7 @@
    ],
    "z": [
     0,
-    2.95
+    2.7
    ],
    "level": "G"
   },
@@ -6372,9 +6530,8 @@
    "type": "arch",
    "room": "hallway",
    "opening": "a_hall",
-   "springing": 2.4,
-   "crown": 2.75,
-   "haunch": 0.32,
+   "springing": 2.08,
+   "crown": 2.55,
    "thickness": 0.3,
    "corbels": [
     {
@@ -6401,10 +6558,10 @@
    "corbelSize": {
     "length": 0.26,
     "projection": 0.11,
-    "height": 0.38,
+    "height": 0.33,
     "z": [
-     2.02,
-     2.4
+     1.75,
+     2.08
     ]
    },
    "level": "G"
@@ -6512,19 +6669,19 @@
    "room": "living",
    "polygon": [
     [
-     1.1,
+     1.03,
      0.0
     ],
     [
-     4.0,
+     3.93,
      0.0
     ],
     [
-     4.0,
+     3.93,
      0.99
     ],
     [
-     1.1,
+     1.03,
      0.99
     ]
    ],
@@ -6532,7 +6689,7 @@
    "chamfers": [
     {
      "corner": [
-      1.1,
+      1.03,
       0.99
      ],
      "width": 0.15,
@@ -6547,7 +6704,7 @@
     },
     {
      "corner": [
-      4.0,
+      3.93,
       0.99
      ],
      "width": 0.15,
@@ -6572,11 +6729,11 @@
      8.73
     ],
     [
-     2.62,
+     2.86,
      8.73
     ],
     [
-     2.62,
+     2.86,
      9.25
     ],
     [
@@ -6596,19 +6753,19 @@
    "room": "kitchen",
    "polygon": [
     [
-     3.39,
+     3.48,
      8.73
     ],
     [
-     4.25,
+     4.29,
      8.73
     ],
     [
-     4.25,
+     4.29,
      8.85
     ],
     [
-     3.39,
+     3.48,
      8.85
     ]
    ],
@@ -6754,7 +6911,7 @@
    ],
    "z": [
     0,
-    2.8
+    2.62
    ],
    "level": "G"
   },
@@ -6873,7 +7030,7 @@
    ]
   },
   {
-   "id": "vest_haunch_w",
+   "id": "vest_ceiling_slope",
    "level": "G",
    "type": "ceiling_haunch",
    "room": "vestibule",
@@ -6883,52 +7040,23 @@
      0
     ],
     [
-     -0.43,
+     0.75,
      0
     ],
     [
-     -0.43,
-     0.74
+     0.75,
+     0.62
     ],
     [
      -0.65,
-     0.74
+     0.62
     ]
    ],
    "z": [
-    2.63,
+    2.62,
     2.85
    ],
-   "wallAt": -0.65
-  },
-  {
-   "id": "vest_haunch_e",
-   "level": "G",
-   "type": "ceiling_haunch",
-   "room": "vestibule",
-   "polygon": [
-    [
-     0.68,
-     0
-    ],
-    [
-     0.9,
-     0
-    ],
-    [
-     0.9,
-     0.74
-    ],
-    [
-     0.68,
-     0.74
-    ]
-   ],
-   "z": [
-    2.63,
-    2.85
-   ],
-   "wallAt": 0.9
+   "wallAt": 0.0
   },
   {
    "id": "basement_stair_void",
@@ -6967,11 +7095,11 @@
    "polygon": [
     [
      0.15,
-     5.19
+     5.3
     ],
     [
      0.265,
-     5.19
+     5.3
     ],
     [
      0.265,
@@ -7044,19 +7172,19 @@
    "room": "dining",
    "polygon": [
     [
-     -0.34,
+     -0.51,
      16.86
     ],
     [
-     0.18,
+     0.14,
      16.86
     ],
     [
-     0.18,
+     0.14,
      17.24
     ],
     [
-     -0.34,
+     -0.51,
      17.24
     ]
    ],
@@ -7072,19 +7200,19 @@
    "room": "dining",
    "polygon": [
     [
-     0.64,
+     0.66,
      16.86
     ],
     [
-     1.83,
+     1.85,
      16.86
     ],
     [
-     1.83,
+     1.85,
      17.24
     ],
     [
-     0.64,
+     0.66,
      17.24
     ]
    ],
@@ -7100,19 +7228,19 @@
    "room": "dining",
    "polygon": [
     [
-     2.295,
+     2.37,
      16.86
     ],
     [
-     2.815,
+     3.02,
      16.86
     ],
     [
-     2.815,
+     3.02,
      17.24
     ],
     [
-     2.295,
+     2.37,
      17.24
     ]
    ],
@@ -7128,17 +7256,17 @@
    "room": "landing1_rear",
    "face": [
     [
-     0.35,
+     0.54,
      8.73
     ],
     [
-     0.25,
-     8.83
+     0.47,
+     8.8
     ]
    ],
    "z": [
     3.04,
-    5.49
+    5.64
    ],
    "rooms": [
     "landing1_rear"
@@ -7151,26 +7279,26 @@
    "room": "green_bedroom",
    "polygon": [
     [
-     1.16,
+     1.11,
      0.14
     ],
     [
-     3.9,
+     3.85,
      0.14
     ],
     [
-     3.9,
+     3.85,
      0.99
     ],
     [
-     1.16,
+     1.11,
      0.99
     ]
    ],
    "chamfers": [
     {
      "corner": [
-      1.16,
+      1.11,
       0.99
      ],
      "width": 0.12,
@@ -7185,7 +7313,7 @@
     },
     {
      "corner": [
-      3.9,
+      3.85,
       0.99
      ],
      "width": 0.12,
@@ -7225,7 +7353,7 @@
    ],
    "z": [
     3.04,
-    5.49
+    5.64
    ]
   },
   {
@@ -7234,9 +7362,9 @@
    "type": "arch",
    "room": "landing1_rear",
    "opening": "a_landing1",
-   "springing": 1.65,
-   "crown": 2.05,
-   "thickness": 0.3
+   "springing": 1.62,
+   "crown": 2.12,
+   "thickness": 0.12
   },
   {
    "id": "landing1_downstand",
@@ -7262,7 +7390,7 @@
     ]
    ],
    "z": [
-    5.49,
+    5.64,
     5.77
    ]
   },
@@ -7470,59 +7598,60 @@
    "room": "balcony",
    "polygon": [
     [
-     0.0,
+     0.195,
      17.36
     ],
     [
-     2.3,
+     2.315,
      17.36
     ],
     [
-     2.3,
-     18.41
+     2.315,
+     18.48
     ],
     [
-     0.0,
-     18.41
+     0.195,
+     18.48
     ]
    ],
    "deckTopZ": 3.0,
    "deckThickness": 0.15,
    "railing": {
     "height": 1.1,
-    "post": 0.05,
+    "post": 0.048,
     "posts": [
      [
-      0.0,
-      18.41
+      0.195,
+      18.48
      ],
      [
-      1.15,
-      18.41
+      1.255,
+      18.48
      ],
      [
-      2.3,
-      18.41
+      2.315,
+      18.48
      ]
     ],
     "bar": 0.016,
-    "barCentres": 0.165,
+    "barCentres": 0.14,
     "sides": [
      "west",
      "north",
      "east"
     ],
-    "barsPerSide": 5,
-    "barsPerFrontBay": 6
+    "barsPerSide": 7,
+    "barsPerFrontBay": 7,
+    "section": "round_tube"
    },
    "supports": {
     "wallPosts": [
      [
-      0.27,
+      0.21,
       17.36
      ],
      [
-      2.2,
+      2.3,
       17.36
      ]
     ],
@@ -7537,7 +7666,7 @@
     }
    },
    "rainPipe": [
-    0.42,
+    0.36,
     17.36
    ],
    "lantern": [
@@ -7552,9 +7681,9 @@
    "type": "arch",
    "room": "landing2_head",
    "opening": "a_landing2",
-   "springing": 1.74,
+   "springing": 1.72,
    "crown": 2.17,
-   "thickness": 0.3
+   "thickness": 0.16
   },
   {
    "id": "stairwell_void_2",
@@ -7638,8 +7767,8 @@
    ],
    "roofPlane": "main_rear",
    "z": [
-    7.99,
-    8.55
+    7.82,
+    8.49
    ],
    "size": [
     0.78,
@@ -7714,19 +7843,19 @@
    "polygon": [
     [
      2.98,
-     11.5
+     11.66
     ],
     [
      3.1,
-     11.5
+     11.66
     ],
     [
      3.1,
-     12.16
+     12.25
     ],
     [
      2.98,
-     12.16
+     12.25
     ]
    ],
    "z": [
@@ -7763,6 +7892,34 @@
    ]
   },
   {
+   "id": "bath2_shower_lining",
+   "level": "2",
+   "type": "boxing",
+   "room": "bathroom2",
+   "polygon": [
+    [
+     0.42,
+     12.48
+    ],
+    [
+     0.47,
+     12.48
+    ],
+    [
+     0.47,
+     13.7
+    ],
+    [
+     0.42,
+     13.7
+    ]
+   ],
+   "z": [
+    6.02,
+    8.49
+   ]
+  },
+  {
    "id": "eaves_rear_step",
    "level": "2",
    "type": "floor_step",
@@ -7788,25 +7945,25 @@
    "room": "eaves_front",
    "polygon": [
     [
-     1.43,
+     1.11,
      0.14
     ],
     [
-     3.63,
+     3.85,
      0.14
     ],
     [
-     3.63,
+     3.85,
      0.95
     ],
     [
-     1.43,
+     1.11,
      0.95
     ]
    ],
    "z": [
     6.49,
-    7.390000000000001
+    8.19
    ]
   }
  ],
@@ -7818,40 +7975,40 @@
      -5.2
     ],
     [
-     5.43,
+     5.8,
      -5.2
     ],
     [
-     5.43,
-     9.6
+     5.8,
+     9.5
     ],
     [
-     4.9,
-     9.88
+     5.13,
+     9.96
     ],
     [
-     4.47,
-     23.2
-    ],
-    [
-     4.45,
-     23.4
+     4.42,
+     25.02
     ],
     [
      4.45,
-     28.9
+     25.02
+    ],
+    [
+     4.45,
+     30.75
     ],
     [
      -0.87,
-     28.9
+     30.75
     ],
     [
      -0.87,
-     23.4
+     25.02
     ],
     [
      -0.75,
-     23.4
+     25.02
     ],
     [
      -0.75,
@@ -7879,11 +8036,11 @@
       -5.2
      ],
      [
-      4.53,
+      4.4,
       -5.2
      ],
      [
-      4.53,
+      4.4,
       -0.12
      ],
      [
@@ -7905,7 +8062,7 @@
      ],
      "z": [
       -0.06,
-      -0.14
+      -0.36
      ]
     }
    },
@@ -7914,45 +8071,84 @@
     "group": "front",
     "polygon": [
      [
-      4.53,
+      4.4,
       -5.2
      ],
      [
-      5.43,
+      5.8,
       -5.2
      ],
      [
-      5.43,
-      0.74
-     ],
-     [
-      4.15,
-      0.74
-     ],
-     [
-      4.15,
+      5.8,
       -0.12
      ],
      [
-      4.53,
+      4.4,
       -0.12
      ]
     ],
     "z": -0.08,
-    "surface": "concrete_setts_grey_buff",
+    "surface": "asphalt",
     "room": "front",
     "fall": {
      "from": [
-      4.98,
+      5.1,
       -0.12
      ],
      "to": [
-      4.98,
+      5.1,
       -5.2
      ],
      "z": [
       -0.08,
-      -0.14
+      -0.36
+     ]
+    }
+   },
+   {
+    "id": "forecourt_alley_apron",
+    "group": "front",
+    "polygon": [
+     [
+      4.25,
+      -0.12
+     ],
+     [
+      5.8,
+      -0.12
+     ],
+     [
+      5.8,
+      1.7
+     ],
+     [
+      4.65,
+      1.7
+     ],
+     [
+      4.65,
+      0.74
+     ],
+     [
+      4.25,
+      0.74
+     ]
+    ],
+    "z": -0.08,
+    "surface": "asphalt",
+    "room": "front",
+    "fall": {
+     "from": [
+      5.2,
+      -0.12
+     ],
+     "to": [
+      5.2,
+      1.7
+     ],
+     "z": [
+      -0.08,
+      -0.3
      ]
     }
    },
@@ -7977,7 +8173,7 @@
       -5.2
      ]
     ],
-    "z": -0.16,
+    "z": -0.38,
     "surface": "concrete_flags",
     "room": "front"
    },
@@ -8002,7 +8198,7 @@
       -7.2
      ]
     ],
-    "z": -0.28,
+    "z": -0.5,
     "surface": "asphalt",
     "room": "front",
     "walk": false
@@ -8012,71 +8208,61 @@
     "group": "side",
     "polygon": [
      [
-      4.53,
-      0.74
+      4.65,
+      1.7
      ],
      [
-      5.43,
-      0.74
+      5.8,
+      1.7
      ],
      [
-      5.43,
-      9.6
+      5.8,
+      9.5
      ],
      [
-      4.9,
-      9.88
+      5.13,
+      9.96
      ],
      [
-      4.5,
-      9.03
-     ],
-     [
-      4.53,
+      4.65,
       9.03
      ]
     ],
-    "z": -0.08,
-    "surface": "concrete_or_flags",
-    "room": "side_passage",
-    "fall": {
-     "from": [
-      4.98,
-      0.74
-     ],
-     "to": [
-      4.98,
-      9.6
-     ],
-     "z": [
-      -0.08,
-      -0.3
-     ]
-    }
+    "z": -0.3,
+    "surface": "concrete_insitu",
+    "room": "side_passage"
    },
    {
     "id": "side_passage",
     "group": "rear",
     "polygon": [
      [
-      3.4,
+      3.45,
       9.03
      ],
      [
-      4.5,
+      4.65,
       9.03
      ],
      [
-      4.9,
-      9.88
+      5.13,
+      9.96
      ],
      [
-      4.652,
-      17.55
+      4.74,
+      17.95
      ],
      [
       3.4,
-      17.55
+      17.95
+     ],
+     [
+      3.4,
+      17.36
+     ],
+     [
+      3.45,
+      17.36
      ]
     ],
     "z": -0.3,
@@ -8089,27 +8275,27 @@
     "polygon": [
      [
       3.4,
-      17.55
+      17.95
      ],
      [
-      4.652,
-      17.55
+      4.74,
+      17.95
      ],
      [
-      4.47,
-      23.4
-     ],
-     [
-      3.28,
-      23.4
+      4.42,
+      25.02
      ],
      [
       3.28,
-      20.5
+      25.02
+     ],
+     [
+      3.15,
+      21.4
      ],
      [
       3.4,
-      20.5
+      21.4
      ]
     ],
     "z": -0.45,
@@ -8130,11 +8316,11 @@
      ],
      [
       3.4,
-      20.5
+      21.4
      ],
      [
       -0.75,
-      20.5
+      21.4
      ]
     ],
     "z": -0.05,
@@ -8146,20 +8332,20 @@
     "group": "rear",
     "polygon": [
      [
-      -0.55,
-      20.5
+      -0.3,
+      21.4
      ],
      [
-      2.45,
-      20.5
+      2.75,
+      21.4
      ],
      [
-      2.45,
-      20.8
+      2.75,
+      21.7
      ],
      [
-      -0.55,
-      20.8
+      -0.3,
+      21.7
      ]
     ],
     "z": -0.25,
@@ -8172,19 +8358,19 @@
     "polygon": [
      [
       3.4,
-      17.75
+      18.08
      ],
      [
       3.75,
-      17.75
+      18.08
      ],
      [
       3.75,
-      18.65
+      18.98
      ],
      [
       3.4,
-      18.65
+      18.98
      ]
     ],
     "z": -0.25,
@@ -8198,27 +8384,27 @@
     "polygon": [
      [
       -0.27,
-      20.8
+      21.7
      ],
      [
-      2.45,
-      20.8
+      2.75,
+      21.7
      ],
      [
-      2.45,
-      20.5
+      2.75,
+      21.4
+     ],
+     [
+      3.15,
+      21.4
      ],
      [
       3.28,
-      20.5
-     ],
-     [
-      3.28,
-      23.4
+      25.02
      ],
      [
       -0.27,
-      23.4
+      25.02
      ]
     ],
     "z": -0.45,
@@ -8231,27 +8417,27 @@
     "polygon": [
      [
       -0.75,
-      20.5
+      21.4
      ],
      [
-      -0.55,
-      20.5
+      -0.3,
+      21.4
      ],
      [
-      -0.55,
-      20.8
-     ],
-     [
-      -0.27,
-      20.8
+      -0.3,
+      21.7
      ],
      [
       -0.27,
-      23.4
+      21.7
+     ],
+     [
+      -0.27,
+      25.02
      ],
      [
       -0.75,
-      23.4
+      25.02
      ]
     ],
     "z": -0.45,
@@ -8264,20 +8450,45 @@
     "group": "rear",
     "polygon": [
      [
-      -0.35,
-      23.4
+      0.06,
+      25.02
      ],
      [
       4.22,
-      23.4
+      25.02
      ],
      [
       4.22,
-      25.0
+      26.7
+     ],
+     [
+      0.06,
+      26.7
+     ]
+    ],
+    "z": -0.42,
+    "surface": "clay_block_paving_red_herringbone",
+    "room": "shed"
+   },
+   {
+    "id": "shed_store_apron",
+    "group": "rear",
+    "polygon": [
+     [
+      -0.35,
+      25.35
+     ],
+     [
+      0.06,
+      25.35
+     ],
+     [
+      0.06,
+      26.7
      ],
      [
       -0.35,
-      25.0
+      26.7
      ]
     ],
     "z": -0.42,
@@ -8309,19 +8520,19 @@
      {
       "polygon": [
        [
-        3.4,
+        3.45,
         9.03
        ],
        [
-        4.33,
+        4.38,
         9.03
        ],
        [
-        4.33,
+        4.38,
         9.33
        ],
        [
-        3.4,
+        3.45,
         9.33
        ]
       ],
@@ -8330,19 +8541,19 @@
      {
       "polygon": [
        [
-        3.4,
+        3.45,
         9.03
        ],
        [
-        4.33,
+        4.38,
         9.03
        ],
        [
-        4.33,
+        4.38,
         9.65
        ],
        [
-        3.4,
+        3.45,
         9.65
        ]
       ],
@@ -8381,11 +8592,11 @@
     "line": [
      [
       3.4,
-      17.55
+      17.95
      ],
      [
-      4.652,
-      17.55
+      4.74,
+      17.95
      ]
     ]
    },
@@ -8421,14 +8632,19 @@
      ],
      [
       -0.83,
-      -0.12
+      -0.21
      ]
     ],
     "thickness": 0.215,
-    "baseZ": -0.1,
+    "baseZ": -0.36,
     "height": 0.9,
     "material": "buff_brick",
-    "room": "front"
+    "room": "front",
+    "planter": {
+     "height": 0.29,
+     "bottomZ": 0.47,
+     "rimZ": 0.76
+    }
    },
    {
     "id": "front_pier_w",
@@ -8451,10 +8667,15 @@
       -4.87
      ]
     ],
-    "baseZ": -0.14,
-    "height": 1.2,
+    "baseZ": -0.36,
+    "height": 1.4,
     "material": "buff_brick",
-    "room": "front"
+    "room": "front",
+    "cap": {
+     "size": 0.45,
+     "edge": 0.085,
+     "rise": 0.04
+    }
    },
    {
     "id": "west_neighbour_wall",
@@ -8466,13 +8687,14 @@
      ],
      [
       -0.75,
-      19.65
+      21.4
      ]
     ],
     "baseZ": -0.05,
     "height": 3.0,
     "material": "stock_brick_yellow",
-    "room": "neighbours"
+    "room": "neighbours",
+    "coping": 0.3
    },
    {
     "id": "west_fence",
@@ -8480,34 +8702,36 @@
     "line": [
      [
       -0.75,
-      19.65
+      21.4
      ],
      [
       -0.75,
-      23.4
+      25.02
      ]
     ],
     "baseZ": -0.45,
     "height": 1.8,
     "material": "closeboard_brown",
-    "room": "garden"
+    "room": "garden",
+    "colour": "#B3A58C"
    },
    {
     "id": "east_fence",
     "type": "fence",
     "line": [
      [
-      4.9,
-      9.88
+      5.13,
+      9.96
      ],
      [
-      4.45,
-      23.4
+      4.42,
+      25.02
      ]
     ],
     "baseZ": -0.3,
     "height": 2.0,
     "material": "closeboard_grey_painted",
+    "colour": "#8F887D",
     "room": "garden"
    },
    {
@@ -8515,25 +8739,60 @@
     "type": "gate",
     "line": [
      [
-      4.5,
+      4.65,
       9.03
      ],
      [
-      4.9,
-      9.88
+      5.13,
+      9.96
      ]
     ],
     "baseZ": -0.3,
-    "height": 1.75,
-    "width": 0.9,
+    "height": 1.76,
+    "width": 1.03,
     "hingeAt": [
-     4.5,
+     4.65,
      9.03
     ],
     "swingInto": "side_passage",
     "material": "ledged_braced_grey",
     "connects": [
      "side_passage",
+     "side_alley"
+    ],
+    "room": "side_passage",
+    "colour": "#B7B6B2"
+   },
+   {
+    "id": "street_gate",
+    "type": "gate",
+    "line": [
+     [
+      5.8,
+      1.7
+     ],
+     [
+      4.76,
+      1.7
+     ]
+    ],
+    "baseZ": -0.3,
+    "height": 1.83,
+    "width": 0.88,
+    "hingeAt": [
+     5.8,
+     1.7
+    ],
+    "swingInto": "side_alley",
+    "material": "ledged_braced_grey",
+    "colour": "#AEADAC",
+    "overPanel": {
+     "top": 2.75,
+     "material": "feather_edge_grey",
+     "capping": true
+    },
+    "connects": [
+     "forecourt_alley_apron",
      "side_alley"
     ],
     "room": "side_passage"
@@ -8543,17 +8802,17 @@
     "type": "neighbour_wall",
     "line": [
      [
-      5.43,
-      0.74
+      5.8,
+      1.0
      ],
      [
-      5.43,
-      9.6
+      5.8,
+      9.5
      ]
     ],
     "baseZ": -0.3,
     "height": 6.5,
-    "material": "stock_brick_grey",
+    "material": "stock_brick_yellow",
     "room": "neighbours"
    },
    {
@@ -8561,18 +8820,19 @@
     "type": "fence",
     "line": [
      [
-      4.9,
-      9.88
+      5.13,
+      9.96
      ],
      [
-      5.43,
-      9.6
+      5.8,
+      9.5
      ]
     ],
     "baseZ": -0.3,
-    "height": 1.9,
+    "height": 1.75,
     "material": "closeboard_grey_painted",
-    "room": "neighbours"
+    "room": "neighbours",
+    "colour": "#999690"
    }
   ],
   "features": [
@@ -8580,12 +8840,12 @@
     "id": "fire_pit",
     "type": "fire_pit",
     "center": [
-     1.27,
-     22.26
+     1.3,
+     23.45
     ],
     "size": [
-     1.01,
-     1.01
+     1.0,
+     1.0
     ],
     "wall": 0.215,
     "height": 0.225,
@@ -8598,16 +8858,16 @@
     "line": [
      [
       -0.74,
-      17.85
+      17.39
      ],
      [
       -0.74,
-      19.65
+      21.05
      ]
     ],
     "panels": 2,
     "panelSize": [
-     0.9,
+     1.83,
      1.5
     ]
    },
@@ -8643,22 +8903,44 @@
       "polygon": [
        [
         2.95,
-        18.2
+        18.85
        ],
        [
         3.37,
-        18.2
+        18.85
        ],
        [
         3.37,
-        20.05
+        20.8
        ],
        [
         2.95,
-        20.05
+        20.8
        ]
       ],
       "height": 0.45
+     },
+     {
+      "id": "square_planter",
+      "polygon": [
+       [
+        2.93,
+        20.82
+       ],
+       [
+        3.37,
+        20.82
+       ],
+       [
+        3.37,
+        21.26
+       ],
+       [
+        2.93,
+        21.26
+       ]
+      ],
+      "height": 0.5
      }
     ]
    },
@@ -8680,8 +8962,8 @@
     "id": "car_white",
     "type": "car",
     "center": [
-     3.15,
-     -3.43
+     3.2,
+     -2.7
     ],
     "size": [
      3.46,
@@ -8726,7 +9008,7 @@
     "id": "condenser_flank",
     "type": "ac_condenser",
     "at": [
-     3.4,
+     3.45,
      15.3,
      3.25
     ],
@@ -8740,22 +9022,22 @@
     "id": "condenser_east",
     "type": "ac_condenser",
     "at": [
-     4.53,
-     8.4,
-     2.2
+     4.65,
+     5.3,
+     2.35
     ],
     "size": [
-     0.3,
-     0.8,
-     0.7
+     0.33,
+     0.85,
+     0.8
     ]
    },
    {
     "id": "soil_stack",
     "type": "pipe",
     "at": [
-     3.4,
-     12.35
+     3.45,
+     12.13
     ],
     "z": [
      -0.3,
@@ -8768,26 +9050,53 @@
     "type": "chimney",
     "polygon": [
      [
-      -0.98,
+      -1.17,
       16.46
      ],
      [
-      -0.53,
+      -0.86,
       16.46
      ],
      [
-      -0.53,
+      -0.86,
       17.36
      ],
      [
-      -0.98,
+      -1.17,
       17.36
      ]
     ],
     "z": [
      0.0,
-     9.87
+     9.55
     ]
+   },
+   {
+    "id": "front_party_kneeler",
+    "type": "kneeler",
+    "polygon": [
+     [
+      -0.88,
+      0.3
+     ],
+     [
+      -0.55,
+      0.3
+     ],
+     [
+      -0.55,
+      0.75
+     ],
+     [
+      -0.88,
+      0.75
+     ]
+    ],
+    "z": [
+     5.75,
+     7.3
+    ],
+    "material": "red_brick_dark"
    }
   ],
   "buildings": [
@@ -8798,44 +9107,64 @@
     "outline": [
      [
       -0.87,
-      23.4
+      25.02
      ],
      [
       4.45,
-      23.4
+      25.02
      ],
      [
       4.45,
-      28.9
+      30.75
      ],
      [
       -0.87,
-      28.9
+      30.75
      ]
     ],
     "material": "red_brick",
     "roof": {
      "type": "flat_felt",
-     "topZ": 2.25,
+     "topZ": 2.4,
      "polygon": [
       [
        -0.87,
-       23.4
+       25.02
       ],
       [
        4.45,
-       23.4
+       25.02
       ],
       [
        4.45,
-       28.9
+       30.75
       ],
       [
        -0.87,
-       28.9
+       30.75
       ]
      ],
-     "verandaSoffitZ": 1.83
+     "verandaSoffitZ": 2.02,
+     "coping": {
+      "sides": [
+       "west",
+       "rear",
+       "east"
+      ],
+      "width": 0.3,
+      "topZ": 2.7
+     },
+     "fascia": {
+      "z": [
+       1.98,
+       2.2
+      ]
+     },
+     "gutterRimZ": 2.29,
+     "felt": {
+      "frontZ": 2.3,
+      "rearZ": 2.5
+     }
     },
     "rooms": [
      {
@@ -8844,23 +9173,23 @@
       "polygon": [
        [
         -0.6,
-        25.28
+        26.98
        ],
        [
         4.18,
-        25.28
+        26.98
        ],
        [
         4.18,
-        28.62
+        30.47
        ],
        [
         -0.6,
-        28.62
+        30.47
        ]
       ],
       "floorZ": -0.32,
-      "ceilingZ": 1.98,
+      "ceilingZ": 2.13,
       "walk": true
      },
      {
@@ -8869,24 +9198,24 @@
       "polygon": [
        [
         -0.77,
-        23.75
+        25.35
        ],
        [
-        -0.37,
-        23.75
+        -0.38,
+        25.35
        ],
        [
-        -0.37,
-        24.98
+        -0.38,
+        26.68
        ],
        [
         -0.77,
-        24.98
+        26.68
        ]
       ],
       "floorZ": -0.42,
-      "ceilingZ": 1.83,
-      "walk": false
+      "ceilingZ": 2.02,
+      "walk": true
      }
     ],
     "walls": [
@@ -8894,15 +9223,15 @@
       "id": "shed_w_front",
       "a": [
        -0.87,
-       25.14
+       26.84
       ],
       "b": [
        4.45,
-       25.14
+       26.84
       ],
       "thickness": 0.28,
       "baseZ": -0.42,
-      "height": 2.67,
+      "height": 2.82,
       "level": "X",
       "rooms": [
        "shed_workshop",
@@ -8913,15 +9242,15 @@
       "id": "shed_w_rear",
       "a": [
        -0.87,
-       28.76
+       30.61
       ],
       "b": [
        4.45,
-       28.76
+       30.61
       ],
       "thickness": 0.28,
       "baseZ": -0.42,
-      "height": 2.67,
+      "height": 3.12,
       "level": "X",
       "rooms": [
        "outside",
@@ -8929,18 +9258,37 @@
       ]
      },
      {
+      "id": "shed_w_west_store",
+      "a": [
+       -0.82,
+       25.02
+      ],
+      "b": [
+       -0.82,
+       26.68
+      ],
+      "thickness": 0.1,
+      "baseZ": -0.42,
+      "height": 3.12,
+      "level": "X",
+      "rooms": [
+       "outside",
+       "shed_store"
+      ]
+     },
+     {
       "id": "shed_w_west",
       "a": [
        -0.735,
-       23.4
+       26.68
       ],
       "b": [
        -0.735,
-       28.9
+       30.75
       ],
       "thickness": 0.27,
       "baseZ": -0.42,
-      "height": 2.67,
+      "height": 3.12,
       "level": "X",
       "rooms": [
        "outside",
@@ -8951,15 +9299,15 @@
       "id": "shed_w_east",
       "a": [
        4.315,
-       23.4
+       25.02
       ],
       "b": [
        4.315,
-       28.9
+       30.75
       ],
       "thickness": 0.27,
       "baseZ": -0.42,
-      "height": 2.67,
+      "height": 3.12,
       "level": "X",
       "rooms": [
        "shed_workshop",
@@ -8970,15 +9318,15 @@
       "id": "shed_w_store",
       "a": [
        -0.36,
-       23.75
+       25.35
       ],
       "b": [
        -0.36,
-       24.98
+       26.68
       ],
       "thickness": 0.04,
       "baseZ": -0.42,
-      "height": 2.25,
+      "height": 2.44,
       "level": "X",
       "rooms": [
        "shed_store",
@@ -8992,12 +9340,12 @@
       "wall": "shed_w_front",
       "type": "window",
       "center": [
-       1.8,
-       25.14
+       1.0,
+       26.84
       ],
-      "width": 1.3,
-      "sill": 1.05,
-      "height": 1.0,
+      "width": 2.0,
+      "sill": 1.09,
+      "height": 1.22,
       "floorZ": -0.42,
       "level": "X",
       "connects": [
@@ -9015,12 +9363,12 @@
       "wall": "shed_w_front",
       "type": "french_door",
       "center": [
-       3.35,
-       25.14
+       3.33,
+       26.84
       ],
-      "width": 1.2,
+      "width": 1.69,
       "sill": 0.0,
-      "height": 2.08,
+      "height": 2.33,
       "floorZ": -0.42,
       "swing": "out",
       "level": "X",
@@ -9042,7 +9390,7 @@
       "type": "window",
       "center": [
        2.3,
-       28.76
+       30.61
       ],
       "width": 1.7,
       "sill": 1.15,
@@ -9065,7 +9413,7 @@
       "type": "double_door",
       "center": [
        -0.36,
-       24.365
+       26.02
       ],
       "width": 1.23,
       "sill": 0.0,
@@ -9083,7 +9431,7 @@
       "transom": null,
       "surround": {},
       "openAngle": 0,
-      "outsideZone": "shed_veranda"
+      "outsideZone": "shed_store_apron"
      }
     ],
     "room": "shed"
@@ -9128,19 +9476,19 @@
          -0.12
         ],
         [
-         4.15,
+         4.25,
          -0.12
         ],
         [
-         4.15,
+         4.25,
          0.74
         ],
         [
-         4.53,
+         4.65,
          0.74
         ],
         [
-         4.53,
+         4.65,
          9.03
         ],
         [
@@ -9161,27 +9509,27 @@
          0.74
         ],
         [
-         0.9,
+         0.75,
          0.74
         ],
         [
-         0.9,
+         0.75,
          -0.12
         ],
         [
-         4.15,
+         4.25,
          -0.12
         ],
         [
-         4.15,
+         4.25,
          0.74
         ],
         [
-         4.53,
+         4.65,
          0.74
         ],
         [
-         4.53,
+         4.65,
          9.03
         ],
         [
@@ -9202,27 +9550,27 @@
          0.74
         ],
         [
-         0.9,
+         0.75,
          0.74
         ],
         [
-         0.9,
+         0.75,
          -0.12
         ],
         [
-         4.15,
+         4.25,
          -0.12
         ],
         [
-         4.15,
+         4.25,
          0.74
         ],
         [
-         4.53,
+         4.65,
          0.74
         ],
         [
-         4.53,
+         4.65,
          9.03
         ],
         [
@@ -9249,11 +9597,11 @@
          9.03
         ],
         [
-         3.4,
+         3.45,
          9.03
         ],
         [
-         3.4,
+         3.45,
          17.36
         ],
         [
@@ -9274,11 +9622,11 @@
          9.03
         ],
         [
-         3.4,
+         3.45,
          9.03
         ],
         [
-         3.4,
+         3.45,
          17.36
         ],
         [
@@ -9299,11 +9647,11 @@
          8.73
         ],
         [
-         3.4,
+         3.45,
          8.73
         ],
         [
-         3.4,
+         3.45,
          17.36
         ],
         [
@@ -9337,7 +9685,7 @@
     "faces": "-y",
     "extent": [
      -0.88,
-     4.15
+     4.25
     ],
     "finish": "white_masonry_paint",
     "openings": [
@@ -9354,7 +9702,7 @@
     "faces": "-y",
     "extent": [
      -0.88,
-     0.9
+     0.75
     ],
     "finish": "white_masonry_paint",
     "openings": [
@@ -9364,7 +9712,7 @@
    {
     "id": "bay_cheek_w",
     "axis": "x",
-    "at": 0.9,
+    "at": 0.75,
     "faces": "-x",
     "extent": [
      -0.12,
@@ -9378,7 +9726,7 @@
    {
     "id": "bay_cheek_e",
     "axis": "x",
-    "at": 4.15,
+    "at": 4.25,
     "faces": "+x",
     "extent": [
      -0.12,
@@ -9393,14 +9741,23 @@
    {
     "id": "east_E",
     "axis": "x",
-    "at": 4.53,
+    "at": 4.65,
     "faces": "+x",
     "extent": [
      0.74,
      9.03
     ],
     "finish": "render_sandstone",
-    "openings": []
+    "openings": [],
+    "insulation": {
+     "proud": 0.1,
+     "oldFace": 4.55,
+     "baseRailZ": [
+      -0.09,
+      -0.03
+     ],
+     "below": "plinth_black"
+    }
    },
    {
     "id": "kitchen_K",
@@ -9408,8 +9765,8 @@
     "at": 9.03,
     "faces": "+y",
     "extent": [
-     3.4,
-     4.53
+     3.45,
+     4.65
     ],
     "finish": "render_sandstone",
     "openings": [
@@ -9420,7 +9777,7 @@
    {
     "id": "flank_F",
     "axis": "x",
-    "at": 3.4,
+    "at": 3.45,
     "faces": "+x",
     "extent": [
      9.03,
@@ -9446,7 +9803,7 @@
     "faces": "+y",
     "extent": [
      -0.88,
-     3.4
+     3.45
     ],
     "finish": "render_sandstone",
     "openings": [
@@ -9572,19 +9929,19 @@
     "id": "east",
     "polygon": [
      [
-      5.43,
+      5.8,
       -0.5
      ],
      [
-      10.8,
+      11.17,
       -0.5
      ],
      [
-      10.8,
+      11.17,
       17.0
      ],
      [
-      5.43,
+      5.8,
       17.0
      ]
     ],
@@ -9599,19 +9956,19 @@
      {
       "polygon": [
        [
-        5.43,
+        5.8,
         0.74
        ],
        [
-        10.8,
+        11.17,
         0.74
        ],
        [
-        10.8,
+        11.17,
         5.0
        ],
        [
-        5.43,
+        5.8,
         5.0
        ]
       ],
@@ -9625,19 +9982,19 @@
      {
       "polygon": [
        [
-        5.43,
+        5.8,
         5.0
        ],
        [
-        10.8,
+        11.17,
         5.0
        ],
        [
-        10.8,
+        11.17,
         9.26
        ],
        [
-        5.43,
+        5.8,
         9.26
        ]
       ],
@@ -9651,19 +10008,19 @@
      {
       "polygon": [
        [
-        5.43,
+        5.8,
         9.26
        ],
        [
-        10.8,
+        11.17,
         9.26
        ],
        [
-        10.8,
+        11.17,
         14.0
        ],
        [
-        5.43,
+        5.8,
         14.0
        ]
       ],
@@ -9674,19 +10031,19 @@
      {
       "polygon": [
        [
-        5.43,
+        5.8,
         14.0
        ],
        [
-        10.8,
+        11.17,
         14.0
        ],
        [
-        10.8,
+        11.17,
         17.0
        ],
        [
-        5.43,
+        5.8,
         17.0
        ]
       ],
@@ -9696,24 +10053,24 @@
      {
       "polygon": [
        [
-        5.93,
+        6.3,
         -0.5
        ],
        [
-        7.38,
+        7.75,
         -0.5
        ],
        [
-        7.38,
+        7.75,
         3.6
        ],
        [
-        5.93,
+        6.3,
         0.74
        ]
       ],
       "top": {
-       "c0": 0.9703,
+       "c0": 0.6253,
        "cx": 0.9325,
        "cy": 0
       },
@@ -9723,24 +10080,24 @@
      {
       "polygon": [
        [
-        7.38,
+        7.75,
         -0.5
        ],
        [
-        8.83,
+        9.2,
         -0.5
        ],
        [
-        8.83,
+        9.2,
         0.74
        ],
        [
-        7.38,
+        7.75,
         3.6
        ]
       ],
       "top": {
-       "c0": 14.734,
+       "c0": 15.079,
        "cx": -0.9325,
        "cy": 0
       },
@@ -9761,11 +10118,11 @@
       0.44
      ],
      [
-      4.53,
+      4.65,
       0.44
      ],
      [
-      4.53,
+      4.65,
       5.0
      ],
      [
@@ -9789,11 +10146,11 @@
       5.0
      ],
      [
-      4.53,
+      4.65,
       5.0
      ],
      [
-      4.53,
+      4.65,
       9.33
      ],
      [
@@ -9802,19 +10159,19 @@
      ],
      [
       1.35,
-      5.47
+      5.385
      ],
      [
       -0.88,
-      5.47
+      5.385
      ]
     ],
     "z": {
-     "c0": 12.0267,
+     "c0": 12.64,
      "cx": 0,
-     "cy": -0.57735
+     "cy": -0.7
     },
-    "pitchDeg": 30,
+    "pitchDeg": 35,
     "covering": "slate"
    },
    {
@@ -9822,11 +10179,11 @@
     "polygon": [
      [
       -0.88,
-      5.47
+      5.385
      ],
      [
       1.35,
-      5.47
+      5.385
      ],
      [
       1.35,
@@ -9853,11 +10210,11 @@
       8.73
      ],
      [
-      3.4,
+      3.45,
       8.73
      ],
      [
-      3.4,
+      3.45,
       17.46
      ],
      [
@@ -9877,56 +10234,56 @@
     "id": "bay_gable_w",
     "polygon": [
      [
-      0.6,
+      0.61,
       -0.42
      ],
      [
-      2.525,
+      2.48,
       -0.42
      ],
      [
-      2.525,
-      3.54
+      2.48,
+      4.33
      ],
      [
-      0.6,
-      0.44
+      0.61,
+      0.46
      ]
     ],
     "z": {
-     "c0": 5.9405,
-     "cx": 0.9325,
+     "c0": 5.799,
+     "cx": 1.19,
      "cy": 0
     },
-    "pitchDeg": 43,
+    "pitchDeg": 50,
     "covering": "slate"
    },
    {
     "id": "bay_gable_e",
     "polygon": [
      [
-      2.525,
+      2.48,
       -0.42
      ],
      [
-      4.45,
+      4.35,
       -0.42
      ],
      [
-      4.45,
-      0.44
+      4.35,
+      0.46
      ],
      [
-      2.525,
-      3.54
+      2.48,
+      4.33
      ]
     ],
     "z": {
-     "c0": 10.6496,
-     "cx": -0.9325,
+     "c0": 11.701,
+     "cx": -1.19,
      "cy": 0
     },
-    "pitchDeg": 43,
+    "pitchDeg": 50,
     "covering": "slate"
    },
    {
@@ -9937,11 +10294,11 @@
       -0.58
      ],
      [
-      0.93,
+      0.88,
       -0.58
      ],
      [
-      0.93,
+      0.88,
       0.74
      ],
      [
@@ -9950,11 +10307,11 @@
      ]
     ],
     "z": {
-     "c0": 3.3111,
+     "c0": 3.14,
      "cx": 0,
-     "cy": 0.795
+     "cy": 0.933
     },
-    "pitchDeg": 38.5,
+    "pitchDeg": 43,
     "covering": "fibre_cement_slate",
     "level": "G"
    }
@@ -9966,7 +10323,7 @@
      5.0
     ],
     [
-     4.53,
+     4.65,
      5.0
     ]
    ],
@@ -9981,7 +10338,7 @@
       0.47
      ],
      [
-      0.9,
+      0.75,
       0.47
      ]
     ],
@@ -9992,26 +10349,26 @@
     "id": "rear_K",
     "line": [
      [
-      3.4,
+      3.45,
       9.25
      ],
      [
-      4.53,
+      4.65,
       9.25
      ]
     ],
-    "gutterZ": 6.65,
+    "gutterZ": 6.15,
     "colour": "black"
    },
    {
     "id": "flank",
     "line": [
      [
-      3.48,
+      3.53,
       9.03
      ],
      [
-      3.48,
+      3.53,
       17.36
      ]
     ],
@@ -10026,7 +10383,7 @@
       17.46
      ],
      [
-      3.4,
+      3.45,
       17.46
      ]
     ],
@@ -10041,17 +10398,18 @@
    "id": "bay_gable",
    "ridge": [
     [
-     2.525,
+     2.48,
      -0.42
     ],
     [
-     2.525,
-     3.54
+     2.48,
+     4.33
     ]
    ],
-   "ridgeZ": 8.295,
-   "eavesZ": 6.78,
-   "vergeOverhang": 0.3
+   "ridgeZ": 8.75,
+   "eavesZ": 6.69,
+   "vergeOverhang": 0.3,
+   "pitchDeg": 50
   },
   "chimneys": [
    "rear_chimney"

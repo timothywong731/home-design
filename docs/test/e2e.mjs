@@ -1,7 +1,8 @@
 // End-to-end check of the viewer in Chromium. Serves docs/ under /home-design/ (like GitHub Pages), drives the page,
 // writes screenshots + console log to build/e2e/, exits non-zero on console errors or failed checks.
 // Setup once:  npm install --prefix build/e2e playwright@1.65.1   (npx playwright install chromium if no browser yet)
-// Run:         node docs/test/e2e.mjs [--headed] [--only desktop,ref,realtime,phone,ix,levels,cull,nav] [--assets <dir>]
+// Run:         node docs/test/e2e.mjs [--headed] [--only desktop,ref,realtime,phone,ix,levels,cull,nav] [--assets <dir>] [--no-sections]
+//   --no-sections: a real export whose plan.json was drafted without sections.json (else the missing section tabs fail)
 //   --assets serves assets/ from another folder (e.g. a fresh export under build/, before it is copied into docs/)
 // Two runs (blender/MULTILEVEL.md 12.g): schema-1 assets (docs/assets today) run the phase-1 blocks; schema-2 assets run
 // only `levels` (tabs, sheets, marker on every sheet, sheet follows the stairs, layers, routes, dollhouse cut per level,
@@ -15,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
-const ASSETS = arg('--assets') && resolve(arg('--assets'));
+const ASSETS = arg('--assets') && resolve(arg('--assets')), NO_SECTIONS = process.argv.includes('--no-sections');
 const MANIFEST = JSON.parse(await readFile(join(ASSETS || join(ROOT, 'assets'), 'manifest.json')).catch(() => readFile(join(ROOT, 'assets/manifest.json'))));
 const SCHEMA = MANIFEST.schema === 2 ? 2 : 1, FIXTURE = !!MANIFEST.fixture;   // the fixture pairs the phase-1 GLB with the new house
 const OUT = fileURLToPath(new URL(SCHEMA === 2 ? '../../build/e2e/levels/' : '../../build/e2e/', import.meta.url));
@@ -208,6 +209,68 @@ if (run('desktop')) {
   await page.keyboard.press('Shift+Slash'); await page.waitForTimeout(300);
   check(await page.evaluate(() => document.querySelector('#help').open), 'help opens with ?');
   await shot(page, 'help.png'); await page.keyboard.press('Escape');
+  // cross-section sheets (plan.json sheets of kind 'section'): a tab each after SITE; each draws; the walker is projected
+  // onto the plane at eye height (solid within a metre of it, a ring further off); a click on a section moves nobody;
+  // the section stays while the floor changes; a floor tab brings the plan back
+  const secs = await page.evaluate(() => window.viewer.planView.sheets.filter((s) => s.section)
+    .map((s) => ({ id: s.id, title: s.title, tab: `${s.section.letter}-${s.section.letter}`, axis: s.section.axis, at: s.section.at })));
+  if (SCHEMA === 2 && !FIXTURE && !NO_SECTIONS) check(secs.length > 0, `cross-section sheets in the plan set: ${secs.map((s) => s.tab).join(' ')
+    || 'none (export.py writes sections.json, draft.py then drafts them; --no-sections tests a set without them)'}`);
+  if (secs.length) {
+    const frames = (n = 4) => page.evaluate((n) => new Promise((f) => { const k = () => (--n ? requestAnimationFrame(k) : f()); requestAnimationFrame(k); }), n);
+    const place = (L, x, y) => page.evaluate(([L, x, y]) => { const { S, G, walk } = window.viewer; Object.assign(S, { anim: null, glide: null, x, y, layer: L, z: G.zAt(walk, L, x, y), eye: 1.6, pitch: 0 }); }, [L, x, y]);
+    const tabsNow = await page.$$eval('#plan-tabs button', (bs) => bs.map((b) => b.textContent));
+    check(tabsNow.join() === ['B', 'G', '1', '2', 'SITE', ...secs.map((s) => s.tab)].join(), `plan tabs with the sections: ${tabsNow}`);
+    for (const s of secs) {
+      await page.click(`#plan-tabs button[data-sheet="${s.id}"]`); await frames();
+      const st = await page.evaluate(() => {
+        const p = window.viewer.planView; p.fit(true); const all = p.v.s; p.fit();
+        const d = p.c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, p.c.width, p.c.height).data, n = new Map(); let ink = 0;
+        for (let k = 0; k < d.length; k += 64) { const c = (d[k] << 16) | (d[k + 1] << 8) | d[k + 2]; n.set(c, (n.get(c) || 0) + 1); }
+        const bg = [...n].sort((a, b) => b[1] - a[1])[0][0], B = [bg >> 16, (bg >> 8) & 255, bg & 255];      // the paper: the commonest colour
+        for (let k = 0; k < d.length; k += 4) if (Math.abs(d[k] - B[0]) + Math.abs(d[k + 1] - B[1]) + Math.abs(d[k + 2] - B[2]) > 60) ink++;
+        return { sheet: p.sheetId, title: document.querySelector('#plan-title').textContent, ink: ink / (d.length / 4), rooms: p.rooms.length,
+          pressed: document.querySelector('#plan-tabs button[aria-pressed="true"]')?.dataset.sheet, zoom: p.v.s / all, window: !!p.sheet.fitBounds };
+      });
+      // a section of the whole plot opens on the house in the docked panel (sheet.fitBounds); the fit button shows it all
+      check(st.window ? st.zoom > 1.2 : Math.abs(st.zoom - 1) < 1e-6, `section tab ${s.tab}: ${st.window ? `first shown on the house, x${st.zoom.toFixed(2)} of the whole sheet` : 'the whole sheet at first fit'}`);
+      check(st.sheet === s.id && st.pressed === s.id && st.title.startsWith(s.title) && st.ink > 0.01 && st.ink < 0.6 && st.rooms > 0,
+        `section tab ${s.tab}: "${st.title}", ${(100 * st.ink).toFixed(1)} % of the canvas drawn, ${st.rooms} cut rooms`);
+      await shot(page, `plan_section_${s.id}.png`, '#plan');
+    }
+    // the marker on the section through the hall (a plane x = const): solid dot / ring at (s, floor + eye)
+    const marker = () => page.evaluate(() => {
+      const p = window.viewer.planView, [X, Y] = p.toScreen(p.viewer.x, p.viewer.y).map(Math.round), g = p.c.getContext('2d', { willReadFrequently: true }), d = p.dpr;
+      const at = (dx, dy) => { const c = g.getImageData(X + dx, Y + dy, 1, 1).data; return c[0] > 200 && c[1] < 140 && c[2] < 110 ? 1 : 0; };
+      let core = 0, ring = 0;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) core += at(dx, dy);
+      for (let r = Math.round(3 * d); r <= Math.round(7 * d); r++) ring += at(r, 0) + at(-r, 0) + at(0, r) + at(0, -r);
+      return { sheet: p.sheetId, s: p.viewer.x, z: p.viewer.y, full: core >= 7, hollow: core <= 2 && ring >= 2 };
+    });
+    const sx = secs.find((s) => s.axis === 'x');
+    if (sx) {
+      await page.click(`#plan-tabs button[data-sheet="${sx.id}"]`);
+      await place('G', sx.at + 0.1, 3.0); await frames();
+      const on = await marker(), was = await info(page);
+      check(on.full && Math.abs(on.z - 1.6) < 0.02, `section ${sx.tab}: the walker in the hall is a solid marker at eye height (s ${on.s.toFixed(2)}, z ${on.z.toFixed(2)})`);
+      await shot(page, 'plan_section_marker.png', '#plan');
+      const box = await page.locator('#plan-canvas').boundingBox();
+      await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.5); await frames();
+      i = await info(page);
+      check(i.x === was.x && i.y === was.y && i.layer === was.layer && i.sheet === sx.id, `a click on a section moves nobody (${i.x.toFixed(2)}, ${i.y.toFixed(2)}, ${i.layer})`);
+      await place('G', sx.at + 2.6, 3.0); await frames();
+      const off = await marker();
+      check(off.hollow && off.sheet === sx.id, `section ${sx.tab}: 2.6 m off the plane the marker is a ring (${JSON.stringify(off)})`);
+      await place('1', sx.at - 0.1, 10.0); await frames(6);
+      const up = await marker(); i = await info(page);
+      check(i.level === '1' && up.sheet === sx.id && up.full && Math.abs(up.z - (i.z + 1.6)) < 0.05 && up.z > 4,
+        `the section stays when the floor changes: level ${i.level}, sheet ${up.sheet}, marker at z ${up.z.toFixed(2)}`);
+      await page.click('#plan-max'); await page.click('#plan-theme'); await page.waitForTimeout(400); await shot(page, 'plan_max_section_paper.png');
+      await page.click('#plan-theme'); await page.click('#plan-max');
+      await page.click('#plan-tabs button[data-sheet="G"]'); await place('G', 0, 3.0); await frames(6);
+      i = await info(page); check(i.sheet === 'G' && i.level === 'G', `a floor tab brings the plan back (sheet ${i.sheet})`);
+    }
+  }
   await page.click('#plan-max'); await page.waitForTimeout(400); await shot(page, 'plan_max.png');
   await page.click('#plan-theme'); await page.waitForTimeout(300); await shot(page, 'plan_max_paper.png'); await page.click('#plan-theme');
   // downloads: the buttons hand over the real files
@@ -739,7 +802,9 @@ const dollState = (page, id) => page.evaluate((id) => {
 // the new floors and outside, with every door leaf open: W through the narrow doorways (the open leaves stand beside
 // them), double-click to go on the stairs, a landing, the garden, the shed and the forecourt, wheel zoom on the stairs.
 async function walkChecks(page) {
-  for (const id of ['o_stair_foot', 'd_basement', 'd_loft', 'd_balcony', 'shed_d1', 'side_gate']) {
+  const have = await page.evaluate(() => window.viewer.walk.portals.map((p) => p.id));
+  for (const id of ['o_stair_foot', 'd_basement', 'd_loft', 'd_balcony', 'shed_d1', 'side_gate', 'street_gate', 'shed_store_doors']) {
+    if (/street_gate|shed_store/.test(id) && !have.includes(id)) { skip(`W through ${id}: no such portal in this export`); continue; }
     // start 0.4 m off the wall on a free side, square to the opening, on its centre line; hold W
     const st = await page.evaluate((id) => {
       const { S, G, walk } = window.viewer, p = walk.portals.find((q) => q.id === id);
@@ -758,7 +823,8 @@ async function walkChecks(page) {
     await page.waitForFunction(`${past} > ${st.depth + 0.6}`, null, { timeout: 6000, polling: 50 }).catch(() => {});
     await page.keyboard.up('KeyW');
     const r = await page.evaluate(`({ across: ${past}, layer: window.viewer.S.layer, room: window.viewer.info().room })`);
-    check(r.across > st.depth + 0.15 && r.layer === st.other, `W walks through ${id} (${Math.round(st.width * 1000)} mm): ${st.L} -> ${r.layer}, ${r.room}, ${r.across.toFixed(2)} m past its centre`);
+    // the shed store is a cupboard 0.22 deep between its walls: past the door line is enough there
+    check(r.across > st.depth + (id === 'shed_store_doors' ? 0.03 : 0.15) && r.layer === st.other, `W walks through ${id} (${Math.round(st.width * 1000)} mm): ${st.L} -> ${r.layer}, ${r.room}, ${r.across.toFixed(2)} m past its centre`);
     await shot(page, `gap_${id}.png`);
   }
   const pose = (s) => page.evaluate((s) => {
@@ -810,6 +876,87 @@ async function walkChecks(page) {
       await page.evaluate(() => { window.viewer.S.fovT = window.viewer.FOV; }); await page.waitForTimeout(600);
     }
   }
+}
+// Low and tight places (owner, round 3: "get into narrow spaces, such as the eaves storage"): with the hatch leaves open,
+// hold W from the Slate Room through each eaves hatch - the eye ducks under the hatch head and follows the roof (never
+// above the house.json headroom less 5 cm, nor above the ceiling a ray straight up meets in the model less 3 cm), drops
+// below 1.0 and recovers on the way back out; then into the sauna through its door (a pen: its door leaf found in its
+// outline).
+async function tightPlaces(page) {
+  const run = (setup, until, ms = 8000) => page.evaluate(async ([setup, until, ms]) => {
+    const v = window.viewer, { S, G, walk, THREE } = v, out = { eyes: [], over: 0, overModel: 0, rooms: [] }, up = new THREE.Vector3(0, 1, 0);
+    Object.assign(S, { anim: null, glide: null, keys: new Set(), pitch: 0 }, setup, setup.layer ? { z: G.zAt(walk, setup.layer, setup.x, setup.y) } : {});
+    await new Promise((f) => setTimeout(f, 700));          // the eye settles where it starts
+    out.eye0 = v.camera.position.y - S.z;
+    S.keys.add('KeyW');
+    const t0 = performance.now(), test = new Function('S', `return ${until}`);
+    let last = [S.x, S.y], still = 0;                       // stops at the goal, when it stands still 45 frames, or at ms
+    await new Promise((f) => { const k = () => {
+      const e = v.camera.position.y - S.z, h = G.headroomAt(walk, S.layer, S.x, S.y), room = v.info().room;
+      const hit = v.castRay(new THREE.Vector3(S.x, S.z + 0.3, -S.y), up, 2.2), hm = hit ? hit.distance + 0.3 : Infinity;   // the model's ceiling
+      out.eyes.push(e); if (e > h - 0.05) out.over++; if (e > hm - 0.03) out.overModel++; if (out.rooms[out.rooms.length - 1] !== room) out.rooms.push(room);
+      still = Math.hypot(S.x - last[0], S.y - last[1]) < 1e-4 ? still + 1 : 0; last = [S.x, S.y];
+      if (test(S) || still > 45 || performance.now() - t0 > ms) { S.keys.delete('KeyW'); f(); } else requestAnimationFrame(k); }; k(); });
+    await new Promise((f) => setTimeout(f, 700));
+    return { ...out, min: Math.min(...out.eyes), end: v.camera.position.y - S.z, x: S.x, y: S.y, room: v.info().room };
+  }, [setup, until, ms]);
+  const hatches = await page.evaluate(() => {
+    const { ix, walk } = window.viewer, out = {};
+    for (const p of walk.portals.filter((q) => /^h_eaves/.test(q.id))) out[p.id] = { c: p.center, n: p.normal, depth: p.depth, leaves: ix.groups().filter((g) => g.hatch === p.id).map((g) => g.id) };
+    return out;
+  });
+  for (const id of ['h_eaves_rear', 'h_eaves_front_e']) {
+    const h = hatches[id];
+    if (!h || !h.leaves.length) { skip(`walk into the eaves through ${id}: ${h ? 'no hatch leaves' : 'no portal (hatch lower than geom.CLEAR)'}`); continue; }
+    const was = await page.evaluate((ids) => { const { ix } = window.viewer, w = ix.groups().filter((g) => ids.includes(g.id) && g.open).map((g) => g.id);
+      for (const g of ix.groups()) if (ids.includes(g.id) && !g.open) ix.toggle(g.id); return w; }, h.leaves);
+    const lit = await page.evaluate((id) => {     // the eaves start dark (eaves.md 8): their light on for the screenshot
+      const { ix, walk } = window.viewer, room = walk.portals.find((p) => p.id === id).cells.find((c) => c.startsWith('eaves'));
+      const g = ix.groups().find((q) => q.rooms.includes(room) && / on$/.test(q.hint)); if (g) ix.toggle(g.id); return g?.id ?? null;
+    }, id);
+    await idle(page, 900);
+    const rear = id === 'h_eaves_rear', s = rear ? 1 : -1, yaw = rear ? 0 : Math.PI;      // into the eaves: +y at the rear, -y at the front
+    const inn = await run({ x: h.c[0], y: h.c[1] - s * 0.9, layer: '2', yaw }, rear ? `S.y > ${h.c[1] + 0.9}` : `S.y < 0.9`);
+    await shot(page, `eaves_${id}.png`);
+    const inside = inn.room?.startsWith('eaves_');
+    check(inside && inn.over === 0 && inn.overModel === 0 && inn.min < 1.0 && inn.eye0 > 1.0 && (!rear || inn.end < 1.0),
+      `W through ${id} into ${inn.room}: eye ${inn.eye0.toFixed(2)} -> min ${inn.min.toFixed(2)} (under the hatch / slope) -> ${inn.end.toFixed(2)} inside at ${inn.x.toFixed(2)}, ${inn.y.toFixed(2)}; frames above the headroom: ${inn.over} (house.json), ${inn.overModel} (model)`);
+    const out = await run({ yaw: yaw + Math.PI }, `S.y ${rear ? '<' : '>'} ${h.c[1] - s * 1.0}`);
+    check(out.room === 'loft_office' && out.over === 0 && out.overModel === 0 && out.end > 1.0, `back out through ${id}: the eye recovers in the Slate Room (${out.end.toFixed(2)}, ${out.room}; ${out.over}/${out.overModel} frames above)`);
+    await page.evaluate(([ids, was, lit]) => { const { ix } = window.viewer; if (lit) ix.toggle(lit);
+      for (const g of ix.groups()) if (ids.includes(g.id) && g.open && !was.includes(g.id)) ix.toggle(g.id); }, [h.leaves, was, lit]);
+    await idle(page, 600);                // the leaves as they were (the caller opened every door and hatch and shuts them after)
+  }
+  // the sauna: a pen while its door is unknown; with the door open, W from the bathroom in front of it walks in
+  const pen = await page.evaluate(() => {
+    const { walk, ix } = window.viewer, p = (walk.pens || [])[0], g = ix.groups().find((q) => q.pen);
+    return p ? { open: p.open, poly: p.poly, door: g?.id ?? null, layer: p.layer } : null;
+  });
+  if (!pen) { skip('sauna: no pen footprint (plan_sym sauna) in this export'); return; }
+  check(pen.open && pen.door, `sauna: its door leaf is found in the cabin outline (${pen.door})`);
+  if (!pen.door) return;
+  const penWas = await page.evaluate((id) => { const { ix } = window.viewer, o = ix.groups().find((g) => g.id === id).open; if (!o) ix.toggle(id); return o; }, pen.door);
+  await idle(page, 900);
+  const gap = await page.evaluate(() => {        // a spot in the gap the door leaves in the cabin wall, up to 0.6 m out, facing in
+    const { walk, G } = window.viewer, p = walk.pens.find((q) => q.open), c = G.centroid(p.poly);
+    for (let i = 0; i < p.poly.length; i++) {
+      const a = p.poly[i], b = p.poly[(i + 1) % p.poly.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]), u = [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
+      for (let t = 0.2; t < L - 0.2; t += 0.02) {
+        const m = [a[0] + u[0] * t, a[1] + u[1] * t], n = [-u[1], u[0]], sg = (c[0] - m[0]) * n[0] + (c[1] - m[1]) * n[1] > 0 ? 1 : -1;
+        for (const o of [0.6, 0.45, 0.35]) {             // as far out as the bathroom fittings in front allow
+          const q = [m[0] - sg * n[0] * o, m[1] - sg * n[1] * o], inP = [m[0] + sg * n[0] * 0.25, m[1] + sg * n[1] * 0.25];
+          if (G.isFree(walk, p.layer, ...m) && G.isFree(walk, p.layer, ...q) && G.isFree(walk, p.layer, ...inP)) return { x: q[0], y: q[1], yaw: G.dirYaw(sg * n[0], sg * n[1]), layer: p.layer };
+        }
+      }
+    }
+    return null;
+  });
+  if (!gap) { check(false, 'sauna: no free way in through the open door'); return; }
+  const sn = await run(gap, `window.viewer.G.pointInPoly(S.x, S.y, ${JSON.stringify(pen.poly)}) && window.viewer.G.edgeDist(S.x, S.y, ${JSON.stringify(pen.poly)}) > 0.3`, 6000);
+  const inSauna = await page.evaluate((poly) => window.viewer.G.pointInPoly(window.viewer.S.x, window.viewer.S.y, poly), pen.poly);
+  check(inSauna, `W through the open sauna door walks into the cabin (${sn.x.toFixed(2)}, ${sn.y.toFixed(2)}, eye ${sn.end.toFixed(2)})`);
+  await shot(page, 'sauna_inside.png');
+  if (!penWas) { await page.evaluate((id) => window.viewer.ix.toggle(id), pen.door); await idle(page, 600); }
 }
 // Interaction types the new rooms bring (blender/INTERACT.md), on test objects handed to the engine like a level GLB
 // arriving: a shower spray (wide water cone), a fire pit flame (warm emissive), a glass sauna door, a bin lid on a
@@ -879,9 +1026,13 @@ async function syntheticIx(page) {
   if (!hatch.length || !(await groups(page)).some((g) => g.id === eavesIds[0])) skip('eaves light through the hatch: no eaves switch or hatch');
   else {
     await page.evaluate(() => window.viewer.jump('loft_office')); await idle(page, 300);
-    // in front of the middle of the east hatch (jambs x 2.52 / 3.43, knee wall y 2.575), facing the bulkhead in the void
-    // (2.53, 1.60) past the open leaves; shut, the leaf in front is the thing to use
-    await page.evaluate(() => { const { S, G } = window.viewer; Object.assign(S, { anim: null, glide: null, x: 2.975, y: 2.95, yaw: G.dirYaw(-0.445, -1.35), pitch: -0.22 }); }); await settle(page, 200);
+    // 0.46 m in front of the middle of the east hatch (house.json), facing the bulkhead in the void past the open leaves
+    // (1.9 m in: reach 2.0; the switch faces into the eaves, unseen from the loft); shut, the leaf in front is the thing to use
+    await page.evaluate(() => {
+      const { S, G, ix, house, THREE } = window.viewer, o = house.openings.find((q) => q.id === 'h_eaves_front_e'), b = ix.box('eaves_front.bulkhead').getCenter(new THREE.Vector3());
+      const x = o.center[0], y = o.center[1] + 0.46, d = Math.hypot(b.x - x, -b.z - y);
+      Object.assign(S, { anim: null, glide: null, x, y, layer: '2', yaw: G.dirYaw(b.x - x, -b.z - y), pitch: Math.atan2(b.y - (S.z + G.eyeAt(window.viewer.walk, '2', x, y)), d) });
+    }); await settle(page, 600);
     const bestId = () => page.evaluate(() => window.viewer.ix.best(window.viewer.camera)?.id ?? null);
     const shut = await bestId();
     for (const id of hatch) await toggle(id);
@@ -973,10 +1124,23 @@ if (run('levels')) {
   const grp = await page.$$eval('#rooms .grp', (gs) => gs.map((g) => [g.dataset.level, g.querySelectorAll('button[data-room]').length, g.classList.contains('cur')]));
   check(grp.map((g) => g[0]).join() === 'B,G,1,2,X' && grp.find((g) => g[0] === 'G')[2] && grp.reduce((n, g) => n + g[1], 0) >= 25, `room buttons grouped by level (${grp.map((g) => `${g[0]}:${g[1]}`)})`);
   await roomBar(page, 'desktop');
+  // room names come from house.json (round 3: loft_office = Slate Room, study = Rose Room, purple_room = Lavender Room):
+  // the manifest's rooms, the room bar's tooltips, every plan and section sheet and the plan header use them verbatim
+  const nm = await page.evaluate(async () => {
+    const { rooms, planView, jump } = window.viewer, house = await (await fetch('assets/house.json')).json(), want = Object.fromEntries(house.rooms.map((r) => [r.id, r.name]));
+    const bad = [...rooms.filter((r) => want[r.id] && r.name !== want[r.id]).map((r) => `manifest ${r.id}`),
+      ...[...document.querySelectorAll('#rooms button[data-room]')].filter((b) => want[b.dataset.room] && !b.title.startsWith(`${want[b.dataset.room]} (`)).map((b) => `bar ${b.dataset.room}`),
+      ...planView.sheets.flatMap((sh) => (sh.rooms || []).filter((r) => want[r.id] && r.name && r.name.toUpperCase() !== want[r.id].toUpperCase()).map((r) => `sheet ${sh.id} ${r.id}`))];
+    jump('loft_office'); await new Promise((f) => setTimeout(f, 900));
+    const header = document.querySelector('#plan-room').textContent;
+    jump('hallway'); await new Promise((f) => setTimeout(f, 900));
+    return { bad, header, want: want.loft_office, sheets: planView.sheets.length };
+  });
+  check(!nm.bad.length && nm.header === nm.want, `room names from house.json in the manifest, the room bar, ${nm.sheets} sheets and the plan header ("${nm.header}"; wrong: ${nm.bad.join(', ') || 'none'})`);
 
   // plan tabs; marker on every sheet (full on the visitor's floor, hollow on SITE while indoors, none on other floors)
   const tabs = await page.$$eval('#plan-tabs button', (bs) => bs.map((b) => [b.textContent, b.getAttribute('aria-pressed')]));
-  check(tabs.map((t) => t[0]).join() === 'B,G,1,2,SITE' && tabs.find((t) => t[0] === 'G')[1] === 'true', `plan tabs ${tabs.map((t) => t[0])}, G pressed`);
+  check(/^B,G,1,2,SITE(,[A-Z]-[A-Z])*$/.test(tabs.map((t) => t[0]).join()) && tabs.find((t) => t[0] === 'G')[1] === 'true', `plan tabs ${tabs.map((t) => t[0])}, G pressed`);
   const place = (L, x, y) => page.evaluate(([L, x, y]) => { const { S, G, walk } = window.viewer; Object.assign(S, { anim: null, glide: null, x, y, layer: L, z: G.zAt(walk, L, x, y), pitch: 0 }); }, [L, x, y]);
   // the marker on the plan canvas at the visitor: full = a solid dot (3x3 core in the marker colour), hollow = a ring
   // (core clear, ring pixels 3..7 px out on the four sides), none = neither
@@ -996,7 +1160,7 @@ if (run('levels')) {
     check(i.level === sheet && m.sheet === sheet && m.full, `on level ${sheet}: the plan follows to sheet ${m.sheet}, marker drawn (${i.room})`);
     await shot(page, `plan_${sheet}.png`, '#plan');
     if (sheet !== 'X') {
-      await page.click('#plan-tabs button:last-child'); await frames(3);
+      await page.click('#plan-tabs button[data-sheet="X"]'); await frames(3);
       const h = await marker();
       if (sheet === 'G') await shot(page, 'plan_site_indoors.png', '#plan');
       await page.click(`#plan-tabs button[data-sheet="${sheet === 'B' ? 'G' : 'B'}"]`); await frames(3);
@@ -1018,7 +1182,7 @@ if (run('levels')) {
     `walks up the main flight: ${climb?.seen.join(' > ')}; z ${climb?.z.toFixed(2)}`);
   await shot(page, 'stairs_landing.png');
 
-  // routes across layers: to the loft office (two flights, two step sets, the loft door) and to the basement
+  // routes across layers: to the Slate Room (loft_office: two flights, two step sets, the loft door) and to the basement
   const go = (x, y, L, ms = 40000) => page.evaluate(async ([x, y, L, ms]) => {
     const v = window.viewer, t0 = performance.now();
     if (!v.walkTo(x, y, L)) return null;
@@ -1029,7 +1193,7 @@ if (run('levels')) {
   }, [x, y, L, ms]);
   i = await go(2.0, 3.2, '2');
   check(i && i.layer === '2' && i.room === 'loft_office' && Math.abs(i.z - 6.49) < 0.02 && i.eye < 1.6 && i.eye > 1.0,
-    `double-click route climbs to the loft office (${i?.room}, z ${i?.z.toFixed(2)}, eye ${i?.eye.toFixed(2)} under the slope)`);
+    `double-click route climbs to the Slate Room (${i?.room}, z ${i?.z.toFixed(2)}, eye ${i?.eye.toFixed(2)} under the slope)`);
   await page.evaluate(() => { window.viewer.S.yaw = Math.PI; }); await frames(3); await shot(page, 'loft.png');
   await page.evaluate(() => {   // open the basement door: its leaf (a shut leaf is solid), else (the fixture GLB has none) the doorway
     const { ix, walk } = window.viewer, g = ix.groups().find((q) => q.blocks.includes('d_basement'));
@@ -1066,16 +1230,16 @@ if (run('levels')) {
   // through its own `blocks` tag, then the walker goes there on foot (stairs, steps, thresholds, the side passage)
   if (!FIXTURE) {
     const opened = await page.evaluate(() => {
-      const ix = window.viewer.ix, ids = ix.groups().filter((g) => g.blocks.length && !g.open).map((g) => g.id);
+      const ix = window.viewer.ix, ids = ix.groups().filter((g) => (g.blocks.length || g.hatch) && !g.open).map((g) => g.id);   // doors, gates, eaves hatches
       ids.forEach((id) => ix.toggle(id)); return ids;
     });
     await idle(page, 1500);
     const shut = await page.evaluate(() => window.viewer.walk.portals.filter((p) => p.open === false).map((p) => p.id));
-    check(shut.every((id) => id === 'side_gate' || /^d_wc|^d_pocket/.test(id)) || shut.length < 3, `door leaves open their portals (still shut: ${shut.join(' ') || 'none'})`);
+    check(shut.every((id) => /^(side|street)_gate$|^d_wc|^d_pocket/.test(id)) || shut.length < 3, `door leaves open their portals (still shut: ${shut.join(' ') || 'none'})`);
     for (const [name, from, to, room, z] of [
       ['1 front door to basement', ['G', 0, 0.9], [2.5, 7.0, 'B'], 'basement', -2.31],
       ['2 front door to balcony', ['G', 0, 0.9], [1.15, 17.9, '1'], 'balcony', 3.0],
-      ['3 front door to loft office', ['G', 0, 0.9], [2.0, 3.2, '2'], 'loft_office', 6.49],
+      ['3 front door to the Slate Room', ['G', 0, 0.9], [2.0, 3.2, '2'], 'loft_office', 6.49],
       ['4 kitchen to side passage, garden, shed', ['G', 3.0, 7.0], [2.0, 27.0, 'G'], 'shed', -0.32],
       ['5 dining French doors to deck', ['G', 1.2, 16.6], [1.2, 19.0, 'G'], 'garden', -0.05],
       ['6 street doors to forecourt', ['G', 0, 0.9], [1.9, -3.0, 'G'], 'front', null]]) {
@@ -1101,6 +1265,7 @@ if (run('levels')) {
     });
     check(!near.length, `no free spot within 0.10 m of an open door leaf (${JSON.stringify(near)})`);
     await walkChecks(page);
+    await tightPlaces(page);
     await page.evaluate((ids) => ids.forEach((id) => window.viewer.ix.toggle(id)), opened); await idle(page, 1500);
     // a double door with one leaf open: its shut leaf keeps its half of the doorway shut, the open half is a route
     const half = await page.evaluate(() => {
@@ -1164,6 +1329,12 @@ if (run('levels')) {
     await page.tap('#mode-orbit'); await page.waitForTimeout(600);
     const fit = await page.evaluate(() => [...document.querySelectorAll('#dh-levels, #plan-tabs')].map((e) => { const r = e.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }));
     check(fit.every(Boolean), 'phone: plan tabs and dollhouse levels fit the screen');
+    const tabsIn = await page.evaluate(() => {
+      const p = document.querySelector('#plan').getBoundingClientRect();
+      return [...document.querySelectorAll('#plan-tabs button')].filter((b) => b.offsetParent).map((b) => { const r = b.getBoundingClientRect(); return r.left >= p.left - 0.5 && r.right <= p.right + 0.5; });
+    });
+    check(tabsIn.every(Boolean), `phone: the ${tabsIn.length} plan tabs shown (floors, site, sections) lie inside the plan panel`);
+    if (tabsIn.length > 5) { await page.tap('#plan-tabs button.sec'); await page.waitForTimeout(400); await shot(page, 'phone_section.png'); await page.tap('#plan-tabs button[data-sheet="G"]'); }
     for (const id of ['G', 'all']) {
       await page.tap(`#dh-levels button[data-level="${id}"]`); await page.waitForTimeout(700);
       const f = await dollState(page, id);

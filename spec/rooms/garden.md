@@ -313,3 +313,42 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - Kitchen steps: both treads stop at the main-roof downpipe, x 3.40..4.33 (v2 f_0349); the gully sits on the passage
   paving (-0.30) and the downpipe ends at -0.28 just above its grate.
 - d_french leaves open 100 degrees.
+
+## Round 3 (21 Nov footage; module notes)
+
+`blender/rooms/garden.py` now reads every line from `spec/house.json`: deck / lawn / lavender bed / step zones, the
+east fence line (`fence_x`; side_passage.py has its own climbers), the trellis and planter features, the fire pit and
+the shed outline. Literal coordinates are only the surveyed spots of loose things (spec/phase3/garden.md 3.1).
+
+- West: one long planter x -0.74..-0.44, y 17.65..21.12, 0.42 high (#7A6650, horizontal slats), dry stems at its
+  north end. It runs 0.07 past the trellis's north end (v11 t188 / t189 from two camera spots, v13 t216 from above),
+  not to the brief's y 20.50. The two 1.83 bow-top trellis panels stand on its rim (Z 0.39) against the wall to crown
+  Z 1.45 / shoulders Z 1.20; only the first 0.26 m (y 17.39..17.65) is wall-fixed beyond its south end, as filmed.
+- NW corner: a short dark box (#463A30) in the strip between the planter's end and the deck edge, x -0.74..-0.45,
+  y 21.13..21.39, 0.38 high, set back 1 cm from the planter front, soil and a timber corner post. The small standard
+  pyracantha grows out of its middle at about (-0.60, 21.26): short clear stem, bushy head Z 0.43..0.91, below the
+  trellis shoulders (v11 t188 / t189). This replaces the brief's 0.85 m box (y 20.55..21.40, 0.45 high) and pot spot
+  (-0.45, 20.45), which the two side frames contradict.
+- Cream urn dia 0.40 at (-0.05, 21.15) with variegated thyme: a near-cylindrical bowl with a slight belly and rolled
+  lip on three small feet (v11 t188 / t189), no stem; recliners at (0.25, 18.9) / (0.25, 19.7) turned 8 / 14
+  degrees towards the doors; small black pot with thin stems at (-0.31, 18.42) in front of the geraniums (v11 t189).
+- East: trough and square planter of vertical boards (#5A4A40) on block feet, liner lapped over the trough rim, small
+  olive in the square planter; black rosemary pot dia 0.30 on ochre pot feet at (2.75, 18.65); dark blue-glazed pot
+  with the (now nearly bare) maple at (2.55, 20.40) - hidden from the top-down views by the balcony, seen in v11 t189 /
+  t194; terracotta pot dia 0.38 with a bare sapling at (2.65, 21.10).
+- Pebble planter: pale cream cobbles (v11 t187-t191); moved to x 2.37..3.37 (clear of the balcony's east wall post,
+  x 2.25..2.35) and y 17.43..17.85 (in front of the dining window's stone sill, which projects to y 17.42 at Z
+  0.30-0.34, below the planter rim).
+- Lavender: ten mounds along the bed from the deck fascia to the shed pier, the first narrowed beside the step box.
+- Feeder pole (3.19, 21.76); bird table on the east fence post nearest y 23.17; white weatherproof box with its conduit
+  on the passage fence post nearest y 17.4. The white solar cylinder at (4.73, 18.2) is not modelled: there is no
+  post there in the built fence, and in v11 t59 / t186 it looks like the same box seen from below.
+- Backdrop: sycamore east of the shed (crown over the shed roof, nothing below the coping + 0.25 inside the shed
+  outline); low shrubs over the east fence beside the lawn. West: one continuous flat-topped mid-green hedge beyond
+  the neighbour's patio (x -2.90..-2.30, y 21.5..25.02, top Z 1.9 with a gentle wave). v13 t216 shows about 1.5 m of
+  their paving behind our fence, so it cannot stand closer; at that depth it shows 0.3-0.4 m over our fence from the
+  deck, as in v11 t189 (scaled on the neighbour's wall end, 1.60 m from fence top to coping). Tall pale ornamental grass
+  and two bamboo clumps west of the shed from just behind its front (v13 t216). No hedge behind the shed: v13 t216
+  shows a service yard there.
+- Climbers: stems lie on the east fence boards (board face 0.011 off the line, stem 5 mm proud of it), stand off the
+  capping (0.03) and the gravel board (0.025), and keep to their bay, clear of the posts.

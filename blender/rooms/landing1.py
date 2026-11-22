@@ -14,6 +14,10 @@ fascia short of the newel (v6 f_0038), so the shaft takes no rail.
 Deviation from the spec text (v3 f_0075, f_0496-0500): the dado and skirting rake over the two steps at the
 stair pitch (0.19 / 0.25, 37 degrees) through the nosings, so the rake runs from riser B (y 7.88) to y 8.38,
 0.25 north of riser A, not between the two riser lines (that would be 56 degrees).
+
+Round 3 (RECONCILE3 dims_1-02, -05..-08): everything on the corridor / bay east wall sits on x 0.47 (XE); the QL riser
+nosing returns to the foot of the chamfer (0.54, 8.73); the corridor downlights are centred on the 1.12 corridor.
+Measured here (spec/rooms/landing1_front.md): S-stair and thermostat heights, S-bay y, the ceiling plate.
 """
 import math
 from pathlib import Path
@@ -25,6 +29,7 @@ from lib import interact as IX, lighting, materials as M, mouldings as mo, props
 ART = Path(__file__).resolve().parents[1] / 'textures' / 'art'
 F, Q, R = 'landing1_front', 'landing1_ql', 'landing1_rear'
 XW, XPIER = -0.65, -0.55            # west (party) wall face; face of the pier y 8.53..9.95
+XE = 0.47                           # corridor and arch-bay east wall face, y 8.80..12.39 (RECONCILE3 dims_1-02)
 WEST, EAST, NORTH = (1, 0), (-1, 0), (0, 1)      # room-side normals of the west / east / south walls
 WHITE = 'joinery_white'
 Y_B, Y_A, PITCH = 7.88, 8.13, 0.19 / 0.25    # riser B (upper), riser A (lower) of the two steps; their pitch
@@ -34,14 +39,16 @@ UPSTAIRS = ['landing2_head', 'landing2_platform', 'stairs2']     # what rooms/la
 
 # world coords; fov spans the longer side
 CAMERAS = [
-    dict(name='corridor', pos=(-0.15, 9.05, 4.5), look=(-0.2, 11.8, 4.2), fov_deg=100, ref='v3 f_0054'),
+    dict(name='corridor', pos=(-0.08, 8.40, 4.45), look=(-0.09, 11.8, 4.25), fov_deg=100, ref='v3 f_0054'),
     dict(name='steps', pos=(-0.2, 9.0, 4.5), look=(-0.25, 6.0, 4.0), fov_deg=100, ref='v3 f_0075'),
     dict(name='front', pos=(-0.2, 6.5, 4.95), look=(0.3, 4.95, 4.5), fov_deg=100, ref='v3 f_0507'),
     dict(name='north', pos=(-0.3, 7.3, 4.95), look=(-0.2, 11.0, 4.2), fov_deg=100, ref='v6 f_0026'),
-    dict(name='fromarch', pos=(-0.2, 11.0, 4.5), look=(-0.2, 8.0, 4.2), fov_deg=100, ref='v3 f_0490'),
+    dict(name='fromarch', pos=(-0.09, 11.1, 4.5), look=(-0.2, 8.0, 4.2), fov_deg=100, ref='v3 f_0490'),
     dict(name='ql', pos=(0.6, 7.75, 4.1), look=(0.45, 8.6, 2.9), fov_deg=100, ref='v3 f_0037'),
     dict(name='p4', pos=(-0.35, 8.9, 4.55), look=(0.99, 8.4, 4.5), fov_deg=100, ref='v3 f_0039'),
-    dict(name='bay', pos=(-0.15, 10.3, 4.5), look=(-0.1, 12.4, 4.5), fov_deg=100, ref='v3 f_0148'),
+    dict(name='bay', pos=(-0.09, 10.3, 4.5), look=(-0.1, 12.4, 4.5), fov_deg=100, ref='v3 f_0148'),
+    dict(name='eastwall', pos=(-0.30, 8.05, 4.95), look=(0.47, 9.6, 4.25), fov_deg=100, ref='v6 f_0030'),
+    dict(name='westrad', pos=(-0.20, 11.70, 4.55), look=(-0.60, 9.6, 3.85), fov_deg=100, ref='v4 f_0294'),
     dict(name='balustrade', pos=(-0.5, 6.9, 4.95), look=(0.15, 7.7, 4.0), fov_deg=100, ref='v4 f_0183'),
     dict(name='westwall', pos=(0.15, 9.5, 4.55), look=(-0.65, 10.3, 4.45), fov_deg=100, ref='v3 f_0051'),
     dict(name='switches', pos=(-0.35, 6.3, 4.95), look=(0.8, 4.95, 4.6), fov_deg=100, ref='v4 f_0306'),
@@ -49,7 +56,7 @@ CAMERAS = [
     dict(name='rake', pos=(0.05, 8.75, 4.35), look=(-0.65, 7.95, 3.85), fov_deg=100, ref='v3 f_0075'),
     dict(name='plates', pos=(0.70, 5.40, 4.74), look=(0.77, 4.95, 4.55), fov_deg=70, ref='v4 f_0310'),
     dict(name='spindles', pos=(-0.40, 7.50, 4.35), look=(0.18, 7.80, 3.95), fov_deg=80, ref='v4 f_0187'),
-    dict(name='baysw', pos=(-0.45, 11.75, 4.5), look=(0.40, 12.0, 4.3), fov_deg=100, ref='v3 f_0150'),
+    dict(name='baysw', pos=(-0.45, 11.65, 4.5), look=(0.47, 12.1, 4.3), fov_deg=100, ref='v4 f_0298'),
     dict(name='nosing', pos=(0.0, 8.95, 4.45), look=(-0.45, 7.95, 3.30), fov_deg=75, ref='v3 f_0497'),
 ]
 
@@ -72,27 +79,44 @@ def _plate(name, rockers, body=True):
     return mb.finish(name)
 
 
+def _rrect(w, h, r, y, n=4):
+    """Rounded rectangle w x h (corner radius r) in the wall plane at depth y, CCW seen from the front (-Y)."""
+    pts = []
+    for cx, cz, a0 in ((w / 2 - r, h / 2 - r, 0), (-w / 2 + r, h / 2 - r, 90), (-w / 2 + r, -h / 2 + r, 180),
+                       (w / 2 - r, -h / 2 + r, 270)):
+        pts += [(cx + r * math.cos(math.radians(a0 + 90 * k / n)), y, cz + r * math.sin(math.radians(a0 + 90 * k / n)))
+                for k in range(n + 1)]
+    return pts
+
+
 def _thermostat(name):
-    mb = mo.MB()
-    mb.box((-0.045, -0.025, -0.06), (0.045, 0, 0.06), 'plastic_white', bev=0.005)
-    mb.box((-0.028, -0.0256, 0.012), (0.028, -0.024, 0.040), M.solid('lcd_blank', '#B4BAAE', 0.3))      # blank display
+    """Wireless room thermostat, white, portrait 86 x 120 x 24 with rounded corners (h / w 1.25-1.5 in the oblique
+    v6 t29 and v4 t299), a softened front face and a narrow dark display slot at the top right (v4 t299)."""
+    mb, white = mo.MB(), 'plastic_white'
+    mb.prism(_rrect(0.086, 0.120, 0.010, 0), (0, -0.020, 0), white)
+    mb.prism(_rrect(0.080, 0.114, 0.008, -0.020), (0, -0.004, 0), white)           # rounded front edge
+    mb.box((0.002, -0.0248, 0.040), (0.032, -0.0238, 0.048), M.solid('lcd_blank', '#5E625F', 0.25))   # blank display
+    mb.box((-0.016, -0.0250, 0.041), (-0.008, -0.0238, 0.047), white, bev=0.0005)   # button
     return mb.finish(name)
 
 
-def _radiator(name, n=16, pitch=0.045, h=0.57):
-    """White column radiator: n oval tubes with domed ends on two header bars, TRV at the +X end (north on the
-    west wall: v3 f_0141), lockshield at the -X end, chrome tails to the floor 0.13 below.  Tube fronts 0.115 off
-    the wall, just proud of the pier (v3 f_0054).  Wall prop frame, origin = bottom centre on the wall."""
+def _radiator(name, n=16, pitch=0.070, h=0.57):
+    """White column radiator: n oval tubes (58 wide x 68 deep, 12 mm gaps) with domed ends on two header bars,
+    TRV at the +X end (north on the west wall: v3 f_0141), lockshield at the -X end, chrome tails to the floor 0.13
+    below.  Tube fronts 0.115 off the wall, just proud of the pier (v3 f_0054).  16 x 70 mm = 1.12 long: v3 t140.5,
+    v4 287 and v4 t293 (spec/rooms/landing1_front.md).  Wall prop frame, origin = bottom centre on the wall."""
     mb, yc = mo.MB(), -0.081
-    prof = [(0, 0), (0.010, 0.004), (0.017, 0.014), (0.019, 0.032), (0.019, h - 0.032), (0.017, h - 0.014),
-            (0.010, h - 0.004), (0, h)]
+    prof = [(0, 0), (0.015, 0.005), (0.025, 0.017), (0.029, 0.038), (0.029, h - 0.038), (0.025, h - 0.017),
+            (0.015, h - 0.005), (0, h)]
     for i in range(n):
         mb.at(Matrix.Translation(((i - (n - 1) / 2) * pitch, yc, 0)))
-        mb.lathe(prof, 'white_gloss', segs=10, ell=(1.0, 1.8))
+        mb.lathe(prof, 'white_gloss', segs=10, ell=(1.0, 1.17))
     mb.at()
     half = n * pitch / 2
     for z in (0.045, h - 0.045):
         mb.tube([(-half + 0.02, yc, z), (half - 0.02, yc, z)], 0.013, 'white_gloss', n=6)
+        for x in (-half + 0.11, half - 0.11):            # wall brackets behind the headers (seen from the side)
+            mb.box((x - 0.011, -0.050, z - 0.016), (x + 0.011, 0, z + 0.016), 'white_gloss', bev=0.002)
     for sx, head in ((1, True), (-1, False)):
         x = sx * (half + 0.035)
         mb.tube([(sx * (half - 0.02), yc, 0.045), (x, yc, 0.045)], 0.009, 'chrome', n=6)
@@ -138,11 +162,14 @@ def _steps(ctx):
         mb.prism(tri, (0.018, 0, 0), WHITE)                   # board down to the tread and to the corridor floor
     ctx.add(mb.finish(F + '.rake_trim'), F, 'trim')
     # paint split on the rake: white over the shell's grey above it (front walls), grey over its white below it
-    split, e = shell.split_z(F), XW + 0.0015
+    # 1 mm proud, tilting back to 0.2 mm along the vertical edge at riser A: a step there cast a dark hairline onto
+    # the wall in grazing downlight
+    split = shell.split_z(F)
     fin = shell.finish(F)
     for room, pts, spec in ((F, [(Y_B, zf + split), (Y_A, zf + split), (Y_A, za + split)], fin['upper']),
                             (R, [(Y_A, zr + split), (Y_A, za + split), (y_l, zr + split)], fin['lower'])):
-        ob = shell.faces_object(f'{room}.rake_paint', [([(e, y, z) for y, z in pts], (0, 8.1, 4.2), spec)])
+        cos = [(XW + (0.0002 if y == Y_A else 0.001), y, z) for y, z in pts]
+        ob = shell.faces_object(f'{room}.rake_paint', [(cos, (0, 8.1, 4.2), spec)])
         ctx.add(ob, room, 'trim')
 
     # carpet bullnose on each riser line (plush pile rolls over: v3 f_0075, f_0496-0501): 25 mm overhang, 45 mm
@@ -153,7 +180,8 @@ def _steps(ctx):
     for name, room, z, path in (                              # sweep d is LEFT of travel = over the lower floor
             ('nosing.b', F, zf, [(XW, Y_B), (0.15, Y_B)]),
             ('nosing.a', F, za, [(XW, Y_A), (0.15, Y_A)]),
-            ('nosing.ql', R, zr, [(0.35, 8.73), (0.15, 8.73), (0.15, 8.13 + 0.0475)])):   # L round the QL corner
+            ('nosing.ql', R, zr, [(0.54, 8.73), (0.15, 8.73), (0.15, 8.13 + 0.0475)])):   # L round the QL corner,
+            #                                                         to the foot of the chamfer (0.54, 8.73)
         mb = mo.MB()
         mb.sweep(nose, [(x, y, z) for x, y in path], 'carpet_silver_beige')
         ctx.add(mb.finish(f'{room}.{name}'), room, 'fit')
@@ -167,16 +195,18 @@ def build(ctx):
 
     # ---- lights: six recessed downlights, one circuit ("the hallway") --------------------------------------
     for i, (room, x, y) in enumerate(((F, 0.17, 5.50), (F, -0.25, 6.60), (F, -0.25, 7.50),
-                                      (R, -0.20, 8.70), (R, -0.20, 9.75), (R, -0.20, 10.75)), 1):
+                                      (R, -0.15, 8.72), (R, -0.09, 9.75), (R, -0.09, 10.75)), 1):
         lighting.downlight(ctx, room, x, y, watts=55, name=f'{room}.downlight.{i}')
         trim = P.place(P.downlight(name=f'{room}.downlight_trim.{i}'), (x, y, ctx.ceil_z(room, x, y)))
         ctx.add(trim, room, 'light')
 
     # ---- switch plates (spec 8.2): three of them work the landing downlights -----------------------------
-    for name, room, loc, nrm in ((R + '.switch.bay', R, (0.40, 11.95, zr + 1.25), EAST),
-                                 # 0.10 north of the chamfer (v6 f_0035, v4 f_0300), not y 9.40: the spec kept
-                                 # its world y when the reconcile moved the chamfer 0.24 south
-                                 (R + '.switch.stair', R, (0.25, 8.93, zr + 1.25), EAST)):
+    # both on the corridor / bay east wall x 0.47 (RECONCILE3 dims_1-02).  S-bay about 0.39 south of the blue-door
+    # wall (3.5-4 plate widths from the corner in v4 f_0297-0298).  S-stair: plate edge 75 mm from the chamfer arris
+    # (y 8.80; v6 f_0034), centre 1.30 above F1r, level with the thermostat (v6 t29: 0.33 above the dado top by the
+    # 86 mm plate, v4 f_0300)
+    for name, room, loc, nrm in ((R + '.switch.bay', R, (XE, 12.00, zr + 1.25), EAST),
+                                 (R + '.switch.stair', R, (XE, 8.92, zr + 1.30), EAST)):
         sw = put(P.switch_plate(1, name=name), loc, nrm, room, lm='dynamic')
         IX.tag(sw, 'light', rooms=LANDING, label='Landing lights')
     # south wall of the front landing, between the green door and the bathroom door (v4 f_0265-0271, f_0306):
@@ -193,9 +223,15 @@ def build(ctx):
     # ---- sockets, thermostat, ceiling plate, smoke alarm ------------------------------------------------------
     put(P.socket(2, name=R + '.socket.pier'), (XPIER, 9.60, zr + 0.28), WEST, R)
     put(P.socket(2, name=F + '.socket'), (0.75, 4.95, zf + 0.28), NORTH, F)
-    put(_thermostat(R + '.thermostat'), (0.25, 9.72, zr + 1.45), EAST, R)
-    blank = P.switch_plate(1, 'blank', name=R + '.ceiling_plate')            # "got an empty socket here"
-    blank.location, blank.rotation_euler = (-0.20, 9.30, ctx.ceil_z(R)), (math.pi / 2, 0, 0)
+    # thermostat centre 1.35, not the spec's 1.45: 0.35-0.38 above the dado top by its own 0.12 height (v6 t29,
+    # v4 t299), about level with S-stair
+    # y 9.55: mean of four cross-ratio readings along the east wall (S-stair 8.92, yellow architrave edge 10.069):
+    # v6 t28 9.47 / 9.62, v6 t29 9.46, v4 f_0183 9.63
+    put(_thermostat(R + '.thermostat'), (XE, 9.55, zr + 1.35), EAST, R)
+    # "got an empty socket here": 1-gang blank, screws along the wall, about 0.2 off the pier over the middle of W3
+    # (v3 t69, v4 t293)
+    blank = P.switch_plate(1, 'blank', name=R + '.ceiling_plate')
+    blank.location, blank.rotation_euler = (-0.35, 9.20, ctx.ceil_z(R)), (math.pi / 2, 0, math.pi / 2)
     ctx.add(blank, R, 'fit')
     alarm = P.lathe([(0, -0.036), (0.040, -0.036), (0.054, -0.030), (0.060, -0.014), (0.060, 0), (0, 0)], 20,
                     'plastic_white', name=F + '.smoke_alarm')
@@ -203,14 +239,16 @@ def build(ctx):
     ctx.add(alarm, F, 'fit')
 
     # ---- radiator in the recess of the west wall, opposite the yellow-room door -----------------------------
-    put(_radiator(R + '.radiator'), (XW, 10.48, zr + 0.13), WEST, R, plan_sym='radiator')
+    # tubes y 10.05..11.15: lockshield tail 0.05 off the pier (v3 t50, f_0051), TRV 0.15 short of the arch face
+    # (v4 t293, v3 f_0142)
+    put(_radiator(R + '.radiator'), (XW, 10.60, zr + 0.13), WEST, R, plan_sym='radiator')
 
     # ---- paintings (west wall; P4 over the quarter landing).  Outer sizes follow the rectified crops ---------
     for key, room, loc, nrm, w, h, style, kw in (
             ('w1', F, (XW, 5.50, zf + 1.60), WEST, 0.50, 0.60, 'dark_gold_slip', dict(frame_w=0.046)),
             ('w2', F, (XW, 6.95, zf + 1.60), WEST, 0.55, 0.70, 'gilt_bead', dict(frame_w=0.055)),
             ('w3', R, (XPIER, 9.25, zr + 1.70), WEST, 0.93, 0.72, 'black', dict(frame_w=0.045, depth=0.03, slip=('gold_antique', 0.040))),
-            ('w4', R, (XW, 10.48, zr + 1.62), WEST, 0.72, 0.56, 'gilt_bead', dict(frame_w=0.055)),
+            ('w4', R, (XW, 10.65, zr + 1.62), WEST, 0.72, 0.56, 'gilt_bead', dict(frame_w=0.055)),   # v3 f_0051, t140.5, v4 287, t293
             ('w5', R, (XW, 11.95, zr + 1.55), WEST, 0.72, 0.56, 'bronze_gold', dict(frame_w=0.063)),
             ('p4', Q, (0.99, 8.43, zq + 1.75), EAST, 0.50, 0.41, 'gilt_swept',       # ornate antique gold
              dict(frame_w=0.06, mount=0.0485, mount_mat='#F2F0EA', glass=True))):

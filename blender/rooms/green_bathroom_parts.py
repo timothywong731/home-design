@@ -10,6 +10,7 @@ from mathutils import Matrix, Vector
 from lib import materials as M, mouldings as mo, props as P
 
 L, W = 0.775, 0.36           # bath half length / half width
+WASTE_X = -0.10              # bath-local x of the centre waste and the overflow
 
 
 # ----------------------------------------------------------------------------- helpers
@@ -76,10 +77,17 @@ def slipper_bath(name):
         (r(-.008), .752, .754, .340), (r(-.035), .742, .744, .330), (r(-.08), .728, .715, .318),
         (.42, .705, .60, .300), (.28, .68, .44, .250), (.21, .64, .33, .200))]
     ob = loft(name, rings, 'ceramic_white', sharp=60)
-    mb = mo.MB()                                                       # chrome waste on the floor at the tap end
-    mb.at(Matrix.Translation((-.50, 0, .2105)))
-    mb.lathe([(0, 0), (.034, 0), (.034, .0015), (.032, .004), (0, .004)], 'chrome', 20)
+    # brass centre waste, overflow on the east (local -Y) inner wall above it and the bead chain between them
+    # (v4 f_0106: overflow about mid-length on the far inner wall; v4 f_0118: brass rose with its chain)
+    mb = mo.MB()
+    br = 'gold_champagne'
+    mb.at(Matrix.Translation((WASTE_X, 0, .2105)))
+    mb.lathe([(0, 0), (.034, 0), (.034, .0015), (.032, .004), (0, .004)], br, 20)
+    mb.at(Matrix.Translation((WASTE_X, -.304, .462)) @ Matrix.Rotation(math.radians(-80), 4, 'X'))
+    mb.lathe([(0, -.004), (.024, -.004), (.024, .001), (.020, .005), (0, .006)], br, 20)
     mb.at()
+    mb.tube([(WASTE_X, -.300, .440), (WASTE_X, -.297, .42), (WASTE_X, -.246, .282), (WASTE_X, -.186, .2155),
+             (WASTE_X, -.035, .2135)], .0016, br, n=6)
     waste = mb.finish(name + '.waste')
     waste.parent = ob
     return ob
@@ -182,39 +190,45 @@ def _pot(mb, dia, h, mat, ribs=0):
 
 
 def fern(name, seed=0):
-    """Bird's-nest fern in a brown clay pot dia 0.14 (B5): eight long wavy fronds arching out of a funnel. Origin: base centre."""
+    """Bird's-nest fern (Asplenium) in a brown clay pot dia 0.14 (B5, v4 f_0150 / f_0152): eleven broad undivided
+    fronds with crinkled margins and a dark midrib, a few upright in the middle, the rest arching out and drooping at
+    the tips. Origin: base centre."""
     import random
     rnd = random.Random(seed)
     mb = mo.MB()
-    _pot(mb, .14, .13, M.solid('gbath_clay', '#6E4A34', .85))
-    green = P.two_sided(M.solid('gbath_fern', '#5A7D36', .45))
-    for k in range(8):                                   # few long wavy fronds: steep stalks arching outward (v4 f_0150)
-        inner = k < 2
-        mb.at(Matrix.Translation((0, 0, .11)) @ Matrix.Rotation(math.radians(360 * k / 8 * 3 + rnd.uniform(-12, 12)), 4, 'Z'))
-        _frond(mb, green, rnd.uniform(.28, .32) if inner else rnd.uniform(.30, .37), rnd.uniform(.06, .075),
-               rnd.uniform(84, 88) if inner else rnd.uniform(76, 84), 28 if inner else rnd.uniform(-5, 20))
+    _pot(mb, .14, .13, M.solid('gbath_clay', '#7A4E36', .85))
+    green = P.two_sided(M.solid('gbath_fern', '#5A7E37', .55))
+    rib = P.two_sided(M.solid('gbath_fern_rib', '#3B5524', .6))
+    for k in range(12):
+        az = 360 * k / 12 * 5 + rnd.uniform(-12, 12)
+        inner = k < 4 or -sin(math.radians(az)) < -.45            # fronds toward the wall (local -X) stand up
+        mb.at(Matrix.Translation((0, 0, .115)) @ Matrix.Rotation(math.radians(az), 4, 'Z'))
+        if inner:
+            _frond(mb, green, rib, rnd.uniform(.23, .29), rnd.uniform(.08, .095), rnd.uniform(66, 78), rnd.uniform(15, 35))
+        else:
+            _frond(mb, green, rib, rnd.uniform(.28, .35), rnd.uniform(.09, .11), rnd.uniform(38, 52), rnd.uniform(-45, -20))
     mb.at()
-    return mb.finish(name, sharp_deg=60)
+    return mb.finish(name, sharp_deg=70)
 
 
-def _frond(mb, mat, ln, wd, a0, a1, n=12):
-    """Strap frond from the origin along local +Y: elevation a0 deg at the base bending to a1 at the tip, round
-    blunt tip, cupped section with a wavy margin."""
+def _frond(mb, mat, rib, ln, wd, a0, a1, n=12):
+    """Strap frond from the origin along local +Y: elevation a0 deg at the base bending to a1 at the tip; short stalk,
+    widest past the middle, blunt tip; cupped section with a crinkled (wavy) margin and a narrow darker midrib."""
     c, rows = Vector((0, 0, 0)), []
+    xs = ((-1, .32), (-.5, .08), (-.07, -.02), (.07, -.02), (.5, .08), (1, .32))
     for i in range(n + 1):
         t = i / n
-        a = math.radians(a0 + (a1 - a0) * t)
+        a = math.radians(a0 + (a1 - a0) * t ** 1.3)
         d, nrm = Vector((0, cos(a), sin(a))), Vector((0, -sin(a), cos(a)))
-        w = .5 * wd * max(.10, sin(pi * t ** 1.4) ** .6)            # narrow stalk, widest at 0.6 of the length
-        wave = .007 * sin(t * ln / .03 * 2 * pi)
-        rows.append(mb._vs([c + Vector((x * w, 0, 0)) + nrm * (h * w + (wave if abs(x) == 1 else 0))
-                            for x, h in ((-1, .35), (-.5, .1), (0, -.03), (.5, .1), (1, .35))]))
+        w = .5 * wd * max(.08, sin(pi * min(1.0, t ** 1.25 * 1.02)) ** .55)
+        wave = .015 * sin(t * ln / .022 * 2 * pi) * min(1.0, 3 * t)
+        rows.append(mb._vs([c + Vector((x * w, 0, 0)) + nrm * (h * w + wave * abs(x) ** 2) for x, h in xs]))
         c = c + d * (ln / n)
-    mi = mb.mi(mat)
+    mg, mr = mb.mi(mat), mb.mi(rib)
     for i in range(n):
-        for j in range(4):
-            mb._f([rows[i][j], rows[i][j + 1], rows[i + 1][j + 1], rows[i + 1][j]], mi,
-                  [(j / 4, i / n), ((j + 1) / 4, i / n), ((j + 1) / 4, (i + 1) / n), (j / 4, (i + 1) / n)])
+        for j in range(5):
+            mb._f([rows[i][j], rows[i][j + 1], rows[i + 1][j + 1], rows[i + 1][j]], mr if j == 2 else mg,
+                  [(j / 5, i / n), ((j + 1) / 5, i / n), ((j + 1) / 5, (i + 1) / n), (j / 5, (i + 1) / n)])
 
 
 def peace_lily(name, seed=3):
@@ -260,17 +274,145 @@ def roll_holder(name):
 
 
 def brush_holder(name):
-    """Wall-mounted brushed-brass toilet-brush tube (0.42 tall) with its brass handle. Wall prop, origin back
-    centre at the bottom of the tube."""
+    """Wall-mounted toilet brush (v4 f_0108 / f_0162): brushed-brass rosette and ring at z 0.20 holding a dark bronze
+    cup z 0.06..0.20, brass handle with a knob to z 0.44, standing in the cup. Wall prop: origin on the wall at FLOOR
+    level (the cup is 0.06 clear of the floor)."""
     br = 'gold_champagne'
     mb = mo.MB()
-    mb.box((-.025, -.008, .30), (.025, 0, .36), br, bev=.002)
-    mb.box((-.008, -.045, .32), (.008, -.008, .34), br)
-    mb.at(Matrix.Translation((0, -.06, 0)))
-    mb.lathe([(0, 0), (.042, 0), (.044, .004), (.044, .30), (.040, .30), (.040, .01), (0, .01)], br, 20)
-    mb.lathe([(0, .29), (.012, .29), (.012, .42), (.016, .425), (.016, .44), (0, .445)], br, 12)
+    mb.at(Matrix.Translation((0, 0, .20)) @ Matrix.Rotation(math.radians(90), 4, 'X'))      # rosette on the wall
+    mb.lathe([(0, 0), (.022, 0), (.022, .004), (.018, .008), (0, .009)], br, 20)
+    mb.at()
+    mb.box((-.004, -.022, .196), (.004, -.007, .204), br)                                     # arm to the ring
+    mb.tube([(.042 * cos(2 * pi * k / 20), -.064 + .042 * sin(2 * pi * k / 20), .20) for k in range(20)],
+            .0035, br, n=6, closed=True, up=(0, 0, 1))
+    mb.at(Matrix.Translation((0, -.064, .06)))
+    mb.lathe([(0, 0), (.030, 0), (.036, .010), (.0385, .03), (.0385, .142), (.0355, .142), (.0355, .012), (0, .012)],
+             'bronze_dark', 20)                                                                # cup
+    mb.lathe([(0, .03), (.006, .03), (.006, .36), (.010, .365), (.011, .376), (.007, .384), (0, .385)], br, 12)  # handle
     mb.at()
     return mb.finish(name, sharp_deg=40)
+
+
+def wall_dish(name, kind='dish'):
+    """Brushed-brass wall holder by a basin (v4 f_0150): round rosette, short arm and a ring 0.09 across carrying a
+    shallow brass soap dish (kind 'dish') or a clear glass tumbler ('tumbler'). Wall prop: origin on the wall at the
+    ring height."""
+    br = 'gold_champagne'
+    mb = mo.MB()
+    mb.at(Matrix.Rotation(math.radians(90), 4, 'X'))
+    mb.lathe([(0, 0), (.020, 0), (.020, .004), (.016, .008), (0, .009)], br, 20)
+    mb.at()
+    mb.box((-.004, -.040, -.004), (.004, -.007, .004), br)
+    cy = -.085
+    mb.tube([(.045 * cos(2 * pi * k / 24), cy + .045 * sin(2 * pi * k / 24), 0) for k in range(24)],
+            .004, br, n=6, closed=True, up=(0, 0, 1))
+    mb.at(Matrix.Translation((0, cy, 0)))
+    if kind == 'dish':
+        mb.lathe([(0, -.014), (.030, -.014), (.044, -.002), (.047, .003), (.043, .003), (.028, -.010), (0, -.010)], br, 24)
+    else:
+        mb.lathe([(0, -.030), (.032, -.030), (.037, .072), (.0345, .072), (.0295, -.026), (0, -.026)], 'glass_clear', 20)
+    mb.at()
+    return mb.finish(name, sharp_deg=40)
+
+
+def claw_foot(name, mat):
+    """Ball-and-claw foot of the slipper bath (v4 f_0106 / f_0112): ball dia 0.052 gripped by three claws, a swelling
+    S-leg rising 0.21 and leaning back into the tub's belly, an acanthus leaf on its knee. Local frame: origin on the
+    floor under the leg, the claw points +X (outward)."""
+    mb = mo.MB()
+    bx, br_ = .016, .026
+    mb.at(Matrix.Translation((bx, 0, 0)))
+    mb.lathe([(0, 0)] + [(br_ * sin(pi * k / 10), br_ * (1 - cos(pi * k / 10))) for k in range(1, 10)] + [(0, 2 * br_)],
+             mat, 16)
+    mb.at()
+    for a in (0, 75, -75):                                                     # claws over the ball, knuckled
+        c, s_ = cos(math.radians(a)), sin(math.radians(a))
+        pts = []
+        for el in (78, 55, 30, 5, -22):
+            e = math.radians(el)
+            r = br_ + .006 + (.004 if el == 30 else 0)
+            pts.append((bx + r * cos(e) * c, r * cos(e) * s_, br_ + r * sin(e)))
+        mb.tube(pts, .0075, mat, n=7)
+    mi = mb.mi(mat)                                                            # swelling S-leg: horizontal rings
+    spine = [(.012, .050, .018), (.022, .075, .021), (.030, .105, .025), (.028, .135, .027), (.012, .165, .030),
+             (-.008, .190, .034), (-.022, .212, .038)]
+    n = 12
+    rings = [mb._vs([(x + r * cos(2 * pi * k / n), r * .85 * sin(2 * pi * k / n), z) for k in range(n)])
+             for x, z, r in spine]
+    for i in range(len(rings) - 1):
+        for k in range(n):
+            mb._f([rings[i][k], rings[i][(k + 1) % n], rings[i + 1][(k + 1) % n], rings[i + 1][k]], mi,
+                  [(k / n, i * .03), ((k + 1) / n, i * .03), ((k + 1) / n, (i + 1) * .03), (k / n, (i + 1) * .03)])
+    mb._f(rings[-1], mi)
+    mb._f(rings[0][::-1], mi)
+    al = math.radians(18)                                                      # leaf on the knee, tip down and out
+    R = Matrix(((0, sin(al), cos(al), 0), (-1, 0, 0, 0), (0, -cos(al), sin(al), 0), (0, 0, 0, 1)))
+    mb.at(Matrix.Translation((.030, 0, .185)) @ R)
+    mb.leaf(.095, .062, .012, mat, segs=6, serrate=.3, curl=-.6, round_=.8)
+    mb.at()
+    return mb.finish(name, sharp_deg=50)
+
+
+def dough_bowl(name, length=.44, width=.094, h=.066):
+    """Long pale wooden 'dough bowl' trough for the duct niches (v4 f_0162): oval with raised ends, flaring sides, a
+    hollow 12 mm in from the rim. Local frame: origin at the centre of the base, length along Y."""
+    a, b = length / 2, width / 2
+    rim = lambda x: h + .024 * (abs(x) / a) ** 4
+    rings = [_sring(0, a * .86, a * .86, b * .74, e=2.4, n=32), _sring(h * .45, a * .96, a * .96, b * .94, e=2.4, n=32),
+             _sring(rim, a, a, b, e=2.4, n=32),
+             _sring(lambda x: rim(x * a / (a - .012)) - .002, a - .012, a - .012, b - .010, e=2.4, n=32),
+             _sring(h * .40, a * .88, a * .88, b * .66, e=2.4, n=32), _sring(.014, a * .78, a * .78, b * .5, e=2.4, n=32)]
+    ob = loft(name, rings, M.solid('gbath_bowl_wood', '#9E8A6E', .75), sharp=70)    # weathered, greyed
+    ob.data.transform(Matrix.Rotation(math.radians(90), 4, 'Z'))
+    return ob
+
+
+def moss_mounds(name, centres, seed=5):
+    """Clumps of preserved bun moss / boxwood (v4 f_0162 top niche): bumpy spheroids, flattened underneath, matt
+    dark green. centres = [(x, y, z, r)] in the object frame (z = bottom of the clump)."""
+    import bmesh
+    import random
+    rnd = random.Random(seed)
+    bm = bmesh.new()
+    for cx, cy, cz, r in centres:
+        g = bmesh.ops.create_icosphere(bm, subdivisions=3, radius=1.0)
+        waves = [(Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized(), rnd.uniform(4, 7),
+                  rnd.uniform(0, 2 * pi)) for _ in range(4)]                   # low-frequency lumps, then fine fuzz
+        for v in g['verts']:
+            d = v.co.normalized()
+            k = r * (1 + sum(.05 * cos(f * d.dot(u) + ph) for u, f, ph in waves) + rnd.uniform(-.025, .025))
+            z = d.z * k * (1.0 if d.z > 0 else .55)
+            v.co = Vector((cx + d.x * k * .78, cy + d.y * k, cz + r * .55 + z))     # x = niche depth: narrower
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    me.polygons.foreach_set('use_smooth', [True] * len(me.polygons))
+    me.uv_layers.new(name='UVMap')
+    me.materials.append(M.solid('gbath_moss', '#3A4E2C', .95))
+    return bpy.data.objects.new(name, me)
+
+
+def succulents(name, spots, seed=7):
+    """Small echeveria / sedum rosettes for the middle niche (v4 f_0162): three rings of fleshy pointed leaves round
+    a tight centre, grey-green, green and red-tinged. spots = [(x, y, z, dia)] (z = soil level). One object."""
+    import random
+    rnd = random.Random(seed)
+    mb = mo.MB()
+    cols = (M.solid('gbath_succ_grey', '#93A68C', .55), M.solid('gbath_succ_green', '#6C8C4C', .55),
+            M.solid('gbath_succ_red', '#8E6258', .55), M.solid('gbath_succ_blue', '#7F9C98', .55))
+    for k, (x, y, z, dia) in enumerate(spots):
+        mat = cols[(k * 3) % 4]
+        for ring, (nl, ln, el) in enumerate(((9, dia * .55, 46), (7, dia * .44, 63), (5, dia * .30, 79))):
+            off = rnd.uniform(0, 360)
+            for i in range(nl):
+                az = off + 360 * i / nl
+                mb.at(Matrix.Translation((x, y, z + .004 * ring)) @ Matrix.Rotation(math.radians(az), 4, 'Z')
+                      @ Matrix.Rotation(math.radians(el), 4, 'X'))
+                mb.leaf(ln, ln * .50, ln * .30, mat, segs=4, round_=1.0, curl=.8)
+        mb.at(Matrix.Translation((x, y, z)))
+        mb.dome(dia * .12, dia * .12, dia * .16, mat, segs=6, rings=2)
+    mb.at()
+    return mb.finish(name, sharp_deg=60)
 
 
 def fan(name):

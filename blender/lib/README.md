@@ -209,7 +209,7 @@ The module imports without Blender (tests, tools): `opening_frame` then returns 
 | `h.tag_room(room)`, `h.level(room)`, `h.rooms_on(level)`, `h.kind(room)`, `h.is_exterior(room)`, `h.module_of(room)` | building room -> `'shed'`; `'B'|'G'|'1'|'2'|'X'`; ids in file order; `'room'|'stairwell'|'void'|'exterior'|'site'` (KeyError for unknown ids) |
 | `h.room_poly(room, rect=False)`, `h.room_at(x, y, level=None)` | polygon; `rect=True` squares polygon-edge chamfers through `c` |
 | `h.chamfers(room)` | `[dict(id, p, q, c, v, z, stop, reflex)]`: polygon-edge chamfers, then bay arris splays |
-| `h.floor_z(room, x=None, y=None)`, `h.ceil_z(room, x=None, y=None)` | without x, y: floorZ / highest ceiling; with: steps, floor_step / zones, planes, roof underside |
+| `h.floor_z(room, x=None, y=None)`, `h.ceil_z(room, x=None, y=None)` | without x, y: floorZ / highest ceiling; with: steps, floor_step / min of ceilingZ, zones, planes, `ceiling_haunch` slopes (vestibule: 2.62 at the door head to 2.85 at y 0.62); `under_roof`: the lining min(ceilingZ, roof_z + `ceiling.offset`, `ceiling.planes`) (roof underside without an offset): eaves_front 1.00 at the knee-wall back, tunnel strip 8.19; eaves_rear roof - 0.31 |
 | `h.roof_z(x, y, ground=False)`, `h.roof_plane(x, y)`, `h.roof_under(x, y)`, `h.roof_slab_t(plane)` | upper envelope of the roof planes; 0.30 pitched, 0.24 flat |
 | `h.exterior_openings(level=None)`, `h.facade_of(oid)`, `h.opening_frame(oid)` | frame keys as phase 1 plus `z0`, `level`, `exterior`, `outward`, `face_out`, `ext_reveal`, `outside_room` |
 | `h.col(name)`, `h.add(obj, room, kind, plan_sym=None, lm=None)` | collection; tags `room` (after `tag_room`), `level`, `kind`, `lm` |
@@ -245,9 +245,14 @@ gives them only tread and riser faces. `stair_basement` is solid (`shell.SOLID_F
 
 **Already built — do not build again**
 - Openings: rectangular holes `width` x (`sill`..`top`), filled by joinery (frames, linings, leaves,
-  glass, architraves, sills). Door leaves stand at the `openAngle` of house.json.
-- Hall arch (infill, springing 2.40, crown 2.75; corbels by mouldings). Vestibule piers, vault
-  haunches and the mass above; imposts and archivolt by mouldings.
+  glass, architraves, sills). Door leaves stand at the `openAngle` of house.json. **[round 3]** An exterior window
+  whose room-side reveal is narrower or higher than its frame (opening `inner: {width, sill}`, else `shell.INNER`:
+  `w_utility` 0.56 / board 1.05, `w_wc` duct ledge 1.20) is cut in two depths: frame size from the outer face to 5 mm
+  behind the frame, `inner` size from there to the room face, so the frame runs on behind the plaster.
+- Hall arch (infill; springing / crown of the `arch` feature, round 3: semicircle 2.08 / 2.55; corbels by mouldings).
+  Vestibule piers, vault and the mass above; the front-recess ceiling slope `vest_ceiling_slope` (a `ceiling_haunch`
+  along the street wall, 2.62 -> 2.85); imposts and archivolt by mouldings. Vestibule tiles registered to the porch
+  survey (`FLOOR_ORIGIN`: blue squares centred x -0.095 + 0.33 k, y 0.155 + 0.331 k).
 - `reveal` features cut back into the wall: `kitchen_backdoor_reveal`; `dining_n_screen` (the whole
   dining N wall is recessed 0.22 up to 2.38 and lined with the dark timber screen by joinery).
 - `kitchen_nook` recess with its soffit at 2.03; WC and utility bulkheads; WC cistern duct (tiled,
@@ -267,7 +272,12 @@ gives them only tread and riser faces. `stair_basement` is solid (`shell.SOLID_F
   the filmed concave lamb's-tongue.)
 - Arches: `a_hall` is three-centred when its feature has `haunch` (radius of the two haunch circles, rising vertically
   off the springing; the crown circle touches both), else one segmental arc.
-- A door between two rooms with the same floor finish gets that floor through its opening (no white sill liner).
+- Inner doors (both rooms in the house): each half of the hole's bottom carries its own room's floor up to the
+  threshold bar on the door line (round 3; was white paint where the finishes differ, e.g. the hall half of
+  `d_kitchen`). A half whose bottom is not at its room's floor (the loft side of `d_loft`, the stair side of
+  `d_basement`) stays a white liner.
+- `stair_basement` (solid): the mass under its square treads emits no faces on the riser planes (lib.stairs' risers
+  own them; coplanar pairs rendered black).
 - Ceiling zones are matched with `poly_contains` (as `ctx.ceil_z`), so a cell centred on a zone's diagonal edge
   (stairs `stair_foot`) takes the zone.
 
@@ -285,7 +295,7 @@ height where `lower` changes to `upper` (hidden behind the rail) or None.
 Ground floor (every other room: read `shell.FINISHES`; unknown rooms get `DEFAULT_FINISH`):
 | room | walls | ceiling |
 |---|---|---|
-| vestibule, hallway | `#F2F0EA` over `#C8C5BB` below the dado (rail top 0.965; lightened from the specs' `#B9B5A8` to match f_0770 / f_0548) | `#F4F3EE` |
+| vestibule, hallway | `#F2F0EA` over `shell.HALL_LOWER` `#C0B9AD` below the dado (rail top 0.965; round 3: one greige with both landings, = `M.PAINT['hall_dado_grey']`) | `#F4F3EE` |
 | stairs | `#F2F0EA` | `#F4F3EE` |
 | living | `#EADFD9` blush pink; W (TV) wall x = 0.80 `#A27365` terracotta (both eased from living.md toward the frame samples) | `#F6F4EF` |
 | kitchen | `#F1EFE9` | `#F5F4F0` |
@@ -293,9 +303,10 @@ Ground floor (every other room: read `shell.FINISHES`; unknown rooms get `DEFAUL
 | wc | `#A5A5A8` over `marble_metro` to 1.20 on all walls and the duct | `#F6F5F2` |
 | dining | `#DFD8CB` over `wallcovering_aubergine` below the dado (rail top 1.05) | `#F3F1EB` |
 
-Floors: `oak_floor` (hall, stairs, living, dining; boards along Y), `wood_tile_floor` (kitchen,
-utility, wc; planks along Y), `victorian_tile` (vestibule, blue square registered on (-0.045, 0.025)
-via `shell.FLOOR_ORIGIN`). Skirting, dado and cornice **profiles** live in `mouldings.TRIM`.
+Floors: `oak_floor` (hall, stairs, living, dining; 0.245 boards along Y; the hall registered by `shell.FLOOR_ORIGIN`
+to joints at x -0.52 + 0.245 k, on into the corridor and the stair foot), `wood_tile_floor` (kitchen, utility, wc; 0.245 planks along
+Y), `victorian_tile` (vestibule, blue square registered via `shell.FLOOR_ORIGIN`). Skirting, dado and cornice
+**profiles** live in `mouldings.TRIM`.
 
 **Helpers**
 ```python
@@ -327,6 +338,12 @@ shell.poly_rects(poly) -> [(x0, x1, y0, y1), ...]       # rectilinear polygon ->
 
 **Known simplifications**
 - `ponytail:` valleys inside the eaves are approximate (one roof plane per grid cell, taken at the cell centre).
+- Eaves walls (`under_roof`) stop at the roof surface + `ceiling.offset` where that lining is higher than the slab
+  underside (eaves_front -0.17: 1.00 at the knee-wall back, as measured), else at the slab underside (no gap under
+  the envelope's slab). Inside the bay-gable tunnel the knee-wall back rises to the gable linings (to the 8.19 strip);
+  the footage shows it stopping at 1.28 with the top of the main roof slope rising behind it as a ramp: not modelled.
+- The vestibule's front-recess ceiling has no soft crease (r 0.05) and no east cove (r 0.12 over the cheek lights):
+  a cove there would run into the door frame and the cheek-light architrave.
 - The squared-off corners behind the living-room chamfer and the stair-foot diagonal overlap inside the poche; both
   prisms hide it, and `wall_runs` substitutes the diagonal whatever the grid does between `p` and `q`.
 - Soffits at winders are faceted, with a small vertical step at the newel.
@@ -466,8 +483,8 @@ the mesh and its material slots are final (it works on the base mesh, not on mod
 **Textured keys** (size = metres per repeat; colour = spec hex the texture mean was matched to):
 | key | size_m | maps | colour | rough | notes |
 |---|---|---|---|---|---|
-| `oak_floor` | 2.2 x 4.4 | 2048² col+nrm+orm | #AF9F66 | 0.38 | golden straw engineered oak (renders ≈ `#B1A47C` like f_0064), straight grain + cathedral figure, boards 220 mm, 1.2–2.2 m, micro-bevel, board-to-board tone steps, ~1 brown knot per board |
-| `wood_tile_floor` | 1.221 x 3.61 | 1024x2048 col+nrm+orm | #807A62 | 0.45 | weathered grey-brown porcelain planks 200x1200, soft low-contrast weathering, plank-to-plank tone steps, 3.5 mm grout #CFCABB (kitchen/utility/WC) |
+| `oak_floor` | 2.45 x 4.4 | 2048² col+nrm+orm | #AF9F66 | 0.38 | golden straw engineered oak (renders ≈ `#B1A47C` like f_0064), straight grain + cathedral figure, boards 245 mm (round 3, dims_G: 0.243 +/- 0.006), a joint on U = 0, 1.2–2.2 m, micro-bevel, board-to-board tone steps, ~1 brown knot per board |
+| `wood_tile_floor` | 1.47 x 3.61 | 1024x2048 col+nrm+orm | #807A62 | 0.45 | weathered grey-brown porcelain planks 245x1200 (round 3, kitchen t765), soft low-contrast weathering, plank-to-plank tone steps, 3.5 mm grout #CFCABB (kitchen/utility/WC). `_dark` (#695F4F, basement: round 3 about 14 % darker than #7B6F5C, between v6 f_0194 and the stair in hr_263) and `_grey` share its normal / ORM maps and size |
 | `victorian_tile` | 0.33 x 0.33 | 1024² col+nrm+orm | 4 colours | 0.45 | vestibule floor, from the spec's cell table |
 | `metro_grey` | 0.909 x 0.618 | 1024² col+nrm+orm | #C4C2BD | 0.12 | 300x100 half-bond, 3 mm white grout (kitchen) |
 | `marble_metro` | 0.9075 x 0.615 | 1024² col+nrm+orm | #EFEDE8 | 0.12 | 300x100 half-bond Carrara print (soft grey veins #A3A3A0 on about every other tile), grout #C9C7C0 (utility/WC) |
@@ -537,16 +554,17 @@ reference pixels), 512 or 1024 px. Texture payload now 19 MB of the 90 MB budget
 | `porcelain_grey` | same | 1.81 x 0.91 | 300 x 600, long side along U, third bond (bathroom2) |
 | `porcelain_pale` | same | 1.21 x 2.41 | 400 x 800, long side along V (green bathroom; also the en-suite) |
 | `steel_chequer_plate` | same | 0.4 | five-bar tread plate, black paint (balcony deck) |
-| `wood_effect_porcelain_plank_dark` | `wood_tile_floor_dark` | 1.22 x 3.61 | the ground-floor plank recoloured #7B6F5C (basement) |
+| `wood_effect_porcelain_plank_dark` | `wood_tile_floor_dark` | 1.47 x 3.61 | the ground-floor plank recoloured #695F4F (basement; round 3, was #7B6F5C) |
 | `marble_metro` | same (existing) | | 300 x 100 |
 | `metro_carrara_100x400` | same | 0.80 x 0.61 | 400 x 100 half bond, with nrm + orm |
 | `porcelain_calacatta_slab` | same | 1.2 | bold gold-beige #B9A06A bands and patches, grey #9C9A93 veins, 2 mm joint on the repeat edge, rough 0.06 |
-| `wood_tile_floor_grey` | same | 1.22 x 3.61 | the ground-floor plank recoloured dark grey #6B6A66 (shed workshop floor) |
+| `wood_tile_floor_grey` | same | 1.47 x 3.61 | the ground-floor plank recoloured dark grey #6B6A66 (shed workshop floor) |
 | `asphalt`, `grass`, `soil_lavender` | same | 2.0, 2.0, 1.5 | |
 | `concrete_setts_grey_buff` | same | 1.97 | tumbled 160 mm setts, three tones |
 | `concrete_flags`, `concrete_or_flags` | `concrete_flags` | 1.82 x 1.22 | 900 x 600 flags |
+| `concrete_insitu` | `site_tex` `site_concrete` (`M.SITE`) | 2.0 | in-situ concrete #A6A8A0, mottled, cast-in patches, faint algae; the `side_alley` zone uses the laid-once `site_alley_concrete` |
 | `sandstone_flags_grey` | same | 1.84 x 1.85 | riven 600 x 450 |
-| `clay_block_paving_red_herringbone` | same | 0.8 | 200 x 100 pavers, 90-degree herringbone |
+| `clay_block_paving_red_herringbone` | same | 0.8 | 200 x 100 pavers, 90-degree herringbone (the site turns it 45 degrees: `site.DIAG`) |
 | `composite_deck_dark_brown`, `timber_box_dark` | same | 1.17 x 1.6, 0.96 x 1.6 | boards along V |
 | `buff_brick`, `stock_brick_yellow`, `stock_brick_grey`, `red_brick` | same | 1.8 x 1.2 | stretcher bond, 75 mm courses along U; one shared normal map |
 | `closeboard_brown`, `closeboard_grey_painted`, `ledged_braced_grey` | same | 1.2 x 1.6, 0.76 | boards along V (vertical on a fence under `uv_box`) |
@@ -908,7 +926,8 @@ mo.tri_count(objects) -> int
   `sk_hall`/`sk_kitchen` 170x20, `sk_living`, `sk_utility` 170x18, `sk_dining` 150x22 (dark);
   dado `dado_hall` 70x30 torus rail (top 0.965), `dado_dining` 55x22 reeded (top 1.05); cornices
   `cornice_hall` 220x200 modillion, `cornice_living` 150x130, `cornice_kitchen` 110 cove,
-  `cornice_utility`/`cornice_wc` 80x80 + ceiling band, `cornice_dining` 150x130 acanthus band;
+  `cornice_utility`/`cornice_wc` 80x80 + ceiling band, `cornice_dining` 120x90 acanthus band (lower edge 2.53),
+  `cornice_corridor` 100x110 (`cornice_hall` at half size, no modillions);
   architraves `arch_hall` 70, `arch_living` 100, `arch_kitchen` 80, `arch_utility` 72,
   `arch_hall_dining` 85, `arch_vest_window` 75, `arch_dark` 110 reeded, `arch_dark_window` 100;
   caps `dark_cap`, `ped_bed`, `ped_shelf`, `ped_cornice`, `ped_cap`; `impost_vest`, `archivolt`,
@@ -921,7 +940,7 @@ mo.tri_count(objects) -> int
   dia 0.75 (living: 8 + 16 lobed leaves with midrib and spine, leaf relief 46 / 28 mm), `'floral_dish'`
   dia 0.80 (dining: band of 36 broad touching leaves with bosses, bead ring, three three-tier blooms,
   relief ~45 mm). Installed centres: `mo.ROSE_AT` =
-  `{'living': (2.55, 2.86), 'dining': (1.225, 14.61)}` - hang the chandeliers there.
+  `{'living': (2.55, 2.86), 'dining': (1.255, 14.61)}` - hang the chandeliers there.
 - `mo.arch_corbel(mb, length, proj, height)` (hall arch: stepped cap, neck, cavetto sweeping back on
   three sides to a slender shaft with three pointed flutes per face, drop block),
   `mo.scroll_corbel(mb, w, h, proj)`
@@ -992,12 +1011,12 @@ mo.surround_of(o, room), mo.surround_reach(oid, sur, room), mo.architrave_key(oi
 #### `mo.TRIM` (values the shell's `FINISHES[room]['dado']` must equal)
 | rooms | skirting | dado `top` | cornice |
 |---|---|---|---|
-| vestibule | `sk_vest` | `dado_hall` 0.965 | - |
-| hallway | `sk_hall` | `dado_hall` 0.965 | `cornice_hall` twice: `rooms=('hallway','stairs')` at 2.95 (front hall, the diagonal, the bulkhead face x 0.15; not the stair flank, not the screen) and `zone='rear_hall'` at 2.84 (lobby west, rear corridor; not the arch wall) |
+| vestibule | `sk_vest` | `dado_hall` 0.965 | - (both rails stop on the cheek wall x 0.75 at y 0.072, 2 mm north of joinery's corner cover board, with returned ends: `skip` + `returns`) |
+| hallway | `sk_hall` | `dado_hall` 0.965 | `cornice_hall` (0.19 x 0.20, wall edge 2.76) twice: `rooms=('hallway','stairs')` at 2.95 (front hall, the diagonal, the bulkhead face x 0.15; not the stair flank, not the screen) `zone='rear_hall'` at 2.84 (lobby west; not the arch wall); `cornice_corridor` (= `cornice_hall`, modillions included) on `zone='rear_corridor'` at 2.70 (rear corridor, lower edge 2.51; not the arch wall) |
 | living | `sk_living` | - | `cornice_living` |
 | kitchen, utility | `only` boxes as phase 1 | - | `cornice_kitchen`, `cornice_utility` |
 | wc | - | - | `cornice_wc` |
-| dining | `sk_dining` dark | `dado_dining` 1.05 | `cornice_dining` (pelmet solid) |
+| dining | `sk_dining` dark, 0.18 | `dado_dining` 1.05 | `cornice_dining` (pelmet solid) |
 | landing1_front, landing1_rear | `sk_hall` | `dado_landing` **0.975** | `cove_70` |
 | landing1_ql | `sk_hall` | `dado_landing` **1.165** (level with the rear corridor's rail) | `cove_70` |
 | green_bedroom | `sk_hall` | - | `cornice_green` |
@@ -1005,14 +1024,15 @@ mo.surround_of(o, room), mo.surround_reach(oid, sur, room), mo.architrave_key(oi
 | yellow_room | `sk_hall` | - | `cove_70` |
 | green_bathroom / blue_ensuite / bathroom2 | - | - | `cove_100` / `cove_60` / `cove_80` |
 | landing2_head, landing2_platform | `sk_hall` | `dado_landing` **0.99** | `cove_100` |
-| purple_room, study | `sk_hall` | - | `cove_120` |
+| purple_room | `sk_hall` | - | `cove_120` |
+| study (Rose Room) | `sk_hall` | - | `cornice_rose`: stepped ogee (fillet, cyma, bead, fillet), 0.14 x 0.10, lower edge 2.46 |
 | loft_office | `sk_loft` (150) | - | - (sloped ceilings) |
 
 No entry (nothing in the room specs, or raking trim that belongs to the room modules): basement,
 basement_stair, stairs, stairs2, eaves_front, eaves_rear, balcony.
 
 #### New profiles
-`cove_60|70|80|100|120` (plain plaster coves), `cornice_green` 100 x 120 and `cornice_blue` 130 x 130 (their
+`cove_60|70|80|100|120` (plain plaster coves), `cornice_rose` 140 x 100, `cornice_green` 100 x 120 and `cornice_blue` 130 x 130 (their
 "small enriched band" is a row of beads, `mo.BEADS`, set out by `mo.cornice`), `dado_landing` 65 x 28,
 `sk_loft` 150, architraves `arch_upper` 80, `arch_70`, `arch_100`, `arch_hatch`. `ARCH_BY_ROOM` covers the
 upper rooms; `DOORCASE_ARCH` / `doorcase_arch(sur, room)` give the architrave width under each doorcase.
@@ -1053,7 +1073,7 @@ Objects: kind `joinery`, named `<room>.<opening id>.<part>`: `lining` / `frame`,
   `white_back_door` (half glazed, toplight, cat flap: white frame, smoked arched flap, red lock), `pocket_oak` (oak lining, dark slot,
   flush pulls), `white_upvc_fixed|obscure|casement`, `dark_timber_white_upvc_shutters` (bay: dark
   posts / mullions / transom / head / sill board, white lights, top-hung fanlights, 6 louvred
-  shutter panels, shut: 63 mm blades at 75 deg, overlapping; the head board stops under the cornice;
+  shutter panels, shut: 72 mm blades at 66 mm pitch (round 3; was 63 at 52) tilted 75 deg, overlapping; the head board stops under the cornice;
   the west return, seen from the vestibule, has fixed lights with a slim 22 mm sightline).
 - **Surrounds:** `plain_architrave` (profile per room via `mo.architrave_key`; kitchen side has
   plinth blocks), `pediment` (`joinery.doorcase_pediment`), `dark_architrave` and `dark_aedicule`
@@ -1112,7 +1132,7 @@ J.validate(ctx) -> [str]         # unknown style / surround keys ([] on spec/hou
 | `mahogany_glazed_double` | `_door_mahogany` | unchanged |
 | `white_glazed_double` | `_door_street` (`double_door`), `_door_french` (`french_door`) | both through `_upvc_doorset`: frame at `ext_reveal`, transom + fanlight when the hole is taller than the leaves. Street: 45 mm jambs (phase 1 had 4 mm skins), frosted transom without lettering, room-face flange. French: `d_french` (round cat flap, dining dark recess), `d_balcony` (two fanlights, dark-lined reveal) |
 | `white_back_door` | `_door_back` | same door set, 45 mm jambs, opens into the kitchen |
-| `shed_french` | `_door_french` | no fanlight, mid rail at 0.75..0.85, 70 mm threshold |
+| `shed_french` | `_door_french` | no fanlight, mid rail at 0.90..1.02 above the floor, levers 1.10, 70 mm threshold |
 | `shed_oxblood_pair` | `_door_timber_pair` | 45 mm painted frame, two-panel leaves, turned knobs, material `oxblood` (= `paint_oxblood` #7A3B2E) |
 | `white_flush_pair` (type `hatch`) | `_hatch` | the json hole is the OUTER size of the white frame (75 mm stiles, 50 mm rails, lining through the knee wall); two 18 mm lay-on leaves, brass knobs, 110 degrees into `swingInto` |
 | `white_upvc_fixed`, `white_upvc_obscure`, `white_upvc_casement`, `white_upvc_two_light`, `white_upvc_obscure_top_hung`, `shed_window` | `_window_upvc` | see below |
@@ -1126,19 +1146,19 @@ J.validate(ctx) -> [str]         # unknown style / surround keys ([] on spec/hou
 (side hung); all swing out. Every non-fixed sash is its own object `<room>.<id>.sash.<n>` (+ `.glass`), 12 mm
 proud of the frame outside, handle inside (white, on the stile / bottom rail; a side-hung sash with `handle:
 "bottom"` gets a brass lever centred on its bottom rail - w_purple). `operated: false` leaves it untagged. The shed windows carry none of
-this in the spec; `J.SHED_WINDOWS` supplies it from `shed.md` (shed_w1: two top-hung fanlights over one pane,
-shed_w2: two fixed lights). `'obscure'` in the style name selects `glass_obscure`.
+this in the spec; `J.SHED_WINDOWS` supplies it from `shed.md` (shed_w1: two top-hung fanlights over one pane, transom
+bar centre 0.72 over the frame bottom; shed_w2: two fixed lights). `'obscure'` in the style name selects `glass_obscure`.
 
 #### Surrounds (`J.SURROUNDS`, reach for the trim in `mo.surround_reach`)
 - Existing: `plain_architrave`, `pediment`, `dark_architrave`, `dark_aedicule`, `mahogany_frame`,
   `white_upvc_frame`, `plaster_reveal`, `flat_white_surround`, `white_architrave_two_lights`, `dark_timber`.
 - `J.doorcase(mb, hw, top, arch, aw, frieze, shelf, consoles, apex, rake, frieze_ornament, tympanum_ornament,
-  volutes, band)` builds the upper-floor doorcases from `J.DOORCASES` (heights above the door head):
+  volutes, band, shelf_top)` builds the upper-floor doorcases from `J.DOORCASES` (heights above the door head):
   `cornice_hood_on_consoles` (landing face of `d_green`: 80 architrave, frieze, 1.25 x 0.10 x 0.11 shelf on two
-  acanthus consoles), `pediment_scrolled` (green bedroom, both doors: frieze relief, 0.36 consoles, 1.30 shelf,
-  pediment to +0.62 with tympanum relief and volutes), `pediment_tall_plain` (bathroom face of the sliding door:
+  acanthus consoles), `pediment_scrolled` (green bedroom, both doors: frieze relief, 0.36 consoles, 1.30 shelf
+  topping out at +0.31, pediment to +0.50 with tympanum relief and volutes), `pediment_tall_plain` (bathroom face of the sliding door:
   egg band, long consoles, pediment to +0.75), `pediment_triangular` (blue bedroom: 70 architrave, shelf, open-bed
-  pediment to +0.37 with a swag; the landing face of `d_blue` uses a 90 architrave, 1.03 shelf, apex +0.28).
+  pediment to +0.37 with a swag; the landing face of `d_blue` uses a 90 architrave, 1.03 shelf topping out at +0.25, apex +0.41).
 - `dark_recess` (dining N windows) and `dark_screen` (`d_french`): `_dark_recess` lines the `reveal` feature the
   opening sits in — jamb and head boards, back panel, 0.10 reeded architrave with legs to the floor, and for the
   windows the window-seat board (top = recess floor, 30 mm nosing), apron and 60 mm plinth. On the phase-1 spec
@@ -1148,7 +1168,7 @@ shed_w2: two fixed lights). `'obscure'` in the style name selects `glass_obscure
 #### Interaction tags (INTERACT.md; room modules never tag these)
 | part | tag | notes |
 |---|---|---|
-| door leaf (+ glass) | `hinge`, `blocks` = opening id, group = leaf name | shut leaves open `J.OPEN_DEG.get(id, 90)` (`d_balcony` 85, `shed_d1` 100, `shed_store_doors` 90, `d_french` 100); leaves modelled open carry `on` |
+| door leaf (+ glass) | `hinge`, `blocks` = opening id, group = leaf name | shut leaves open `J.OPEN_DEG` by leaf name, else by opening id, else 90 (`d_balcony` 85, `shed_d1` 100 but its east leaf `shed.shed_d1.leaf.1` 25, `shed_store_doors` 90 but its north leaf 80, clear of the open `shed_w1` fanlight, `d_french` 100); leaves modelled open carry `on` |
 | pocket door | `slide`, `blocks` | `on` only for `POCKET_OPEN` |
 | hatch leaf | `hinge` 110 (`J.HATCH_WEST_DEG`: the west leaf of `h_eaves_rear` 95, clear of the loft TV), label "Eaves hatch", **no** `blocks` (hatches are no portals) | prop `door` keeps it in the static lightmap |
 | window sash (+ glass) | `hinge` about the head (top hung) or the hinge stile, label "Window", no `blocks` | prop `door` = opening id, so `export_bake.classify` keeps the shut sash static like a door leaf |
@@ -1162,8 +1182,50 @@ Velux and skylight (envelope, section 7), shower / sauna glass doors and their t
 boards of the upstairs windows and the utility window board, pelmets, brass threshold strips (`shell._thresholds`),
 door stops and cabin hooks, the louvre tilt of the shutters.
 
+#### Round 3 (21 Nov footage; porch, passage, eaves_loft, floor2 surveys)
+- **Street door set** (`_door_street`): the json hole is the frame's **outer** size, as for every other uPVC door set
+  (spec request: `d_street.width` 1.39, `transom.height` 2.57; leaves = hole - 2 x 65 mm = 2 x 0.63). Leaf: hinge
+  stile 0.095, meeting stile 0.11 + astragal (west leaf), top rail 0.105, mid rail 0.76..0.905 and glass 3 wide x 4
+  high (bottom pane 5 % taller, 16 mm bars flush on the unit) scaled to the leaf height (measured on 1.945); flat lower
+  panel in a bolection mould; brass levers on 0.24 x 0.03 plates at z 0.98, 0.055 from the meeting edge; letter plate
+  0.30 x 0.07 centred on the west leaf's mid rail; transom member 0.155 under the frosted light; keeps 0.11 x 0.03 on
+  the transom bar 0.10 from the meeting line; a 70 mm white cover board `vestibule.d_street.cover` on a side wall the
+  frame stands within 60 mm of (the cheek wall corner).
+- **uPVC hinges** (every uPVC leaf): three white flag-hinge covers 0.115 x 0.035 x 0.03 at 0.123 / 0.52 / 0.895 of
+  the leaf height.
+- **Back door** (`leaf_upvc_back`): frame members 55 mm (clear 0.68), cill 0.035, transom 2.04..2.15; obscure glass
+  visible 0.96..1.91 in 20 mm beads, mid rail 0.82..0.94 with a drip bar outside, flat panel 0.57 wide in a bolection
+  bead, cat flap 0.215 x 0.23 centred on the bottom bead (z 0.14) with a clear arched flap and a red rotary lock
+  (kitchen face, lower right), hooded trickle vent in the top rail both faces.
+- **Eaves hatches** (`_hatch`): hole = architrave outer; 45 mm ogee architrave 20 mm proud on head and sides (front:
+  legs on a 65 mm skirting-profile member under the leaves) or all round (rear); white lining and sill through the knee
+  wall; outer applied 20 mm bead 80 mm outside the leaves and 75 mm over them, down to the room's skirting; flat 18 mm
+  lay-on leaves with two chrome cup hinges each, 30 mm brass knobs 0.165 under the leaf top and 0.095 from the meeting
+  edge; `HATCH_DEG` 100 (rear west leaf 95).
+- **Top-hung sash with `handle: "bottom"`** (`w_study` lower lights, `w_purple`): brass espagnolette centred on the
+  bottom rail, two steel keeps on the frame's bottom member (frame object, static).
+
+#### Round 3 follow-ups (whole-house check, group A)
+- **Inner reveal** (`shell.INNER` or opening json `inner` {width, sill}: the room-side hole is smaller / higher than the
+  frame). `w_utility` (plaster reveal): the room sees `_inner_ring` - a fixed 20 mm white frame ring on the plaster of
+  the 0.56 hole from the room module's window board (`J.SILL_BOARD`, 12 mm over the 1.05 sill) to the head, and on the
+  sash object (it swings with it) the sash's inner ring (30 / 35 / 45 mm) with the brass espagnolette; the outer
+  sash carries no handle (the plaster hides it). `J.SASH_HANDLE` supplies the `handle: "bottom"` the spec does not carry
+  yet. `w_wc` (`flat_white_surround`): `wc.w_wc.surround`, a flat white member on the 1.20 ledge as high as the head
+  member (0.072). The interim `utility.window_liner(.sash)` and `wc.window_board` are gone.
+- **uPVC hinge covers**: a 5.5 mm knuckle on the axis + a 23 mm flag cover on the leaf side; nothing swings into the
+  frame any more (the old box straddled the axis: `d_back` open showed it in the jamb).
+- **Surrounds stop at return walls** (`J.side_walls(ctx, fr, M, yf)` -> x limits in side frame M of the nearest wall or
+  solid feature standing just in front of the face beyond each jamb; `_clip` cuts the surround mesh 1 mm short of
+  them). Applies to door surrounds, the E aedicules and the N recess architraves; `test_joinery` asserts no surround
+  vertex lies inside another wall of its level.
+- `dark_surround` draws its legs to the width `aw`; the dining side of `d_dining` takes `aw` from
+  `mo.surround_reach` (where the skirting stops: one number) and its cap top is 2.22; E-window aedicule caps 2.37.
+- `doorcase(..., shelf_top=)`: the frieze fills up to a shelf top given above the head. `pediment_scrolled` (green
+  bedroom): shelf top 2.29, apex 2.48; landing face of `d_blue`: shelf top 2.23, apex 2.39.
+
 #### Measured (fixture, `test_joinery.py`)
-47 openings, 78 k triangles of joinery; with the trim the whole house is 185 k in `build.py --only shell`.
+47 openings, 81 k triangles of joinery; with the trim the whole house is about 190 k in `build.py --only shell`.
 
 ## interact (`lib/interact.py`)
 
@@ -1344,119 +1406,154 @@ What the first review of the multi-level foundation changed, by module. Asserted
   light by light (no coplanar boxes); `PIER_PANELS` (sunk panels, cut out of the skin); gable struts lean outward at 60
   degrees to the bargeboards; `EDGE_TRIM` on fascia boards; gutters close on each other at a valley corner; the soil
   stack and every downpipe that reaches the ground are their own objects with **`plan_sym='pipe'`** (a blocking
-  footprint; the plan draws the plain outline).
+  footprint; the plan draws the plain outline). A `PIPES` path that starts with a shoe (second point within 0.15 in
+  plan) still counts as a downpipe: the K downpipe stands at x 4.45 beside the treads, its shoe over the gully.
 - **site**: neighbours from `parts`; shed kerbs and piers stand 5 mm proud of the walls, copings butt.
 - **joinery**: uPVC door leaves stop under the frame head where there is no transom bar (`shed_d1`).
 - **export**: `NONCOLOUR_MAX = 512` caps the `*_nrm` / `*_orm` maps in the GLBs (colour maps stay at 2048).
 
 ## site (`lib/site.py`)
 
-Everything outside the house that is not its envelope, built from `ctx.spec['exterior']` (MULTILEVEL.md section 6).
+Everything outside the house that is not its envelope, built from `ctx.spec['exterior']` (MULTILEVEL.md section 6);
+its own textures are in `lib/site_tex.py`.
 
 ```python
 from lib import site
-site.build(ctx) -> [objects]     # zones, steps, boundaries, side gate, shed shell, neighbours, backdrop
+site.build(ctx) -> [objects]     # zones, steps, boundaries, gates, shed shell, neighbours, backdrop
 site.surface('deck') -> Object   # ground object of a zone (after build)
-site.ZONE_MAT                    # zone `surface` -> lib.materials key
+site.ZONE_MAT                    # zone `surface` -> material key (lib.materials, site_tex, or 'library_key@#RRGGBB')
+from lib import site_tex as ST
+ST.mat('site_setts') / ST.mat('closeboard_brown@#B3A58C') / ST.tone(key)
 ```
 
 Check: `blender -b --factory-startup --python blender/test_site.py -- [--house PATH] [--cams a,b|none] [--pose 1]`
-prints `SITE OK` and writes previews to `build/site/`.
+prints `SITE OK` and writes previews to `build/site/` (cameras named after the footage frames they match).
 
 ### Objects (all level `X`, kind `shell`, `lm='static'` unless noted)
 
 | name | what |
 |---|---|
-| `<room>.<zone id>` | zone slab: top at `ctx.zone_z` (a `fall` is cut into planar pieces), side faces only where the zone stands proud of what is beside it, down to 0.10 below that ground |
+| `<room>.<zone id>` | zone slab: top at `ctx.zone_z` (a `fall` is cut into planar pieces), side faces only where the zone stands proud of what is beside it, down to 0.10 below that ground; `BORDER` zones carry one course of another key along an edge (forecourt: darker setts against the house; veranda: soldier course along the front) |
 | `front.footway.kerb` | kerb stones in the road along the footway edge |
 | `side_passage.kitchen_steps` | one flag (40 mm, 15 mm nosing on the open sides) on a riser block per `steps[].treads` |
-| `garden.passage_step.drain` | channel drain, 0.13 wide, at the foot of the passage step |
-| `front.front_wall_w`, `front.front_pier_w`, `.cap` | stretcher courses by texture, modelled soldier course with joints, cast-stone cap |
-| `garden.<fence>`, `.posts`, `.trellis` | panels (boards by texture), capping, three arris rails, concrete posts and gravel boards, lattice topper on the bays beside the deck |
-| `side_passage.side_gate` (kind `joinery`, `ix` hinge), `.frame` | ledged-and-braced leaf with hinge straps, lock and latch; goal-post frame |
-| `shed.walls`, `.roof`, `.soffit`, `.workshop.walls / floor / ceiling`, `.store.walls / floor / ceiling` | the shed shell |
-| `shed.heads`, `shed.roof.kerb`, `shed.fascia` (kind `trim`) | soldier courses over the openings; roof kerbs, corner piers and caps; fascia, gutter, downpipe, soffit vent |
-| `neighbours.<id>`, `neighbours.<id>.yard`, `neighbours.west_neighbour_wall`, `neighbours.backdrop` | massing boxes, a yard between each and the street, the neighbour's extension, 60 x 80 m ground at Z -0.50 (`no_export`) |
+| `garden.passage_step.drain` | channel drain at the foot of the passage step, x 3.71..4.69 (`DRAINS`): open body, edge rails, slotted grate |
+| `front.front_wall_w`, `front.front_pier_w`, `.cap` | stretcher courses by texture, modelled soldier course with joints; pier under a precast cap from `cap` {size, edge, rise}: slab plus four-way pyramid, apex at the pier top |
+| `garden.<fence>`, `.posts`, `.trellis` | panels (boards by texture, recoloured to `colour` or the `FENCE` default), capping, three arris rails, concrete posts and gravel boards, lattice topper on the bays beside the deck |
+| `side_passage.<gate>` (kind `joinery`, `ix` hinge), `.frame` | framed, ledged and braced leaf: boards, two stiles, three rails, two braces in a '<' seen from the side it opens to, tee-hinge straps, rim lock, cabin hook; hinge and latch posts with a head rail, or with `overPanel` posts to its `top` and a fixed boarded panel with capping over the leaf (street gate) |
+| `shed.walls`, `.roof`, `.soffit`, `.workshop.walls / floor / ceiling`, `.store.walls / floor / ceiling` | the shed shell; the roof is the `felt` plane (`frontZ` at the front, `rearZ` at the back) |
+| `shed.heads`, `shed.roof.kerb`, `shed.roof.coping`, `shed.roof.felt`, `shed.fascia` (kind `trim`) | soldier courses over the openings; parapets on the `coping.sides` with copings `width` wide, top `coping.topZ` (the side ones run out to the front as the pier caps); felt upstands and drip edge; fascia `fascia.z`, half-round gutter with its rim at `gutterRimZ`, downpipe at the SW corner (0.07 inside the west parapet: x -0.53; a side's parapet is the thickest wall whose outer face lies on the outline), soffit vent |
+| `neighbours.<id>`, `neighbours.<id>.yard`, `neighbours.west_neighbour_wall`, `neighbours.backdrop` | massing boxes, a yard between each and the street, the neighbour's extension with a `coping`-wide coping, 60 x 80 m ground at Z -0.50 (`no_export`) |
 
 ### How it decides things
 
 - **Gaps in the spec.** Plot area that no zone, house or building covers is found with a constrained Delaunay
   triangulation and added to the lowest zone that shares an edge with it; each is logged as `[site] spec gap`.
-  `spec/house.json` has one left: under the front wall (0.81 m2, filled at footway level).
-- **Shed.** The outline is solid mass; the rooms, the veranda zone (zones with `room == 'shed'`) up to
+  `spec/house.json` leaves two: under the front wall (0.81 m2, filled at footway level) and beside the path (0.10 m2).
+- **Shed.** The outline is solid mass; the rooms, the veranda zones (zones with `room == 'shed'`) up to
   `verandaSoffitZ` and the openings from `ctx.opening_frame` are carved out of it on a grid. A face takes its finish
   from the void it looks into (`SHED_FIN`, else the building's brick). An opening is carved through the whole wall
   from its `floorZ`; outside the frame plane (`ext_reveal`) the reveal is brick, inside it the room's wall finish.
-- **Gate.** Leaf bottom = highest ground or tread under its sweep + 20 mm (-0.14); state 1 is
-  `GATE_DEG` = 50 degrees towards `swingInto`. The hinge post stands 50 mm clear of the kitchen wall, so the pivot is
-  0.155 m along the gate line from `hingeAt` and the leaf is 0.78 wide (spec 0.90: the line is only 0.94 long).
+- **Gates.** The leaf is `width` wide where the line allows (the side gate's line is 1.047 long, so its leaf is
+  1.03, pivot 15 mm from the K corner, hinge post behind the leaf plane); the pivot is the frame face at the hinge end.
+  Leaf bottom = highest ground or tread under its sweep + 20 mm: the side gate reaches the lower kitchen tread at
+  50 degrees (-0.14, MULTILEVEL.md 6), the street gate only the alley (-0.28). A hinge post behind the leaf plane
+  stands 0.03 along the line off the wall it hangs on; a post on an insulation base rail (`_rail_top`: within
+  `RAIL_REACH` of the face of a facade with `insulation`) starts on the rail top (the street gate's latch post), and
+  the capping stops at the house face. State 1 is `GATE_DEG` = 50 degrees
+  towards `swingInto`; `label` is the id ('Side gate', 'Street gate'). Head rail top `GATE_HEAD` = 1.98 above `baseZ`.
 - **Fences.** Our side = the side inside the plot. A fence end within 0.3 m of a building is carried on to it; a
   fence starting at a gate end has no post there (the gate's latch post is).
 - **Neighbour walls.** One that lies on a neighbour polygon is that massing box; otherwise a block `EXT_DEPTH` deep.
 
-### Textures
+### Textures (`lib/site_tex.py`)
 
-`M.uv_box` world projection. Materials in `ROT` (deck and box boards, authored along V) are turned so the boards run
-E-W on top and level on the sides, starting at the zone's corner. Brick registers to the base of the soldier course
-(wall), the cap (pier) and the veranda paving (shed). Soldier bricks, rails, posts and caps are plain paint colours.
+Made at build time with numpy (no reference pixels), cached in `build/tex/site/` (re-made when missing or when
+`site_tex.VERSION` changes): `site_setts` (tumbled setts, 160 courses along X, three soft tones, front.md 2.1),
+`site_setts_border` (the same, #7E7B75), `site_flags` (560-series riven sandstone in random courses along Y,
+passage.md 2.5), `site_alley_concrete` (in-situ concrete laid once over the alley with algae along both walls,
+passage.md 2.8), `site_concrete` (tileable in-situ concrete, materials key `concrete_insitu`), `site_soldier_course`
+(200 x 100 clay pavers on end). `'library_key@#RRGGBB'` is a library texture
+whose linear-light mean is moved to that colour (fences, gates, deck #776860, its fascia #554A44, step box #6E6862).
+`M.uv_box` world projection. Boards (`ROT`) run E-W on top and level on the sides from the zone's corner; `CORNER`
+keys start at the zone's corner; `DIAG` keys are turned 45 degrees (the veranda's herringbone); a `BORDER` zone registers its texture to the border edge (setts course joints on the
+house line). Brick registers to the base of the soldier course (wall), the cap (pier) and the veranda paving (shed).
 An unknown material key logs `[site] WARNING` once, renders grey and is listed in `site.MISSING`.
 
 ### Knobs
 
-`THICK`, `ZONE_MAT`, `EDGE_MAT`, `ROT`, `KERB`, `DRAINS`, `FENCE` (rails side, trellis), `BAY`, `GATE_DEG`,
-`SHED_FIN` (workshop floor `wood_tile_floor_grey`), `SOFFIT` (`mahogany_mid`, boards E-W), `ROOF_FALL`, `EXT_DEPTH`, `EXPORT_BACKDROP` (True drops `no_export` from the backdrop).
+`THICK`, `ZONE_MAT`, `EDGE_MAT`, `ROT`, `CORNER`, `BORDER`, `KERB`, `DRAINS`, `FENCE` (rails side, trellis, default
+colour), `BAY`, `GATE_DEG`, `GATE_HEAD`, `GATE_PANEL`, `SHED_FIN` (workshop floor `wood_tile_floor_grey`), `SOFFIT`
+(`mahogany_mid`, boards E-W), `ROOF_FALL` (only without `roof.felt`), `EXT_DEPTH`, `EXPORT_BACKDROP` (True drops
+`no_export` from the backdrop).
 
 ### Not here
 
-Cars, bins, flag, wall planters, fire pit, garden planters, trellis panels, lavender, furniture, condensers, the gully
-and the inspection cover (room modules); shed doors and windows (joinery); shed lights, coving and skirting.
+Cars, bins, flag, wall planters, fire pit, garden planters, trellis panels, lavender, furniture, condensers, gullies,
+inspection and access covers (room modules: their briefs carry the round-3 positions); shed doors and windows
+(joinery); shed lights, coving and skirting.
 
-## envelope (`lib/envelope.py`)
+## envelope (`lib/envelope.py`, `lib/envelope_front.py`)
 
 ```python
 from lib import envelope
 envelope.build(ctx)              # -> [objects]; needs only the step-0 ctx (no shell, no site)
 envelope.roof_surface(x, y)      # outer roof Z (== ctx.roof_z), or None
+envelope.porch_soffit_z(y)       # Z of the raked canopy soffit at y (2.63 at the door head y -0.12, 2.40 at y -0.55)
 ```
 Check: `blender -b --factory-startup --python blender/test_envelope.py -- [--no-render] [--only front,rear] [--with-site]`
-prints `ENVELOPE OK`; renders go to `build/envelope/`.
+prints `ENVELOPE OK`; renders go to `build/envelope/` (views: front, rear, flank, roofplan, garden, balcony, door,
+gable, gable_full, porch_up, alley, rear_down, verge_e, passage, bay, ...).
 
 ### Objects
 
 | name | room / kind | what |
 |---|---|---|
-| `facade.<facade id>` | facade / shell | skin faces on that facade + the four returns of each of its holes |
-| `facade.returns` | facade / shell | skin on no facade (porch side, nib beside the bay, back addition south face) and the roof-step faces (dormer cheek, wall between the gable roof and the main eaves) |
-| `facade.<facade id>.sills` | facade / trim | projecting sills; masonry transom and mullions of the ground-floor bay; the board under the French doors |
-| `facade.front_A.trim`, `facade.front_B.kneeler` | facade / trim | pilasters, plinth, bay cornice, first-floor sill ledge, gable head rail and struts; brick kneeler |
-| `facade.soil_stack`, `facade.pipes.<material>` | facade / fit | soil stack; downpipes, waste runs, a/c trunking (table `PIPES`) |
-| `roof.<plane id>` | roof / shell | covering, fascias on free edges, soffit under overhangs, underside inside the roof voids |
-| `roof.<eaves id or plane id>.gutter`, `roof.rear_fascia`, `roof.ridge` | roof / fit, trim | gutters, fascia board, ridge cappings |
+| `facade.<facade id>` | facade / shell | skin faces on that facade + the four returns of each of its holes; on `east_E` also the old face below the insulation (black) |
+| `facade.returns` | facade / shell | skin on no facade (porch side, nib beside the bay, the white return y 0.74 east of the bay, back addition south face) and the roof-step faces (dormer cheek, wall between the gable roof and the main eaves) |
+| `facade.<facade id>.sills` | facade / trim | projecting sills (sizes per opening in `SILLS`); masonry transom and mullions of the ground-floor bay; the board under the French doors; on `east_E` the white bell-cast base rail and the stop under it at the south end |
+| `facade.front_A.trim` | facade / trim | `envelope_front.py`: reeded pilasters (base block, shaft, capital; the east one wraps the corner), bay sill, raised architraves round the eight bay lights and the east cheek window, entablature and four-fillet cornice returned along the east cheek and the return; first-floor apron hexagon panels, window sill and hood, east cheek hood and panel; sunk pier panels (cut out of the skin); gable head band, king post, curved braces and struts, bargeboards with scrolled feet; porch lead upstand and cheek flashing |
+| `facade.front_party_kneeler` | facade / trim | every exterior feature of type `kneeler`: brick stub corbelled out in five courses, sloping cap |
+| `facade.soil_stack`, `facade.downpipe.<n>`, `facade.pipes.<material>`, `facade.fittings` | facade / fit | soil stack (sockets, grey top third, cowl, boss); downpipes that reach the ground (own objects, `plan_sym='pipe'`); other pipes and the twin a/c conduits (table `PIPES`, clips every 0.9 / 1.7); small boxes (table `FITTINGS`) |
+| `roof.<plane id>` | roof / shell | covering, fascias on free edges, soffit under overhangs (the canopy's raked, `PORCH_SOFFIT`), underside inside the roof voids |
+| `roof.<eaves id or plane id>.gutter`, `roof.rear_fascia`, `roof.ridge`, `roof.verge`, `roof.valleys` | roof / fit, trim | gutters with brackets every 0.6, fascia board with its dark edge trim, angled ridge tiles (joint every 0.45), black dry verge on the east gable end, lead valley linings of the bay gable |
 | `roof.velux.frame`, `roof.velux.sash` | roof / fit, joinery | the sash is its own object with an `ix` hinge (top-hung, +30 degrees about +X), `lm='dynamic'` |
 | `roof.skylight.kerb`, `roof.skylight.glass` | roof / fit | upstand and fixed glass over the stair |
-| `roof.rear_chimney` | roof / shell | stack above the roof only |
-| `balcony.floor`, `balcony.structure`, `balcony.rainpipe`, `balcony.lantern` | balcony / shell, fit | chequer plate at the room's `floorZ`; frame, railing, wall posts, struts; the lantern has no lamp and no `ix` yet |
+| `roof.rear_chimney` | roof / shell | above the roof only: brick shaft `CHIMNEY_SHAFT` wide from the polygon's west side, stone cap, rendered haunch reaching `CHIMNEY_HAUNCH` east of it |
+| `balcony.floor`, `balcony.structure`, `balcony.rainpipe` | balcony / shell, fit | chequer plate at the room's `floorZ` (screw heads on the edges); frame, railing (`section: round_tube`: grey 48 mm posts and top rail with joint collars, black bars on a flat bottom rail), wall posts, struts |
 
 ### Rules the other stages can rely on
 
 - **Skin** lies exactly on the envelope polygons, one face set per storey, from `zone min Z - 0.05` (lowest storey)
   up to the **roof surface** on the wall line. Hidden parts are not built: inside another prism, and the party side
   below the neighbour's roof. Under the porch the ground-floor wall runs up to the lean-to surface.
+- **External insulation** (`facades[].insulation`, `east_E`): the render face stops at `baseRailZ[0]`; below it the
+  old face at `oldFace` (0.10 further in) in `below`; the white bell-cast bead covers `baseRailZ`.
 - **Holes** are `width x (sill .. top)` on the outer face for every `ctx.exterior_openings()` of the house; the
   returns sit 2 mm inside the hole and are `ext_reveal` deep, so the outside of a frame built at `ext_reveal` meets
   them. The bottom return of a door is a stone threshold strip 2 mm above `floorZ`.
-- **Black plinth** on the rendered faces ends at `PLINTH_TOP = -0.08` (rear_elevation.md), not at 0.15.
+- **Black plinth** on the rendered faces ends at `PLINTH_TOP = -0.08` (rear_elevation.md), not at 0.15. The street
+  front has no plinth: the bay base is one plane from the sill to the paving.
 - **Roof** = upper envelope of `roof.planes`; `ctx.roof_z` is the top everywhere. The underside (`roof_z -
   ctx.roof_slab_t`) exists only where it is at or above the top floor (the roof voids) and as a white soffit under
-  overhangs: over the first-floor bay the slab is hollow, so nothing shows below the bay ceiling.
-- Finish of a face that is on no facade = finish of the nearest facade (same facing counts 1 m nearer).
-- Material keys used: `white_masonry_paint render_sandstone plinth_black stock_brick_grey red_brick slate
-  fibre_cement_slate flat_felt roof_underside steel_chequer_plate upvc_white glass_clear`; any key `materials.mat`
-  does not know falls back to a plain colour from `FALLBACK` / `exterior.colours`.
+  overhangs: over the first-floor bay the slab is hollow, so nothing shows below the bay ceiling. Over a top-floor
+  room whose ceiling is flatter than the roof (the front loft: 30-degree slope, 1.08 knee wall) the underside is kept
+  1 cm above that ceiling (`_ceilings`), so the slab there is thinner than `roof_slab_t`; the same over an
+  `under_roof` room with a lining `offset` (eaves_front: lining 0.17 under the roof, slab 0.16 there; eaves_rear
+  -0.31 under a 0.30 slab: unchanged). Each underside vertex reads the ceiling 10 um in toward its face centre, so
+  at a ceiling step (flat 8.61 / lobby 8.57 at y 5.38) the slab steps with it instead of dipping through the higher.
+- **Canopy**: raked soffit `porch_soffit_z(y)`; the front fascia runs from the slates down to it, the lean-to's side
+  edges behind the front plane get a boxed verge `PORCH_VERGE` deep; its gutter top is 0.05 under the slate edge.
+- Finish of a face that is on no facade = finish of the nearest facade (same facing counts 1 m nearer). On `rear_R`
+  west of `BRICK_X` (-0.77, the junction with the neighbour) the finish is the neighbour's stock brick.
+- Material keys used: `white_masonry_paint render_sandstone plinth_black stock_brick_grey red_brick_dark slate
+  fibre_cement_slate flat_felt roof_underside steel_chequer_plate upvc_white glass_clear sill_stone lead ridge_tile
+  lead_dark rail_grey pipe_black pipe_grey chimney_render edge_trim`; any key `materials.mat` does not know falls back to a plain
+  colour from `FALLBACK` / `exterior.colours`.
 
-Not built here (room modules): canopy downlights, doorbell, socket, cameras, flag, condensers, taps, hose reel,
-balcony planters and ivy, the lantern's lamp. Left out: lead flashings, the 45-degree splay and sunk panels of the
-first-floor bay corners, the two curved gable braces.
+Not built here (room modules): canopy downlights (on `porch_soffit_z`), doorbell, socket, cameras and security
+lights, the gas-meter box, flag, condensers and their pipes on the east wall, wall lights, vents and cables of the
+alley, taps, hose reel, balcony planters and ivy, the lantern. Left out: the 45-degree splay of the first-floor bay
+corners, gutter outlets and hoppers, the fibre-cement slates over face K (one covering per plane).
 
 ## export (`blender/export.py`, `export_bake.py`, `export_check.py`, `export_fixture.py`)
 

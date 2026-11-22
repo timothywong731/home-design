@@ -5,24 +5,32 @@ spec/rooms/landing1.md 11).
     "$B" -b --factory-startup --python blender/build.py -- --levels G,1 --only shell,stairs --preview stairs \\
         --res 540x960 --samples 64 --tag stairs
 
-Dresses the shell carcass of house.json `stair_main` (15 risers of 0.19, going 0.23, R4 at y 5.60, newel (0.20, 5.42),
-R15 = quarter-landing nosing at y 8.13, Z 2.85).  The carcass keeps its raked soffit (the ceiling of the basement stair
-below); only its plain tread / riser faces are deleted and replaced by the carpet here.  Built here: carpet with
-wrapped nosings (bullnose R1, R2 / R3 radiating from the newel), cut string, returned tread nosings, panelled spandrel
-and its skirting (closing the basement shaft from the hall), foot newel, handrail and spindles, the white drop of the
-landing1 top newel under the string, the wall string and raking dado over the 45-degree face and the staircase wall
-with the greige band under it, the three watercolours P1-P3 (crops: stairs_art.py), one downlight, and the hall
-cornice returned along the staircase wall to the square edge of the hall ceiling (house.json zone stair_foot, 2.95).
+Dresses the shell carcass of house.json `stair_main` (14 risers of 0.2036, going 0.253, R4 at y 5.60, newel
+(0.20, 5.42), R14 = quarter-landing nosing at y 8.13, Z 2.85; RECONCILE3 vert-01).  Everything below is derived from
+those numbers, so the carpet, nosings, string, spandrel, handrail and spindles follow the treads wherever the spec moves
+them.  The carcass keeps its raked soffit (the ceiling of the basement stair below); only its plain tread / riser faces
+are deleted and replaced by the carpet here.  Built here: carpet with wrapped nosings (bullnose R1, R2 / R3 radiating
+from the newel), cut string, returned tread nosings, panelled spandrel and its skirting (closing the basement shaft from
+the hall), foot newel, handrail and spindles, the white drop of the landing1 top newel under the string, the wall
+string and raking dado over the 45-degree face and the staircase wall with the greige band under it, the three
+watercolours P1-P3 (crops: stairs_art.py), one downlight, an oak patch over the shaft shelf, and the hall cornice
+returned along the staircase wall to the square edge of the hall ceiling (house.json zone stair_foot, 2.95).
 The handrail dies into the underside of the white fascia under the first-floor strip capping (rooms/stairs2.py) about
 0.5 m short of the top newel, as in v6 f_0038; the spindles beyond stop under that fascia (the strip's own spindles
 stand on the capping above them, v4 f_0183).
 Nothing on the stairs is operable: the stair downlight is on the landing circuit (hall plate's left gang, the landing
 switches; ground_corrections 1, landing1.md 8.2).
 
-Raking dado as filmed: level 0.965 on the hall wall, rakes up the diagonal at the pitch to 1.36 at the internal corner
-(HA1, re-measured on v3 f_0009 against the hall rail and P1), a 0.12 level piece, then straight to the landing rail
-at Z 4.015 at the quarter-landing edge (landing1 11.7, v6 f_0037: one plain knee there).  That rake is 45.7 degrees,
-steeper than the 39.6-degree pitch: the two measured ends do not allow a parallel rail.
+Raking dado as filmed: level 0.965 on the hall wall, rakes up the diagonal at the pitch to 1.37 at the internal corner
+(house.json hall_stair_diag; HA1, re-measured on v3 f_0009 against the hall rail and P1), a 0.12 level piece, then
+straight to the landing rail at Z 4.015 at the quarter-landing edge (landing1 11.7, v6 f_0037: one plain knee there).
+That rake is 45.6 degrees, steeper than the 38.8-degree pitch: the two measured ends do not allow a parallel rail.
+
+Foot newel: the rail is 0.90 over the nosing line, which meets the newel face 0.057 higher than with the old 0.19 / 0.23
+flight, so the newel's turning, block and cap ride up with it (`_newel(lift, extra)`): the rail tenons into the square
+block just under the collar, as in v1 t776.25 and v3 f_0017 (1.85 m overall, was 1.75).  Spindles: two per tread at
+half-going centres (0.1265) on T4..T13 (v1 t776.25, dims_vert 7.2), plus the back one of winder T3 between the newel
+and R4 (the front one would stand inside the newel).
 """
 import math
 from pathlib import Path
@@ -49,6 +57,8 @@ CAMERAS = [
     dict(name='spandrel', pos=(-0.5, 7.2, 1.45), look=(0.15, 6.2, 1.5), fov_deg=100, ref='v1 f_0774'),
     dict(name='balustrade', pos=(-0.2, 7.3, 1.5), look=(0.05, 4.5, 1.3), fov_deg=100, ref='v1 f_0777'),
     dict(name='lobby', pos=(-0.25, 8.6, 1.55), look=(0.3, 7.85, 2.25), fov_deg=100, ref='v2 f_0520'),
+    dict(name='newel', pos=(-0.35, 6.45, 1.70), look=(0.2, 5.45, 1.30), fov_deg=70, ref='v1 t776.25'),
+    dict(name='bullnose', pos=(-0.45, 4.45, 0.75), look=(0.25, 5.35, 0.25), fov_deg=80, ref='v1 t241.5'),
 ]
 
 WHITE = 'joinery_white'
@@ -65,7 +75,7 @@ NEWEL_S = 0.115                # foot newel stock (scaled from the frames, not t
 Y_CORNER = 7.68                # lobby face of the basement-door wall: north end of the spandrel
 TOP_NEWEL = (0.20, 8.13, 0.0475, 0.040)   # landing1's newel (rooms/landing1.py): centre, half width of foot / shaft
 POST = (0.10, 0.20, 8.08, 8.18, 2.27)   # drop of that newel under the string (HA3): x0 x1 y0 y1, bottom Z
-DADO_KNEE, DADO_LEVEL = 1.36, 0.12      # rail top at the internal corner (HA1), length of the level piece there
+DADO_KNEE, DADO_LEVEL = 1.37, 0.12      # rail top at the internal corner (house.json hall_stair_diag), level piece
 CARPET = 'carpet_silver_beige'                # the landings' carpet (landing1.md 4, 11.8)
 
 
@@ -183,10 +193,14 @@ def _spindle(name, height, base, top=0.15, w=0.045):
     return _square(mb.finish(name), w / 2)
 
 
-def _newel():
-    """Mahogany foot newel, 1.75 m on 115 mm stock (stills t=241.5 / 249.0 / 777.0, v3 f_0017): square shaft with
-    rounded stops, base ring, cup, fat vase, double ring, upper bulb, two rings, square block, collar, flattened ball
-    with an incised groove.  One closed lathe clamped to the stock.  Origin floor."""
+NEWEL_BLOCK = (1.437, 1.534)    # flat faces of the newel's square block in the drawn profile (before the lift)
+
+
+def _newel(lift=0.0, extra=0.0):
+    """Mahogany foot newel, 1.74 m on 115 mm stock as drawn (stills t=241.5 / 249.0 / 777.0, v3 f_0017): square shaft
+    with rounded stops, base ring, cup, fat vase, double ring, upper bulb, two rings, square block, collar, flattened
+    ball with an incised groove.  Everything above the shaft rides up by `lift` and the block's flats grow by `extra`
+    (the handrail has to tenon into the block).  One closed lathe clamped to the stock.  Origin floor."""
     h = NEWEL_S / 2
     R = 0.09
     p = [(0, 0), (R, 0), (R, .848)] + _stop(h, .885, -.035, 32)[::-1] + [
@@ -204,10 +218,12 @@ def _newel():
     p += _stop(h, 1.395, .040, 32) + [(R, 1.437), (R, 1.534)] + _stop(h, 1.561, -.025, 32)[::-1]
     p += [(.052, 1.566), (.053, 1.574), (.050, 1.582), (.040, 1.588), (.033, 1.594), (.031, 1.604), (.035, 1.614),
           (.036, 1.628)]
-    ball = lambda a: (0.0575 * math.cos(math.radians(a)), 1.685 + 0.067 * math.sin(math.radians(a)))
+    # flattened ball, 115 wide x about 104 high (spec 115 x 100; near round in v1 t776.25)
+    ball = lambda a: (0.0575 * math.cos(math.radians(a)), 1.685 + 0.052 * math.sin(math.radians(a)))
     p += [ball(a) for a in (-50, -37.5, -25, -12.5, 0, 12.5, 25)]
     p += [ball(28), (ball(30)[0] - .003, ball(30)[1]), ball(32)]
-    p += [ball(a) for a in (37.5, 50, 62.5, 75, 84)] + [(0, 1.752)]
+    p += [ball(a) for a in (37.5, 50, 62.5, 75, 84)] + [(0, 1.737)]
+    p = [(r, z + (lift if z > 0.849 else 0.0) + (extra if z > sum(NEWEL_BLOCK) / 2 else 0.0)) for r, z in p]
     mb = mo.MB()
     mb.lathe(p, _wood(), segs=32)
     return _square(mb.finish(f'{ROOM}.newel'), h)
@@ -297,7 +313,17 @@ def build(ctx):
     xl0, xl1, yl0, yl1 = tnx + tnh + 0.002, XE - 0.012, y15 - 0.010, y_top + 0.02
     mb.face([(xl1, yl0, lz + 0.001), (xl0, yl0, lz + 0.001), (xl0, yl1, lz + 0.001), (xl1, yl1, lz + 0.001)], carpet,
             hint=(0, 0, 1))
+    # R1 stops 22 mm short of the hall wall; the carpet runs on into the corner from the floor, over the skirting top
+    # (front flush with the riser) and back along the face to under the wall string: no slot at the external corner
+    # into the carcass (v3 f_0011)
+    cd = [a + 0.4 * (b - a) for a, b in zip(r1[0], r2[0])]          # on the tread's edge, under the string
+    off = dn[0] * (cd[0] - px) + dn[1] * (cd[1] - py)
+    zf = -0.005
+    mb.prism([(*r1[0], zf), (px, py, zf), (cd[0] - dn[0] * off, cd[1] - dn[1] * off, zf), (*cd, zf)],
+             (0, 0, rise - zf), carpet)
     flight = mb.finish(f'{ROOM}.carpet')
+    # (round 3 follow-up: house.json basement_shelf_w now follows the R1 bullnose, so the oak floor_patch over the
+    # sunk corner in front of R1 is gone)
 
     # ---- open side: cut string, returned tread nosings, spandrel panelling and its skirting ----------------------
     sp = mo.MB()
@@ -313,7 +339,7 @@ def build(ctx):
         sp.face([(XC, ya, z), (XS, ya, z), (XS, yb, z), (XC, yb, z)], WHITE, hint=(0, 0, 1))
     # cut string: saw-tooth top, raking bottom 0.28 under the nosing line; over the lobby cupboard (y > 7.68) it
     # stops at the cupboard's underside (Z 2.30) instead of hanging below it
-    zb = 2.30
+    zb = ctx.ceil_z('hallway', 0.5, (Y_CORNER + y_top) / 2)        # 2.30: zone lobby_under_flight
     yc = inv(zb + 0.28)
     saw = [(y_newel, 3 * rise - 0.02)]
     for n in range(4, last + 1):
@@ -328,15 +354,17 @@ def build(ctx):
     outline = [(y_newel, -0.03), (Y_CORNER, -0.03), (Y_CORNER, top(Y_CORNER)), (y_newel, top(y_newel))]
     sp.face([(XP, y, z) for y, z in outline], WHITE, hint=(-1, 0, 0))
     sp.face([(XB, y, z) for y, z in outline], shell.material(shell.finish('basement_stair')['upper']), hint=(1, 0, 0))
-    sp.face([(XP, Y_CORNER, -0.03), (XB, Y_CORNER, -0.03), (XB, Y_CORNER, top(Y_CORNER)), (XP, Y_CORNER, top(Y_CORNER))],
-            WHITE, hint=(0, 1, 0))                                   # the arris at the basement-door wall
+    sp.face([(XP, Y_CORNER, -0.03), (X_OPEN, Y_CORNER, -0.03), (X_OPEN, Y_CORNER, top(Y_CORNER)),
+             (XP, Y_CORNER, top(Y_CORNER))], WHITE, hint=(0, 1, 0))   # arris at the basement-door wall: only the 1 mm
+    # the panelling stands proud of the shell; the shell's lobby face covers x 0.150.. (coplanar there: black line)
     # planted raking bead under the string (the strong double shadow line of every spandrel still)
     sp.sweep(PANEL_MOULD, [(XP - 0.0002, y, NL(y) - 0.28 - 0.016 * k) for y in (y_newel, Y_CORNER)], WHITE,
              up=(-1, 0, 0), ends=((0, 0, -k), (0, 0, -k)))
-    # seven raised-moulding panels with raking tops, 65 mm stiles (still t=776.0, v2 f_0522)
+    # six raised-moulding panels with raking tops, 65 mm stiles: pitch 0.36, about 1.4 goings (v2 t521.5: 1.5-1.6,
+    # v1 t776.25: 1.4; spec "six bays")
     ptop = lambda y: NL(y) - 0.38
-    nb, st, zp, m = 7, 0.065, 0.19, 0.015
-    y0, y1 = inv(zp + m + 0.045 + 0.02 + 0.38) - m, Y_CORNER - 0.055
+    nb, st, zp, m = 6, 0.065, 0.19, 0.015
+    y0, y1 = max(inv(zp + m + 0.045 + 0.02 + 0.38) - m, y_newel + st - m), Y_CORNER - 0.055   # not behind the newel
     pw = (y1 - y0 - st * (nb - 1)) / nb
     for b in range(nb):
         ya = y0 + (pw + st) * b + m
@@ -375,7 +403,7 @@ def build(ctx):
     s0, sj = 0.03, 0.30
     curve = _bezier((s0, 0.17), (s0 + 0.012, 0.24), (sj - 0.08, rake(sj) - slope * 0.08), (sj, rake(sj)), 12)
     # it must clear the carpet where the treads run into the face / wall (tread top + 30 mm, at the samples)
-    clear = [(0.0, 0.19), (math.hypot(r2[0][0] - px, r2[0][1] - py), 2 * rise), (L, 3 * rise)]
+    clear = [(0.0, rise), (math.hypot(r2[0][0] - px, r2[0][1] - py), 2 * rise), (L, 3 * rise)]
     for s, z in curve:
         need = max(zz for ss, zz in clear if ss <= s + 1e-9) + 0.03 if s > 0.05 else 0.17
         assert z >= need - 1e-6, f'wall string at s={s:.3f} is {z:.3f}, below {need:.3f}'
@@ -402,9 +430,14 @@ def build(ctx):
     # ---- the hall ceiling runs flat over the stair foot to the R4 line and ends in a plain square edge (shell zone
     # stair_foot, Z 2.95; v1 f_0245, v6 f_0041 / f_0043): the hall cornice on the 45-degree face returns along the
     # staircase wall to that edge.
+    # The hall run on the face ends square at the internal corner, so this piece forms the whole mitre: it starts
+    # 0.12 back on the face (the mitre reaches 0.2 tan 22.5 = 0.083 back along it), laid 0.8 mm over the hall run
+    # (out and down), and buries the hall run's square end.
     zc = ctx.ceil_z(ROOM, 0.5, 5.3)                                  # 2.95
     cc = mo.MB()
-    cc.sweep(mo.PROFILES['cornice_hall'], [(X_WALL, qy, zc), (X_WALL, r4, zc)], 'plaster_white', ends=(m_ic, None))
+    fat = [(d + 0.0008 if d > 1e-6 else d, h + 0.0008 if h > -1e-6 else h - 0.0008)
+           for d, h in mo.PROFILES['cornice_hall']]
+    cc.sweep(fat, [(*on_diag(L - 0.12), zc), (X_WALL, qy, zc), (X_WALL, r4, zc)], 'plaster_white')
     B = mo.HALL_BAND
     yb = r4 - B['pitch'] / 2                                         # one modillion, half a pitch from the edge
     cc.at(Matrix(((0, -1, 0, X_WALL - B['d']), (1, 0, 0, yb), (0, 0, 1, zc + B['top']), (0, 0, 0, 1))))
@@ -424,26 +457,31 @@ def build(ctx):
     band = gb.finish(f'{ROOM}.dado_band')
 
     # ---- balustrade: foot newel, handrail up to the strip fascia (v6 f_0038), two spindles per tread ------------------
-    newel = _newel()
+    U = lambda y: NL(y) + RAIL_H - 0.055 * k                         # underside of the handrail
+    # the rail tenons into the newel's square block: flats from 20 mm under the rail to 5 mm over it
+    lift = max(0.0, U(y_newel) - 0.02 - NEWEL_BLOCK[0])
+    newel = _newel(lift, max(0.0, U(y_newel) + 0.055 * k + 0.005 - NEWEL_BLOCK[1] - lift))
     newel.location = (nx, ny, 0)
     # its north-east corner overhangs the basement stair shaft: cut it back to the linings of rooms/basement.py
     # (wall face x 0.156, raked soffit -0.004 at y 5.42 rising 2.5 per m) + 6 mm, so no mahogany shows down there
     _clip_shaft(newel, (nx, ny, 0), 0.156, 5.42, 0.002, 2.5)
-    U = lambda y: NL(y) + RAIL_H - 0.055 * k                         # underside of the handrail
     # underside of the white fascia under the strip capping (rooms/stairs2.py): 3.32 by the strip, 3.13 by the step
     fascia = lambda y: ctx.floor_z('landing1_front', X_RAIL - 0.2, y) - SP2.STRIP_FASCIA
     ya, yb = y_newel - 0.005, y_newel
     while U(yb) + 0.055 * k < fascia(yb) + 0.025:                    # rail top 25 mm into the fascia, then stop
         yb += 0.005
     rail = mo.sweep(_handrail(k), [(X_RAIL, ya, U(ya)), (X_RAIL, yb, U(yb))], name=f'{ROOM}.handrail', material=_wood())
-    SP = (0.045, 0.16)                                               # two per tread at 0.115 centres (f_0777)
+    SP = (0.05, 0.05 + going / 2)                                    # two per tread, even half-going centres (f_0777)
     heights = [U(R(4) + dy) - 4 * rise + 0.02 for dy in SP]          # tops let into the rail
-    protos = [_spindle(f'{ROOM}.spindle.p{i}', h, base) for i, (h, base) in enumerate(zip(heights, (0.20, 0.295)))]
+    bases = (0.20, 0.20 + slope * going / 2)                         # the turnings line up with the rake
+    protos = [_spindle(f'{ROOM}.spindle.p{i}', h, base) for i, (h, base) in enumerate(zip(heights, bases))]
     spindles, short = [], {}
     y_last = tny - tnh - 0.0225 - 0.03                               # a base block 30 mm clear of the top newel's foot
     for n in range(3, last + 1):
         for dy, proto in zip(SP, protos):
             y = min(R(n) + dy, y_last)
+            if y - 0.0225 < y_newel + 0.01:                          # winder T3: only the one clear of the foot newel
+                continue
             me = proto.data                                          # shared mesh; the top stays housed in the rail
             if y + 0.0225 > yb - 0.03:                               # past the rail: up to the fascia, let in 5 mm
                 h = round(fascia(y) + 0.005 - n * rise, 3)

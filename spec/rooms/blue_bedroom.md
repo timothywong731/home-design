@@ -312,3 +312,43 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - d_balcony: the uPVC frame head and the two low fanlights stop at 2.18 above the floor (doubt 5); a dark-stained
   timber head board on the wall over the frame (joinery DARK_HEAD 0.18, to 2.36) shows about 0.12 under the 2.30
   pelmet, as in v3 f_0159 and f_0345.
+
+## Round 3 (21 Nov spec, RECONCILE3 dims_1-04, envelope-06) - module notes
+- Shell moves applied: recess east face x **0.47** (switch S1 and the a/c remote cradle moved onto it); `d_balcony` on the
+  common rear axis x **1.255**. Pelmet kept at its measured **0.20..2.40** (2.20 long, west end 30 mm short of the a/c
+  unit at x 0.17): it stands 45 mm east of the door axis, and its east return sits over the S3 switch with the east curtain
+  edge against the plate, as in v3 t452. Curtains centred on the pelmet (x 1.30) between its returns. The module reads
+  the recess face and the en-suite door edge from the spec, so later moves carry these along.
+- TV cabinet F7 re-keyed to the recess corner: back corner 25 mm short of it (v3 f_0185), world x **0.495..1.089**; the
+  mermaid light L3 over its east door (x 0.90; v3 t352 has it 0.13 east of the cabinet centre). S2 x 1.15, socket X7
+  x 1.17, isolator X9 x 1.09 (45 mm clear of the en-suite pediment shelf at x 1.18).
+- **Block face too short (open):** v3 t352 (camera pose from the en-suite door's clear opening, f 840 px at 1080 wide:
+  camera (0.49, 15.25, 1.35)) checks S2 (z 1.31), the isolator (z 2.15) and L3 (z 1.68) against the spec heights, but
+  puts the recess corner at x 0.26 and the `d_blue` east jamb 50 px off its spec place: the en-suite door's clear west
+  edge stands about **1.0-1.08** from the recess corner in the footage, the spec has 0.87. The en-suite door is the
+  likely culprit (`d_ensuite` ±0.10, not re-surveyed; `d_blue` and the recess are). Until it moves, S2 / X7 / X9 stand
+  closer to the cabinet than in the footage.
+- Octagonal mirror A3 measured in v3 t452 (wide shot, mirror near the centre): headboard 145 px = 1.46 m -> mirror 94 px
+  = **0.95 wide**; crest top 1.45 to cornice underside 2.52 = 144 px -> mirror 88 px = **0.65 high**, 30 px over the crest:
+  **z 1.66..2.32** (was 0.86 x 0.60 at 1.58..2.18), ±0.04. Corner cut 0.16, frame 60.
+- Radiator X1: **19** tubes at 70 mm (counted on the full-res still v3 t170: 615 px wide, 32.4 px per tube), not 21.
+- Star chandelier L1: **0.80** across the points (1.59 x the 0.55 rose in v3 f_0471, less the 9 % it gains hanging
+  0.4 m nearer the camera); rim 2.23 / bottom 1.98 check against the same frame (0.38 / 0.64 below the ceiling).
+- Door stop X6 lengthened to 0.11 with a black rubber tip: the open `d_blue` leaf's back face stands 0.136 off the wall.
+- South nightstand door opens 95 degrees (100 put its edge 12 mm from the wardrobe base).
+- Walking: the south nightstand stands in a 0.38 gap between the wardrobe and the bed (true to the footage); its door is
+  reached from the mouth of that gap, 0.21 away.
+- Fixer pass (critic BB-1..BB-5):
+  - TV X2 **z 1.14..1.85** (was 1.20..1.91). Camera pose on v3 t170 (cornice, skirting, TV and radiator outlines, sizes
+    fixed): TV bottom 1.13-1.15; the critic's 1-D fits on f_0171 / t170 give 1.125-1.17, and f_0459 has the top 0.725 under
+    the cornice. One vanishing-point estimate on t170 gives 1.22. A render from the solved pose matches the t170 outlines
+    within about 0.01 at the TV centre.
+  - Radiator X1 **z 0.22..0.82** (was 0.15..0.75). In f_0171, t170, f_0175 and f_0463 a strip of navy wall shows between
+    the tubes and the skirting top (0.17), even though the camera looks down; a radiator 0.137 proud at 0.15 would hide it.
+    The same pose puts the bottom at 0.215-0.24. Valves, tails and brackets moved up with it.
+  - Nightstands F3 / F4 **0.39** along the wall (spec 0.42): south y 14.211..14.601, north 16.125..16.515. They clear the
+    bed side rail (14.63) and the duvet drape; the door hinge stays 2 mm inside the side.
+  - Star chandelier L1 made denser to match t466 / t452 / f_0459: 16 nested rings of twisted bead ropes (was 9 single
+    strings) and a rim fringe at 12 mm pitch, 0.12-0.15 long (was 20 mm, 0.10).
+  - Socket X7 is still 25 mm off the en-suite architrave. In f_0431 / f_0433 about 0.15 of wall shows there, which
+    supports the d_ensuite move request (block face about 0.13-0.18 short in the spec).

@@ -262,3 +262,55 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   f_0093, f_0109). The cornice runs straight at x 3.00; the skirting steps into the niche.
 - d_yellow opens 95 degrees (at 100 it ran 12 mm into the north wall and swallowed the door stop; v3 f_0130 / f_0138).
 - Wall paint #F0EBD6 (the spec's #EEE7C6 rendered mustard) is now the shell finish.
+
+## Round 3 (21 Nov) refit — yellow_room unit
+
+The room is now x 0.57..3.10 (west face 0.22 east, `dims_1-03`); the east face is 3.00 with the window niche
+y 10.00..10.95 to x 3.10 below Z 5.32. Everything keyed to the west wall (cupboard, switch, remote, west socket) moved
+with it automatically. Measured this round (v3, 720 x 1280 frames, rectilinear, f = 547 px):
+
+- **Cupboard height 1.02** (was 1.00): v3 f_0130, door opening in the wall plane 246 px/m (head lining 1.98 =
+  487 px), camera 2.22 m from the wall, cupboard front 0.40 nearer (300 px/m); eye height 1.63 from the leg feet,
+  top front edge then at 1.02-1.04. Width/height ratio 0.57 from f_0129 matches the 0.55 carcass + 0.04 overhang.
+- **Ottoman lid 1.04 x 0.39** (was 0.77): v3 f_0092, its back top edge lies on the wall plane (it meets the wall
+  0.06-0.08 below the socket plate, as a 0.38-0.40 top must) and spans 443 px against 59 px for the 146 mm double
+  socket: 1.09 +/- 0.05. Five equal pads along the length, button rows at 1/4 and 3/4 of the depth (f_0092 buttons at
+  22 / 39 / 58 / 78 % of the front edge). 1.04 rather than 1.09 so that leaf, stop, chair and ottoman fit along the
+  2.43 m north wall. *Superseded by the fixer pass below (1.09, east end 0.08 short of the face; the "0.16 short" reading
+  was wrong and the room-width doubt is withdrawn).*
+- **North wall chain** (f_0092, f_0130, f_0134, f_0138): open leaf (free end x 1.32), brass stop 6 cm short of the
+  free end, chair just beyond it (cresting ears 1.34..1.94), ottoman 1.93..2.97. All positions are computed from the
+  joinery leaf mesh, so they follow a change of `openAngle`.
+- **Door stop 70 mm**: at openAngle 95 the leaf's face is 74 mm off the skirting at the stop; the room-side lever (on
+  the face toward the wall when open) stops 5 cm short of the plaster. Brass body, black rubber buffer.
+- **Downlights** x 1.26 / 2.40 (fractions 0.283 / 0.755 of the clear length, as the spec's 0.75 / 2.00 of 2.65);
+  f_0130 bearings of the two west lights put that row at 1.22-1.29.
+- **Sill board**: generated knotty flat-sawn pine under a walnut stain (`build/tex/yellow_room/`, numpy, no
+  reference pixels), mean #5A4030; the spec's #5A3A22 / the library `dark_joinery` read near black or orange.
+- Radiator 0.53 x 0.62 confirmed against the niche width (f_0085: 131 / 242 px of 0.95). AC 0.80 x 2.11..2.91
+  confirmed against the ottoman and the corner (f_0092, pitch-dependent: 0.81-0.95).
+- The board fills the niche (0.95), no ears: f_0090, f_0109 show it stopping at both cheeks; the spec's 1.10 / 0.07
+  ears were the reveal seen obliquely.
+
+## Round 3 fixer pass (critic findings)
+
+- **Light switch is a rotary dimmer** (white 86 mm plate, round knob), not a rocker: v3 f_0129, f_0130. Sections 5.3 and
+  8 above ("1-gang rocker") are wrong; the switch still toggles the four downlights.
+- **Radiator north of the window centre**: v3 f_0090 (square-on) has the tube bank 55 px from the north niche corner and
+  115 px from the south one (corners at 60 / 470 px, bank 111..352 px). Corrected for the perspective of the sill board's
+  ends (front face 30 / 42 px, the south end nearer) the bank centre is 0.03-0.08 north of the window centre; modelled at
+  wy + 0.05 (y 10.26..10.79 tubes, 10.22..10.83 with the valves). TRV head **upright** white cylinder on a chrome collar
+  at the north end (f_0090, f_0096); chrome lockshield with its cap at the south end.
+- **Sill board 45 mm** with a 15 mm round on the front arris and a 25 mm apron under the nosing, so the front reads about
+  70 mm (f_0090: dark face 30-35 px against 245 px for the 0.53 radiator; f_0096) and the gap down to the radiator is
+  0.13 (f_0090: about 0.13). Top still at sill + 0.03.
+- **Ottoman 1.09 x 0.39**, east end **0.08** short of the east face (f_0092, square-on: lid back corner 25 mm past the spur,
+  spur right edge 0.12 from the north-east corner; f_0093 / f_0094 read 0.09-0.10 but recede toward the corner). Deeper
+  tufting (pads 18 mm proud of the creases, 12 mm dimples, buttons #B9B7AF).
+- **Chair kept at the dining side chair's size** (0.53 at the seat front, 0.445 at the back, 0.60 over the cresting ears):
+  the dining spec measured that chair at 0.53 x 0.50 and this room's spec calls it the same family, so the 0.50 above is
+  an early estimate. It stands with its seat side at the ottoman's front corner (centre x 1.58); its west ear tucks 4 cm
+  behind the open leaf's free end (f_0131: ear and leaf edge line up; 26 mm clear of the leaf when open, more as it closes).
+  Door stop 0.12 west of the chair's west back leg (f_0134, f_0138: about 0.06-0.15).
+- **North sockets**: double socket and spur 17 mm apart, spur right edge 0.12 from the north-east corner (f_0092).
+

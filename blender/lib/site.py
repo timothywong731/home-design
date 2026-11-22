@@ -1,11 +1,12 @@
 """Site (owner: site; blender/MULTILEVEL.md section 6): everything outside the house that is not its envelope.
 
     from lib import site
-    site.build(ctx)             # ground zones, steps, boundaries, side gate, shed shell, neighbours, backdrop
+    site.build(ctx)             # ground zones, steps, boundaries, gates, shed shell, neighbours, backdrop
     site.surface('deck')        # the ground object of a zone
 
 Everything is read from ctx.spec['exterior']; the tables below only add what the json does not carry (how a fence or
-a wall of a given material is put together, shed finishes). Notes: blender/lib/README.md.
+a wall of a given material is put together, shed finishes); textures of its own: lib/site_tex.py. Notes:
+blender/lib/README.md.
 """
 import math
 from bisect import bisect_left
@@ -19,30 +20,45 @@ from mathutils.geometry import delaunay_2d_cdt
 from . import ctx as C
 from . import interact as IX
 from . import materials as M
+from . import site_tex as ST
 
 THICK = 0.10                    # a zone slab reaches this far below the lowest ground it stands proud of
-ZONE_MAT = {s: s for s in (     # zone `surface` -> lib.materials key (d owns the textures)
-    'asphalt', 'clay_block_paving_red_herringbone', 'composite_deck_dark_brown', 'concrete_flags',
-    'concrete_or_flags', 'concrete_setts_grey_buff', 'grass', 'sandstone_flags_grey', 'soil_lavender',
-    'timber_box_dark')}
-EDGE_MAT = {'composite_deck_dark_brown': 'timber_box_dark'}     # exposed sides: the deck's fascia boards
+ZONE_MAT = {s: s for s in (     # zone `surface` -> material key (lib.materials, site_tex, or 'library@#hex')
+    'asphalt', 'clay_block_paving_red_herringbone', 'concrete_flags', 'grass', 'soil_lavender')}
+ZONE_MAT.update({
+    'sandstone_flags_grey': 'site_flags',                           # passage.md 2.5: 560-series random courses along Y
+    'concrete_setts_grey_buff': 'site_setts',                       # front.md 2.1: soft three-tone setts, 160 courses
+    'concrete_or_flags': 'site_alley_concrete', 'concrete_insitu': 'site_alley_concrete',      # passage.md 2.8
+    'composite_deck_dark_brown': 'composite_deck_dark_brown@#776860',  # garden.md 3.1: weathered grey-brown
+    'timber_box_dark': 'timber_box_dark@#6E6862'})                  # the side step box, grey-weathered
+EDGE_MAT = {'composite_deck_dark_brown@#776860': 'timber_box_dark@#554A44'}   # exposed sides: the deck's fascia boards
 ROT = {'composite_deck_dark_brown', 'timber_box_dark'}          # textures have boards along V; these run E-W / level
+CORNER = {'site_alley_concrete'}                                # laid once over the zone: texture starts at its corner
+DIAG = {'clay_block_paving_red_herringbone'}    # laid at 45 degrees to the zone edges (garden.md 3.3: the shed veranda)
+# zone: (key, width, edge) of one course along its north / south edge; the zone's texture registers to that edge
+BORDER = {'forecourt': ('site_setts_border', 0.165, 'n'),        # darker setts laid lengthwise against the house
+          'shed_veranda': ('site_soldier_course', 0.20, 's')}    # soldier course along the veranda front (garden.md 3.3)
 KERB = {'concrete_flags': '#8A8A88'}                            # 150 mm kerb stones where the footway stands proud
-DRAINS = {'passage_step': 0.13}                                 # channel drain at the foot of a `line` step: width
+DRAINS = {'passage_step': dict(width=0.13, x=(3.71, 4.69))}     # channel drain at the foot of a `line` step (garden.md 2)
 NOSE = 0.015                                                    # tread flags oversail their risers
 # brick, mortar: soldier bricks are modelled, so they need the plain colours of the textured brick they sit in
 BRICK = {'buff_brick': ('#C9B58C', '#CFC6B0'), 'red_brick': ('#A8624A', '#C9BA8E'),
          'stock_brick_yellow': ('#C2AE85', '#D8CFBD'), 'stock_brick_grey': ('#A99873', '#8E866F')}
-CONC, STONE, LEAD, BLACK, GALV = '#A8A49C', '#9A958A', '#3F4245', '#1C1C1E', 'silver_satin'
+CONC, LEAD, BLACK, GALV = '#A8A49C', '#3F4245', '#1C1C1E', 'silver_satin'
+CAP, COPING, COPE = '#A6A398', '#B5B0A3', '#C9C5B8'               # pier cap, neighbour's coping, shed copings
 # fences by material: rails on our side (+1) or the far side (-1); trellis topper (m) on the bays beside that zone
-FENCE = {'closeboard_grey_painted': dict(rails=-1, trellis=('deck', 0.30)), 'closeboard_brown': dict(rails=1)}
+# colour: used when the boundary has no `colour` (east fence #8F887D: house.json note, passage.md 2.6)
+FENCE = {'closeboard_grey_painted': dict(rails=-1, trellis=('deck', 0.30), colour='#8F887D'), 'closeboard_brown': dict(rails=1)}
 BAY, POST = 1.83, 0.10
 GATE_DEG, GATE_POST = 50, 0.095                                 # state-1 angle (contract), goal-post section
+GATE_HEAD = 1.98                # head rail top above the gate's base (passage.md 2.7: 1.97-2.00)
+GATE_PANEL = {'feather_edge_grey': 'closeboard_grey_painted'}   # overPanel material -> board texture (recoloured)
+GATE_FACE = {'street_gate': '#6F6D70'}  # far face painted another colour (front.md 2.3: grey-mauve to the street)
 EXT_DEPTH = 5.5                                                 # a neighbour_wall with no massing behind it gets this
 SOFFIT = 'mahogany_mid'          # shed veranda: red-brown T&G boards running E-W (shed.md #5A3229; v2 f_0257 / f_0273 / f_0305)
 # workshop floor: dark grey wood-effect planks ~0.2 wide running N-S (shed.md 4; v2 f_0281 / f_0283 / f_0287)
 SHED_FIN = {'shed_workshop': dict(walls='#EFEEEA', ceiling='#EFEEEA', floor='wood_tile_floor_grey')}
-ROOF_FALL = 0.07                                                # shed felt roof falls to the front gutter
+ROOF_FALL = 0.07                                                # shed roof fall to the front when it has no `felt`
 EXPORT_BACKDROP = False                                         # True: the backdrop ground is exported too
 MISSING = set()
 _SURF = {}
@@ -53,6 +69,8 @@ def _mat(key):
     """'#RRGGBB' -> matt paint, else a lib.materials key; an unknown key logs once and renders grey."""
     if key.startswith('#'):
         return M.paint(key)
+    if '@' in key or key in ST.KEYS:
+        return ST.mat(key)
     try:
         return M.mat(key)
     except KeyError:
@@ -68,7 +86,7 @@ def _shade(hx, f):
 
 def _tone(key):
     """Plain colour of a textured material (for rails and cappings, where its board lines would run the wrong way)."""
-    return M.MANIFEST.get(key, {}).get('target', '#9A9A96')
+    return ST.tone(key)
 
 
 # ---- 2D helpers
@@ -111,6 +129,23 @@ def _house_polys(ctx):
     ext = ctx.spec['exterior']
     return [lv['polygon'] for b in ext['envelope']['blocks'] for lv in b['levels'] if lv['level'] == 'G'] + \
            [b['outline'] for b in ext.get('buildings', [])]
+
+
+RAIL_REACH = 0.04               # an insulated facade's base rail stands this far proud of its face (envelope._insulation)
+
+
+def _rail_top(ctx, pts):
+    """Top of an insulation base rail (facades[].insulation.baseRailZ) when any plan point stands on it - within
+    RAIL_REACH outside that facade's face and inside its extent - else None: a post fixed there starts on the rail."""
+    for f in ctx.spec['exterior']['facades']:
+        ins = f.get('insulation')
+        if not ins:
+            continue
+        ax, out = (0, 1) if f['axis'] == 'x' else (1, 0), 1 if f['faces'][0] == '+' else -1
+        e0, e1 = sorted(f['extent'])
+        if any(-1e-3 < (p[ax[0]] - f['at']) * out < RAIL_REACH and e0 - 1e-3 < p[ax[1]] < e1 + 1e-3 for p in pts):
+            return float(ins['baseRailZ'][1])
+    return None
 
 
 def _low(ctx, pts, default):
@@ -283,8 +318,18 @@ def _zones(ctx, house):
         pieces = _fall_pieces(z)
         used = Counter(frozenset((a, b)) for p in pieces for a, b in _edges(p))
         m, kerb, sides = _Mesh(), _Mesh(), []
-        for p in pieces + fills.get(zid, []):
-            m.face([(x, y, zf(x, y)) for x, y in p], key)
+        tops = [(p, key) for p in pieces + fills.get(zid, [])]
+        x0, y0, _, y1 = _bbox(z['polygon'])
+        ye = None
+        if zid in BORDER:                                   # one course of another key along an edge
+            bkey, w, side = BORDER[zid]
+            ye, yb = (y1, y1 - w) if side == 'n' else (y0, y0 + w)
+            n = side == 'n'
+            tops = [(q, k) for p, k in tops for q, k in ((C.clip_poly(p, (0, yb), (1, yb), left=not n), k),
+                                                          (C.clip_poly(p, (0, yb), (1, yb), left=n), bkey))
+                    if len(q) >= 3 and abs(C.poly_area(q)) > 1e-6]
+        for p, k in tops:
+            m.face([(x, y, zf(x, y)) for x, y in p], k)
         for p in pieces:
             for a, b in _edges(p):
                 low = None if used[frozenset((a, b))] > 1 else _proud(ctx, house, a, b, zf)
@@ -296,9 +341,20 @@ def _zones(ctx, house):
             if key in KERB and low < zf(*a) - 1e-3:         # kerb stones stand in the lower zone, level with this one
                 u, ln = _dir(a, b)
                 kerb.box((0, -0.15, low - THICK), (ln, 0, zf(*a)), KERB[key], org=(*a, 0), ax=_yaw(u))
-        x0, y0, _, _ = _bbox(z['polygon'])                  # boards start at the zone's corner and top edge; paving
-        org = (x0, y0, z['z']) if key in ROT else (0.0, 0.0, 0.0)   # keeps the world origin, so it runs on across zones
-        _SURF[zid] = m.obj(ctx, f"{z['room']}.{zid}", z['room'], rot=key in ROT, origin=org).name
+        # boards start at the zone's corner and top edge; paving keeps the world origin, so it runs on across zones,
+        # except where a border course fixes the joints
+        rot = key.split('@')[0] in ROT
+        org = (x0, y0, z['z']) if rot or key in CORNER else (0.0, ye if ye is not None else 0.0, 0.0)
+        ob = m.obj(ctx, f"{z['room']}.{zid}", z['room'], rot=rot, origin=org)
+        _SURF[zid] = ob.name
+        if key in DIAG:                                     # turn the texture 45 degrees on that key's faces
+            me, mt, c = ob.data, _mat(key), math.sqrt(0.5)
+            uv = me.uv_layers[0].data
+            for p in me.polygons:
+                if me.materials[p.material_index] == mt:
+                    for li in p.loop_indices:
+                        u_, v_ = uv[li].uv
+                        uv[li].uv = (c * (u_ - v_), c * (u_ + v_))
         if kerb.f:
             kerb.obj(ctx, f"{z['room']}.{zid}.kerb", z['room'])
 
@@ -325,14 +381,26 @@ def _steps(ctx, house):
                 m.box((x0 - n[3], y0 - n[0], t['z'] - 0.04), (x1 + n[1], y1 + n[2], t['z']), key, only=dirs + ['+z', '-z'])
             m.obj(ctx, f"{zone['room']}.{s['id']}", zone['room'])
         if s['id'] in DRAINS and s.get('line'):             # slotted channel in the lower zone along the riser
+            dr = DRAINS[s['id']]
             a, b = s['line']
             u, _ = _dir(a, b)
             mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
             sg = 1 if C.poly_contains(mx - u[1] * 0.05, my + u[0] * 0.05, zone['polygon']) else -1
-            ox, oy = -u[1] * DRAINS[s['id']] * sg, u[0] * DRAINS[s['id']] * sg
+            ox, oy = -u[1] * dr['width'] * sg, u[0] * dr['width'] * sg
             strip = C.clip_poly(_ccw(zone['polygon']), (a[0] + ox, a[1] + oy), (b[0] + ox, b[1] + oy), left=sg < 0)
+            x0, x1 = dr['x']
+            strip = C.clip_poly(C.clip_poly(strip, (x0, 0), (x0, 1), left=False), (x1, 0), (x1, 1), left=True)
+            bx0, by0, bx1, by1 = _bbox(strip)
+            zt = zone['z']
             m = _Mesh()
-            m.prism(strip, zone['z'] - 0.02, zone['z'] + 0.003, BLACK)      # ponytail: plain strip, slots are a texture job
+            m.prism(strip, zt - 0.06, zt + 0.001, '#3A3B3D', ends=False)        # channel body, open on top
+            for lo, hi in (((bx0, by0), (bx1, by0 + 0.012)), ((bx0, by1 - 0.012), (bx1, by1)),
+                           ((bx0, by0), (bx0 + 0.02, by1)), ((bx1 - 0.02, by0), (bx1, by1))):    # edge rails, end caps
+                m.box((*lo, zt - 0.02), (*hi, zt + 0.001), '#3A3B3D')
+            for k in range(int((bx1 - bx0 - 0.04) / 0.012)):                    # slotted grate: bars across, 6 mm slots
+                gx = bx0 + 0.02 + k * 0.012
+                m.box((gx, by0 + 0.012, zt - 0.012), (gx + 0.006, by1 - 0.012, zt + 0.0015), BLACK)
+            m.box((bx0 + 0.012, by0 + 0.012, zt - 0.03), (bx1 - 0.012, by1 - 0.012, zt - 0.012), '#101012', only=('+z',))
             m.obj(ctx, f"{zone['room']}.{s['id']}.drain", zone['room'])
 
 
@@ -362,15 +430,23 @@ def _wall(ctx, b):
 
 
 def _pier(ctx, b):
+    """Brick pier under a precast cap: `cap` = {size, edge, rise}, a square slab with a shallow four-way pyramid whose
+    apex is the pier's top (front.md 2.2)."""
     x0, y0, x1, y1 = _bbox(b['polygon'])
     top = b['baseZ'] + b['height']
+    cap = b.get('cap') or dict(size=x1 - x0 + 0.07, edge=0.075, rise=0.0)
+    zc = top - cap['edge'] - cap['rise']
     bot = _low(ctx, [(x, y) for x in (x0 - 0.02, x1 + 0.02) for y in (y0 - 0.02, y1 + 0.02)], b['baseZ']) - 0.05
     m = _Mesh()
-    m.box((x0, y0, bot), (x1, y1, top - 0.075), b['material'], only=('-x', '+x', '-y', '+y'))
-    m.obj(ctx, f"{b['room']}.{b['id']}", b['room'], origin=(x0, y0, top - 0.075))
-    cap = _Mesh()
-    cap.box((x0 - 0.035, y0 - 0.035, top - 0.075), (x1 + 0.035, y1 + 0.035, top), STONE)
-    cap.obj(ctx, f"{b['room']}.{b['id']}.cap", b['room'], bevel=0.006)
+    m.box((x0, y0, bot), (x1, y1, zc), b['material'], only=('-x', '+x', '-y', '+y'))
+    m.obj(ctx, f"{b['room']}.{b['id']}", b['room'], origin=(x0, y0, zc))
+    cx, cy, h, ze = (x0 + x1) / 2, (y0 + y1) / 2, cap['size'] / 2, zc + cap['edge']
+    c = _Mesh()
+    c.box((cx - h, cy - h, zc), (cx + h, cy + h, ze), CAP, only=('-x', '+x', '-y', '+y', '-z'))
+    ring = [(cx - h, cy - h), (cx + h, cy - h), (cx + h, cy + h), (cx - h, cy + h)]
+    for p, q in _edges(ring):
+        c.face([(*p, ze), (*q, ze), (cx, cy, top)], CAP)
+    c.obj(ctx, f"{b['room']}.{b['id']}.cap", b['room'], bevel=0.004)
 
 
 def _snap(ctx, p):
@@ -388,7 +464,9 @@ def _snap(ctx, p):
 def _fence(ctx, b, gate_ends):
     """Closeboard fence: concrete posts and gravel boards, boarded panels (boards by texture), arris rails, capping,
     and a lattice topper on the bays its style names."""
-    st, key = FENCE[b['material']], b['material']
+    st = FENCE[b['material']]
+    hx = b.get('colour') or st.get('colour')
+    key = f"{b['material']}@{hx}" if hx else b['material']
     a, e = tuple(b['line'][0]), _snap(ctx, b['line'][1])
     (u, ln), top = _dir(a, e), b['baseZ'] + b['height']
     ax, org, tone = _yaw(u), (*a, 0), _tone(key)
@@ -437,52 +515,100 @@ def _fence(ctx, b, gate_ends):
 
 
 def _gate(ctx, b):
-    """Ledged-and-braced gate in a goal-post frame. Frame coordinates: s along the line from the hinge end, n > 0 on
-    the side it opens to. The hinge post stands 50 mm off the wall behind the leaf plane (clear of the house and of
-    the step beside it), so the pivot is 0.155 m along the line from `hingeAt`."""
+    """Framed, ledged and braced gate (passage.md 2.7, 2.9). Frame coordinates: s along the line from the hinge end,
+    n > 0 on the side it opens to. The leaf is `width` wide where the line allows it (else as wide as the line allows,
+    its pivot 15 mm from the hinge end) and hangs from a hinge post - beside the leaf, or behind its plane when there
+    is no room beside it - to a latch post beyond the line end. A head rail joins the post tops; with `overPanel`
+    the posts rise to its `top` and carry a fixed boarded panel lapping over the leaf head on the far face."""
     a, e = (tuple(p) for p in b['line'])
     if math.dist(a, b['hingeAt']) > math.dist(e, b['hingeAt']):
         a, e = e, a
     u, ln = _dir(a, e)
     into = ctx.zones[b['swingInto']]['polygon']
     sg = 1 if C.poly_contains((a[0] + e[0]) / 2 - u[1] * 0.2, (a[1] + e[1]) / 2 + u[0] * 0.2, into) else -1
-    g, pw, tone = b['baseZ'], GATE_POST, _tone(b['material'])
-    s_piv, s_end, head = 0.05 + pw + 0.01, ln - 0.004, g + 1.95
-    piv = (a[0] + u[0] * s_piv, a[1] + u[1] * s_piv)
+    g, pw, over = b['baseZ'], GATE_POST, b.get('overPanel')
+    key = f"{b['material']}@{b['colour']}" if b.get('colour') else b['material']
+    tone = _tone(key)
+    s_end = ln - 0.004
+    s_piv = max(0.015, s_end - b.get('width', ln) - 0.005)
+    l0, l1 = s_piv + 0.005, s_end
+    sw, rw, t = 0.07, 0.095, 0.028                              # stiles, rails (top / middle / bottom), frame depth
+    # the knuckles stand on the opening face: the pivot is the frame's face at the hinge end, so nothing of the leaf
+    # swings back towards the hinge side
+    piv = (a[0] + u[0] * s_piv - u[1] * sg * t, a[1] + u[1] * s_piv + u[0] * sg * t)
+    head = g + (over['top'] if over else GATE_HEAD)
 
-    def box(m, lo, hi, key):
+    far = '-y' if sg > 0 else '+y'                              # the face away from the swing, in _yaw's frame
+
+    def box(m, lo, hi, k, back=None):
         n0, n1 = sorted((lo[1] * sg, hi[1] * sg))               # n is measured to the left of the line in _yaw
-        m.box((lo[0], n0, lo[2]), (hi[0], n1, hi[2]), key, org=(*a, 0), ax=_yaw(u))
-    fr = _Mesh()
-    box(fr, (0.05, -pw, g - 0.05), (0.05 + pw, 0.0, head), tone)                    # hinge post
-    box(fr, (ln + 0.006, -0.07, g - 0.05), (ln + 0.006 + pw, 0.025, head), tone)    # latch post, beyond the leaf's reach
-    box(fr, (0.05 + pw, -0.07, head - 0.07), (ln + 0.006, 0.0, head), tone)         # head rail
-    fr.obj(ctx, f"{b['room']}.{b['id']}.frame", b['room'], bevel=0.004)
+        m.box((lo[0], n0, lo[2]), (hi[0], n1, hi[2]), k, org=(*a, 0), ax=_yaw(u), keys={far: back} if back else None)
+    fk = f"{b['material']}@{GATE_FACE[b['id']]}" if b['id'] in GATE_FACE else None
     # the leaf clears by 20 mm whatever ground and treads it sweeps over on the way to GATE_DEG
     base = math.atan2(u[1], u[0])
     sweep = [(piv[0] + r * math.cos(t) - k * math.sin(t), piv[1] + r * math.sin(t) + k * math.cos(t))
              for d in range(0, GATE_DEG + 1, 2) for t in [base + sg * math.radians(d)]
-             for r in np.arange(0.03, s_end - s_piv + 0.03, 0.03) for k in (-0.06, 0.0, 0.06)]     # boards + ledges
+             for r in np.arange(0.03, s_end - s_piv + 0.03, 0.03) for k in (-0.06, 0.0, 0.06)]     # boards + frame
     z0 = max(z for z in (ctx.ground_z(x, y) for x, y in sweep) if z is not None) + 0.02
-    z1 = min(z0 + b['height'], head - 0.09)
+    z1 = z0 + b['height'] if over else min(z0 + b['height'], head - 0.11)
+    house = _house_polys(ctx)
+
+    def foot(s0, s1, n0, n1):           # post bottom: on the base rail of the wall it is fixed to, else in the ground
+        r = _rail_top(ctx, [(a[0] + u[0] * s - u[1] * n * sg, a[1] + u[1] * s + u[0] * n * sg)
+                            for s in (s0, (s0 + s1) / 2, s1) for n in (n0, (n0 + n1) / 2, n1)])
+        return g - 0.05 if r is None else r
+
+    def lap(s, d):                      # s + d (an overhang), or s where that would run into the house
+        q = (a[0] + u[0] * (s + d), a[1] + u[1] * (s + d))
+        return s if any(C.point_in_poly(*q, h) for h in house) else s + d
+    fr = _Mesh()
+    sh = s_piv - 0.01 - pw                                      # hinge post beside the leaf ...
+    if sh >= 0:
+        box(fr, (sh, -pw, foot(sh, s_piv - 0.01, -pw, 0.0)), (s_piv - 0.01, 0.0, head), tone)
+    else:                                                       # ... or behind its plane, clear of the swing, 0.03
+        sh = 0.03                                               # off the wall it hangs on (and its base rail)
+        box(fr, (sh, -0.105, foot(sh, sh + 0.10, -0.105, -0.027)), (sh + 0.10, -0.027, head), tone)
+    se = ln + 0.006 + pw
+    box(fr, (ln + 0.006, -0.07, foot(ln + 0.006, se, -0.07, 0.025)), (se, 0.025, head), tone)  # latch post, beyond the leaf's reach
+    if over:                                                    # fixed panel: boards on the far face, rails inside
+        pk = f"{GATE_PANEL.get(over.get('material'), 'closeboard_grey_painted')}@{b.get('colour') or tone}"
+        box(fr, (sh, -0.052, z1 - 0.04), (se, -0.026, head - 0.03), pk, fk and f"{pk.split('@')[0]}@{GATE_FACE[b['id']]}")
+        for zr in (z1 + 0.012, head - 0.12):
+            box(fr, (sh, -0.026, zr), (se, -0.004, zr + 0.07), tone)
+        if over.get('capping'):
+            box(fr, (lap(sh, -0.01), -0.075, head - 0.03), (lap(se, 0.01), 0.03, head), LEAD)
+    else:
+        box(fr, (sh, -0.07, head - 0.095), (se, -0.025, head), tone)  # head rail, 45 x 95
+    fr.obj(ctx, f"{b['room']}.{b['id']}.frame", b['room'], bevel=0.003)
     m = _Mesh()
-    l0, l1 = s_piv + 0.005, s_end
-    box(m, (l0, -0.022, z0), (l1, 0.0, z1), b['material'])                          # boards (joints by texture)
-    ledges = (z0 + 0.15, (z0 + z1) / 2 - 0.05, z1 - 0.25)
-    for zl in ledges:
-        box(m, (l0 + 0.01, 0.0, zl), (l1 - 0.01, 0.03, zl + 0.10), tone)
-        box(m, (l0 - 0.004, 0.03, zl + 0.03), (l0 + 0.32, 0.034, zl + 0.07), GALV)  # T-hinge strap
+    box(m, (l0, -0.022, z0), (l1, 0.0, z1), key, fk)                # boards (joints by texture), plain far face
+    zm = (z0 + z1) / 2
+    rails = ((z0, z0 + rw), (zm - rw / 2, zm + rw / 2), (z1 - rw, z1))
+    for s0 in (l0, l1 - sw):
+        box(m, (s0, 0.0, z0), (s0 + sw, t, z1), tone)
+    for r0, r1 in rails:
+        box(m, (l0 + sw, 0.0, r0), (l1 - sw, t, r1), tone)
+    # braces form a '<' seen from the side the gate opens to: they meet the stile on that viewer's left at the middle
+    # rail (passage.md 2.7: the latch stile of the garden gate; 2.9: the hinge stile of the street gate)
     u3, n3 = np.array((u[0], u[1], 0.0)), np.array((-u[1], u[0], 0.0)) * sg
-    for za, zb in zip(ledges, ledges[1:]):                                          # braces rise from the hinge side
-        ds, dz = l1 - l0 - 0.12, zb - za - 0.10
-        ex = (u3 * ds + np.array((0, 0, dz))) / math.hypot(ds, dz)
-        o = np.array((*a, 0.0)) + u3 * (l0 + l1) / 2 + np.array((0, 0, (za + zb) / 2 + 0.05))
-        m.box((-math.hypot(ds, dz) / 2 + 0.03, 0.0, -0.045), (math.hypot(ds, dz) / 2 - 0.03, 0.028, 0.045), tone,
-              org=o, ax=(ex, n3, np.cross(ex, n3)))
-    box(m, (l1 - 0.14, 0.0, g + 1.04), (l1 - 0.02, 0.03, g + 1.16), '#8E9093')      # long-throw lock
-    box(m, (l1 - 0.10, 0.0, g + 0.72), (l1 - 0.04, 0.02, g + 0.78), BLACK)          # ring latch
+    vx = l1 - sw if np.dot(u3, np.cross(n3, (0.0, 0.0, 1.0))) > 0 else l0 + sw     # inner edge of the vertex stile
+    fx = l0 + sw if vx > (l0 + l1) / 2 else l1 - sw
+    for za, zb in ((zm, z1 - rw), (zm, z0 + rw)):
+        pa, pb = np.array((vx, za)), np.array((fx, zb))
+        ln_b = float(np.linalg.norm(pb - pa))
+        ex = (u3 * (pb[0] - pa[0]) + np.array((0, 0, pb[1] - pa[1]))) / ln_b
+        o = np.array((*a, 0.0)) + u3 * (pa[0] + pb[0]) / 2 + np.array((0, 0, (pa[1] + pb[1]) / 2))
+        m.box((-ln_b / 2 + 0.05, 0.0, -0.045), (ln_b / 2 - 0.05, t - 0.002, 0.045), tone, org=o, ax=(ex, n3, np.cross(ex, n3)))
+    for r0, r1 in rails:                                            # galvanised tee hinges: straps along the rails
+        zc = (r0 + r1) / 2
+        box(m, (l0 - 0.004, t, zc - 0.02), (l0 + 0.38, t + 0.004, zc + 0.02), GALV)
+    box(m, (l1 - 0.155, t, z0 + 1.32), (l1 - 0.015, t + 0.032, z0 + 1.44), '#8E9093')     # long-throw rim lock
+    box(m, (l1 - 0.11, t + 0.032, z0 + 1.37), (l1 - 0.07, t + 0.05, z0 + 1.39), '#5E6064')  # its knob
+    box(m, (l1 - 0.10, t, z0 + 0.985), (l1 - 0.07, t + 0.008, z0 + 1.015), GALV)          # cabin hook plate ...
+    box(m, (l1 - 0.085, t + 0.008, z0 + 0.995), (l1 + 0.035, t + 0.016, z0 + 1.005), GALV)  # ... and hook
     leaf = m.obj(ctx, f"{b['room']}.{b['id']}", b['room'], kind='joinery')
-    IX.tag(leaf, 'hinge', label='Side gate', p=(piv[0], piv[1], z0), a=(0, 0, 1), deg=sg * GATE_DEG, blocks=b['id'])
+    IX.tag(leaf, 'hinge', label=b['id'].replace('_', ' ').capitalize(), p=(piv[0], piv[1], z0), a=(0, 0, 1),
+           deg=sg * GATE_DEG, blocks=b['id'])
 
 
 def _neighbour_wall(ctx, b):
@@ -497,9 +623,10 @@ def _neighbour_wall(ctx, b):
     away = -1 if C.point_in_poly(mid[0] - u[1] * 0.3, mid[1] + u[0] * 0.3, ext['plot']['polygon']) else 1
     lo, hi = sorted((0.0, away * EXT_DEPTH))
     m = _Mesh()
-    m.box((0, lo, -0.6), (ln, hi, top), b['material'], org=(*a, 0), ax=_yaw(u), keys={'+z': 'flat_felt'}, only=('-x', '+x', '-y', '+y', '+z'))
-    c0, c1 = sorted((-away * 0.03, away * 0.30))
-    m.box((0, c0, top), (ln, c1, top + 0.05), STONE, org=(*a, 0), ax=_yaw(u))       # parapet coping
+    m.box((0, lo, -0.6), (ln, hi, top - 0.05), b['material'], org=(*a, 0), ax=_yaw(u), keys={'+z': 'flat_felt'},
+          only=('-x', '+x', '-y', '+y', '+z'))
+    c0, c1 = sorted((-away * 0.03, away * (b.get('coping', 0.33) - 0.03)))          # coping, 30 mm over our side
+    m.box((0, c0, top - 0.05), (ln, c1, top), COPING, org=(*a, 0), ax=_yaw(u))
     m.obj(ctx, f"{b['room']}.{b['id']}", b['room'])
 
 
@@ -614,31 +741,72 @@ def _shed(ctx, b):
             if f:
                 meshes.setdefault(f[0], _Mesh(weld=True)).box(lo, hi, f[1], only=(d,))
 
-    def roof_z(y):
-        return top - ROOF_FALL * (y1 - y) / (y1 - y0)
+    rf = b['roof']
+    zr0, zr1 = rf.get('felt', {}).get('frontZ', top - ROOF_FALL), rf.get('felt', {}).get('rearZ', top)
+
+    def roof_z(y):                                          # felt plane, falling to the front gutter
+        return zr0 + (zr1 - zr0) * (y - y0) / (y1 - y0)
     for sfx, m in meshes.items():
         m.v = [(x, y, roof_z(y) if abs(z - top) < 1e-6 else z) for x, y, z in m.v]
         m.obj(ctx, f'{room}.{sfx}', room, rot=sfx == 'soffit', dissolve=True, origin=org)      # soffit boards E-W
     if heads.f:
         heads.obj(ctx, f'{room}.heads', room)
-    # roof trim: kerbs with coping on the west and back, a capped pier at each front corner
-    m = _Mesh()
-    # their outer faces stand PROUD (5 mm) of the wall faces they continue: coplanar they rendered black in Cycles
-    pr = 0.005
-    for kx0, ky0, kx1, ky1 in ((x0 - pr, y0 + 0.45, x0 + 0.10, y1 - 0.10), (x0 - pr, y1 - 0.10, x1 + pr, y1 + pr)):
-        m.box((kx0, ky0, roof_z(ky0) - 0.05), (kx1, ky1, top + 0.12), brick, only=('-x', '+x', '-y', '+y'))
-    for kx0, ky0, kx1, ky1 in ((x0, y0 + 0.45, x0 + 0.10, y1 - 0.10 - 0.03), (x0, y1 - 0.10, x1, y1)):   # copings butt, no overlap
-        m.box((kx0 - 0.015, ky0 - 0.015, top + 0.12), (kx1 + 0.015, ky1 + 0.015, top + 0.15), '#8E9093')
-    for px, pa, pb in ((x0, pr, 0.0), (x1 - 0.33, 0.0, pr)):
-        m.box((px - pa, y0 - pr, roof_z(y0) - 0.05), (px + 0.33 + pb, y0 + 0.45, roof_z(y0) + 0.35), brick, only=('-x', '+x', '-y', '+y'))
-        m.box((px - 0.02, y0 - 0.02, roof_z(y0) + 0.35), (px + 0.35, y0 + 0.47, roof_z(y0) + 0.39), LEAD)
+    # parapets on the sides `coping` names, felt upstands against them, copings (garden.md 3.3: west, rear and east;
+    # the side copings run out to the front, where they read as the pier caps). Outer faces stand PROUD (5 mm) of the
+    # wall faces they continue: coplanar, they rendered black in Cycles.
+    cop = rf.get('coping') or dict(sides=['west', 'rear'], width=0.30, topZ=top + 0.15)
+    tk = {}                                                 # parapet = the thickest wall on that side of the
+    for w in b['walls']:                                    # outline (not the store's 0.04 door wall, nor the
+        (ax_, ay_), (bx_, by_), h = w['a'], w['b'], w['thickness'] / 2      # store's thin back: SW downpipe at -0.53)
+        if abs(ax_ - bx_) < 1e-6 and min(abs(ax_ - h - x0), abs(ax_ + h - x1)) < 0.01:
+            side = 'west' if abs(ax_ - h - x0) < 0.01 else 'east'
+            tk[side] = max(tk.get(side, 0.0), w['thickness'])
+        elif abs(ay_ - by_) < 1e-6 and abs(ay_ + h - y1) < 0.01:
+            tk['rear'] = max(tk.get('rear', 0.0), w['thickness'])
+    pr, cw, ct, ch = 0.005, cop['width'], cop['topZ'], 0.05
+    tw, te = (tk.get(k, 0.27) if k in cop['sides'] else 0.0 for k in ('west', 'east'))
+    tr = tk.get('rear', 0.28) if 'rear' in cop['sides'] else 0.0
+    runs = []                                               # (x0, y0, x1, y1) of each parapet
+    if tw:
+        runs.append((x0 - pr, y0 - pr, x0 + tw, y1 + pr))
+    if te:
+        runs.append((x1 - te, y0 - pr, x1 + pr, y1 + pr))
+    if tr:
+        runs.append((x0 + tw, y1 - tr, x1 - te, y1 + pr))
+    m, cp, felt = _Mesh(), _Mesh(), _Mesh()
+    for kx0, ky0, kx1, ky1 in runs:
+        m.box((kx0, ky0, roof_z(ky0) - 0.05), (kx1, ky1, ct - ch), brick, only=('-x', '+x', '-y', '+y'))
+    ow, oe, orr = ((cw - t - pr) / 2 for t in (tw, te, tr))     # coping overhang each side of its parapet
+    if tw:
+        cp.box((x0 - pr - ow, y0 - pr - 0.015, ct - ch), (x0 + tw + ow, y1 + pr + orr, ct), COPE)
+    if te:
+        cp.box((x1 - te - oe, y0 - pr - 0.015, ct - ch), (x1 + pr + oe, y1 + pr + orr, ct), COPE)
+    if tr:                                                  # butts between the side copings
+        cp.box((x0 + tw + (ow if tw else 0), y1 - tr - orr, ct - ch), (x1 - te - (oe if te else 0), y1 + pr + orr, ct), COPE)
+    ix0, ix1, iy1 = x0 + tw, x1 - te, y1 - tr               # felt field inside the parapets: upstands 0.15
+    if tw:
+        felt.box((ix0, y0, roof_z(y0) - 0.01), (ix0 + 0.012, iy1, roof_z(iy1) + 0.15), 'flat_felt', only=('+x', '+z', '-y'))
+    if te:
+        felt.box((ix1 - 0.012, y0, roof_z(y0) - 0.01), (ix1, iy1, roof_z(iy1) + 0.15), 'flat_felt', only=('-x', '+z', '-y'))
+    if tr:
+        felt.box((ix0, iy1 - 0.012, roof_z(iy1) - 0.01), (ix1, iy1, roof_z(iy1) + 0.15), 'flat_felt', only=('-y', '+z'))
+    felt.box((ix0, y0 - 0.035, roof_z(y0) - 0.012), (ix1, y0 + 0.06, roof_z(y0) + 0.006), 'flat_felt')     # drip edge
     m.obj(ctx, f'{room}.roof.kerb', room, origin=org)
-    # white uPVC: fascia over the roof edge, half-round gutter, downpipe at the west end, soffit vent strip
-    m, zg = _Mesh(), roof_z(y0)
-    m.box((x0, y0 - 0.02, soffit - 0.02), (x1, y0, zg + 0.01), 'upvc_white')
-    m.tube(np.array((x0, y0 - 0.075, zg - 0.01)), np.array((x1, y0 - 0.075, zg - 0.01)), 0.055, 'upvc_white', arc=(math.pi, 2 * math.pi))
-    foot = _low(ctx, [(x0 + 0.42, y0 - 0.06)], b['datumZ'])
-    m.tube(np.array((x0 + 0.42, y0 - 0.055, foot)), np.array((x0 + 0.42, y0 - 0.055, zg - 0.06)), 0.034, 'upvc_white', up=(1.0, 0.0, 0.0))
+    cp.obj(ctx, f'{room}.roof.coping', room, bevel=0.004)
+    felt.obj(ctx, f'{room}.roof.felt', room)
+    # white uPVC: fascia under the felt edge, half-round gutter, downpipe at the SW corner, soffit vent strip
+    fz0, fz1 = rf.get('fascia', {}).get('z', (soffit - 0.04, roof_z(y0) - 0.08))
+    zg = rf.get('gutterRimZ', roof_z(y0) - 0.01)
+    m = _Mesh()
+    m.box((ix0, y0 - 0.022, fz0), (ix1, y0, fz1), 'upvc_white')
+    m.tube(np.array((ix0 + 0.005, y0 - 0.077, zg)), np.array((ix1 - 0.005, y0 - 0.077, zg)), 0.055, 'upvc_white',
+           arc=(math.pi, 2 * math.pi))
+    for gx in (ix0 + 0.003, ix1 - 0.008):                   # stop ends
+        m.box((gx, y0 - 0.132, zg - 0.05), (gx + 0.005, y0 - 0.022, zg + 0.003), 'upvc_white')
+    dx = ix0 + 0.07
+    foot = _low(ctx, [(dx, y0 - 0.08)], b['datumZ'])
+    m.tube(np.array((dx, y0 - 0.077, foot + 0.05)), np.array((dx, y0 - 0.077, zg - 0.05)), 0.034, 'upvc_white', up=(1.0, 0.0, 0.0))
+    m.tube(np.array((dx, y0 - 0.077, foot)), np.array((dx, y0 - 0.077, foot + 0.05)), 0.040, 'upvc_white', up=(1.0, 0.0, 0.0))
     if veranda:
         vx0, _, vx1, _ = _bbox(veranda[0]['polygon'])
         m.box((vx0, y0 + 0.10, soffit - 0.004), (vx1, y0 + 0.17, soffit + 0.01), 'upvc_white')

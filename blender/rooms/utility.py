@@ -467,10 +467,42 @@ def build(ctx):
     S, W = (0, -1), (-1, 0)                 # room-side normals of W-rear (faces -Y) and W-ext (faces -X)
     dyn = []                                # what moves and what it reveals: lm='dynamic' (set at the end of build)
 
-    def front(key, pivot, *objs, label='Cupboard', excl=None):
+    plates = mo.MB()                        # hinge mounting plates + arms on the carcass sides (static, one mesh)
+
+    def cups(door, pivot, side):
+        """Two concealed-hinge cups + hinge bodies on the back of a cabinet door, near its hinge edge (seen when it
+        is open), and their mounting plates + arms on the carcass side panel (inner face `side` mm beyond the door's
+        hinge edge, default the 18 mm panel flush with it). Door local frame: x across, z up, back face y = 0.
+        ponytail: plain boxes, no bevels (about 50 triangles a hinge); the arm does not follow the door."""
+        xs = [v.co.x for v in door.data.vertices]
+        w, h = max(xs) - min(xs), max(v.co.z for v in door.data.vertices)
+        mw = door.matrix_basis.copy()
+        sx = 1 if (mw.inverted() @ Vector(pivot)).x > 0 else -1
+        e = w / 2
+        st = 'steel_brushed'
+        mb = mo.MB()
+        plates.at(mw)
+        for z in (0.09, h - 0.09):
+            _lathe(mb, mw @ Vector((sx * (e - 0.0225), 0, z)), mw.to_3x3() @ Vector((0, 1, 0)),
+                   [(0, 0.0025), (0.0165, 0.0025), (0.0175, 0)], st, 14)                                # cup rim
+            mb.at(mw)                                                                              # (_lathe resets it)
+            xa, xb = sorted((sx * (e - 0.042), sx * (e - 0.016)))
+            mb.box((xa, 0.0, z - 0.009), (xb, 0.012, z + 0.009), st)                               # hinge body
+            xi = e - (0.018 if side is None else side)                                             # panel inner face
+            xa, xb = sorted((sx * (xi - 0.011), sx * xi))
+            plates.box((xa, 0.032, z - 0.019), (xb, 0.082, z + 0.019), st)                         # plate
+            xa, xb = sorted((sx * (xi - 0.024), sx * (xi - 0.008)))
+            plates.box((xa, 0.014, z - 0.008), (xb, 0.074, z + 0.008), st)                         # arm
+        plates.at()
+        return mb.finish(door.name + '.hinges', sharp_deg=50)
+
+    def front(key, pivot, *objs, label='Cupboard', excl=None, side=None):
         """objs (a front and its pull) = hinge group 'utility.<key>' about the vertical through `pivot` - the
         front's outer corner on its hinge side, so the opened front never enters the carcass or its neighbour.
-        excl: keys of fronts whose swing crosses this one (the viewer shuts them first)."""
+        excl: keys of fronts whose swing crosses this one (the viewer shuts them first). A cabinet door gets its
+        hinge cups (cups(); side = carcass panel inner face beyond the hinge edge, when not the 18 mm default)."""
+        if objs[0].data in _DOORS.values():
+            objs = objs + (cups(objs[0], pivot, side),)
         kw = dict(excl=['utility.' + k for k in excl]) if excl else {}
         dyn.extend(IX.tag_many(objs, 'hinge', g='utility.' + key, label=label, p=pivot, deg=OPEN[key], **kw))
         return objs
@@ -586,7 +618,8 @@ def build(ctx):
         kids += front(k, (xa + 0.0015 if OPEN[k] < 0 else xb - 0.0015, yw - 0.02, WALL_Z0 + 0.0015),
                       door(xb - xa - 0.003, WALL_Z1 - WALL_Z0 - 0.003, (xa + xb) / 2, yw, WALL_Z0 + 0.0015, S,
                            f'utility.wall.door.D{i + 1}'),
-                      handle(hx, yw - 0.02, zh, S), *([vents] if i == 4 else []))
+                      handle(hx, yw - 0.02, zh, S), *([vents] if i == 4 else []),
+                      side=-0.0035 if i == 4 else None)                                    # D5: end panel 3.5 mm out
     _kids(wall, *kids)
     ctx.add(wall, ROOM, 'fit', plan_sym='wall_unit')
 
@@ -602,10 +635,15 @@ def build(ctx):
     #      with the shell's utility_bulkhead (x 2.95), its -y face flush with the window's +y reveal side, so that reveal
     #      side runs on from the frame to x 2.95. Tiled to 1.39 on both faces like the reveal; the wall-cabinet run
     #      stops 0.11 short of it, a shadowed slot down to the rear splash (the owner's "really tiny gap").
+    #      Round 3: the frame (0.70 x 0.98 from 0.92, passage-11) is wider and lower than the room-side reveal; the shell
+    #      cuts the reveal at its `inner` size (0.56 wide, sill 1.05) from the room face to 5 mm before the frame, so the
+    #      tiles, trims and board fit that inner hole.
     fr = ctx.opening_frame('w_utility')
-    ya_w, yb_w = fr['center'].y - fr['width'] / 2, fr['center'].y + fr['width'] / 2
-    x_frame = fr['center'].x + fr['normal'].x * fr['face_out'] - fr['outward'].x * (fr['ext_reveal'] + 0.06)  # 3.24
-    z_board, z_tile = fr['center'].z + 0.012, 1.39                   # the boxing: house.json utility_corner_boxing
+    inner = fr.get('inner') or shell.INNER.get('w_utility', {})
+    w_in = inner.get('width', fr['width'])
+    ya_w, yb_w = fr['center'].y - w_in / 2, fr['center'].y + w_in / 2
+    x_frame = fr['center'].x + fr['normal'].x * fr['face_out'] - fr['outward'].x * (fr['ext_reveal'] + ctx.FRAME_D)  # 3.33
+    z_board, z_tile = fr['z0'] + inner.get('sill', fr['sill']) + 0.012, 1.39   # boxing: house.json utility_corner_boxing
 
     # ---- marble metro splashbacks, 2 mm proud: W-rear up to the boxing, W-ext cut round the window reveal and wrapped
     #      into its -y side up to the tile line (v2 f_0567, f_0578), the boxing and the +y reveal side as one tiled face;
@@ -700,6 +738,7 @@ def build(ctx):
                             name=f'utility.upfill.{i}')
         up.visible_camera = up.visible_glossy = False
 
+    dyn.append(ctx.add(plates.finish('utility.hinge_plates', sharp_deg=50), ROOM, 'fit'))
     for o in dyn:                                          # after every ctx.add: a root's add resets its children
         o['lm'] = 'dynamic'
 
@@ -708,4 +747,6 @@ DOWN_W = 80         # per downlight; tuned so the previews match the video (medi
 STRIP_W = 5.5       # W per metre of under-cabinet strip
 UP_W_M2 = 4.0       # ceiling up-fill, W per m2 of panel
 GREY_HEX = '#AAA8A5'        # cabinet paint (texture mean)
+# lit worktop top / cabinet door is 0.9-1.1 in the video (hr_0476 worktop 171-208 / doors 172-184, v2 f_0553 ~1.5,
+# f_0557 ~1.07): a light honey oiled oak, R/G 1.09, B/G 0.83 (round 3 fixer: #685734 read as walnut, reverted)
 OAK_HEX, OAK_CONTRAST = '#90804A', 1.0

@@ -64,7 +64,7 @@ here: whoever adds a crop records its source frame in `art/SOURCES.md`.
 | metro_grey_orm.jpg | synthesised by gen/tiles.py | project-generated, no third-party content |
 | navy_cabinet_col.jpg | Poly Haven CC0: ash_veneer Diffuse, desaturated and recoloured to #23252D | CC0 1.0 (Poly Haven), derivative |
 | oak_door_col.jpg | Poly Haven CC0: oak_veneer_03 Diffuse, recoloured to #A7954E | CC0 1.0 (Poly Haven), derivative |
-| oak_floor_col.jpg | Poly Haven CC0: washed_grey_oak_veneer Diffuse cut into 220 mm boards by gen/woods.py, knots synthesised | CC0 1.0 (Poly Haven), derivative |
+| oak_floor_col.jpg | Poly Haven CC0: washed_grey_oak_veneer Diffuse cut into 245 mm boards by gen/woods.py, knots synthesised | CC0 1.0 (Poly Haven), derivative |
 | oak_floor_nrm.jpg | synthesised (board bevels + grain) gen/woods.py | project-generated, no third-party content |
 | oak_floor_orm.jpg | synthesised gen/woods.py | project-generated, no third-party content |
 | oak_light_col.jpg | Poly Haven CC0: oak_veneer_01 Diffuse, recoloured to #C9A877 | CC0 1.0 (Poly Haven), derivative |
@@ -114,7 +114,7 @@ here: whoever adds a crop records its source frame in `art/SOURCES.md`.
 | wood_oak_veneer_01_nrm.jpg | Poly Haven CC0: oak_veneer_01 nor_gl, resized | CC0 1.0 (Poly Haven), derivative |
 | wood_oak_veneer_03_nrm.jpg | Poly Haven CC0: oak_veneer_03 nor_gl, resized | CC0 1.0 (Poly Haven), derivative |
 | wood_sapele_veneer_02_nrm.jpg | Poly Haven CC0: sapele_veneer_02 nor_gl, resized | CC0 1.0 (Poly Haven), derivative |
-| wood_tile_floor_col.jpg | Poly Haven CC0: smoked_walnut_veneer + washed_grey_oak_veneer Diffuse, desaturated, weathered (synthesised streaks / patches), cut into 200x1200 tiles with grout by gen/woods.py | CC0 1.0 (Poly Haven), derivative |
+| wood_tile_floor_col.jpg | Poly Haven CC0: smoked_walnut_veneer + washed_grey_oak_veneer Diffuse, desaturated, weathered (synthesised streaks / patches), cut into 245x1200 tiles with grout by gen/woods.py | CC0 1.0 (Poly Haven), derivative |
 | wood_tile_floor_dark_col.jpg | wood_tile_floor_col.jpg recoloured by gen/phase2.py | project-generated, no third-party content |
 | wood_tile_floor_grey_col.jpg | wood_tile_floor_col.jpg recoloured by gen/phase2.py | project-generated, no third-party content |
 | wood_tile_floor_nrm.jpg | synthesised (grout joints) gen/woods.py | project-generated, no third-party content |

@@ -124,12 +124,13 @@ def grain_height(img, sigma_px):
 
 
 def oak_floor():
-    """Engineered oak, rustic grade: boards 220 mm wide, 1.2-2.2 m long, micro-bevelled, satin.
+    """Engineered oak, rustic grade: boards 245 mm wide (round 3, dims_G 11: 0.243 +/- 0.006 in hall and dining; was
+    220), 1.2-2.2 m long, micro-bevelled, satin. A board joint lies on U = 0 (shell.FLOOR_ORIGIN registers the hall).
     Golden straw oak with visible cathedral figure, board-to-board tone steps and brown knots, as filmed
     (f_0064, f_0745). Integration retune: the first pale grey-beige #C4B790 rendered #BBAE96 (pinkish straw
     laminate) where the frames read #AC9D74, so the target is yellower and ~8 % darker, and satin (0.38)
     so the downlight streaks show."""
-    W, H, wm, hm = 2048, 2048, 2.2, 4.4
+    W, H, wm, hm = 2048, 2048, 2.45, 4.4
     px = (wm / W, hm / H)
     hx = '#AF9F66'
     a = equalize(load('washed_grey_oak_veneer', 'Diffuse', 2048, 1))      # fine straight grain ...
@@ -148,19 +149,20 @@ def oak_floor():
     height = -0.0006 * bevel + 0.00003 * gh
     rough = np.clip(0.38 + 0.05 * blur(gh, 1) + 0.25 * bevel, 0.2, 0.9)
     print('oak_floor std/255', (col * 255).reshape(-1, 3).std(0).round(1))
-    b = save('oak_floor_col', col, PH + 'washed_grey_oak_veneer Diffuse cut into 220 mm boards by gen/woods.py, knots synthesised')
+    b = save('oak_floor_col', col, PH + 'washed_grey_oak_veneer Diffuse cut into 245 mm boards by gen/woods.py, knots synthesised')
     n = save('oak_floor_nrm', normal(height, *px), 'synthesised (board bevels + grain) gen/woods.py')
     o = save('oak_floor_orm', orm(rough), 'synthesised gen/woods.py')
-    reg('oak_floor', b, (wm, hm), nrm=n, orm=o, rough=0.38, target=hx, note='boards 220 mm along V')
+    reg('oak_floor', b, (wm, hm), nrm=n, orm=o, rough=0.38, target=hx, note='boards 245 mm along V, joint on U = 0')
 
 
 def wood_tile_floor():
-    """Wood-effect porcelain planks 200 x 1200, 3.5 mm light grout, irregular third-bond.
+    """Wood-effect porcelain planks 241.5 x 1200 (0.245 pitch: kitchen t765, dims_G v6 t73.1; was 200), 3.5 mm light
+    grout, irregular third-bond.
     Weathered grey-brown barn-wood print (f_0388, f_0499): soft low-contrast weathering, fine grain,
     clear tone steps from plank to plank. Integration retune: the first version's bold dark streaks read
     as zebra stripes in every kitchen / utility / WC view; they are now ~60 % of that depth, the base is
     greyer-olive and ~8 % darker (#807A62), and the plank-to-plank steps are larger."""
-    grout_m, pw, pl = 0.0035, 0.200, 1.200
+    grout_m, pw, pl = 0.0035, 0.2415, 1.200
     W, H = 1024, 2048
     wm, hm = 6 * (pw + grout_m), 3 * (pl + grout_m)
     px = (wm / W, hm / H)
@@ -188,10 +190,10 @@ def wood_tile_floor():
     col = col * (1 - g[..., None]) + grout * g[..., None]
     height = -0.0008 * g - 0.0003 * edge ** 2 + 0.00003 * grain_height(col, 3) * (1 - g)
     rough = 0.45 + 0.4 * g
-    bf = save('wood_tile_floor_col', col, PH + 'smoked_walnut_veneer + washed_grey_oak_veneer Diffuse, desaturated, weathered (synthesised streaks / patches), cut into 200x1200 tiles with grout by gen/woods.py')
+    bf = save('wood_tile_floor_col', col, PH + 'smoked_walnut_veneer + washed_grey_oak_veneer Diffuse, desaturated, weathered (synthesised streaks / patches), cut into 245x1200 tiles with grout by gen/woods.py')
     n = save('wood_tile_floor_nrm', normal(height, *px), 'synthesised (grout joints) gen/woods.py')
     o = save('wood_tile_floor_orm', orm(rough), 'synthesised gen/woods.py')
-    reg('wood_tile_floor', bf, (wm, hm), nrm=n, orm=o, rough=0.45, target=hx, note='planks 200x1200 along V, grout #CFCABB')
+    reg('wood_tile_floor', bf, (wm, hm), nrm=n, orm=o, rough=0.45, target=hx, note='planks 245x1200 along V, grout #CFCABB')
 
 
 def oak_worktop():

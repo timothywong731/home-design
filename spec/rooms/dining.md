@@ -113,7 +113,7 @@ white dado rail in the same still; estimate = best guess under neutral light)
   half-round reeds between a 6 mm top bead and a small bottom cove. Runs on all walls, returns around the
   breast, stops square against every dark architrave (door, 2 E windows, N screen). Hidden behind the
   fire surround.
-- **Skirting**: **0.15** high, 20 mm thick, joinery stain. Profile: plain 0.105 face, then a torus
+- **Skirting**: **0.18** high (round 3; was 0.15), 20 mm thick, joinery stain. Profile: plain 0.135 face, then a torus
   (15 mm), fillet and ogee (25 mm) top. Runs on all walls and around the breast; stops against
   architraves and the fire-surround plinths.
 - No picture rail, no wall panelling.
@@ -418,3 +418,40 @@ Camera positions are room-local (x, y), eye height ~1.45, ultrawide (~105 deg ve
   window surround (v2 f_0061, v1 f_0675).
 - The boxed pelmet projects 0.18 (ground_corrections D5; lib mouldings).
 - d_french leaves open 100 degrees (garden.md 10).
+
+## Round 3 re-fit (21 Nov, dining unit; supersedes the heights above where they differ)
+Shell: west face x -0.59 (+0.06), ceiling 2.62, cornice lower edge 2.53 (dimsG-01/02), N openings on the axis x 1.255
+(windows -0.51..0.14 and 2.37..3.02, French doors 0.66..1.85; piers 0.14..0.66 and 1.85..2.37, centres 0.40 / 2.11).
+
+**Why the heights changed.** The heights in sections 2-7 were scaled from the hall door without a vertical vanishing
+point and came out too high toward the cornice (2.65 read for 2.53). Round 3 re-measured every wall piece column by
+column between the dado rail bottom (1.003, top 1.047; dims_G 8) and the 2.53 cornice edge, in frames where the camera
+is level (horizontal vanishing lines meet near the image centre), plus a 1D cross-ratio along the wall for positions.
+The 16:9 TV corners in F_613 calibrate the lens: f = 1000-1100 px on a 1080 x 1920 still (vertical FOV about 85 deg,
+not 105). Widths along the walls from the earlier method hold (mirror and panel aspects at f 1050 agree with them).
+
+| item | was | round 3 | evidence |
+|---|---|---|---|
+| W-wall plaques, top row | centre 2.50 | **2.40** (2.30-2.51), 0.15 x 0.19 | v1 t719 cols 185 / 255: rail bottom 1199-1216 px, cornice 390-419 px |
+| W-wall plaques, lower row | 2.27 | **2.18** (2.09-2.28), rows 0.22 apart | same |
+| carved panels A / B | 0.44 x 0.88, z 1.26-2.14 | **0.42 x 0.77, z 1.29-2.06** | t719 col 210 (panel 651-1057 px, 530 px/m); aspect 0.52 from the f_0724 / f_0739 quads at f 700 (720 px frames) |
+| mirror | one frame, 2 mullions, 1.47 x 0.85, z 1.26-2.11 | **three framed mirrors edge to edge** 0.385 + 0.68 + 0.385 = 1.45 x 0.79, z 1.26-2.05 | t719 col 600 (745-1032 px); t724 quad W/H 1.81 at f 1050; junctions at 27 % / 75 % of the width; t739 shows the two inner members meeting in a V |
+| S-wall shields over the door | x -0.43 .. 0.69 (0.28), z 2.50 | **door centre -0.056 + 0.265 k, k -1..3; z 2.37** (2.27-2.47), 0.15 x 0.19 | dims_G verify (v2 t27.0); f_0741 (frontal, 317 px/m); F_613 cross-ratio 0.52 / 0.78 |
+| three small shields | x 2.33 / 2.61 / 2.89, z 2.50 | **2.335 / 2.59 / 2.845, z 2.35** | F_613 cross-ratio |
+| sword board | 1.24 x 0.22, ogee-pointed ends, x 1.02-2.26, z 2.32-2.54 | **1.14 x 0.22, square ends, bevelled edge, x 1.10-2.24, z 2.24-2.46**; sword X 1.19 (tip) .. 2.22 (pommel), scabbard 0.92 long, hooks at board-local -0.27 / +0.15 | F_613 close-up (rectangular board); cross-ratio along the S wall (SE corner 3.10, door architrave 0.448, switch 0.64, TV west edge 0.89; residuals < 1 px); rail / cornice scale in its column |
+| TV | 1.89 x 1.08, x 0.86-2.75, z 1.15-2.23 | **1.81 x 1.02 (82 in, 16:9), x 0.89-2.70, z 1.13-2.15** | east edge 2.695 by the same cross-ratio; top 2.15-2.17 (F_613 cols 630 / 745) |
+| 3-gang switch | (0.67, 1.30) | **(0.64, 1.35)** | dims_G 9 |
+| picture over the mantel | 0.61 x 0.85, z 1.54-2.39 | **0.60 x 0.81, z 1.575-2.385** (fixer: was 0.58 x 0.77 at 1.63-2.40, a 5 cm gap over the clock) | v1 t674: the clock finial (top 1.58) overlaps the frame bottom (938 px); 284 px/m between the breast cornice (2.53, 667 px) and the frame bottom; frame 171 x 230 px (aspect 1.345); candelabrum finials 0.675 of the frame height down from its top (model 1.81 -> 1.82 projected on the breast) |
+| wall lights | backplate centre 1.80 | **1.75** (shade tops 2.05) | v1 t674: body centre 898 px, shade tops 817 px, alcove-wall scale 281 px/m |
+| chandelier | lowest crystal 0.79 under the ceiling (1.83) | **0.68 under (1.94)**: hub 0.45 below the cup, crystal column shortened | v1 t704: cup top 433 px, lowest drop 750 px, 398 px across the outer shades (0.80) -> 0.64-0.66; tiers (shade tops 0.10 / 0.23 under the cup, hub 0.45) match the model's shape |
+| curtains | piers 0.41 / 2.0625, headings 2.50 | **piers 0.40 / 2.11**; headings hang from the pelmet underside; closed pair 0.27..2.24 meeting on x 1.255, folds 65 mm deep (y 16.724..16.801, under the pelmet face 16.68) | shell |
+| table top colour | map median #362C22 | **#4E4232** (map x 1.44 / 1.5 / 1.5 in sRGB; grain, rubbed patches and roughness map kept) | rendered top against the frames at matching wall exposure: entry 124,102,76 vs f_0574 123,100,78; east 140 vs f_0675 130 (wall 182 vs 172); table cam 136 vs f_0608 157 (lit part); north 129 vs f_0705 94 (the gloss there picks up the ceiling) |
+| citrus | pot (2.62, 16.62), dense round head 1.12-1.81 | **(2.695, 16.62)**, centred on the widened NE recess; open head 0.87-1.84 of 560 larger leaves (98 mm), kept out of the E-window surround and the recess architraves | v2 f_0067 |
+| downlights | x -0.0125 / 1.2275 / 2.4575 | **1.255 +/- 1.24** | room centre |
+| door stop | x -0.63 (in the wall) | from the skirting face (-0.57) to the parked leaf's wall face (-0.474) | joinery leaf |
+
+Not changed, but measured: the E-window aedicule caps stand **2.34-2.39** high in v1 t674 (cornice 679 px, cap top
+719.5 px, rail bottom 1108 px; 2.34 with the cap 0.14 nearer than the wall), 0.14-0.19 under the cornice; the model has
+2.45 (joinery; requested). The room length 4.50 was not re-measured. The skirting is built 0.18 high since the round-3
+follow-up (dims_G; the door stop at 0.074..0.106 and the sockets from 0.287 stay clear of it).
+- Round-3 whole-house check: `mo.ROSE_AT['dining']` is now (1.255, 14.61), the room centre on the French-door axis; rose, chandelier, table and chairs moved 0.03 east with it.

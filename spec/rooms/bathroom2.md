@@ -287,3 +287,55 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   x 2.98..3.10, y 11.50..12.16, tiled to the 1.20 dado line and painted #B9B7B1 above; the cove returns round it
   (v5 f_0095, f_0101).
 - 2.2 w_bath2: the transom in house.json stays at 1.70 above the floor (this file says 1.62).
+
+## Round 3 (21 Nov footage, v13 f50-f127; brief spec/phase3/briefs/bathroom2.md)
+Room **x 0.42..3.10, y 11.66..13.70 (2.68 x 2.04)**, floor 6.02, ceiling 8.49 (RECONCILE3 floor2a-01..-09). The module
+places every fitting in the survey's local frame (origin = the room's SW inside corner, read from house.json) off the
+floor-tile lattice of spec/phase3/floor2_a.md; where the text above differs, these win.
+- Door d_bath2 686, clear y 0.05..0.74, leaf parks on the south wall (free edge x 0.69).
+- Shower: slab lining x 0..0.05 (house.json `bath2_shower_lining`, from y 0.82), Calacatta slab 10 mm on its face and
+  mitred round its south end; tray 1.14 x 0.75 (x 0.06..1.19, y 1.28..2.03), rain head dia 0.28 on the swan neck, black
+  hand shower, bar valve, basket at 1.25; sliding front on the tray edge, fixed glass return at x 1.18; 0.07 strip to
+  the cabin. Niche frame polished steel.
+- South wall: towel radiator x 0.76..1.29 (#191A1B); vanity 0.58 at x 1.335..1.915, carcass + face frame 0.30 deep,
+  stiles to the floor, two inset shaker doors (flat recessed panels, no V-grooves), dark bronze bow handles 0.10;
+  basin 0.60 x 0.45, rim 0.87; soap dish (frosted glass in a chrome ring on a square plate) E of the tap, white double
+  toothbrush holder W (v13 t105, t106); mirror cabinet 0.62 x 0.70 (z 1.30..2.00); WC unit x 1.925..2.345, front with
+  five vertical V-grooved boards, pan front y 0.69; picture 0.38 x 0.28 between the mirror cabinet and the cabinet.
+- Tall cabinet from x 2.35, 0.30 deep, plain flat side. **It runs to the east wall when the pipe boxing starts north of
+  it** (the survey: boxing y 0.30..0.59 only); with the house.json boxing (a column from the south wall, x 2.98..3.10)
+  it is 0.21 wide. Open question for the foundation.
+- Window wall: sill board with the nose horn past the north jamb only (the south jamb is flush with the boxing's north
+  face); marble metro returns on both jambs from the sill to 1.20 with chrome edge trims; antique-brass hooded roll
+  holder under the sill (z 0.62), brushed steel brush; white square louvred extractor 0.15 on the east wall above the
+  window head (z 2.27, y 12.50) replaces the ceiling grille of phase 2 (not seen in v13).
+- Wall paint #B5B8B8 (v13 t77 daylight against the white ceiling, low confidence; shell.repaint in the module).
+- Bath mat 0.90 x 0.53 at x 0.315..1.215, y 0.73..1.26, grey tufted with a raised border.
+- **Sauna** 1.366 x 0.753 x 2.02 at x 1.254..2.62, y 1.23..1.983: west post + five-board panel 0.616, grey glass door
+  0.60 (clear opening 0.55 between the jambs), post 0.15; rounded capping 90 high oversailing 20; base batten 45 (also
+  the door sill). Door: two chrome clamp hinges on the east edge, vertical chrome cylinder handle dia 30 x 0.25 outside,
+  timber bar 0.30 inside, opens out **95 deg** (100 deg puts the glass into the boxing corner and the handle over the
+  plant). Inside 1.276 x 0.663 x 1.93: bench along the whole east wall 0.50 x 0.66 (seven N-S slats, top 0.45,
+  bearers, front apron, two legs), backrest three slats z 0.80..1.10 on spacers, batten on the north wall at 0.80 over
+  the bench; heater 0.40 x 0.25 at mid depth (control unit 0.20..0.32, body to 0.72, steel tray, rocks to 0.83) in a
+  guard of two rails on two posts; vent 0.25 x 0.10 on the north wall, centre 0.40 from the NE corner, z 1.75; white
+  slotted sensor 0.05 x 0.08 on the east wall at 1.80; chrome-bezel thermometer on the front wall east of the door at
+  1.75; sand timer and light kept from phase 2 (not seen in v13); mat #6E6F6E; bucket and ladle on the bench's door end.
+- Walking: the tray is `shower` (non-blocking), the cabin is the `sauna` pen (the viewer opens its outline where the door
+  leaf hangs); nothing inside the cabin carries a plan symbol, so bench and heater do not block (with a blocking bench
+  the 0.60 doorway, which opens onto the bench end, would leave less than a body width).
+
+### Round 3 fixer (critic findings)
+- Sauna door glass: own light smoky-grey pane `bathroom2_sauna_glass` (#5F5C57, alpha 0.45, about half the light
+  through) instead of the washer-bowl `glass_dark`; window, plant and bench read through it as in v13 f_0076, t76, t77.
+- Cabin timber: generated flat-sawn spruce images with cathedral grain and pin knots (rooms/bathroom2_tex.py, cached in
+  build/tex/bathroom2/, 0.30 x 2.0 m per tile, grain along each board); the three variants keep the round-3 mean tones
+  (outside #D8C399, lining #D7CFBB, benches/guard/bucket #D9CEB2). Capping grain runs along its length.
+- Heater stones: 27 angular stones 0.07-0.11 across (pale grey #A3A6A2 / #979B97 with white and dark speckle), filling
+  the tray to the rim with a few above it (v13 t86, t87, t105).
+- Bucket: wooden inside down to its bottom disc; the white plastic liner is gone.
+- WC-unit top: plain light-grey quartz #DDDBD5 (no veining, v13 t71, t73, t106).
+- Bath mat: loop-pile image on the field and on the lighter raised border band (0.07 wide), v13 t106, t123.
+- Mirror cabinet stays at z 1.30..2.00: the band of about 0.03-0.05 m between its bottom edge and the tile top in v13
+  t106 / t123 is an apparent gap, shortened by parallax (the cabinet front stands 0.124 off the wall and the phone is
+  above it); the model's south preview shows the same apparent band, and phase 2 (v5) measured 1.33.

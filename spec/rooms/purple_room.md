@@ -192,3 +192,44 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   YW +/- 0.39.
 - The view out: the east neighbour's back addition is massing up to the eaves line in yellow stock brick
   (house.json exterior.neighbours east), about 2 m beyond the flank.
+
+## Round 3 re-fit (Lavender Room; brief spec/phase3/briefs/purple_room.md, survey spec/phase3/floor2_a.md)
+
+The room is now **x 0.42..3.10, y 9.55..11.50 (2.68 x 1.95)**; where the text above differs, these values win. The
+module lays everything out from the polygon and the two openings of house.json (no literal room coordinates):
+- Walls **#B9B5C6** (reveal liners repainted from white to the wall colour as before).
+- Window `w_purple` 0.82 wide on y 10.47, transom bar 1.50, lower light top-hung (joinery). Oak board 0.85 x 0.267 x
+  0.03 with a bullnose, from the frame face (x 3.312) to 0.055 proud of the wall, top 2 mm above the reveal floor
+  (z 0.762), 15 mm horns let into the reveal sides. White slot trickle vent 0.54 long (slot 0.50) on the head member
+  of the fixed light (z 2.144..2.170): 0.69 of the head in hr_v13_019.
+- Radiator: **eight** flat-oval sections 0.10 deep at 69 mm pitch, domed heads touching (**0.55 wide**), waist 0.84 of
+  the head (hr_v13_021 shows all eight; the survey's seven / 0.52 miss the north section hidden by the carpet cleaner
+  in hr_v4_389 / v13 t19; body 0.64-0.66 of the 0.85 board in v4 t389, v13 t19 and t20), z 0.17..0.68 (0.51 high, not the survey's 0.45: in hr_v4_389 the radiator is 180 px against 206 px from the
+  skirting top to the board top in the same plane = 0.87 x 0.59 = 0.51; its top is 15 px = 0.04 under the board),
+  0.03 off the wall, centred on the window; chrome angle valve + floor tail at each end, manual head at the
+  south end, lockshield cap at the north end.
+- A/C x 2.05..2.85 (0.25 from the E wall), z 2.18..2.47 on the S wall. In the footage it sits at the SE corner,
+  about 0.05 from the E wall (hr_v4_399), with 0.3-0.5 of bare wall between it and the south finial (hr_v4_389,
+  v13 t19); the module moves it there by itself once the S wall is far enough from the finial (see Open below).
+  W wall: remote cradle centre y 10.52 (z 1.30), one-gang dimmer y 10.63 (z 1.25), i.e. 0.27 / 0.16 south of the
+  door's clear edge (10.79); double socket 0.74 from the S wall (y 10.29), z 0.33. N wall socket centre 0.17 from the
+  E wall (x 2.93; hr_v4_389: 15 px left of the NE corner, 198 / 213 px from the vanishing point); S wall twin plate
+  x 1.57, z 1.25; ceiling disc (1.77, 9.85).
+- Downlights in a 1.00 x 0.91 grid on the room centre: x 1.26 / 2.26, y 10.07 / 10.98.
+- Curtains: pole #8B5E3C, dia 32, ball finials, 1.58 tip to tip on the window axis (y 9.68..11.26), z 2.33, 0.09 off the
+  wall, no rings. Eyelet drops (the top 0.25 of the cloth waves +/- 50 mm round the pole axis, front crests rounded
+  to about 2 cm, back folds closed up behind the pole, top edge notched 22 mm at the eyelets so the crowns roll over
+  the pole as in hr_v13_019; 16 / 12 columns per pleat), cloth top z 2.375, hem
+  z 0.30; open: each drop from 0.33 off the window axis (the heading laps the reveal by 0.08, hr_v4_389) to the finial
+  base (0.71), gold rope tie-back at z 0.88 on a hook 0.03 outside the reveal edge, 0.16 tassel. Closed: each half from
+  the finial base to 10 mm past the middle, hanging 0.125 off the wall below the heading so it clears the radiator.
+  Print scaled x2 (peony heads 0.2-0.25 as seen, survey).
+- Chippendale chair against the S wall, centre x 1.87, back 0.02 off the wall.
+
+**Open (spec owner): the room is about 0.35-0.40 deeper N-S than the polygon.** In hr_v4_389 (level, square-on to
+the E wall) the cornice's bottom edge stays horizontal from the NE corner (u 282) to the A/C (u 1017): the SE corner
+is not at the survey's u 902 (the S-wall cornice would climb about 80 px by u 1000). On the E-wall scale of that still
+(cornice bottom 2.48 to skirting top 0.17 = 744 px, 322 px/m) the window axis is 1.06 from the N wall and at least
+1.23 from the S wall; the A/C's front-east corner at u 1017 puts the S face at 9.05-9.22. v13 t19 gives NE / SE
+corners 399 / 496 px from the axis at sill height (1.28 m south of the axis if the north side is 1.03). Best value:
+S face **9.15 +/- 0.08** (room 2.68 x 2.35), over yellow_room's S face (9.03) below.

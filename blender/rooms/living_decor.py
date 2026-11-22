@@ -7,7 +7,7 @@ import bpy
 from mathutils import Matrix, Vector
 from lib import materials as M, mouldings as mo, props as P
 from living_parts import (Tr, Rz, Rx, Ry, MIRX, kid, loft, rrect, circ, slab, _face, tube_var, rtube, crystal, brass, wood,
-                          _bsdf, ART)
+                          gold, _bsdf, ART)
 
 
 def sphere(mb, c, r, mat, n=10, sy=1.0, sz=1.0):
@@ -132,30 +132,51 @@ def toile():
 
 
 def table_lamp(name='living.table_lamp'):
-    """Salmon alabaster urn lamp with ormolu mounts, 0.78 high with its bell shade (top 0.24, bottom 0.34,
-    height 0.27) in cream cloth printed with a coral floral toile."""
+    """Rose-brown marble table lamp with antique gilt mounts (v10 t46, t56, g1369), bottom to top: a gilt acanthus ring
+    foot dia 0.18 on the table, a domed marble foot dia 0.145 x 35, a marble torus neck ring dia 50 at 0.06, a plain
+    inverted-cone marble body widening from 45 mm to 0.13 at a gilt rose-garland collar 0.25 above the ring, with
+    swags and pendants hanging 40 mm below it. Above the collar (not in v10, kept from v1): a marble shoulder, the gilt
+    stem and the bell shade (top 0.24, bottom 0.34, height 0.27) in cream cloth printed with a coral floral toile.
+    Origin = centre of the underside; shade from 0.53 to 0.80."""
     mb = mo.MB()
-    G = brass()
-    A = M.solid('living_alabaster_pink', '#C99A7A', 0.3)
-    mb.lathe([(0, 0), (0.085, 0), (0.085, 0.012), (0.08, 0.016), (0, 0.016)], A, 20)
-    mb.lathe([(0, 0.016), (0.078, 0.016), (0.08, 0.026), (0.062, 0.034), (0.04, 0.05), (0.03, 0.066), (0.034, 0.074), (0, 0.074)], G, 16)
-    mb.lathe([(0, 0.072), (0.03, 0.072), (0.046, 0.10), (0.06, 0.15), (0.066, 0.205), (0.06, 0.25), (0.04, 0.285),
-              (0.03, 0.30), (0, 0.30)], A, 20)
-    mb.lathe([(0, 0.296), (0.036, 0.296), (0.04, 0.306), (0.03, 0.318), (0.016, 0.33), (0.012, 0.36), (0.012, 0.455),
-              (0.02, 0.462), (0.02, 0.50), (0, 0.50)], G, 12)
-    for k in range(6):                                              # rose garland round the belly
-        a0, a1 = tau * k / 6, tau * (k + 1) / 6
+    G = gold('antique')
+    A = M.image_mat('living_lamp_marble', os.path.join(ART, 'lamp_marble.jpg'), size_m=(0.5, 0.12), roughness=0.25)
+    # pierced acanthus skirt (t46 close-up): a gilt cove from the table (r 0.09) in and up to under the marble rim
+    # (r 0.073, z 0.019); 22 lobed leaves stand on it from a continuous foot band, tips curling under the rim, the
+    # dark core showing between them as the piercing. Nothing rises above the marble rim.
+    mb.lathe([(0, 0), (0.0885, 0), (0.0898, 0.0016), (0.0862, 0.0068), (0.0805, 0.0125), (0.0758, 0.0172),
+              (0.0738, 0.0192), (0.0729, 0.0190), (0.0729, 0.016), (0, 0.016)],
+             M.solid('living_gilt_shadow', '#4E4224', 0.45, 1), 36)
+    for k in range(22):
+        mb.at(Rz(360 * k / 22) @ Tr(0, 0.0902, 0.0010) @ Rz(180) @ Rx(47) @ Tr(0, 0, 0.0007))
+        mb.leaf(0.0242, 0.026, 0.0024, G, 6, serrate=0.45, curl=0.7, base=0.6)
+    mb.at()
+    mb.lathe([(0, 0.016), (0.0725, 0.016), (0.0725, 0.021), (0.069, 0.029), (0.058, 0.039), (0.041, 0.047),
+              (0.027, 0.051), (0, 0.051)], A, 28)                   # domed foot
+    mb.lathe([(0, 0.051), (0.021, 0.051), (0.0245, 0.053), (0.0255, 0.058), (0.0245, 0.063), (0.021, 0.065),
+              (0, 0.065)], A, 20)                                   # neck ring
+    body = lambda z: 0.0225 + (z - 0.065) * 0.0425 / 0.245          # inverted cone, 45 mm -> 0.13 at the collar
+    mb.lathe([(0, 0.065), (body(0.065), 0.065), (body(0.19), 0.19), (body(0.305), 0.305), (0, 0.305)], A, 28)
+    mb.lathe([(0, 0.303), (0.066, 0.303), (0.0705, 0.307), (0.0715, 0.316), (0.068, 0.324), (0, 0.324)], G, 28)   # collar
+    for k in range(8):                                              # rose garland: swags, roses, pendants
+        a0, a1 = tau * k / 8, tau * (k + 1) / 8
         pts = []
         for i in range(7):
             t = i / 6
+            z = 0.300 - 0.022 * sin(pi * t)
             a = a0 + (a1 - a0) * t
-            pts.append((0.068 * cos(a), 0.068 * sin(a), 0.225 - 0.03 * sin(pi * t)))
-        mb.tube(pts, 0.005, G, 5)
-        sphere(mb, (0.07 * cos(a0), 0.07 * sin(a0), 0.228), 0.009, G, 6)
-    for sx in (-1, 1):                                              # figure handles reduced to scrolled mounts
-        pts = [(sx * (0.045 + 0.03 * sin(pi * t) + 0.012 * sin(tau * t)), 0, 0.285 - 0.12 * t) for t in (i / 8 for i in range(9))]
-        tube_var(mb, pts, [0.006, 0.009, 0.011, 0.01, 0.008, 0.008, 0.009, 0.007, 0.004], G, 6)
-        sphere(mb, (sx * 0.058, 0, 0.295), 0.012, G, 8)
+            pts.append(((body(z) + 0.004) * cos(a), (body(z) + 0.004) * sin(a), z))
+        mb.tube(pts, 0.0042, G, 6)
+        am = (a0 + a1) / 2
+        sphere(mb, ((body(0.279) + 0.006) * cos(am), (body(0.279) + 0.006) * sin(am), 0.279), 0.0065, G, 6)
+        for t in (0.22, 0.78):                                      # smaller roses along the swag: cast, not a rod
+            z, a = 0.300 - 0.022 * sin(pi * t), a0 + (a1 - a0) * t
+            sphere(mb, ((body(z) + 0.0062) * cos(a), (body(z) + 0.0062) * sin(a), z), 0.0045, G, 6, sy=1.0, sz=0.85)
+        for r, z in ((0.0045, 0.294), (0.0038, 0.282), (0.0032, 0.271), (0.0026, 0.262)):
+            sphere(mb, ((body(z) + 0.004) * cos(a0), (body(z) + 0.004) * sin(a0), z), r, G, 6)
+    mb.lathe([(0, 0.324), (0.064, 0.324), (0.06, 0.339), (0.048, 0.354), (0.034, 0.364), (0.03, 0.371), (0, 0.371)], A, 24)
+    mb.lathe([(0, 0.369), (0.034, 0.369), (0.036, 0.377), (0.026, 0.389), (0.015, 0.40), (0.012, 0.43), (0.012, 0.50),
+              (0.02, 0.507), (0.02, 0.528), (0.007, 0.53), (0.006, 0.70), (0.014, 0.70), (0.014, 0.745), (0, 0.745)], G, 12)
     root = mb.finish(name)
     sh = mo.MB()                                                    # round bell shade; the trim follows the rims
     n = 24
@@ -170,7 +191,7 @@ def table_lamp(name='living.table_lamp'):
         a = tau * k / 3
         sh.tube([(0, 0, 0.245), (0.119 * cos(a), 0.119 * sin(a), 0.268)], 0.0015, G, 3)
     shade = sh.finish(name + '.shade')
-    kid(root, shade, (0, 0, 0.51))
+    kid(root, shade, (0, 0, 0.53))
     return root
 
 
@@ -239,21 +260,6 @@ def games_console(name='living.games_console'):
     mb.prism([(-0.1375, -0.152, 0.033), (-0.1375, -0.144, 0.053), (0.1375, -0.144, 0.053), (0.1375, -0.152, 0.033)],
              (0, 0.297, 0), Bg)                                                                      # upper slab
     mb.box((-0.12, -0.153, 0.010), (-0.09, -0.1495, 0.013), M.solid('living_console_led', '#3A4A66', 0.4))   # light bar, off
-    return mb.finish(name)
-
-
-def xiangqi(name='living.xiangqi'):
-    """Chinese chess board 0.38 x 0.42 in pale wood with the 32 dark-red round pieces set out."""
-    mb = mo.MB()
-    red = M.solid('living_xiangqi_red', '#4A1A15', 0.45)          # dark maroon discs (v2:f_0833)
-    mb.box((-0.19, -0.21, 0), (0.19, 0.21, 0.018), 'oak_light', bev=0.002, grain=1)
-    dx, dy = 0.04, 0.04
-    spots = [(c, 0) for c in range(9)] + [(1, 2), (7, 2)] + [(c, 3) for c in (0, 2, 4, 6, 8)]
-    spots += [(c, 9 - r) for c, r in spots]
-    for c, r in spots:
-        mb.at(Tr((c - 4) * dx, (r - 4.5) * dy, 0.018))
-        mb.lathe([(0, 0), (0.015, 0), (0.016, 0.003), (0.016, 0.007), (0.014, 0.0095), (0, 0.0095)], red, 10)
-    mb.at()
     return mb.finish(name)
 
 
@@ -588,38 +594,35 @@ def tea_tray(name='living.tea_tray'):
     return mb.finish(name)
 
 
-def solitaire(name='living.solitaire'):
-    """Turned wooden solitaire board dia 0.23 with cream stone marbles."""
+def magazine_rack(name='living.magazine_rack'):
+    """Embossed sheet-brass magazine rack 0.30 x 0.15 x 0.26 on the floor by the east nib (v10 t42, f_0009-0012), empty
+    (its magazines are printed matter): long sides splayed out toward the top over a narrower floor, a centre divider,
+    rolled rims, a raised panel with a boss embossed on each long side, four bun feet. Origin = floor centre, long
+    axis local x."""
     mb = mo.MB()
-    mb.lathe([(0, 0), (0.10, 0), (0.115, 0.006), (0.115, 0.014), (0.108, 0.02), (0.10, 0.016), (0, 0.016)], 'oak_table', 28)
-    iv = P.mat('ivory')
-    for i in range(-3, 4):
-        for j in range(-3, 4):
-            if (abs(i) > 1 and abs(j) > 1) or (i == 0 and j == 0):
-                continue
-            mb.at(Tr(i * 0.025, j * 0.025, 0.014))
-            mb.dome(0.0085, 0.0085, 0.0085, iv, 6, 2)
-    mb.at()
-    return mb.finish(name)
-
-
-def inlay_box(name='living.inlay_box'):
-    """Bone-inlaid marquetry box 0.20 x 0.13 x 0.07: pale inlay all over, dark banding and a geometric star."""
-    mb = mo.MB()
-    iv = P.mat('ivory')
-    dk = wood()
-    mb.box((-0.10, -0.065, 0), (0.10, 0.065, 0.07), iv, bev=0.003)
-    for z0, z1 in ((0.0, 0.008), (0.046, 0.052), (0.064, 0.0705)):          # base, lid joint and lid edge bands
-        mb.box((-0.1012, -0.0662, z0), (0.1012, 0.0662, z1), dk, grain=0)
-    for k in range(8):                                               # geometric star on the lid
-        a = tau * k / 8
-        r0, r1 = 0.012, 0.048
-        mb.face([(r0 * cos(a - 0.3) * 1.4, r0 * sin(a - 0.3), 0.0717), (r1 * cos(a) * 1.5, r1 * sin(a), 0.0717),
-                 (r0 * cos(a + 0.3) * 1.4, r0 * sin(a + 0.3), 0.0717)], dk, (0, 0, 1))
-    for sx in (-1, 1):                                               # diamond lozenges on the front
-        for k in range(3):
-            x = sx * (0.02 + 0.028 * k)
-            mb.face([(x - 0.01, -0.0663, 0.027), (x, -0.0663, 0.04), (x + 0.01, -0.0663, 0.027), (x, -0.0663, 0.014)], dk, (0, -1, 0))
+    B = brass()
+    hx, hb, ht, z0, z1, t = 0.15, 0.055, 0.075, 0.016, 0.235, 0.0015    # divider top 0.258: 12 mm under the curtain hem
+    for sy in (-1, 1):                                              # splayed long sides
+        mb.prism([(-hx, sy * hb, z0), (hx, sy * hb, z0), (hx, sy * ht, z1), (-hx, sy * ht, z1)], (0, sy * t, 0), B)
+        ring = []                                                   # embossed panel, following the splay
+        for x, zz in ((-hx + 0.03, z0 + 0.03), (hx - 0.03, z0 + 0.03), (hx - 0.03, z1 - 0.03), (-hx + 0.03, z1 - 0.03)):
+            ring.append((x, sy * (hb + (ht - hb) * (zz - z0) / (z1 - z0) + t + 0.0015), zz))
+        mb.tube(ring, 0.002, B, 4, closed=True, up=(0, sy, 0))
+        zm = (z0 + z1) / 2
+        mb.at(Tr(0, sy * (hb + (ht - hb) * 0.5 + t), zm) @ Rx(-90 * sy))
+        mb.dome(0.03, 0.03, 0.008, B, 12, 3)
+        mb.at()
+        mb.tube([(-hx, sy * (ht + t / 2), z1), (hx, sy * (ht + t / 2), z1)], 0.003, B, 6)          # rolled rim
+    for sx in (-1, 1):                                              # ends
+        mb.prism([(sx * hx, -hb, z0), (sx * hx, hb, z0), (sx * hx, ht, z1), (sx * hx, -ht, z1)], (-sx * t, 0, 0), B)
+        mb.tube([(sx * hx, -ht, z1), (sx * hx, ht, z1)], 0.003, B, 6)
+        for sy in (-1, 1):
+            mb.at(Tr(sx * (hx - 0.02), sy * (hb - 0.015), 0))
+            mb.lathe([(0, 0), (0.008, 0), (0.012, 0.006), (0.011, 0.013), (0.006, z0), (0, z0)], B, 10)
+            mb.at()
+    mb.box((-hx, -hb, z0), (hx, hb, z0 + t), B)
+    mb.box((-hx + 0.004, -0.0008, z0), (hx - 0.004, 0.0008, z1 + 0.02), B)                        # divider
+    mb.tube([(-hx + 0.004, 0, z1 + 0.02), (hx - 0.004, 0, z1 + 0.02)], 0.003, B, 6)
     return mb.finish(name)
 
 

@@ -514,3 +514,36 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - 5.5 The gas-meter niche is a real 0.08 recess in the south wall (house.json basement_meter_niche, x 1.55..1.85,
   h 1.45..1.88). The sealed recess (its floor rises about 35 degrees) and the black ceiling slot / boiler notch stay
   flat panels in rooms/basement_plant.py: a box recess cannot carry the slope or the black lining.
+
+## Round 3 (21 Nov round: re-fit and detail; nothing moved in the basement shell)
+- The shaft soffit follows the new main flight (14 x 0.2036, going 0.253): carcass Z 0.49 at R4 (y 5.60), 0.81 at y 6.00,
+  2.08 at the door (y 7.58). The lining (`basement_stair.lining`) is computed from `stair_main`, so it moved with it.
+- Soffit-to-end-wall cove (3.3) modelled as a 0.12 radius cove under the flat lining at y 5.19 (the real one is about
+  0.15 higher; the model's bottom winder of the main flight sits there).
+- Extinguisher (5.1): centre y 7.38 as specified, body tight to the upper west wall (x 0.229..0.329), Z 0.38..0.75,
+  0.10 diameter (width about 0.10 against the 0.61 opening; Z 0.35..0.75 by ratio on the 1.98 leaf). In hr_142 it only
+  meets the architrave in perspective; at y 7.50 it hung in front of the closed leaf's west stile. Hose and squeeze lever
+  are on the south flank, so nothing passes x 0.33.
+- Shelf (7, t_133.0): order south to north is cork lying at the front edge, olive bottle (dark label band), box with a
+  worn domed knob, blank card, cream tile and a dark square both leaning on the wall. The cluster stands about 0.3 north
+  of the spec so the bottle's cork comes about 0.03 under the model's soffit (as in f_0135). D8 is a reeded gilt board
+  (five reeds) with the dark-steel fork laid over its south half, tines up, not a framed picture.
+- Gas niche (5.5): hr_249 and f_0246 show the niche top at the ceiling (h 2.00), not 1.88: by the meter (0.27 wide =
+  205 px in f_0247) the niche is 0.43 high, so h about 1.57..2.00, meter h about 1.58..1.75. Requested in the shell;
+  the fittings read the niche feature and follow it. The bulkhead's open end is taken at x 1.40 (spec 1.45 +/- 0.10):
+  the flex runs about 0.1 along the wall outside the niche to the lever valve (red lever, blue sleeve, yellow tape) at
+  the open end, h 1.925 (f_0256).
+- Sealed recess (3.5): requested as a shell recess x 4.25..4.48 (the house mass ends between x 4.50 and 4.55, so the
+  filmed 0.45 depth would break through); the stained 35 degree slope is built inside it once the shell cuts it,
+  until then a flat stand-in: a stained lip band under a panel in the niche's shadow tone (#8A8274; in f_0179 the back
+  reads 0.58 and the slope 0.54 of the lit wall's value), framed by a 20 mm wide, 6 mm proud white render lip.
+- Network cabinet door: light smoked glass (#26292C, alpha 0.50) so the patch leads and LEDs show through, as in f_0198.
+  NAS 0.28 x 0.166 x 0.24 (6-bay size, f_0197).
+- Stool stack back at the spec position (3.25, 6.35): f_0180 shows nothing standing under the cross, and the bearing of
+  the stack from the stair foot in f_0151 fits the spec position.
+- Risers R2..R9: lib/shell.label no longer emits wall faces on the riser planes under the solid flight (round-3
+  follow-up), so the lib/stairs risers render planked; the interim `basement_stair.riser_covers` boards are gone.
+- Added: white saddle clips on the copper drops, the brass tundish on the T&P discharge at h 0.24..0.36, three black
+  cables from the wall-N trunking into the boiler notch. Copper darkened to #8C5C3C, rough 0.5 (tarnished, f_0165). Key-board
+  plaque two-tone: frame #685226, arched field #493920 (f_0193).
+- Not changed: plan, headroom, plant positions (not re-surveyed this round, dims_vert).

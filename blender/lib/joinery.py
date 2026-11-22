@@ -13,7 +13,7 @@ import math
 
 from mathutils import Matrix, Vector
 
-from . import interact as IX, mouldings as mo
+from . import interact as IX, mouldings as mo, shell
 from .ctx import FRAME_D
 
 MB, PROFILES = mo.MB, mo.PROFILES
@@ -27,15 +27,19 @@ LEAF_ANGLE = {'d_inner': lambda p: 85.0 if p.x < 0 else 0.0}
 LABEL = {'d_street': 'Front door', 'd_french': 'Garden door', 'd_back': 'Back door', 'd_basement': 'Basement door',
          'd_understairs': 'Cupboard door', 'd_balcony': 'Balcony door', 'shed_d1': 'Workshop door',
          'shed_store_doors': 'Store door'}
-# opening id -> degrees a leaf modelled shut opens to (default 90); lower it where the open leaf would hit something
-# d_french 100 (garden.md 10: tips clear the deck chairs and planters); shed_store_doors 90: at 95 the north leaf ran
-# 10 mm into the shed front wall
-OPEN_DEG = {'d_balcony': 85.0, 'shed_d1': 100.0, 'shed_store_doors': 90.0, 'd_french': 100.0}
+# opening id (or one leaf's object name, which wins) -> degrees a leaf modelled shut opens to (default 90); lower it
+# where the open leaf would hit something. d_french 100 (garden.md 10: tips clear the deck chairs and planters);
+# shed_store_doors 90: at 95 the north leaf ran 10 mm into the shed front wall; shed_d1 east leaf 25: the veranda rack
+# and hook rail stand in its sweep and it opens about that far in reality (shed.md open questions; clear up to 30);
+# shed_store_doors north leaf 80: at 90 its top corner ran into the open shed_w1 fanlight
+OPEN_DEG = {'d_balcony': 85.0, 'shed_d1': 100.0, 'shed_store_doors': 90.0, 'd_french': 100.0,
+            'shed.shed_d1.leaf.1': 25.0, 'shed.shed_store_doors.leaf.1': 80.0}
 # [round 4] living bay shutters: the panels could swing only 5-10 degrees clear of the tied-back curtains and the lamp
 # table, so "Open shutter" did nothing visible (IX-02). Opening a shutter now tilts its louvres open, as the owner does
 # in v2 f_0759-0766: louvres tilted open (SHUTTER_TILT[0]) as modelled, shut (SHUTTER_TILT[1], the night look of
 # living.md 2.3) in state 1.
 SHUTTER_TILT = (12.0, 75.0)
+HATCH_DEG = 100.0                            # eaves hatch leaves open 95-100 deg (eaves_loft survey 2.1, v12 f8-13)
 HATCH_WEST_DEG = {'h_eaves_rear': 95.0}      # at 110 the west leaf's knob came within 10 mm of the loft TV face (x 1.292)
 DARK_HEAD = 0.18        # dark timber head board over the balcony door frame: shows 0.12 under the 2.30 pelmet (v3 f_0159)
 POCKET_OPEN = {'d_wc'}  # pocket doors modelled open, as filmed; every other one is modelled shut
@@ -106,11 +110,16 @@ def flush_pull(mb, x, z, t, faces=(1, -1)):
     mb.at(M0)
 
 
-def butt_hinges(mb, h, upvc=False):
-    """Three hinges on the hinge axis (object origin) of a leaf of height h."""
-    for zc in (0.22, h / 2, h - 0.21):
+def butt_hinges(mb, h, upvc=False, side=1):
+    """Three hinges on the hinge axis (object origin) of a leaf of height h. uPVC: white flag-hinge covers 0.115 high
+    (porch / passage surveys round 3: z 0.20 / 0.97 / 1.70 on a 1.95 leaf): a round knuckle on the axis, 5.5 mm
+    radius so it stays in front of the frame face 6 mm behind the axis whatever the angle, and the flag cover on the
+    leaf side (`side` = +-1, object x of the leaf): 23 mm wide, 11.5 proud. The old 35 mm box straddled the axis and
+    swung its frame half into the jamb (d_back, round 3 check-21)."""
+    for zc in ((0.123 * h, 0.52 * h, 0.895 * h) if upvc else (0.22, h / 2, h - 0.21)):
         if upvc:
-            mb.box((-0.011, -0.022, zc - 0.045), (0.011, 0.007, zc + 0.045), 'upvc_white', bev=0.002)
+            mb.lathe([(0, zc - 0.0575), (0.0055, zc - 0.0575), (0.0055, zc + 0.0575), (0, zc + 0.0575)], 'upvc_white', 8)
+            mb.box((min(0, side * 0.0175), -0.006, zc - 0.0575), (max(0, side * 0.0175), 0.0055, zc + 0.0575), 'upvc_white')
         else:
             mb.lathe([(0, zc - 0.05), (0.0062, zc - 0.05), (0.0062, zc + 0.05), (0, zc + 0.05)], 'brass', 8)
             mb.box((-0.022, -0.0075, zc - 0.05), (0.022, -0.004, zc + 0.05), 'brass')      # flaps (edge-on)
@@ -228,30 +237,36 @@ def _astragal(mb, w, h, t, mat, lap=0.014):
         mb.box((w - 0.026, s * t / 2, 0.0), (w + lap, s * (t / 2 + 0.007), h), mat, 0.002, grain=2)
 
 
-def leaf_upvc_street(mb, gb, w, h, t=0.060, letterbox=False, mat='upvc_white'):
-    """Street door leaf: Georgian-bar obscure light (3 x 4) over a solid panel with planted mould."""
-    st, zp0, zp1, zg0, zg1 = 0.075, 0.13, 0.81, 0.92, h - 0.08
-    _frame_boxes(mb, w, h, t, mat, st, h - zg1, zp0, rails=[(zp1, zg0)], bev=0.003)
-    x0, x1 = st, w - st
-    _panel(mb, x0, zp0, x1, zp1, t, mat, 'bead_ovolo', recess=0.010, raised=0.0)
-    for s in (1, -1):                                                  # planted mould 35 mm in
-        _rect_bead(mb, x0 + 0.045, zp0 + 0.045, x1 - 0.045, zp1 - 0.045, s * (t / 2 - 0.010), s,
-                   [(0.014, 0.0), (0.010, 0.006), (0.004, 0.006), (0.0, 0.0)], mat)
+def leaf_upvc_street(mb, gb, w, h, t=0.060, letterbox=False, mat='upvc_white', zb=0.0):
+    """Street door leaf (porch survey round 3, v9 + photo; heights scale with the leaf, measured on a 1.945 leaf):
+    hinge stile 0.095, meeting stile 0.11 (+ the astragal on the west leaf), top rail 0.105; obscure light 3 wide x
+    4 high (bottom pane 5 % taller) with 16 mm bars inside the sealed unit; mid rail 0.76..0.905 carrying the letter
+    plate; flat lower panel in a bolection mould. zb = floor -> leaf bottom (the lever is placed from the floor)."""
+    k = h / 1.945
+    sh, sm, zp0, zp1, zg1 = 0.095, 0.110, 0.16 * k, 0.76 * k, h - 0.105 * k
+    zg0 = 0.905 * k
+    _frame_boxes(mb, w, h, t, mat, sh, h - zg1, zp0, rails=[(zp1, zg0)], stile2=sm, bev=0.003)
+    x0, x1 = sh, w - sm
+    _panel(mb, x0, zp0, x1, zp1, t, mat, 'bead_bolection', recess=0.010, raised=0.0)
     _glass(gb, x0 - 0.008, zg0 - 0.008, x1 + 0.008, zg1 + 0.008, 'glass_obscure', 0.020)
-    _glazing_bead(mb, x0, zg0, x1, zg1, t, mat, 0.020, 0.014)
-    cw, rh = (x1 - x0) / 3, (zg1 - zg0) / 4
-    for s in (1, -1):                                                  # Georgian bars on the glass
-        ya, yb = s * 0.0102, s * 0.017
+    bw = 0.016
+    _glazing_bead(mb, x0, zg0, x1, zg1, t, mat, 0.020, bw)
+    a0, a1, c0, c1, bar = x0 + bw, x1 - bw, zg0 + bw, zg1 - bw, 0.016       # clear glass and the bars inside the unit
+    cw, rh = (a1 - a0 - 2 * bar) / 3, (c1 - c0 - 3 * bar) / 4.05
+    for s in (1, -1):                               # flush strips 1.5 mm on the (opaque) obscure pane = bars in the unit
+        ya, yb = s * 0.0101, s * 0.0116
         for i in (1, 2):
-            mb.box((x0 + i * cw - 0.009, ya, zg0), (x0 + i * cw + 0.009, yb, zg1), mat)
-        for j in (1, 2, 3):
-            mb.box((x0, ya, zg0 + j * rh - 0.009), (x1, yb, zg0 + j * rh + 0.009), mat)
-    if letterbox:
-        zc = (zp1 + zg0) / 2
+            xa = a0 + i * cw + (i - 1) * bar
+            mb.box((xa, ya, c0), (xa + bar, yb, c1), mat)
+        for j in (1, 2, 3):                         # 0.3 mm less proud than the uprights: no coplanar crossings
+            za = c0 + 1.05 * rh + (j - 1) * (rh + bar)
+            mb.box((a0, ya, za), (a1, yb - s * 0.0003, za + bar), mat)
+    if letterbox:                                   # 0.30 x 0.07 polished brass plate centred on the mid rail
+        zc, xc = (zp1 + zg0) / 2, (x0 + x1) / 2
         for s in (1, -1):
-            mb.box((w / 2 - 0.15, s * t / 2, zc - 0.0375), (w / 2 + 0.15, s * (t / 2 + 0.006), zc + 0.0375), 'brass', 0.002)
-            mb.box((w / 2 - 0.125, s * (t / 2 + 0.006), zc - 0.018), (w / 2 + 0.125, s * (t / 2 + 0.009), zc + 0.018), 'brass', 0.002)
-    return dict(handle_x=w - 0.060, handle_z=0.99)
+            mb.box((xc - 0.15, s * t / 2, zc - 0.035), (xc + 0.15, s * (t / 2 + 0.006), zc + 0.035), 'brass', 0.002)
+            mb.box((xc - 0.125, s * (t / 2 + 0.006), zc - 0.017), (xc + 0.125, s * (t / 2 + 0.009), zc + 0.017), 'brass', 0.002)
+    return dict(handle_x=w - 0.055, handle_z=0.98 - zb)
 
 
 def leaf_upvc_french(mb, gb, w, h, t=0.060, catflap=False, mat='upvc_white', rail=(0.905, 0.995)):
@@ -271,24 +286,36 @@ def leaf_upvc_french(mb, gb, w, h, t=0.060, catflap=False, mat='upvc_white', rai
     return dict(handle_x=w - 0.045, handle_z=1.02)
 
 
-def leaf_upvc_back(mb, gb, w, h, t=0.060, mat='upvc_white'):
-    """Half-glazed back door: obscure light over a flat beaded panel with a square cat flap."""
-    st = (w - 0.56) / 2
-    zp0, zp1, zg0, zg1 = 0.19, 0.91, 1.01, h - 0.09
+def leaf_upvc_back(mb, gb, w, h, t=0.060, mat='upvc_white', zb=0.0):
+    """Half-glazed back door (passage survey round 3, v11 f_0001-f_0020; heights above the floor, zb = floor -> leaf
+    bottom): obscure light 0.525 visible from z 0.96 to 1.91 in a 20 mm bead, mid rail 0.82..0.94 with a drip bar
+    outside, flat lower panel 0.57 wide in a mitred bolection bead, cat flap 0.215 x 0.23 centred, standing on the
+    panel's bottom bead (z 0.14), clear arched flap, red rotary lock lower right inside; hooded trickle vent 0.30 in the
+    top rail, both faces. +y = the kitchen face (the leaf swings in)."""
+    st = (w - 0.57) / 2
+    zp0, zp1, zg0, zg1 = 0.115 - zb, 0.82 - zb, 0.94 - zb, 1.93 - zb
     _frame_boxes(mb, w, h, t, mat, st, h - zg1, zp0, rails=[(zp1, zg0)], bev=0.003)
-    _panel(mb, st, zp0, w - st, zp1, t, mat, 'bead_ovolo', recess=0.012, raised=0.0)
+    _panel(mb, st, zp0, w - st, zp1, t, mat, 'bead_bolection', recess=0.012, raised=0.0)
     _glass(gb, st - 0.008, zg0 - 0.008, w - st + 0.008, zg1 + 0.008, 'glass_obscure', 0.020)
-    _glazing_bead(mb, st, zg0, w - st, zg1, t, mat, 0.020, 0.014)
-    mb.box((st - 0.03, t / 2, zg1 + 0.012), (w - st + 0.03, t / 2 + 0.022, zg1 + 0.037), mat, 0.004)   # drip bar
-    cx = w / 2 - 0.08                                                 # cat flap (0.22 x 0.24)
+    _glazing_bead(mb, st, zg0, w - st, zg1, t, mat, 0.020, 0.020)
+    mb.prism([(st - 0.02, -t / 2, zg0 - 0.035), (w - st + 0.02, -t / 2, zg0 - 0.035), (w - st + 0.02, -t / 2, zg0 - 0.012),
+              (st - 0.02, -t / 2, zg0 - 0.012)], (0, -0.016, 0), mat)                 # drip bar on the mid rail, outside
+    zt = (zg1 + h) / 2
+    for s in (1, -1):                                                 # trickle vent hood in the top rail
+        mb.box((w / 2 - 0.15, s * t / 2, zt - 0.011), (w / 2 + 0.15, s * (t / 2 + 0.010), zt + 0.011), mat, 0.003)
+        mb.box((w / 2 - 0.13, s * (t / 2 + 0.010), zt - 0.004), (w / 2 + 0.13, s * (t / 2 + 0.0105), zt + 0.002), 'black')
+    cx, c0, M0 = w / 2, 0.14 - zb, mb.M.copy()                        # cat flap 0.215 x 0.23 on the bottom bead
     for s in (1, -1):
-        y0, y1 = s * (t / 2 - 0.012), s * (t / 2 + 0.004)
-        mb.box((cx - 0.11, y0, zp0), (cx + 0.11, y1, zp0 + 0.24), mat, 0.004)
-        arc = [(cx + 0.082 * math.cos(math.pi * i / 10), zp0 + 0.125 + 0.070 * math.sin(math.pi * i / 10)) for i in range(11)]
-        mb.prism([(x, y1, z) for x, z in [(cx - 0.082, zp0 + 0.035), (cx + 0.082, zp0 + 0.035)] + arc],
-                 (0, s * 0.003, 0), 'flap_smoked')                    # smoked-grey arched flap (f_0330)
-        mb.box((cx + 0.07, y1, zp0 + 0.008), (cx + 0.095, y1 + s * 0.006, zp0 + 0.026), 'red_plastic', 0.002)
-    return dict(handle_x=w - 0.060, handle_z=1.00)
+        y0, y1 = s * (t / 2 - 0.012), s * (t / 2 + 0.006)
+        mb.box((cx - 0.1075, y0, c0), (cx + 0.1075, y1, c0 + 0.23), mat, 0.004)
+        arc = [(cx + 0.075 * math.cos(math.pi * i / 12), c0 + 0.135 + 0.065 * math.sin(math.pi * i / 12)) for i in range(13)]
+        mb.prism([(x, y1, z) for x, z in [(cx - 0.075, c0 + 0.03), (cx + 0.075, c0 + 0.03)] + arc],
+                 (0, s * 0.002, 0), 'glass_frosted')                  # clear arched flap (reads milky against the light)
+        if s > 0:                                                     # rotary lock, lower right seen from the kitchen
+            mb.at(M0 @ T((cx - 0.085, y1, c0 + 0.03)) @ RX(-math.pi / 2))
+            mb.lathe([(0.011, 0), (0.011, 0.008), (0.006, 0.012), (0, 0.012)], 'red_plastic', 12)
+            mb.at(M0)
+    return dict(handle_x=w - 0.060, handle_z=1.00 - zb)
 
 
 # --------------------------------------------------------------------------- frames / surrounds
@@ -369,10 +396,10 @@ def doorcase_pediment(mb, hw, top, mat='joinery_white'):
 
 
 def dark_surround(mb, hw, top, cap_top, aw=0.11, key='arch_dark', cap_h=0.09, cap_over=0.035, mat='dark_stain'):
-    """Dark stained reeded architrave legs to the floor + plain frieze board + returned cornice cap
-    (dining side of the hall door; the E-window aedicules)."""
+    """Dark stained reeded architrave legs (profile `key` drawn to the width aw) to the floor + plain frieze board +
+    returned cornice cap (dining side of the hall door; the E-window aedicules)."""
     leg_top = cap_top - cap_h - 0.08
-    prof = PROFILES[key]
+    prof = mo._scale(PROFILES[key], aw / mo.profile_size(key)[0], 1.0)
     mb.sweep(prof, [(hw, 0, 0), (hw, 0, leg_top)], mat, up=(0, 1, 0))
     mb.sweep(prof, [(-hw, 0, leg_top), (-hw, 0, 0)], mat, up=(0, 1, 0))
     if leg_top > top + 0.002:
@@ -385,12 +412,16 @@ def dark_surround(mb, hw, top, cap_top, aw=0.11, key='arch_dark', cap_h=0.09, ca
 
 
 # doorcases of the upper floors. Heights are ABOVE THE DOOR HEAD (`top`), widths in metres; shelf = (length or None for
-# architrave width + 90 mm, height, projection); consoles = (width, height, projection), hung under the shelf just
-# outside the architrave. Sources: landing1.md 2, green_bedroom.md 3.3, green_bathroom.md 3.2, blue_bedroom.md 3.
+# architrave width + 90 mm, height, projection); shelf_top (when given) = top of the shelf, the frieze fills up to it;
+# consoles = (width, height, projection), hung under the shelf just outside the architrave. Sources: landing1.md 2,
+# green_bedroom.md 3.3, green_bathroom.md 3.2, blue_bedroom.md 3.
 DOORCASES = {
     'cornice_hood_on_consoles': dict(arch='arch_upper', frieze=0.09, shelf=(1.25, 0.10, 0.11), consoles=(0.09, 0.17, 0.075)),
-    'pediment_scrolled': dict(arch='arch_100', frieze=0.23, shelf=(1.30, 0.06, 0.10), consoles=(0.09, 0.36, 0.09), apex=0.62,
-                              rake=0.06, frieze_ornament=True, tympanum_ornament=0.42, volutes=True),
+    # green bedroom, both doors: shelf top 2.29, apex 2.48 above the floor (dims_1: everything over the head came down
+    # with the ceiling, 2.95 -> 2.77; v3 f_0524 cross-ratio on floor / head / cornice 2.69: shelf top 2.26, apex 2.48,
+    # console drops 1.87, i.e. the 0.36 consoles hang below the head)
+    'pediment_scrolled': dict(arch='arch_100', shelf_top=0.31, shelf=(1.30, 0.06, 0.10), consoles=(0.09, 0.36, 0.09),
+                              apex=0.50, rake=0.06, frieze_ornament=True, tympanum_ornament=0.42, volutes=True),
     # bathroom face of d_green_slide: 1.30 overall with its cornice (green_bathroom.md 3.2; v4 f_0164 ~1.2), was 1.50
     'pediment_tall_plain': dict(arch='arch_100', frieze=0.17, shelf=(1.10, 0.08, 0.10), consoles=(0.10, 0.45, 0.10), apex=0.75,
                                 rake=0.07, band=True),
@@ -400,17 +431,20 @@ DOORCASES = {
 
 
 def doorcase(mb, hw, top, arch='arch_70', aw=None, frieze=0.03, shelf=(None, 0.04, 0.045), consoles=None, apex=None,
-             rake=0.05, frieze_ornament=False, tympanum_ornament=0.0, volutes=False, band=False, mat='joinery_white'):
-    """Parametric doorcase on one face (side frame current in mb): architrave `aw` wide, frieze board, optional
-    egg band / applied shell-and-scroll relief, acanthus consoles, returned cornice shelf and - when `apex` is given
-    - a triangular pediment (raking cornices mitred plumb at the apex, tympanum board, optional relief and volutes)."""
+             rake=0.05, frieze_ornament=False, tympanum_ornament=0.0, volutes=False, band=False, mat='joinery_white',
+             shelf_top=None):
+    """Parametric doorcase on one face (side frame current in mb): architrave `aw` wide, frieze board (up to the shelf
+    at `shelf_top` above the head when given), optional egg band / applied shell-and-scroll relief, acanthus consoles,
+    returned cornice shelf and - when `apex` is given - a triangular pediment (raking cornices mitred plumb at the apex,
+    tympanum board, optional relief and volutes)."""
     w0 = mo.profile_size(arch)[0]
     aw = aw or w0
     architrave(mb, mo._scale(PROFILES[arch], aw / w0, 1.0), hw, top, mat)
     M0 = mb.M.copy()
-    ow, z1 = hw + aw, top + aw                      # outer half width, top of the architrave
-    zs = z1 + frieze                                # underside of the shelf
     sw, sh, sp = shelf
+    ow, z1 = hw + aw, top + aw                      # outer half width, top of the architrave
+    zs = top + shelf_top - sh if shelf_top else z1 + frieze     # underside of the shelf
+    frieze = zs - z1
     sw = sw or 2 * ow + 0.09
     mb.box((-ow, 0, z1 - 0.002), (ow, 0.012, zs), mat)
     if frieze_ornament:
@@ -471,13 +505,56 @@ def _surround(mb, key, oid, room, hw, top, drop=0.0):
                 mb.box((sx * (hw - 0.002), 0, 0), (sx * (hw + w + 0.004), 0.027, 0.165), 'joinery_white', 0.002)
     elif key == 'pediment':
         doorcase_pediment(mb, hw, top)
-    elif key == 'dark_architrave':
-        dark_surround(mb, hw, top, 2.20)
+    elif key == 'dark_architrave':                  # d_dining, dining side: cap top 2.22 (dims_G 3, v2 t26.27); the legs
+        dark_surround(mb, hw, top, 2.22, aw=mo.surround_reach(oid, key, room)[0])   # as wide as the skirting stops
     elif key in DOORCASES:
         cfg = dict(DOORCASES[key])
-        if key == 'pediment_triangular' and room.startswith('landing'):     # landing face of d_blue (landing1.md 2)
-            cfg.update(aw=mo.doorcase_arch(key, room), shelf=(1.03, 0.04, 0.045), apex=0.28)
+        if key == 'pediment_triangular' and room.startswith('landing'):     # landing face of d_blue (landing1.md 2):
+            # shelf top 2.23, apex 2.36-2.42 above the floor (dims_1, v3 t148.5 / t54.5; was 2.14 / 2.26)
+            cfg.update(aw=mo.doorcase_arch(key, room), shelf=(1.03, 0.04, 0.045), shelf_top=0.25, apex=0.41)
         doorcase(mb, hw, top, **cfg)
+
+
+SOLID = ('pier', 'pilaster', 'nib', 'chimney_breast', 'boxing')     # features that stand full height like a wall
+
+
+def side_walls(ctx, fr, M, yf=0.0):
+    """(lo, hi): x in side frame M of the nearest wall or solid feature of the opening's level standing in the band
+    2..30 mm in front of the face y = yf, beyond either edge of the opening (-inf / inf where there is none)."""
+    inv, hw, lo, hi = M.inverted(), fr['width'] / 2, -math.inf, math.inf
+    polys = [f['polygon'] for f in ctx.features if f['type'] in SOLID and f.get('level', 'G') == fr['level']
+             and (f.get('z') or [fr['z0']])[0] <= fr['z0'] + 0.1]
+    for w in ctx.walls.values():
+        if w.get('level', 'G') != fr['level'] or w.get('virtual'):
+            continue
+        (ax, ay), (bx, by) = w['a'], w['b']
+        k = w['thickness'] / 2 / (math.hypot(bx - ax, by - ay) or 1.0)
+        nx, ny = -(by - ay) * k, (bx - ax) * k
+        polys.append([(ax + nx, ay + ny), (bx + nx, by + ny), (bx - nx, by - ny), (ax - nx, ay - ny)])
+    for poly in polys:
+        q = [inv @ Vector((p[0], p[1], 0.0)) for p in poly]
+        if min(p.y for p in q) < yf + 0.03 and max(p.y for p in q) > yf + 0.002:
+            x0, x1 = min(p.x for p in q), max(p.x for p in q)
+            if x1 <= -hw + 0.005:
+                lo = max(lo, x1)
+            elif x0 >= hw - 0.005:
+                hi = min(hi, x0)
+    return lo, hi
+
+
+def _clip(ctx, fr, mb, M, yf=0.0):
+    """Cut what mb holds (world coordinates) 1 mm short of the return walls / nibs in front of the face y = yf of side
+    frame M, so a surround stops against them instead of running into them (round 3 check-23 / -24: d_dining cap, the
+    dining N recess architraves, d_bath2 at the w_arch2 nib and the bathroom's south wall)."""
+    lo, hi = side_walls(ctx, fr, M, yf)
+    if lo == -math.inf and hi == math.inf:
+        return
+    inv = M.inverted()
+    for v in mb.bm.verts:
+        p = inv @ v.co
+        if not lo + 0.001 <= p.x <= hi - 0.001:
+            p.x = min(max(p.x, lo + 0.001), hi - 0.001)
+            v.co = M @ p
 
 
 def _finish(ctx, mb, name, room, matrix=None, **props):
@@ -506,14 +583,14 @@ def hang_leaf(ctx, name, room, MA, px, t, hinge_x, angle, build, yA=-0.002, zb=F
     build(mb, gb)
     mb.at()
     if hinges:
-        butt_hinges(mb, h, upvc)
+        butt_hinges(mb, h, upvc, -1 if hinge_x > 0 else 1)
     Mo = MA @ T((px, py, 0)) @ RZ(-hinge_x * math.radians(angle))
     ob = _finish(ctx, mb, name, room, Mo, open_deg=float(angle), hinge_side=int(hinge_x), **props)
     gl = _finish(ctx, gb, name + '.glass', room, Mo)
     oid = props.get('door')
     if oid:                                         # one group per leaf (leaf + its glass), g = the leaf's name
         shut = abs(angle) < 0.5                     # modelled shut: state 1 swings it open; modelled open: state 1 shuts it
-        deg = -hinge_x * (swing or OPEN_DEG.get(oid, 90.0)) if shut else hinge_x * angle
+        deg = -hinge_x * (swing or OPEN_DEG.get(name, OPEN_DEG.get(oid, 90.0))) if shut else hinge_x * angle
         kw = dict(blocks=oid) if blocks else {}
         if not shut:
             kw['on'] = True
@@ -592,6 +669,7 @@ def _door_internal(ctx, oid, fr):
             s = MB().at(M)
             drop = max(0.0, fr['z0'] - ctx.floor_z(room)) if room in ctx.rooms else 0.0
             _surround(s, sur[room], oid, room, hw, top, drop if 0.01 < drop < 0.5 else 0.0)
+            _clip(ctx, fr, s, M)
             _finish(ctx, s, f'{room}.{oid}.surround', room, surround=sur[room])
     lw, lh = fr['width'] - 2 * (SKIN + GAP), top - SKIN - GAP - FLOOR_GAP
     hx = _hinge_x(fr)
@@ -670,9 +748,9 @@ def _upvc_doorset(ctx, oid, fr, leaf, jamb=0.06, transom=0.07, sill=0.04, fan_gl
         for sx in (1, -1):
             f.box((sx * (hw - 0.002), 0, 0), (sx * (hw + flange), 0.012, top + flange), m, 0.003)
         f.box((-hw, 0, top - 0.002), (hw, 0.012, top + flange), m, 0.003)
-    if vents:                                                         # trickle-vent hoods on the transom bar
-        for sx in (1, -1):
-            f.box((sx * 0.12, yb, head + 0.02), (sx * 0.23, yb + 0.015, head + 0.045), m, 0.003)
+    if vents:                                                         # keeps / vent hoods on the transom bar, 0.11 x 0.03,
+        for sx in (1, -1):                                            # 0.10 from the meeting stile (porch photo)
+            f.box((sx * 0.10, yb, head + 0.02), (sx * 0.21, yb + 0.015, head + 0.05), m, 0.003)
     _finish(ctx, f, f'{own}.{oid}.frame', own)
     _finish(ctx, g, f'{own}.{oid}.frame.glass', own)
     out = (fr['swing_sign'] or -sgR) == -sgR                          # the leaves swing to the outside
@@ -699,12 +777,35 @@ def _door_street(ctx, oid, fr):
     """White uPVC street doors: pair of Georgian-bar leaves, plain frosted transom (no lettering), letterbox on the
     west leaf, trickle-vent hoods, flag hinges. Swing outward (phase 2) or inward (phase 1) per the spec."""
     def leaf(mb, gb, lw, lh, t, zb, west):
-        info = leaf_upvc_street(mb, gb, lw, lh, t, letterbox=west)
+        info = leaf_upvc_street(mb, gb, lw, lh, t, letterbox=west, zb=zb)
         if west:
             _astragal(mb, lw, lh, t, 'upvc_white')
-        lever_handle(mb, info['handle_x'], info['handle_z'], t, (0.030, 0.240), 0.11, cyl=west)
+        lever_handle(mb, info['handle_x'], info['handle_z'], t, (0.030, 0.240), 0.115, cyl=west)
 
-    _upvc_doorset(ctx, oid, fr, leaf, jamb=0.045, transom=0.09, sill=0.03, fan_glass='glass_frosted', flange=0.030, vents=True)
+    # the json hole is the frame's outer size (1.39 x 2.57 asked of the spec: RECONCILE3 porch-01..03); frame members
+    # 65 mm leave the two 0.63 leaves, the transom member + beads fill head..head + 0.155 under the frosted light
+    R, MR = _upvc_doorset(ctx, oid, fr, leaf, jamb=0.065, transom=0.155, sill=0.03, fan_glass='glass_frosted',
+                          flange=0.030, vents=True)
+    # the frame stands in the corner with a side wall (porch survey 2.3.3: no front-wall return): a flat 70 mm cover
+    # board on that wall face, full frame height
+    s, hw, yf = MB().at(MR), fr['width'] / 2, 0.012
+    for xr in _room_edges(ctx, R, MR):
+        if 0.0 <= abs(xr) - hw <= 0.06:
+            sg = 1 if xr > 0 else -1
+            s.box((xr - sg * yf, 0.0, 0.0), (xr, 0.07, fr['top'] + 0.03), 'upvc_white', 0.002)
+    _finish(ctx, s, f'{_own(ctx, fr, R)}.{oid}.cover', _own(ctx, fr, R))
+
+
+def _room_edges(ctx, room, M, y=0.02):
+    """x (in side frame M) where the room outline crosses the line y = `y` in front of the wall: the side walls."""
+    if room not in ctx.rooms:
+        return []
+    inv, out = M.inverted(), []
+    pts = [inv @ Vector((p[0], p[1], 0)) for p in ctx.room_poly(room)]
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        if (a.y - y) * (b.y - y) < 0:
+            out.append(a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y))
+    return out
 
 
 def _door_french(ctx, oid, fr):
@@ -714,11 +815,13 @@ def _door_french(ctx, oid, fr):
     shed = fr.get('style') == 'shed_french'
 
     def leaf(mb, gb, lw, lh, t, zb, west):
+        # shed: mid rail 0.90..1.02 above the floor, levers 1.10 (round 3 check-25: 0.89-1.01 in v2 t188, 0.91-1.03 in
+        # v11 t54, survey 0.93-1.06, levers 1.11; was 0.75..0.85)
         info = leaf_upvc_french(mb, gb, lw, lh, t, catflap=west and oid == 'd_french',
-                                rail=(0.75 - zb, 0.85 - zb) if shed else (0.905, 0.995))
+                                rail=(0.90 - zb, 1.02 - zb) if shed else (0.905, 0.995))
         if west:
             _astragal(mb, lw, lh, t, 'upvc_white')
-        lever_handle(mb, info['handle_x'], info['handle_z'] - zb, t, (0.035, 0.220), 0.11)
+        lever_handle(mb, info['handle_x'], (1.10 if shed else info['handle_z']) - zb, t, (0.035, 0.220), 0.11)
 
     R, MR = _upvc_doorset(ctx, oid, fr, leaf, sill=0.07 if shed else 0.04, fan_lights=2 if oid == 'd_balcony' else 1)
     own, sur = _own(ctx, fr, R), (fr.get('surround') or {}).get(R)
@@ -739,10 +842,11 @@ def _door_back(ctx, oid, fr):
     """White uPVC back door: frame in the plaster reveal, obscure toplight, half-glazed (obscure) leaf with a square
     cat flap (corrections K5)."""
     def leaf(mb, gb, lw, lh, t, zb, west):
-        info = leaf_upvc_back(mb, gb, lw, lh, t)
-        lever_handle(mb, info['handle_x'], info['handle_z'] - zb, t, (0.030, 0.240), 0.11, cyl=True)
+        info = leaf_upvc_back(mb, gb, lw, lh, t, zb=zb)
+        lever_handle(mb, info['handle_x'], info['handle_z'], t, (0.030, 0.240), 0.11, cyl=True)
 
-    _upvc_doorset(ctx, oid, fr, leaf, jamb=0.045, sill=0.02, flange=0.05, fan_glass='glass_obscure')
+    # frame 0.79 with 55 mm members (clear 0.68), white cill 0.035, transom 2.04..2.15 (passage survey 2.1)
+    _upvc_doorset(ctx, oid, fr, leaf, jamb=0.055, transom=0.11, sill=0.035, flange=0.05, fan_glass='glass_obscure')
 
 
 def _door_timber_pair(ctx, oid, fr):
@@ -778,36 +882,56 @@ def _door_timber_pair(ctx, oid, fr):
 
 
 def _hatch(ctx, oid, fr):
-    """Eaves hatch (white_flush_pair, loft_office.md 2.3): the json hole is the OUTER size of the white frame; a pair
-    of flat 18 mm lay-on leaves on concealed hinges at the outer stiles, brass mushroom knobs by the meeting edge,
-    each swinging 110 degrees into the room named by swingInto. The frame lines the hole through the knee wall."""
+    """Eaves hatch (white_flush_pair, eaves_loft survey round 3): the json hole is the OUTER size of the architrave; a
+    pair of flat 18 mm lay-on leaves on two concealed cup hinges each at the outer edges, 30 mm brass knobs 0.165 under
+    the leaf top and 0.095 from the meeting edge, each swinging HATCH_DEG into the room named by swingInto; white
+    lining and sill through the knee wall, outer applied bead down to the skirting."""
     sg = fr['swing_sign'] or 1
     pos, neg = _room_names(fr)
     A = pos if sg > 0 else neg
     MA, Tw = side_frame(fr, sg), wall_t(fr)
     hw, z0, z1, m, t = fr['width'] / 2, fr['sill'], fr['head'], 'joinery_white', 0.018
-    fx, fz, yf = 0.075, 0.05, 0.010                                   # frame members, how far the frame stands proud
+    # eaves_loft survey 2.1 (v12): the json hole is the architrave's outer size. 45 mm ogee architrave 20 mm proud on
+    # head and sides; at a hatch whose hole starts near the floor (front) the skirting profile is carried across under
+    # the leaves (65 mm) and the legs stand on it, at a higher one (rear) the architrave runs round all four sides.
+    aw, low = 0.045, z0 < 0.08
+    prof = mo._scale(PROFILES['arch_70'], aw / mo.profile_size('arch_70')[0], 1.0)
     f = MB().at(MA)
-    for sx in (1, -1):
-        f.box((sx * hw, -Tw, z0), (sx * (hw - fx), yf, z1), m, 0.003)
-    for za, zb in ((z1 - fz, z1), (z0, z0 + fz)):
-        f.box((-hw + fx, -Tw, za), (hw - fx, yf, zb), m, 0.003)
+    _lining(f, hw, z1, -Tw, 0.0, m, z0=z0, sill=True)                 # white lining and sill ledge through the knee wall
+    zl = 0.065 if low else z0                                         # bottom of the architrave legs
+    if low:
+        f.sweep(mo._scale(PROFILES['sk_loft'], 1.0, zl / mo.profile_size('sk_loft')[1]), [(-hw, 0, 0), (hw, 0, 0)], m)
+    architrave(f, prof, hw - aw, z1 - aw, m, z0=zl + (0 if low else aw), closed=not low)
+    lb, lt = (zl if low else z0 + aw) + 0.004, z1 - aw - 0.003        # leaf bottom / top
+    xo = hw - aw - 0.002                                              # leaf outer edge
+    # outer applied bead: 20 mm, 80 mm outside the leaves at the sides and 75 mm over the leaf top, uprights down to
+    # the skirting (the only "panel moulding" of the knee walls)
+    sk = (mo.TRIM.get(A) or {}).get('skirting')
+    sk = sk[0] if isinstance(sk, list) else sk
+    zs = mo.profile_size(sk['profile'])[1] if sk else 0.09
+    bead = mo._scale(PROFILES['bead_bolection'], 0.020 / mo.profile_size('bead_bolection')[0], 0.9)
+    xb, zt = xo + 0.08, lt + 0.075
+    f.sweep(bead, [(xb, 0, zs), (xb, 0, zt), (-xb, 0, zt), (-xb, 0, zs)], m, up=(0, 1, 0))
     _finish(ctx, f, f'{A}.{oid}.frame', A)
-    lap = 0.008
-    lw, lh = hw - fx + lap - 0.0015, z1 - z0 - 2 * fz + 2 * lap
+    lw, lh = xo - 0.001, lt - lb
 
-    def build(mb, gb):
+    def build(mb, gb):                              # flat 18 mm lay-on leaf, two nickel cup hinges, brass knob
         mb.box((0, -t / 2, 0), (lw, t / 2, lh), m, 0.002)
         M0 = mb.M.copy()
-        mb.at(M0 @ T((lw - 0.06, t / 2, lh / 2)) @ RX(-math.pi / 2))
-        mb.lathe([(0, 0), (0.006, 0), (0.006, 0.012), (0.015, 0.016), (0.015, 0.022), (0, 0.026)], 'brass', 12)
+        mb.at(M0 @ T((lw - 0.095, t / 2, lh - 0.165)) @ RX(-math.pi / 2))
+        mb.lathe([(0, 0), (0.005, 0), (0.005, 0.010), (0.015, 0.014), (0.015, 0.020), (0, 0.024)], 'brass', 12)
+        for zc in (0.10, lh - 0.10):
+            mb.at(M0 @ T((0.040, -t / 2, zc)) @ RX(math.pi / 2))
+            mb.lathe([(0.0175, 0), (0.0175, 0.003), (0, 0.003)], 'chrome', 12)
+            mb.at(M0)
+            mb.box((0.0, -t / 2 - 0.012, zc - 0.012), (0.045, -t / 2, zc + 0.012), 'chrome', 0.002)
         mb.at(M0)
 
     for i, hx in enumerate((1, -1)):
-        west = (MA @ Vector((hx * (hw - fx + lap), 0, 0))).x < fr['center'].x
-        hang_leaf(ctx, f'{A}.{oid}.leaf.{i}', A, MA, hx * (hw - fx + lap), t, hx, 0.0, build, yA=yf + 0.001 + t,
-                  zb=z0 + fz - lap, h=lh, hinges=False, blocks=False, label='Eaves hatch',
-                  swing=HATCH_WEST_DEG.get(oid, 110.0) if west else 110.0, door=oid)
+        west = (MA @ Vector((hx * xo, 0, 0))).x < fr['center'].x
+        hang_leaf(ctx, f'{A}.{oid}.leaf.{i}', A, MA, hx * xo, t, hx, 0.0, build, yA=0.001 + t,
+                  zb=lb, h=lh, hinges=False, blocks=False, label='Eaves hatch',
+                  swing=HATCH_WEST_DEG.get(oid, HATCH_DEG) if west else HATCH_DEG, door=oid)
 
 
 def _door_pocket(ctx, oid, fr):
@@ -831,6 +955,7 @@ def _door_pocket(ctx, oid, fr):
         if sur:
             s = MB().at(side_frame(fr, sg))
             _surround(s, sur, oid, room, hw, top)
+            _clip(ctx, fr, s, side_frame(fr, sg))
             _finish(ctx, s, f'{room}.{oid}.surround', room, surround=sur)
     lw, lh = fr['width'] + 0.05, top - SKIN - GAP - FLOOR_GAP
     mb, gb = MB(), MB()
@@ -878,13 +1003,47 @@ def upvc_light(f, g, x0, x1, z0, z1, ya, yb, face=0.045, glass='glass', sash=Fal
 
 
 # shed windows carry no lights / sashes in the spec json: shed.md 2.2 (two top-hung fanlights over one fixed pane,
-# "you can open the top two sections") and 2.4 (two equal fixed lights)
-SHED_WINDOWS = {'shed_w1': dict(transomBar=1.05 + 0.62, cols=(1, 2),
+# "you can open the top two sections") and 2.4 (two equal fixed lights). shed_w1 transom bar centre 0.72 over the frame
+# bottom, 0.50 of fanlights above it (round 3 check-25: 0.57-0.59 of the frame height in v2 t188 and v11 t54; was 0.58)
+SHED_WINDOWS = {'shed_w1': dict(transomBar=1.09 + 0.72, cols=(1, 2),
                                 sashes=[dict(light='fanlights', type='top_hung', swing='out', angle=30)]),
                 'shed_w2': dict(lights=2, glass='glass_obscure')}   # misted (shed.md 2.4); it faces a hedge 0.8 m off
 COLS3 = (0.27, 0.46, 0.27)          # width shares of a three-light window (green bedroom bay: 0.55 | 0.92 | 0.55)
 SASH_DEG = {'top_hung': 20.0, 'side_hung': 45.0}
+# ponytail: sash handles the spec does not carry yet (request: w_utility sashes[0].handle 'bottom'; v2 f_0573 shows a
+# brass espagnolette on the bottom rail, lever towards -y)
+SASH_HANDLE = {'w_utility': 'bottom'}
+SILL_BOARD = {'w_utility': 0.012}   # the room module's timber window board stands this much over the inner sill (U2)
 UPPER, LOWER = ('upper', 'fanlight', 'fanlights', 'centre_top'), ('lower', 'main', 'west', 'east', 'centre', 'lower_w', 'lower_e')
+
+
+def _espagnolette(sf, xm, y, zr, lx=-0.10):
+    """Brass espagnolette on a sash rail face (plane y, facing +y): rose and spindle at (xm, zr), lever along the rail
+    by lx."""
+    sf.box((xm - 0.016, y, zr - 0.017), (xm + 0.016, y + 0.006, zr + 0.017), 'brass', 0.002)
+    sf.box((xm - 0.006, y + 0.006, zr - 0.006), (xm + 0.006, y + 0.026, zr + 0.006), 'brass', 0.002)
+    sf.box((min(xm, xm + lx), y + 0.020, zr - 0.006), (max(xm, xm + lx), y + 0.032, zr + 0.006), 'brass', 0.003)
+
+
+def _inner_ring(f, sf, hw, zb, zh, yb):
+    """Room face of a window whose plaster reveal is smaller / higher than its frame (shell.INNER: w_utility, passage
+    survey round 3; v1 hr_0491, v2 f_0567 / f_0573). Into f (fixed): a 20 mm white frame ring on the plaster of the inner
+    hole (half width hw, zb..zh, 1 mm clear of it) from the outer frame's room face yb + 6 mm to yb + 50 mm, and its
+    bottom rail 10 mm further forward. Into sf (the sash, it swings with it): the sash's inner ring, 30 mm sides, 35 head,
+    45 bottom rail with 8 mm more hidden behind the frame rail - the top-hung sash dips up to 8 mm as it starts to open.
+    -> (z of the visible bottom-rail centre, y of the sash ring face) for the espagnolette."""
+    ya, ys, yf, w, e = yb + 0.006, yb + 0.040, yb + 0.050, 0.020, 0.001
+    a, zt, zf = hw - e, zh - e, zb + e + w          # ring outer edge, top, top of the frame's bottom rail
+    for sx in (1, -1):
+        f.box((sx * (a - w), ya, zf), (sx * a, yf, zt), 'upvc_white', 0.002)
+    f.box((-a + w, ya, zt - w), (a - w, yf, zt), 'upvc_white', 0.002)
+    f.box((-a, ys + 0.0005, zb + e), (a, ys + 0.0205, zf), 'upvc_white', 0.002)       # bottom rail, clear of the sash's
+    c, z0, z1 = a - w - 0.001, zf - 0.008, zt - w - 0.001                     # sash ring outline
+    for sx in (1, -1):
+        sf.box((sx * (c - 0.029), ya, z0), (sx * c, ys, z1), 'upvc_white', 0.002)
+    sf.box((-c + 0.029, ya, z1 - 0.034), (c - 0.029, ys, z1), 'upvc_white', 0.002)
+    sf.box((-c + 0.029, ya, z0), (c - 0.029, ys, z0 + 0.053), 'upvc_white', 0.002)
+    return zf + 0.0225, ys
 
 
 def _sash_of(sashes, r, c, nrow, ncol, low_col):
@@ -920,6 +1079,7 @@ def _window_upvc(ctx, oid, fr):
     extra = SHED_WINDOWS.get(oid, {}) if style == 'shed_window' else {}
     get = lambda k, d=None: fr[k] if fr.get(k) is not None else extra.get(k, d)
     glass, face, mul = get('glass') or ('glass_obscure' if 'obscure' in style else 'glass'), 0.050, 0.050
+    inner = (fr.get('inner') or shell.INNER.get(oid)) if fr['exterior'] else None   # smaller / higher room-side hole
     if sur == 'flat_white_surround':                # ponytail: the WC light keeps its phase-1 place 25 mm behind the
         ya, yb, face = -0.085, -0.025, 0.072        # tiles (wc.md 2.2), not ext_reveal; spec request: extReveal for w_wc
     else:
@@ -957,7 +1117,22 @@ def _window_upvc(ctx, oid, fr):
             _ring(sf, a - lap, b + lap, ca - lap, cb + lap, sw_, y0, y1)
             _glaze(sf, sg, a - lap + sw_, b + lap - sw_, ca - lap + sw_, cb + lap - sw_, y0, y1, glass)
             xm, zm = (a + b) / 2, (ca + cb) / 2
-            if s['type'] == 'top_hung':             # handle on the bottom rail, hinge along the head
+            hd = s.get('handle') or SASH_HANDLE.get(oid)
+            if inner and s['type'] == 'top_hung':
+                # the room sees the inner hole only: a frame ring on its plaster and the sash's inner ring, the
+                # espagnolette on that ring's bottom rail; nothing on the outer sash, whose rails the plaster hides
+                zr, yr = _inner_ring(f, sf, inner.get('width', 2 * hw) / 2, inner['sill'] + SILL_BOARD.get(oid, 0.0), z1, yb)
+                if hd == 'bottom':
+                    _espagnolette(sf, xm, yr, zr)
+                p, ax_, v = MR @ Vector((xm, y0, cb + lap)), wx, Vector((0, 0, -1))
+            elif s['type'] == 'top_hung' and hd == 'bottom':
+                # brass espagnolette centred on the bottom rail, lever along the rail, its keeps on the frame's bottom
+                # member (floor2 surveys round 3: w_study v13 t207-225, w_purple v13 f25-f27)
+                _espagnolette(sf, xm, y1, ca - lap + sw_ / 2)
+                for kx in (xm - 0.3 * (b - a), xm + 0.3 * (b - a)):
+                    f.box((kx - 0.02, yb, ca - lap - 0.016), (kx + 0.02, yb + 0.008, ca - lap - 0.004), 'silver_satin', 0.002)
+                p, ax_, v = MR @ Vector((xm, y0, cb + lap)), wx, Vector((0, 0, -1))
+            elif s['type'] == 'top_hung':           # handle on the bottom rail, hinge along the head
                 sf.box((xm - 0.06, y1, ca + 0.004), (xm + 0.06, y1 + 0.014, ca + 0.020), 'upvc_white', 0.003)
                 sf.box((xm - 0.015, y1, ca - 0.006), (xm + 0.015, y1 + 0.022, ca + 0.030), 'upvc_white', 0.003)
                 p, ax_, v = MR @ Vector((xm, y0, cb + lap)), wx, Vector((0, 0, -1))
@@ -966,12 +1141,8 @@ def _window_upvc(ctx, oid, fr):
                 at_low = h in ('west', 'south')
                 xh = a - lap if (wx[axis] > 0) == at_low else b + lap
                 xf = b + lap - sw_ / 2 if xh < xm else a - lap + sw_ / 2
-                if s.get('handle') == 'bottom':     # brass lever centred on the bottom rail (purple room, hr_v4_415)
-                    zr = ca - lap + sw_ / 2
-                    sf.box((xm - 0.016, y1, zr - 0.017), (xm + 0.016, y1 + 0.006, zr + 0.017), 'brass', 0.002)
-                    sf.box((xm - 0.006, y1 + 0.006, zr - 0.006), (xm + 0.006, y1 + 0.026, zr + 0.006), 'brass', 0.002)
-                    lx = 0.10 if xh < xm else -0.10                       # the lever points away from the hinge
-                    sf.box((min(xm, xm + lx), y1 + 0.020, zr - 0.006), (max(xm, xm + lx), y1 + 0.032, zr + 0.006), 'brass', 0.003)
+                if hd == 'bottom':                  # brass lever centred on the bottom rail (purple room, hr_v4_415),
+                    _espagnolette(sf, xm, y1, ca - lap + sw_ / 2, 0.10 if xh < xm else -0.10)   # away from the hinge
                 else:
                     sf.box((xf - 0.008, y1, zm - 0.06), (xf + 0.008, y1 + 0.014, zm + 0.06), 'upvc_white', 0.003)
                     sf.box((xf - 0.015, y1, zm - 0.015), (xf + 0.015, y1 + 0.024, zm + 0.015), 'upvc_white', 0.003)
@@ -987,12 +1158,18 @@ def _window_upvc(ctx, oid, fr):
         f.box((-0.15, yb, z1 - 0.040), (0.15, yb + 0.012, z1 - 0.018), 'upvc_white', 0.003)
     _finish(ctx, f, f'{own}.{oid}.frame', own)
     _finish(ctx, g, f'{own}.{oid}.glass', own)
-    if sur == 'dark_aedicule':
+    if inner and sur == 'flat_white_surround':      # w_wc: the frame runs down to 1.10 behind the 1.20 cistern ledge
+        s = MB().at(MR)                             # (passage-10); on the ledge a flat white member as high as the
+        zi = inner['sill']                          # head (wc.md 2.2: ~60-70 mm boards round the glass, f_0507)
+        s.box((-hw + 0.0005, yb + 0.0005, zi + 0.0005), (hw - 0.0005, -0.0005, zi + face), 'upvc_white', 0.002)
+        _finish(ctx, s, f'{own}.{oid}.surround', own, surround=sur)
+    if sur == 'dark_aedicule':                      # cap top 2.37 (2.34-2.39 in v1 t674, dining.md round 3; was 2.45)
         s, m = MB().at(MR), 'dark_stain'
-        dark_surround(s, hw, z1, 2.45, 0.10, 'arch_dark_window', 0.10, 0.04)
+        dark_surround(s, hw, z1, 2.37, 0.10, 'arch_dark_window', 0.10, 0.04)
         _lining(s, hw, z1, yb, 0.0, m, z0=z0)
         s.box((-hw, 0, 0), (hw, 0.003, z0 - 0.03), m, grain=2)                                # apron
         s.box((-hw, yb - 0.002, z0 - 0.03), (hw, 0.043, z0 + 0.004), m, 0.004, grain=0)       # sill board
+        _clip(ctx, fr, s, MR)
         _finish(ctx, s, f'{own}.{oid}.surround', own, surround=sur)
     elif sur == 'dark_recess':
         feat = _recess(ctx, R, fr, MR)
@@ -1041,6 +1218,7 @@ def _dark_recess(ctx, own, oid, fr, MR, feat, seat):
         s.box((xa + bt, 0.006, zb - 0.036), (xb - bt, D + 0.030, zb + 0.004), m, 0.004, grain=0)      # seat board
         s.box((xa, D, 0.06), (xb, D + 0.006, zb - 0.036), m, grain=2)                         # apron
         s.box((xa, D, 0), (xb, D + 0.014, 0.06), m, 0.002, grain=0)                           # plinth
+    _clip(ctx, fr, s, MR, D)                        # the end architraves stop at the W / E walls (-0.59, 3.10)
     _finish(ctx, s, f'{own}.{oid}.surround', own, surround='dark_recess' if seat else 'dark_screen')
 
 
@@ -1087,7 +1265,7 @@ def _dark_screen(ctx, R, fr, MR):
 
 
 def _shutter(sb, x0, x1, z0, z1, y0, y1, m='shutter_white', louvres=None):
-    """Plantation shutter panel: 50 stiles, 90 rails, 63 mm elliptical louvres at ~52 pitch, shut
+    """Plantation shutter panel: 50 stiles, 90 rails, 72 mm elliptical louvres at ~66 pitch, shut
     (tilt 75 deg, blades sloping down toward the room, +Y): neighbours overlap by ~9 mm, so nothing
     shows through from eye height on either side (f_0019). louvres: [(MB, tilt deg)] - the blades go there, once per
     tilt, instead of into sb (the bay's open / shut louvre objects)."""
@@ -1096,9 +1274,11 @@ def _shutter(sb, x0, x1, z0, z1, y0, y1, m='shutter_white', louvres=None):
     sb.box((x1 - st, y0, z0), (x1, y1, z1), m, 0.002)
     sb.box((x0 + st, y0, z0), (x1 - st, y1, z0 + rl), m, 0.002)
     sb.box((x0 + st, y0, z1 - rl), (x1 - st, y1, z1), m, 0.002)
-    n = max(1, int(round((z1 - z0 - 2 * rl) / 0.052)))
+    # round 3: about 15 blades per lower panel (pitch ~66 mm, 72 mm blades), not 19 at 52 (dims audit, v10 t42 / t56,
+    # v1 f_0127; low-medium confidence); shut at 75 deg they still overlap, tilted open they clear the glass
+    n = max(1, int(round((z1 - z0 - 2 * rl) / 0.066)))
     pitch = (z1 - z0 - 2 * rl) / n
-    a, b, ym = 0.0315, 0.0045, (y0 + y1) / 2
+    a, b, ym = 0.036, 0.005, (y0 + y1) / 2
     hexa = [(-a, 0), (-0.6 * a, b), (0.6 * a, b), (a, 0), (0.6 * a, -b), (-0.6 * a, -b)]
     for mb, tilt in louvres or [(sb, 75.0)]:
         ca, sa = math.cos(math.radians(tilt)), math.sin(math.radians(tilt))

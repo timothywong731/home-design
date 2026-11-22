@@ -22,16 +22,17 @@ CAMERAS = [
     dict(name='front', pos=(-0.05, 2.95, 1.6), look=(0.05, 6.5, 0.7), fov_deg=100, ref='f_0064'),
     dict(name='console', pos=(0.55, 3.55, 1.35), look=(-0.65, 3.7, 1.25), fov_deg=100, ref='f_0068'),
     dict(name='e1', pos=(-0.3, 3.85, 1.6), look=(0.65, 3.2, 1.6), fov_deg=100, ref='f_0076'),
-    dict(name='back', pos=(0.1, 4.75, 1.6), look=(0.0, 1.83, 1.4), fov_deg=100, ref='f_0781'),
+    dict(name='back', pos=(0.1, 4.75, 1.6), look=(0.0, 1.96, 1.4), fov_deg=100, ref='f_0781'),
     dict(name='passage', pos=(-0.2, 6.2, 1.6), look=(-0.3, 12.0, 1.5), fov_deg=100, ref='f_0273'),
-    dict(name='w3', pos=(0.9, 8.2, 1.6), look=(-0.65, 8.1, 1.35), fov_deg=100, ref='f_0770'),
+    dict(name='w3', pos=(0.7, 8.5, 1.6), look=(-0.65, 8.1, 1.35), fov_deg=100, ref='f_0770'),   # clear of d_basement open
     dict(name='arch', pos=(0.0, 8.13, 1.6), look=(0.0, 10.0, 2.7), fov_deg=100, ref='f_0283'),
     dict(name='rear', pos=(-0.1, 12.2, 1.6), look=(-0.1, 6.0, 1.4), fov_deg=100, ref='f_0745'),
-    dict(name='clock', pos=(-0.06, 10.4, 1.7), look=(-0.056, 12.23, 2.42), fov_deg=14),        # live hands
+    dict(name='clock', pos=(-0.06, 10.4, 1.7), look=(-0.056, 12.23, 2.33), fov_deg=14),        # live hands
     dict(name='cupboard', pos=(-0.5, 9.0, 1.6), look=(0.5, 8.14, 2.42), fov_deg=60),            # --pose 1: flap up
     dict(name='cupboard2', pos=(-0.1, 8.75, 1.5), look=(0.75, 7.75, 2.25), fov_deg=75, ref='v2:f_0505'),
     dict(name='switch', pos=(0.1, 3.1, 1.45), look=(0.65, 3.29, 1.3), fov_deg=45, ref='v2:f_1001'),
     dict(name='corridor', pos=(0.3, 10.55, 1.5), look=(-0.65, 11.6, 0.6), fov_deg=100, ref='v2:f_0669'),
+    dict(name='screen', pos=(0.25, 3.35, 1.3), look=(-0.55, 2.2, 1.0), fov_deg=90, ref='f_0053'),     # stops, PIR
 ]
 
 RX = Matrix.Rotation(pi / 2, 4, 'X')            # local +Z -> -Y: lathes / leaves that face out of a wall
@@ -305,9 +306,10 @@ def thermostat(name):
 
 
 def pir(name):
+    """White alarm PIR 60 x 90 x 45 (v9 f_0029-0030: 0.06 x 0.09), faceted lens in the upper half."""
     mb = mo.MB()
-    mb.box((-.03, -.045, -.0475), (.03, 0, .0475), 'plastic_white', bev=.009)
-    mb.box((-.022, -.0465, -.04), (.022, -.0445, -.002), M.solid('pir_lens', '#E4E4DE', 0.3), bev=.0008)
+    mb.box((-.03, -.045, -.045), (.03, 0, .045), 'plastic_white', bev=.009)
+    mb.box((-.022, -.0465, -.038), (.022, -.0445, -.002), M.solid('pir_lens', '#E4E4DE', 0.3), bev=.0008)
     return mb.finish(name)
 
 
@@ -529,8 +531,10 @@ def build(ctx):
         reframe(pic, w, h, rim or .0005)
         put(pic, (x, y, z), nrm, 'decor')
 
-    # --- round clock over the dining door
-    ck = put(clock('hallway.clock'), (-0.056, 12.23, 2.42), NORTH, 'decor')
+    # --- round clock over the dining door: centre about 0.23 over the architrave head, 0.18 under the cornice's lower edge
+    #     (v1 f_0560 against the 0.20 dial, v2 f_0516). The 2.42 of round 1 sat under the old 2.84 ceiling; under the
+    #     2.70 corridor ceiling it would run into the 0.22 cornice
+    ck = put(clock('hallway.clock'), (-0.056, 12.23, 2.33), NORTH, 'decor')
     centre, out = ck.matrix_basis @ Vector(CLOCK_HUB), ck.matrix_basis.to_3x3() @ Vector((0, -1, 0))
     for hand, w in zip(P.clock_hands(CLOCK_R, mat='brass', name='hallway.clock'), 'hm'):
         hand.location, hand.rotation_euler = centre, ck.rotation_euler
@@ -555,7 +559,12 @@ def build(ctx):
     put(P.socket(2, name='hallway.socket.rear'), (xp, 9.53, 0.34), WEST)      # on the south pilaster (v2:f_0491)
     put(P.socket(1, name='hallway.socket.corridor'), (xw, 11.40, 0.30), WEST)  # just south of the north pilaster (v2:f_0669)
     put(thermostat('hallway.thermostat'), (xw, 8.43, 1.42), WEST, lm='dynamic')
-    put(pir('hallway.pir'), (xw, 2.03, 2.45), WEST, lm='dynamic')
+    # PIR just north of the inner frame (round 1: 0.20 from its hall face), just under the cornice: on the frame-plane
+    #     scale (frame top 2.83, transom 2.04) it reads 2.68-2.70 in f_0057 and f_0781; it stands about 0.2 in front of
+    #     that plane, 1.3-2.7 m from the camera -> z 2.58. (The porch survey's 2.25 is read through the fanlight from
+    #     the vestibule, where the box stands 0.25 behind the glass and so appears lower.)
+    y_screen = ctx.opening_frame('d_inner')['center'].y + ctx.opening_frame('d_inner')['wall_thickness'] / 2
+    put(pir('hallway.pir'), (xw, y_screen + 0.20, 2.58), WEST, lm='dynamic')
     ap = ceiling_disc('hallway.wifi_ap', 0.20, 0.035, gap=.004)
     ap.location = (-0.26, 9.36, ctx.ceil_z(ROOM, -0.26, 9.36))   # 30 mm clear of the cornice break round the pilaster (x -0.39)
     ctx.add(ap, ROOM, 'fit', lm='dynamic')
@@ -564,9 +573,10 @@ def build(ctx):
     #                                                                 downlight 5 (v1 f_0273); clear of the x 0.15 bulkhead cornice (x > -0.05)
     ctx.add(sm, ROOM, 'fit', lm='dynamic')
 
-    # --- brass door stops + cabin hooks on both skirtings, 0.60 north of the inner screen
+    # --- brass door stops + cabin hooks on both skirtings, at the tips of the 0.61 inner leaves (0.60 north of the
+    #     screen in f_0053): 0.66 so that a leaf swung flat (--pose 1) stops on the rubber tip instead of in the peg
     for i, (x, nrm) in enumerate(((xw + 0.02, WEST), (0.65 - 0.02, EAST))):
-        put(door_stop(f'hallway.door_stop.{i}'), (x, 2.43, 0.06), nrm, lm='dynamic')
+        put(door_stop(f'hallway.door_stop.{i}'), (x, y_screen + 0.66, 0.06), nrm, lm='dynamic')
 
     cupboard(ctx)
 

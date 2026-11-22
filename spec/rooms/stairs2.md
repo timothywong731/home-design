@@ -284,3 +284,40 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
   stair's rise are still to be re-surveyed.
 - Riser R10 (y 8.13) now has a back face where the quarter landing lies behind it (lib/stairs.py), so the gap between
   the T9 top and the QL ceiling is closed from both sides.
+
+## Phase 3 (21 Nov footage) — stairs2 unit, rooms stairs2 / landing2_platform / landing2_head
+Brief `spec/phase3/briefs/stairs2.md`, decisions `spec/RECONCILE3.md` floor2a-02..05. Modules `blender/rooms/stairs2.py`,
+`blender/rooms/landing2.py`.
+- Hall east wall items stand on the one straight face x 0.32 (read from the polygon): S1 (9.10, 1.20), E1 centre 9.75,
+  double socket 10.28, pier sockets, S3 (12.68, 1.22).
+- Sockets sit just above the skirting, centre 0.25 above the floor (v5 t133: plate 40 px, gap to the skirting top 20 px
+  at 457 px/m; v5 t5: gap 10-15 px under a 45 px plate). The pier carries two SINGLE switched sockets, centres
+  y 12.795 / 12.66 (0.145 / 0.28 from the end wall: floor2_a verification note 4 gives 0.14 / 0.275, v5 t5-t6 0.15 /
+  0.29). The white plug-in in the 10.28 socket is omitted.
+- West-wall dado at the platform step: a straight ramp from the riser line (y 8.13, hall level) up 0.20 over 0.50 to
+  y 7.63, mitred at both knees (v13 t47.5: ramp / platform wall 0.29 by the vanishing point of the hall rails, i.e.
+  0.55 of the 1.90 platform; c_v5_0_far shows the same long ramp). The two shell dado runs are cut back 0.04 beyond
+  the knees and butt into level stubs of the ramp piece. The paint split follows the ramp: a white patch covers the
+  shell's level platform split above the low end of the ramp (v13 t47.5, v4 f_0370). No skirting kink: the platform
+  skirting ends square on the riser line over the hall skirting (v13 t47.5).
+- Dado in the well (contradicts the survey note "level on the north wall"): v13 t4 (full-res still) and v4 f_0348-
+  f_0352 both show the north-wall rail raking DOWN from the landing rail at the external corner to the NE corner, and
+  the east-wall run from the corner LEVEL (its line meets the y vanishing point of the N2 frame edges) to a knee about
+  0.33 south of the corner, then the stair rake. Rectified on N1 (0.45 x 0.35): the north rail falls 0.38 over the
+  0.67 wall, so the level run is at Z 6.63 (was 6.50). Fixer: the hall rail turns the external corner (0.32, 8.73) in
+  a mitre (one corner piece in the shell's section, the shell rail's end slid to y 8.77), runs 0.08 level on the north
+  wall and knees down at x 0.40 (v13 t4 full-res rectified on N1: corner and knee at the same height, 0.08-0.09 apart;
+  0.60-0.65 per metre after the knee).
+- Cat studies 0.45 x 0.35 (survey; C1 aspect 1.29 in v4 f_0196), burgundy band 0.31 x 0.21 (mount 0.052). N1 (C5)
+  centred on the north wall (v13 t4 rectified: 0.15 / 0.45 / 0.16 along the wall, so x 0.655 on the 0.32..0.99
+  wall, not 0.55), centre 1.45 above the landing. N2 (C4) on the east wall, centre y 8.35, 1.12 above the landing
+  (survey "0.35 under N1"; v13 t4 gives 0.38 above the level dado). C1 keeps its top 5 cm over the bathroom
+  architrave head, 2 cm off the architrave.
+- Newels: finial ball dia 0.084 (was 0.11): 0.85-0.9 x the 95 mm block face in v4 f_0177 / f_0179, v13 t4 and
+  c_v5_139_bal. Foot newel top now 1.38. Turning newel block top 0.96 above the platform, level with the 0.95 rail top
+  (c_v5_139_bal, v13 t47.5), ball top 1.10 (survey 1.05; v13 t47.5 measures 1.06 on the 0.20 riser).
+- The arch nib (x 0.25..0.32, y 11.50..11.66) and its dado / skirting returns come from the shell (the arch clears
+  x -0.65..0.25); nothing added here. The d_bath2 architrave runs 28 mm into the nib's north face (joinery).
+- Not done (spec): the stair-head nosing at x 0.27 without the 0.17 jog (v13 t6, t5.5, t4.5; v4 t376, t379) and the
+  686 loft door; the 0.17 ledge beside the top step remains the interim artefact. The stair-head corner probably lies
+  near y 9.05 (floor2_a knock-on 2), which would also explain the level dado run on the east wall.

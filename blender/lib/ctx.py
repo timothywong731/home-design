@@ -169,18 +169,24 @@ class House:
 
     def ceil_z(self, rid, x=None, y=None):
         """No x, y: ceilingZ = the HIGHEST ceiling of the room (None for the balcony). With x, y: the ceiling there =
-        min(ceilingZ, ceilingZones, ceiling.planes); under_roof rooms: roof_under(x, y)."""
+        min(ceilingZ, ceilingZones, ceiling.planes, ceiling_haunch slopes). under_roof rooms: their lining =
+        min(ceilingZ, roof_z + ceiling.offset, ceiling.planes) (roof_under where the room has no offset); lib.envelope
+        keeps the slab underside 1 cm above it (eaves_front 1.00 at the knee-wall back, eaves_rear 0.01 under the slab)."""
         r = self._room(rid)
         top = None if r.get('ceilingZ') is None else float(r['ceilingZ'])
         if x is None:
             return top
         c = r.get('ceiling') or {}
-        if c.get('type') == 'under_roof':
-            z = self.roof_under(x, y)
-            return top if z is None else z
         zs = [] if top is None else [top]
-        zs += [float(cz['z']) for cz in r.get('ceilingZones', []) if poly_contains(x, y, cz['polygon'])]
         zs += [plane_z(p, x, y) for p in c.get('planes', []) if poly_contains(x, y, p['polygon'])]
+        if c.get('type') == 'under_roof':
+            rz = self.roof_z(x, y)
+            if rz is not None:
+                zs.append(rz + c['offset'] if 'offset' in c else self.roof_under(x, y))
+            return min(zs) if zs else None
+        zs += [float(cz['z']) for cz in r.get('ceilingZones', []) if poly_contains(x, y, cz['polygon'])]
+        zs += [_haunch_z(f, x, y) for f in self.features if f['type'] == 'ceiling_haunch' and f.get('room') == rid
+               and poly_contains(x, y, f['polygon'])]
         return min(zs) if zs else None
 
     def feature(self, fid):
@@ -446,6 +452,18 @@ def plane_z(plane, x, y):
     """z = c0 + cx*x + cy*y of a roof / ceiling plane dict."""
     z = plane['z']
     return z['c0'] + z['cx'] * x + z['cy'] * y
+
+
+def _haunch_z(f, x, y):
+    """Z of a ceiling_haunch slope at (x, y): z[0] at the wall line wallAt (an x or a y edge of its polygon), rising
+    linearly to z[1] at the opposite edge (as lib.shell._haunch builds it)."""
+    xs, ys = [p[0] for p in f['polygon']], [p[1] for p in f['polygon']]
+    (z0, z1), w = f['z'], f['wallAt']
+    if min(abs(w - min(xs)), abs(w - max(xs))) < 1e-6:
+        v, o = x, (max(xs) if abs(w - min(xs)) < 1e-6 else min(xs))
+    else:
+        v, o = y, (max(ys) if abs(w - min(ys)) < 1e-6 else min(ys))
+    return z0 + (z1 - z0) * min(1.0, max(0.0, (v - w) / (o - w)))
 
 
 def clip_poly(poly, a, b, left=True):

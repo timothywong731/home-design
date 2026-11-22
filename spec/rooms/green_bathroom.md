@@ -153,7 +153,7 @@ and **three open niches** (§5.2).
   front-to-back × 0.16 deep, rim z 0.94, front projecting to x 1.77, one tap hole, slot overflow, brushed-brass
   click waste. Basin centres y 6.40 and y 7.25.
 - Two **brushed-brass monobloc basin mixers** (cylindrical body 0.16 tall, straight angled spout, top lever).
-- **Mirror cabinet** above: three mirrored doors, pale-grey carcass, **y 6.22 → 7.45 (1.23) × 0.72 high ×
+- **Mirror cabinet** above: three mirrored doors, mid-grey carcass (r3), **y 6.22 → 7.45 (1.23) × 0.72 high ×
   0.15 deep**, z 1.24 → 1.96, its underside just above the tile line (v4:f_0149–f_0152, f_0253–f_0260). Render a
   true reflection; never bake the video reflection (it shows the owner).
 - Wall accessories on the tile between basins and cabinet (z ≈ 1.05): a brushed-brass ring tumbler holder
@@ -285,3 +285,43 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 ## Round 3 corrections (core owner, from build/rooms2_open.md)
 - Upper wall paint #AAACA7 (measured against v4 f_0106 / f_0164 / f_0246, normalised to the tile) is now the
   shell finish; the room module's repaint is a no-op.
+
+## Round 3 (21 Nov survey, re-fit and detail)
+
+Shell moves that touch the room: window `w_gbath` centre x 3.82 -> **3.875** (frame / reveal x 3.475..4.275, still
+0.80 x 1.68 from sill 0.72); the east wall thickens outwards (inner face x 4.30 unchanged); `w_green_rear_e` 2.77 high.
+Ceiling 2.75 confirmed (dims_1: 2.69-2.77). From outside the sill may be 0.15 higher (dims_envelope, low confidence:
+not applied). The room module follows the window through `opening_frame`; the sill board's east horn now stops at the
+east wall (it ran 5 mm into it after the move).
+
+Measured this round from the v4 stills (camera poses solved from known points: doorcase 0.69 opening and 0.10
+architraves, duct corners, vanity module widths; ultrawide, ±0.03-0.05):
+- **WC duct**: pan, flush plate and the three niches share one axis at **y 5.45** (v4 f_0108: 5.46-5.48, f_0162: 5.43),
+  not the duct centre 5.41 - the pan sits 0.37 from the duct's north edge and leaves room for the brush on the south.
+  Niches **0.58 wide (y 5.16..5.74)**, heights kept (f_0162: 1.20-1.47 / 1.58-1.88 / 1.99-2.32 against the 0.10 tile
+  courses, within tolerance of 1.20-1.50 / 1.60-1.95 / 2.02-2.45). Niche linings are the gold-veined slab
+  (`porcelain_calacatta_slab`, as the shower), the duct face stays metro.
+- **Toilet brush**: low wall holder, dark bronze cup z 0.06..0.20 in a brass ring, handle to 0.44, y 5.19 (f_0108:
+  cup bottom 0.05, handle top 0.44 against the tile line; it stood at 0.20..0.65 before).
+- **Mirror B1**: z **1.36..1.78** (f_0106 / f_0246: the frame bottom is 0.14-0.15 above the 1.20 tile line; was
+  1.48..1.90).
+- **Mirror cabinet**: **y 6.22..7.62 (1.40), 0.15 deep**, z 1.24..1.96 (f_0152 pose solve: north end 7.63, south end
+  over the vanity's; f_0150 also shows its north end at the shower glass; was 1.23 long, 0.13 deep). Carcass and the
+  door boxes are **mid grey #8E908C** (f_0150 / f_0152: the side panel and the bottom edge read 0.63-0.65 x the wall;
+  the pale #CDCFCD rendered whiter than the wall); the inside and shelves stay pale #F1F1EE.
+- **Bath filler** carries plan symbol `pipe` (round post on the plan, solid for the walker; its box includes the spout
+  over the bath end).
+- **Towel rail** centre x **3.07** (2.77..3.37; f_0105 linear map between the shower corner 1.25 and the window reveal
+  3.475: 2.76..3.39); north shower slab ends at **x 2.72** (f_0105: between the return pane and the rail).
+- Relief B2 on the south wall checked in f_0164 (frontal): x 3.44..3.90, z 1.33..2.19 - the model (3.47..3.93,
+  1.32..2.24) stands. Roll holder x 3.84 (model 3.85).
+- Bath: brass centre waste, a brass overflow rose mid-length on the east inner wall and its bead chain (f_0106,
+  f_0118; the spec said chrome at the tap end). New ball-and-claw feet: ball, three claws, swelling S-leg, acanthus
+  leaf on the knee.
+- New: brushed-brass tumbler ring (glass) north of the south tap and soap dish north of the north tap, z 1.06
+  (f_0150). Niche styling as filmed: lidded rattan box at the north end of the lowest niche, pale wooden dough bowls
+  with succulents (middle) and three bun-moss clumps (top). Bird's-nest fern remodelled with broad crinkled fronds.
+  Bath mats in three tones (grey ground, pale band, grey field).
+
+Not changed (no better evidence): vanity y 6.10..7.55, shower tray 1.40 x 0.90, bath x 3.42..4.14 / y 6.15..7.70,
+landing door, downlights. The carved panels stay generic urn-and-foliage reliefs (the real ones show a figure).

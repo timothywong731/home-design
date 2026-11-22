@@ -10,14 +10,16 @@ import os
 
 import bmesh
 import bpy
+import numpy as np
 from mathutils import Matrix
 
-from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P
+from lib import interact as IX, lighting, materials as M, mouldings as mo, props as P, site_tex as ST
 from rooms.dining_chairs import chair as dining_chair      # same family of chair, same seat tapestry
 from rooms.dining_furniture import dark_wood
 
 ROOM = 'yellow_room'
 ART = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'textures', 'art')
+TEX = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'build', 'tex', ROOM)
 
 # world coords; eye 1.5 m above the floor (Z 3.04); refs are v3 frames
 CAMERAS = [
@@ -29,6 +31,7 @@ CAMERAS = [
     dict(name='door', pos=(1.75, 9.75, 4.54), look=(0.7, 11.0, 4.1), fov_deg=100, ref='v3:f_0132'),
     dict(name='ott', pos=(2.1, 10.15, 4.0), look=(2.6, 10.9, 3.35), fov_deg=80, ref='v3:f_0093'),
     dict(name='cab', pos=(1.9, 9.9, 4.4), look=(0.5, 9.45, 3.65), fov_deg=80, ref='v3:f_0129'),
+    dict(name='stop', pos=(1.32, 10.3, 4.35), look=(1.24, 11.0, 3.16), fov_deg=80, ref='v3:f_0138'),
 ]
 
 T = Matrix.Translation
@@ -55,14 +58,15 @@ def _cloth(name, profile, width, mat, repeat):
     return bpy.data.objects.new(name, me)
 
 
-def _tufted_top(name, w, d, mat, n=(4, 2), r=.02, res=(32, 16), puff=.008, dimple=.009):
+def _tufted_top(name, w, d, mat, n=(4, 2), r=.02, res=(32, 16), puff=.008, dimple=.007):
     """Top skin of a deep-buttoned lid, w x d: quarter-round edge of radius r (z 0 at the rim, r on the flat), stitched
-    creases through the n button grid (5 x 3 pillowed pads for 4 x 2 buttons; each pad rises `puff` from its creases,
-    the creases are narrow grooves on extra vertex rows) and a `dimple` at every button.
+    creases through the n button grid (5 x 3 pillowed pads for 4 x 2 buttons: five equal pads along the length, rows
+    at a quarter and three quarters of the depth as in v3 f_0092; each pad rises `puff` from its creases, the creases
+    are narrow grooves on extra vertex rows) and a `dimple` at every button.
     Returns (object, z(x, y), button points)."""
-    bx = [w * ((i + .5) / n[0] - .5) for i in range(n[0])]
+    bx = [w * ((i + 1) / (n[0] + 1) - .5) for i in range(n[0])]
     by = [d * ((j + .5) / n[1] - .5) for j in range(n[1])]
-    px, py = w / n[0], d / n[1]
+    px, py = w / (n[0] + 1), d / n[1]
 
     def z(x, y):
         e = min(w / 2 - abs(x), d / 2 - abs(y), r)
@@ -118,6 +122,74 @@ def _escutcheon(name):
     mb.at(T((0, -.009, -.021)))
     mb.lathe([(0, 0), (.0035, .0015), (.006, .007), (.0052, .014), (.0025, .021), (.0018, .024), (0, .025)],
              'brass_antique', 12)
+    return mb.finish(name)
+
+
+def _pine_tex(version=3):
+    """Path of the sill board's colour map, made once with numpy (no reference pixels) and cached under build/tex:
+    flat-sawn softwood under a walnut stain, 0.25 m across x 1.0 m along the grain (image rows), 1 mm a pixel:
+    growth rings 7 mm apart cut as cathedral arches (rings round a pith that wanders below the face), fibre streaks,
+    three knots with the rings swirling round them, mean #5A4030 (sill board of v3 f_0085, f_0109-f_0114; the spec's
+    #5A3A22 rendered orange in daylight)."""
+    path = os.path.join(TEX, f'sill_pine_v{version}.jpg')
+    if os.path.exists(path):
+        return path
+    os.makedirs(TEX, exist_ok=True)
+    H, W = 1024, 256                                                 # rows along the grain, columns across
+    v, u = np.mgrid[0:H, 0:W].astype(np.float32)
+    rng = np.random.default_rng(7)
+
+    def wander(n, amp):                                              # smooth periodic 1-D curve along the grain
+        k = np.arange(1, n + 1)
+        c = rng.standard_normal(n) / k, rng.uniform(0, 2 * np.pi, n)
+        return amp * sum(ci * np.sin(2 * np.pi * ki * v / H + pi) for ci, ki, pi in zip(c[0], k, c[1]))
+
+    def stretched(lo, hi, k, seed):                                  # noise k times longer along the grain
+        n = ST._noise(H // k, W, lo, hi, seed)
+        y = v / k
+        i0, fr, ui = np.floor(y).astype(int) % (H // k), y - np.floor(y), u.astype(int)
+        return n[i0, ui] * (1 - fr) + n[(i0 + 1) % (H // k), ui] * fr
+    up, depth = 140 + wander(4, 45), 60 + wander(4, 25)              # pith across the board and below the face (mm)
+    phase = np.sqrt((u - up) ** 2 + depth ** 2) / 7.0 + .5 * stretched(20, 200, 6, 12)
+    knot = np.zeros_like(u)
+    for ky, kx, r in ((180, 70, 9), (610, 190, 6), (880, 40, 7)):
+        d = np.hypot(v - ky, (u - kx) * 1.4)
+        phase += 4 * np.exp(-(d / (3 * r)) ** 2)                     # rings swirl round the knot
+        knot = np.maximum(knot, np.clip(1.4 - d / r, 0, 1))
+    f = phase - np.floor(phase)
+    late = np.clip((f - .55) / .15, 0, 1) * np.clip((1 - f) / .2, 0, 1)    # dark latewood, a third of each ring
+    fibre = ST._noise(H // 16, W, 1, 3, 13).repeat(16, 0)
+    shade = late * .5 + knot * .85 + .05 * fibre + .06 * ST._noise(H, W, 40, 400, 14)
+    early, dark = np.array([.52, .37, .25]), np.array([.22, .13, .08])     # sRGB
+    img = early + (dark - early) * np.clip(shade, 0, 1)[..., None]
+    ST._write(path, ST._recolor(img, '#5A4030'))
+    return path
+
+
+def _leaf_line(fz):
+    """Open d_yellow leaf from joinery: (x of its free end, y of its north face as a function of x), measured on the
+    mesh below knee height, or None when the leaf is not there (--only without shell)."""
+    leaf = bpy.data.objects.get('yellow_room.d_yellow.leaf')
+    if leaf is None or leaf.type != 'MESH':
+        return None
+    bpy.context.view_layer.update()
+    mw = leaf.matrix_world
+    pts = [mw @ v.co for v in leaf.data.vertices]
+    pts = [p for p in pts if p.z < fz + .4]
+    x_end = max(p.x for p in pts)
+    ya = max(p.y for p in pts if p.x > x_end - .012)                 # face line through the free end and 0.3 m back
+    yb = max([p.y for p in pts if abs(p.x - x_end + .3) < .02] or [ya])
+    return x_end, lambda x: ya + (ya - yb) / .3 * (x - x_end)
+
+
+def _door_stop(name, length):
+    """Brass skirting door stop with a black rubber buffer, `length` from the skirting face. Origin on the skirting
+    face, axis +Z (the caller turns it to point into the room)."""
+    shaft = max(length - .016, .006)
+    mb = mo.MB()
+    mb.lathe([(0, 0), (.015, 0), (.015, .004), (.012, .006), (.0075, .009), (.0075, shaft), (0, shaft)], 'brass', 16)
+    mb.lathe([(0, shaft), (.0105, shaft), (.0115, shaft + .003), (.0115, length - .003), (.009, length), (0, length)],
+             M.solid('yellow_rubber', '#1C1B1A', .8), 16)
     return mb.finish(name)
 
 
@@ -187,18 +259,25 @@ def build(ctx):
     def add(ob, kind, sym=None, lm=None):
         return ctx.add(ob, ROOM, kind, plan_sym=sym, lm=lm)
 
-    # ---- lighting: 2 x 2 downlights on the one-gang switch by the door (spec 8)
-    for i, (x, y) in enumerate((x, y) for x in (x0 + .75, x0 + 2.0) for y in (y0 + .52, y0 + 1.50)):
+    # ---- lighting: 2 x 2 downlights on the one-gang switch by the door (spec 8). Rows at the spec's fractions of the
+    #      clear length (0.75 and 2.00 of 2.65 between the old west wall and the east face x 3.00): 0.68 from the new
+    #      west wall, as v3 f_0130 puts the west row (about 1.22-1.29 from two lights' bearings)
+    xe = east_face(y0 + .01, fz + 1.0)
+    for i, (x, y) in enumerate((x, y) for x in (x0 + .283 * (xe - x0), x0 + .755 * (xe - x0))
+                               for y in (y0 + .52, y0 + 1.50)):
         lighting.downlight(ctx, ROOM, x, y, watts=60, kelvin=3000, name=f'yellow_room.downlight.{i}')
         add(P.place(P.downlight(name=f'yellow_room.downlight_trim.{i}'), (x, y, cz)), 'light')
-    sw = P.place(P.switch_plate(1, name='yellow_room.switch'), (x0, y0 + .86, fz + 1.22), facing=(1, 0))
+    sw = P.place(P.switch_plate(1, 'dimmer', name='yellow_room.switch'), (x0, y0 + .86, fz + 1.22),   # rotary
+                 facing=(1, 0))                                           # dimmer knob: v3 f_0129, f_0130
     IX.tag(sw, 'light', rooms=[ROOM], label='Lights')
     add(sw, 'fit', lm='dynamic')
 
-    # ---- sockets (spec 5.3; the south-wall socket is not in v3 f_0085 / f_0129, left out)
+    # ---- sockets (spec 5.3; the south-wall socket is not in v3 f_0085 / f_0129, left out). North pair from the
+    #      north-east corner: v3 f_0092 (square-on, 146 mm plate = 59 px) spur 0.12 short of it, 17 mm gap to the socket
+    xn = east_face(y1 - .03, fz + .50)
     for nm, ob, loc, n in (
-            ('socket.n', P.socket(2), (x1 - .42, y1, fz + .50), (0, -1)),
-            ('spur.n', P.switch_plate(1), (x1 - .23, y1, fz + .50), (0, -1)),        # air-con fused spur
+            ('socket.n', P.socket(2), (xn - .296, y1, fz + .50), (0, -1)),
+            ('spur.n', P.switch_plate(1), (xn - .163, y1, fz + .50), (0, -1)),       # air-con fused spur
             ('socket.pier', P.socket(2), (xp, y0 + .37, fz + .30), (-1, 0)),
             ('socket.w', P.socket(1), (x0, y0 + .76, fz + .40), (1, 0))):
         ob.name = f'yellow_room.{nm}'
@@ -226,6 +305,7 @@ def build(ctx):
     for a_, b_ in (((fl, fy0, fb), (fr, fy1, fb + .0025)), ((fl, fy0, ft - .0025), (fr, fy1, ft)),
                    ((fl, fy0, fb), (fl + .0025, fy1, ft)), ((fr - .0025, fy0, fb), (fr, fy1, ft))):
         mb.box(a_, b_, gap)                                                # outline of the outlet flap
+    mb.box((ax0 + .012, fy0, ft + .008), (ax1 - .012, fy1, ft + .0095), gap)  # shadow line under the front panel
     grey = M.solid('yellow_ac_sensor', '#9A9B98', .35)
     for zc, rr in ((az + .062, .015), (az + .036, .004)):                 # sensor disc and indicator dot
         mb.at(T((ax1 - .068, y1 - .2199, zc)) @ Matrix.Rotation(math.pi / 2, 4, 'X'))
@@ -253,17 +333,27 @@ def build(ctx):
         xv = s * (xe + a + .03)
         mb.tube([(s * xe, yc, .055), (xv, yc, .055)], .011, 'chrome')
         mb.tube([(xv, yc, .055), (xv, 0, .055)], .0075, 'chrome')                     # tail into the wall
-        if s < 0:
-            mb.tube([(xv, yc, .055), (xv - .06, yc, .055)], .018, head_mat)           # TRV head lies along the wall
+        if s < 0:                                                                     # TRV: chrome collar, upright
+            mb.tube([(xv, yc, .05), (xv, yc, .075)], .012, 'chrome')                  # white head (v3 f_0090, f_0096)
+            mb.tube([(xv, yc, .075), (xv, yc, .14)], .017, head_mat, n=12)
         else:
             mb.tube([(xv, yc, .055), (xv, yc - .035, .055)], .012, head_mat)
-    add(P.place(mb.finish('yellow_room.radiator'), (x1, wy - .045, fz + .13), facing=(-1, 0)), 'fit', 'radiator')
+    # v3 f_0090 (square-on): the tube bank is nearer the north cheek (gaps 55 / 115 px between the cheeks at 60 / 470
+    # px); with the perspective of the board's ends (face 30 / 42 px) its centre is 0.03-0.08 north of the window's
+    add(P.place(mb.finish('yellow_room.radiator'), (x1, wy + .05, fz + .13), facing=(-1, 0)), 'fit', 'radiator')
 
     # ---- dark walnut-stained board in the reveal, nosing 50 mm proud of the wall below the window (the front edge
     #      sits about a quarter of the way out of the niche in the t = 108 s still); ears only where no niche side stops it
     es, en = (0 if jamb_pier(yj, sill) else .03 for yj in (wy - hw, wy + hw))
     mb = mo.MB()
-    mb.box((x1 - .05, wy - hw - es, sill), (xf + .002, wy + hw + en, sill + .03), 'dark_joinery', bev=.008, grain=1)
+    pine = M.image_mat('yellow_sill_pine', _pine_tex(), size_m=(.25, 1.0), roughness=.35)     # knotty, satin
+    # 45 mm board, 15 mm round on the front arris, 25 mm apron under the nosing: the front reads about 70 mm and the
+    # gap down to the radiator about 0.13, as in f_0090 (face 35 px against 245 px for the radiator) and f_0096
+    D, t_, r_ = xf + .002 - (x1 - .05), .045, .015
+    nose = [(D - r_ + r_ * math.sin(math.radians(g)), t_ - r_ + r_ * math.cos(math.radians(g))) for g in range(90, -1, -15)]
+    mb.sweep([(0, 0), (D, 0)] + nose + [(0, t_)],                  # travel +y: d runs from the frame into the room
+             [(xf + .002, wy - hw - es, sill - .015), (xf + .002, wy + hw + en, sill - .015)], pine)
+    mb.box((x1 - .045, wy - hw - es, sill - .04), (x1 - .025, wy + hw + en, sill - .015), pine, bev=.002, grain=1)
     add(mb.finish('yellow_room.sill'), 'fit')
 
     # ---- Roman blind face-fixed above the window hole (under the niche head where there is one): head rail + bead
@@ -288,13 +378,18 @@ def build(ctx):
     IX.tag(down, 'show', g='yellow_room.blind', when=1, fx='none', label='Blind')
 
     # ---- mahogany cupboard on cabriole legs against the west wall (spec 6); both doors open on empty shelves
-    cw, cd, ch, leg, wood = .55, .38, 1.00, .24, 'mahogany_dark'
+    cw, cd, ch, leg, wood = .55, .38, 1.02, .24, 'mahogany_dark'          # 1.02 high: v3 f_0130, horizon at eye 1.63
     cy, bh = y0 + .15 + cw / 2, ch - leg - .028
     L = lambda dx, dy, dz: (x0 + .022 - dy, cy + dx, fz + dz)       # cupboard frame (x along the front, -y out) -> world
     add(P.place(P.cabinet_carcass(cw, cd - .02, bh, wood, plinth=0, open_front=True, shelves=1,
                                   name='yellow_room.cabinet'), L(0, 0, leg), facing=(1, 0)), 'furn', 'console')
     mb = mo.MB()
-    mb.box((-cw / 2 - .015, -cd - .015, ch - .028), (cw / 2 + .015, 0, ch), wood, bev=.006, grain=0)      # moulded top
+    tt, ov, tp = .024, .02, .012                       # top: 24 mm board overhanging 20 mm, thumb-moulded on 3 sides
+    mb.box((-cw / 2 - ov + tp, -cd - ov + tp, ch - tt), (cw / 2 + ov - tp, 0, ch), wood, grain=0)
+    thumb = [(0, 0), (.003, 0), (.006, .004), (.006, .008), (.0095, .009), (.012, .013), (.011, .018), (.007, .0225),
+             (0, tt)]
+    mb.sweep(thumb, [(cw / 2 + ov - tp, -.0005, ch - tt), (cw / 2 + ov - tp, -cd - ov + tp, ch - tt),
+                     (-cw / 2 - ov + tp, -cd - ov + tp, ch - tt), (-cw / 2 - ov + tp, -.0005, ch - tt)], wood)
     mb.box((-cw / 2 - .006, -cd - .006, leg - .012), (cw / 2 + .006, -.002, leg), wood, bev=.003, grain=0)  # stand top
     hs, za = cw / 2 - .03, leg - .012                                     # front rail: flush with the leg fronts,
     us = [i / 16 for i in range(17)]                                      # cusped lower edge (v3 f_0129, f_0130)
@@ -323,24 +418,44 @@ def build(ctx):
         for ob in parts:
             add(ob, 'furn', lm='dynamic')
 
-    # ---- chair and ottoman against the north wall
-    add(P.place(_chair(), (x0 + 1.15, y1 - .33, fz)), 'furn', 'chair')
+    # ---- along the north wall, tight together as in v3 f_0092, f_0130, f_0134, f_0138: the open door leaf, the brass
+    #      stop near its free end, the chair just beyond it, the ottoman to a few cm short of the east wall.
+    #      Ottoman lid 1.09 long: f_0092, its back top edge on the wall plane spans 7.5 widths of the 146 mm double
+    #      socket (443 / 59 px) = 1.09 +/- 0.05, its back corner 25 mm past the spur, about 0.08 short of the east face.
+    #      The chair (the dining side chair, 0.53 at the seat front, 0.445 at the back) stands against its west end with
+    #      the seat side meeting the lid's front corner; its west cresting ear tucks behind the open leaf's free end
+    #      (f_0131: the ear lines up with the leaf edge), clear of the leaf's arc
+    leaf = _leaf_line(fz)
+    leaf_end = leaf[0] if leaf else x0 + .78
+    ow, od = 1.09, .39                                             # lid; the box below is 15 mm smaller all round
+    ox = min(east_face(y1 - .03, fz + .2), east_face(y1 - od, fz + .2)) - .08 - ow / 2
+    cx = ox - ow / 2 - .25                                         # seat half-width 0.25 at the ottoman's front line
+    if cx - .30 < leaf_end - .07:
+        print(f'[yellow_room] WARNING: chair ear {cx - .30:.3f} runs deep behind the open leaf (end {leaf_end:.3f})')
+    add(P.place(_chair(), (cx, y1 - .33, fz)), 'furn', 'chair')
     leather = M.solid('yellow_ottoman_white', '#DAD9D3', .4)      # darker than the spec white: keeps the tufts readable
-    ott = P.place(P.bevel_box(.74, .36, .30, leather, bevel=.008, segments=2, name='yellow_room.ottoman'),
-                  (x1 - .55, y1 - .22, fz))
-    lid = P.bevel_box(.77, .39, .045, leather, bevel=.004, name='yellow_room.ottoman.lid')
+    ott = P.place(P.bevel_box(ow - .03, od - .03, .30, leather, bevel=.008, segments=2, name='yellow_room.ottoman'),
+                  (ox, y1 - .015 - od / 2, fz))
+    lid = P.bevel_box(ow, od, .045, leather, bevel=.004, name='yellow_room.ottoman.lid')
     lid.parent, lid.location = ott, (0, 0, .30)
-    top, zt, buttons = _tufted_top('yellow_room.ottoman.top', .77, .39, leather)
+    top, zt, buttons = _tufted_top('yellow_room.ottoman.top', ow, od, leather, res=(44, 16), puff=.018, dimple=.012)
     top.parent, top.location = ott, (0, 0, .341)                   # rim at the foot of the lid box's 4 mm bevel
-    button = M.solid('yellow_ottoman_button', '#C9C8C2', .3)      # covered buttons read a shade greyer (f_0093)
+    button = M.solid('yellow_ottoman_button', '#B9B7AF', .3)      # covered buttons read a shade greyer (f_0092)
     for k, (bx_, by_) in enumerate(buttons):                       # one shared mesh
-        b = P.lathe([(0, 0), (.0075, 0), (.007, .0025), (.004, .0045), (0, .005)], 12, button,
+        b = P.lathe([(0, 0), (.0095, 0), (.009, .003), (.006, .0055), (0, .0065)], 12, button,     # 19 mm (f_0092)
                     name=f'yellow_room.ottoman.button.{k}')
-        b.parent, b.location = ott, (bx_, by_, .341 + zt(bx_, by_) - .0012)
+        b.parent, b.location = ott, (bx_, by_, .341 + zt(bx_, by_) - .003)
     add(ott, 'furn', 'stool')
 
-    # ---- brass door stop on the north skirting where the open leaf lands (v3 f_0133-f_0139)
-    stop = P.lathe([(0, 0), (.016, 0), (.016, .006), (.008, .012), (.008, .058), (.011, .061), (.011, .07), (0, .07)],
-                   12, 'brass', name='yellow_room.door_stop')
-    stop.location, stop.rotation_euler = (x0 + .72, y1 - .018, fz + .10), (math.pi / 2, 0, 0)
+    # ---- brass door stop on the north skirting 6 cm short of the leaf's free end, just west of the chair's back leg
+    #      (v3 f_0134, f_0138); its buffer reaches the open leaf (at openAngle 95 the gap is under 70 mm, so it is short)
+    sx = leaf_end - .06
+    sk = bpy.data.objects.get('yellow_room.skirting')
+    ys = y1 - .018
+    if sk is not None:                                             # face of the north skirting at the stop's height
+        pts = [sk.matrix_world @ v.co for v in sk.data.vertices]
+        ys = min([p.y for p in pts if y1 - .05 < p.y < y1 and p.z < fz + .12 and x0 + .1 < p.x < x1 - .2] or [ys])
+    length = max(.02, min(.07, ys - (leaf[1](sx) if leaf else ys - .07) - .001))
+    stop = _door_stop('yellow_room.door_stop', length)
+    stop.location, stop.rotation_euler = (sx, ys, fz + .10), (math.pi / 2, 0, 0)
     add(stop, 'fit')

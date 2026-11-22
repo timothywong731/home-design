@@ -69,9 +69,13 @@ def roof_z(x, y, ground=False):
 
 def ceil_at(r, x, y):
     c = r.get("ceiling") or {}
-    if c.get("type") == "under_roof":
+    if c.get("type") == "under_roof":            # the lining, as blender/lib/ctx.py ceil_z
         z = roof_z(x, y)
-        return None if z is None else z + c["offset"]
+        if z is None:
+            return None
+        zs = [z + c["offset"]] + [plane_z(p, x, y) for p in c.get("planes", [])
+                                  if Polygon(p["polygon"]).buffer(1e-6).contains(Point(x, y))]
+        return min(zs + ([r["ceilingZ"]] if r.get("ceilingZ") is not None else []))
     z = r["ceilingZ"]
     if c.get("type") == "planes":
         zs = [plane_z(p, x, y) for p in c["planes"] if Polygon(p["polygon"]).buffer(1e-6).contains(Point(x, y))]
@@ -370,8 +374,8 @@ STACKS = {"stair flank wall (x 0.99..1.25)": ["w_b_spine", "w_stair_kitchen", "w
           "east wall": ["w_party_e_kitchen", "w_east_1b", "w_east_2b"],
           "flank wall": ["w_flank_utility", "w_flank_1_yellow", "w_flank_2_purple"],
           "rear wall": ["w_dining_n", "w_rear_1", "w_rear_2"],
-          "old rear wall of the main house": ["w_arch", "w_main_rear_1a", "w_addition_s_2"],
-          "upper arch wall": ["w_arch1", "w_arch2"]}
+          "old rear wall of the main house": ["w_arch", "w_main_rear_1a", "w_addition_s_2"]}
+# the first- and second-floor arch walls are thin partitions measured 0.14 apart (RECONCILE3 dims_1-08, floor2a-02): no stack
 for name, ws in STACKS.items():
     for a, b in zip(ws, ws[1:]):
         wa, wb = walls[a], walls[b]
@@ -777,7 +781,7 @@ def draw_level(lv):
 
 
 def draw_site():
-    COL = {"grass": "#b9d7a0", "soil_lavender": "#c9b6dc", "asphalt": "#bdbdbd", "concrete_flags": "#dedede"}
+    COL = {"grass": "#b9d7a0", "soil_lavender": "#c9b6dc", "asphalt": "#bdbdbd", "concrete_flags": "#dedede", "concrete_insitu": "#d4d5d0"}
     fig, ax = plt.subplots(figsize=(8, 19))
     for z in EXT["zones"]:
         col = COL.get(z["surface"], "#8a6a55" if "deck" in z["surface"] or "timber" in z["surface"] else

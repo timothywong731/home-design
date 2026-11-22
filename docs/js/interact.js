@@ -4,7 +4,7 @@
 // visitor's local time; light / lamp switch room lighting between the lights-on and lights-off bakes (main.js wires
 // the roomLight registry into the materials). Points in tags are Blender world metres -> three (x, z, -y).
 import * as THREE from 'three';
-import { hull, setObstacle, layerOfLevel, zAt, isFree } from './geom.js';
+import { hull, setObstacle, layerOfLevel, zAt, isFree, penDoor, edgeDist } from './geom.js';
 
 const B2T = (a) => new THREE.Vector3(a[0], a[2], -a[1]);
 const ease = (t) => t * t * (3 - 2 * t);
@@ -33,13 +33,16 @@ const matsOf = (o) => { const out = []; o.traverse((m) => m.isMesh && out.push(.
 // lmProbe(object, material, side): for a baked door leaf, the scale of its probe light once it has faded from its
 // lightmap (main.js matches the brightness the bake gave its face on `side`, the way it swings).
 // Door leaves (hinge / slide groups with `blocks`) are walk obstacles at their resting pose on the layers of their
-// doorway (else of their level): see syncPortals.
+// doorway (else of their level): see syncPortals. So are the hatch leaves `<room>.<hatch>.leaf.N` (no `blocks`: they
+// open the walk portal of the hatch they are named for, g.hatch, and nothing else changes for them) and the door of a
+// pen (a sauna cabin, geom.js penDoor: a vertical hinge hung in the pen's outline).
 // Incremental: `add(model)` takes one more glTF scene (one per level as it arrives, `model` is the first); each node is
 // processed once, and switches reach rooms of any level - lamps of a room that arrives later are registered then.
 // ponytail: axes and pivots are set in the parent's frame, which is the world frame because the export flattens the
 // hierarchy (INTERACT.md) and level scenes sit at the origin; transform them by the parent's inverse if that changes.
 export function initInteract({ model, walk, roomLight, castRay, onClone = () => {}, onPortals = () => {}, onLights = () => {}, emissiveToView = (c) => c, feetY = () => 0, lmProbe = () => 1, circuitRooms = [], via = {} }) {
   const groups = new Map(), clocks = [], tagged = new Map(), fx = [], v = new THREE.Vector3(), q = new THREE.Vector3(), hl = new THREE.Color();
+  const piv = new THREE.Vector3(), rot = new THREE.Quaternion();
   const tint = emissiveToView(HL.clone());
   const own = (m) => { const c = cloneMat(m); onClone(m, c); return c; };
   const roots = [], rooms = new Map(), lightRooms = [], emClone = new Map(), registered = new WeakSet();
@@ -77,11 +80,16 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
         const ob = x.m.onBeforeCompile, u = (it.lmMix ||= { value: 1 }), k = (it.lmProbe ||= { value: lmProbe(o, x.m, swingSide(it)) });
         x.m.onBeforeCompile = function (sh, r) { ob.call(this, sh, r); sh.uniforms.lmMix = u; sh.uniforms.lmProbe = k; };
       }
-      if (d.blocks && (d.t === 'slide' || (d.t === 'hinge' && Math.abs(it.axis.y) > 0.9))) {   // a door leaf: its plan outline
+      const vert = d.t === 'slide' || (d.t === 'hinge' && Math.abs(it.axis.y) > 0.9);
+      const hatch = !d.blocks && d.t === 'hinge' && /^[^.]+\.([^.]+)\.leaf\.\d+$/.exec(id)?.[1];
+      if (hatch && walk?.portals.some((p) => p.id === hatch)) g.hatch = hatch;
+      const pen = !d.blocks && !g.hatch && vert && d.t === 'hinge' && walk?.pens?.some((pn) => !pn.open && pn.layer === layerOfLevel(g.level) && edgeDist(d.p[0], d.p[1], pn.poly) < 0.1);
+      if (vert && (d.blocks || g.hatch || pen)) {          // a door leaf: its plan outline
         const pts = [];
         o.traverse((m) => { if (!m.isMesh) return; const a = m.geometry.attributes.position, st = Math.max(1, Math.floor(a.count / 4000));
           for (let k = 0; k < a.count; k += st) { v.fromBufferAttribute(a, k).applyMatrix4(m.matrixWorld); pts.push([v.x, v.z]); } });
         it.foot = hull(pts).map(([x, z]) => new THREE.Vector3(x, 0, z));            // three x, z at the modelled pose
+        if (pen && penDoor(walk, layerOfLevel(g.level), footAt(it, d.on ? 1 : 0))) g.pen = true;   // its outline shut
       }
     }
     for (const g of touched) {
@@ -188,23 +196,24 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
   }
   // doorways: passable while any leaf blocking them is open; every leaf is a solid outline at the pose it is heading
   // for (a double door's shut leaf keeps its half of the doorway shut, an open leaf is not walked through)
-  const piv = new THREE.Vector3(), rot = new THREE.Quaternion();
+  function footAt(it, state) {         // plan outline [[x, y]] of a leaf item in a state
+    if (it.d.t === 'slide') return it.foot.map((q) => [q.x + it.dv.x * state, -(q.z + it.dv.z * state)]);
+    piv.copy(B2T(it.d.p)); rot.setFromAxisAngle(it.axis, it.rad * state);
+    return it.foot.map((q) => { v.copy(q).setY(piv.y).sub(piv).applyQuaternion(rot).add(piv); return [v.x, -v.z]; });
+  }
+  const opens = (g) => (g.hatch ? [g.hatch] : [...g.blocks]);      // the walk portals a group's leaves open
   function syncPortals(notify = true) {
     if (!walk) return;
-    const ids = new Set([...groups.values()].flatMap((g) => [...g.blocks]));
+    const ids = new Set([...groups.values()].flatMap(opens));
     for (const id of ids) {
       const p = walk.portals.find((x) => x.id === id);
-      if (p) p.open = [...groups.values()].some((g) => g.blocks.has(id) && isOpen(g));
+      if (p) p.open = [...groups.values()].some((g) => opens(g).includes(id) && isOpen(g));
     }
     for (const g of groups.values()) {
       const its = g.items.filter((it) => it.foot);
-      if (!its.length) continue;
-      const pts = its.flatMap((it) => {
-        if (it.d.t === 'slide') return it.foot.map((q) => [q.x + it.dv.x * g.state, -(q.z + it.dv.z * g.state)]);
-        piv.copy(B2T(it.d.p)); rot.setFromAxisAngle(it.axis, it.rad * g.state);
-        return it.foot.map((q) => { v.copy(q).setY(piv.y).sub(piv).applyQuaternion(rot).add(piv); return [v.x, -v.z]; });
-      });
-      const p = walk.portals.find((x) => g.blocks.has(x.id));
+      if (!its.length || !(g.blocks.size || g.hatch || g.pen)) continue;
+      const pts = its.flatMap((it) => footAt(it, g.state));
+      const p = walk.portals.find((x) => opens(g).includes(x.id));
       setObstacle(walk, g.id, p ? [...new Set(p.layers)] : [layerOfLevel(g.level)], hull(pts));
     }
     if (notify && ids.size) onPortals();
@@ -224,7 +233,7 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
       // a lamp on its own plug (no `rooms`, no circuit) goes off with its room - the lights-off bake has no lamp in it - and back on
       for (const l of groups.values()) if (l.kind === 'lamp' && !l.rooms.length && !l.circ.length && g.rooms.includes(l.home)) l.state = on ? 0 : 1;
     } else {
-      const first = (x) => { x.state ^= 1; g.hold = Math.max(g.hold, x.dur * Math.abs(x.state - x.p)); if (x.blocks.size) syncPortals(); };
+      const first = (x) => { x.state ^= 1; g.hold = Math.max(g.hold, x.dur * Math.abs(x.state - x.p)); if (x.blocks.size || x.hatch || x.pen) syncPortals(); };
       if (!isOpen(g)) {                 // swings that cross this one shut first, what it rests on (`needs`) opens first;
         for (const id of g.excl) { const x = groups.get(id); if (x && isOpen(x)) first(x); }      // this one waits for them
         for (const id of g.needs) { const x = groups.get(id); if (x && !isOpen(x)) first(x); }    // (toilet seat: the lid)
@@ -232,7 +241,7 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
       g.state ^= 1;
     }
     for (const it of g.items) if (it.tv && g.state === it.d.when) it.tv.t0 = performance.now();
-    if (g.blocks.size) syncPortals();
+    if (g.blocks.size || g.hatch || g.pen) syncPortals();
     return g.state;
   }
   const verb = (g) => {
@@ -425,7 +434,7 @@ export function initInteract({ model, walk, roomLight, castRay, onClone = () => 
     },
     state: (id) => groups.get(id)?.state ?? null,
     groups: () => [...groups.values()].map((g) => ({ id: g.id, kind: g.kind, label: g.label, state: g.state, p: g.p, open: isOpen(g), hint: verb(g),
-      blocks: [...g.blocks], excl: [...g.excl], needs: [...g.needs], rooms: g.rooms, home: g.home, circuits: g.circ.map((x) => `${x.r}.${x.c.name}`), types: [...new Set(g.items.map((it) => it.d.t))], fx: g.items.filter((it) => it.fx).map((it) => it.fx),
+      blocks: [...g.blocks], hatch: g.hatch ?? null, pen: !!g.pen, excl: [...g.excl], needs: [...g.needs], rooms: g.rooms, home: g.home, circuits: g.circ.map((x) => `${x.r}.${x.c.name}`), types: [...new Set(g.items.map((it) => it.d.t))], fx: g.items.filter((it) => it.fx).map((it) => it.fx),
       nodes: g.items.map((it) => it.o.userData.name || it.o.name), dur: g.dur })),
     clocks: () => clocks.map((it) => ({ name: it.o.userData.name || it.o.name, hand: it.d.hand, angle: angleOf(it) })),
     tvCanvas: (id) => groups.get(id)?.items.find((it) => it.tv)?.tv.c ?? null,

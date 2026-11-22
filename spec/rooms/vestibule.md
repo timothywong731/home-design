@@ -272,3 +272,28 @@ on the tiles, the owner's feet/hand. The address lettering on the transom glass 
 - Bay west return light seen from the vestibule: the upper light stops 0.10 (plus its architrave) under the east
   haunch crease, about 1.97..2.46, with a band of plain wall above it (v2 f_0927, v1 f_0019); the opening stays the
   living bay's 2.70 on the living side.
+
+## Round 3 (21 Nov footage) — what the model follows now
+The numbers above are superseded where they differ (spec/house.json, spec/RECONCILE3.md porch-01..10,
+spec/phase3/porch.md 2.3, spec/phase3/briefs/hall.md).
+- Shell: 1.86 deep between the thresholds (screen y 1.86..1.96); front recess y 0..0.99 with the sloping ceiling
+  panel 2.62 (y 0) -> 2.85 (y 0.62), then flat 2.85; piers / vault y 0.99..1.44; rear recess 1.44..1.86. East side of
+  the front recess = bay cheek wall face x 0.75 (no front-wall return: the street-door frame x -0.67..0.72 stands in the
+  corner; joinery's 70 mm cover board on the cheek wall, y 0..0.07). Dado top 0.965 as in the hall (the porch survey's
+  0.84 reading was not adopted).
+- Dado and skirting on the cheek wall end with returned ends 2 mm clear of the cover board (photo, v9 f_0036: the
+  rail stops against the vertical strip).
+- Keypad 0.16 x 0.11 (1.85 x the 86 mm switch plate, v2 t903.2), blank face. Re-measured against the plate in
+  v2 k902.4, k903.2 and v1 f_0033 (corrected for the oblique wall): switch centre y 1.65, mid-wall (0.21-0.23 from
+  the pier's north face, about 0.20 from the inner frame face), z 1.22; keypad bottom 55 mm above the plate top ->
+  centre z 1.375 (not 1.48); keypad north edge flush with the plate's -> centre y 1.615.
+- Stool centre y 1.64 (0.22 south of the screen face, clear of the pier); lantern in the middle of the rear recess
+  ceiling, y 1.65.
+- Two downlights side by side in the sloping panel at (-0.30, 0.30) and (0.32, 0.30), trims tilted with the slope
+  (z 2.73).
+- Door mat 0.60 x 1.10, x -0.44..0.16, y 0.04..1.14 (pattern redrawn at that size).
+- Empty honey bamboo shoe rack 0.70 x 0.27 x 0.75, four slatted tiers, against the cheek wall under the lower light
+  (x 0.45..0.72, y 0.05..0.75), a blocking 'rack' plan symbol (1.10 m lane beside it). Shoes, coats and umbrellas
+  stay out.
+- Canopy: three downlights at x -0.42, 0, 0.42, y -0.34, flush in the raked soffit (lib envelope.porch_soffit_z,
+  z 2.512 there), trims tilted 28 degrees with it.

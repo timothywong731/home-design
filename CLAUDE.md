@@ -48,25 +48,30 @@ python spec/validate_house.py            # after editing spec/house.json; redraw
 #    foundation only (6 s): --only shell,site,envelope      one room: --only shell,living --preview living --res 540x960 --samples 64 --tag me
 #    --levels B,G,1,2,X     --preview <room>|level:<id>|plan:<level>|section|elev:front|rear|flank     --pose 1 (everything operated)
 #    --cam <name>|first (one camera per room: contact sheets)     --device CPU|0|1 (when the GPUs are busy)
-# 2. export -> docs/assets: glb/<level>.glb, lightmaps, probes, sky.jpg, manifest (schema 2), footprints, hero stills   (EXPORT OK)
+# 2. export -> docs/assets: glb/<level>.glb, lightmaps, probes, sky.jpg, manifest (schema 2), footprints, sections, hero stills   (EXPORT OK)
 "$B" -b --factory-startup build/home.blend --python blender/export.py -- --out docs/assets --samples 1024 --renders
+#    sections.json alone (the cross-sections, cut from the model; 20 s, SECTIONS OK):
+#    "$B" -b --factory-startup build/home.blend --python blender/export_sections.py -- --out docs/assets
 #    --bake-res N (upper bound of the atlas side, default 4096)   --skip-bake (GLBs + manifest + footprints, 30 s)
 #    --rooms a,b [--levels L] (re-bake a subset)   --stills-only [--still-res 960x540]
 #    dry run, never into docs/ (8 min): --out build/export_int --tmp build/export_int_tmp --bake-res 1024 --samples 128
 python blender/export_fixture.py --check docs/assets                                             # EXPORT CHECK OK (manifest vs files)
 "$B" -b --factory-startup --python blender/export_check.py -- --assets docs/assets --level G   # CHECK OK; re-lit views in <tmp>/check
-# 3. plan sheets B G 1 2 + site from spec/house.json + footprints.json -> plan.json, house-plans.dxf / .pdf, then audit
+# 3. plan sheets B G 1 2 + site from spec/house.json + footprints.json, sections A-A B-B C-C from sections.json -> plan.json, house-plans.dxf / .pdf, then audit
 python tools/plan/draft.py && python tools/plan/check.py && python tools/plan/test_draft.py    # PLAN OK / CHECK OK / TEST OK; rasters in build/plan/
-#    on a dry-run export: draft.py --footprints build/export_int/footprints.json --out build/export_int; check.py --assets build/export_int
+#    on a dry-run export: draft.py --footprints build/export_int/footprints.json --out build/export_int; check.py --assets build/export_int;
+#    test_draft.py --sections build/export_int/sections.json   (draft.py takes the sections.json beside the footprints)
+#    a set without the three section sheets FAILS check.py, test_draft.py and the e2e plan checks: the export wrote no
+#    sections.json (grep its log for "WARNING: no cross-sections"). --no-sections on each of the three tests the plans alone
 # 4. viewer tests (one-time: npm install --prefix build/e2e playwright@1.65.1)
 node docs/test/geom.test.mjs                                    # walk layers, portals, the seven route traces of MULTILEVEL.md 16
-node docs/test/e2e.mjs [--assets build/export_int] [--only desktop,ref,realtime,phone,ix,levels]   # ALL CHECKS PASSED; screenshots in build/e2e/levels/
+node docs/test/e2e.mjs [--assets build/export_int] [--only desktop,ref,realtime,phone,ix,levels] [--no-sections]   # ALL CHECKS PASSED; screenshots in build/e2e/levels/
 ```
 
 What to re-run: `spec/house.json` or `blender/lib` changed → all four; a room module → 1,
 2 (`--rooms <room> --levels <its level>`), 3 (footprints may have moved), 4; `tools/plan` → 3, 4;
-`docs/js` → 4. Read the previews, re-lit views, plan rasters, stills and screenshots after each
-run; the asserts do not judge how it looks.
+`docs/js` → 4; `tools/plan/section_planes.py` (where the sections cut) → `export_sections.py`, 3, 4. Read the
+previews, re-lit views, plan rasters, stills and screenshots after each run; the asserts do not judge how it looks.
 
 Library checks (one sentinel each): `python blender/test_ctx.py` (CTX OK) and
 `"$B" -b --factory-startup --python blender/test_shell.py [-- --sky]` (SHELL OK), `test_site.py`
@@ -115,15 +120,20 @@ The pipeline is one-directional; each stage consumes the previous stage's files:
    an equirect probe per room for everything else, a lights-off set, one atlas per lighting circuit
    in rooms with several (`ix` key `circuit`, INTERACT.md), `sky.jpg`, `manifest.json`
    (schema 2: levels, load order, rooms, lightmaps, probes, white balance, sky, viewpoints, first
-   view), `footprints.json` (plan symbols = walk obstacles) and the hero stills in `docs/renders/`.
-4. `tools/plan/draft.py` → `plan.json` (five sheets in one world frame, drawn by
-   `docs/js/plan2d.js`), DXF and PDF from one entity list, so the on-screen plan, the downloads and
-   the 3D model stay in registration.
+   view), `footprints.json` (plan symbols = walk obstacles), `sections.json` (`export_sections.py`:
+   the house cut on the planes of `tools/plan/section_planes.py` - closed outlines of what is cut,
+   hidden-line elevation of what stands beyond) and the hero stills in `docs/renders/`.
+4. `tools/plan/draft.py` → `plan.json` (five plan sheets in one world frame, then one sheet per
+   cross-section in section coordinates, drawn by `docs/js/plan2d.js`), DXF and PDF from one entity
+   list, so the on-screen plan, the downloads and the 3D model stay in registration (`check.py`
+   holds sections.json to house.json within 20 mm and fails a set that lacks a section sheet).
 5. `docs/` — static three.js viewer, no build step: `js/main.js` (levels stream in by
    `loadOrder`, baked lighting, walk and dollhouse modes with a cut per level, UI), `js/geom.js`
    (pure frame mapping, walk layers B / G / 1 / 2 + one per flight, portals, routing; node-tested),
    `js/interact.js` (operable things from `ix` tags, started per level as each GLB arrives),
-   `js/plan2d.js` (CAD canvas with sheet tabs, position marker and view cone).
+   `js/plan2d.js` (CAD canvas with sheet tabs, position marker and view cone; on a section sheet
+   the marker is the visitor projected onto the plane at eye height, and the docked panel first
+   shows the sheet's `fitBounds`, the house, rather than the whole plot).
 
 Constraints that shape the code:
 

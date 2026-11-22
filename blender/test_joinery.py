@@ -59,7 +59,7 @@ def check_trim(h):
     assert len(sk) == 1 and not sk[0][1] and diags(sk) == 3, (len(sk), diags(sk))
     co = runs(('living',), 2.92)                                # cornice: closed, bay corners square, NW wall diagonal
     assert len(co) == 1 and co[0][1] and diags(co) == 1, (len(co), diags(co))
-    assert any(math.dist(p, (1.1, 0.99)) < 1e-6 for p in co[0][0]) and not any(math.dist(p, (1.1, 0.99)) < 1e-6 for p in sk[0][0])
+    assert any(math.dist(p, (1.03, 0.99)) < 1e-6 for p in co[0][0]) and not any(math.dist(p, (1.03, 0.99)) < 1e-6 for p in sk[0][0])
     # hallway at Z 0.05: the first-floor wall w_green_rear (y 4.83..4.95) must not cut the hall in two
     lp = mo.room_loops(h, ('hallway',), 0.05)
     assert len(lp) == 1, len(lp)
@@ -154,6 +154,18 @@ def check_opening(h, oid, fr, objs, Mw, boxes, pose):
         ys = [(inv @ v).y for ob in fo for v in world_verts(ob)]
         got = (out_y - max(ys)) if out_y > 0 else (min(ys) - out_y)
         assert abs(got - fr['ext_reveal']) < 0.004, f"{oid}: frame {got:.3f} behind the outer face, ext_reveal {fr['ext_reveal']}"
+    # surrounds stop at the return walls and nibs (J._clip): no vertex inside another wall of the level
+    walls = [w for w in h.walls.values() if w.get('level', 'G') == fr['level'] and w['id'] != o['wall'] and not w.get('virtual')]
+    for ob in objs:
+        if 'surround' not in ob.keys():
+            continue
+        for w in walls:
+            (ax, ay), (bx, by) = w['a'], w['b']
+            ln = math.hypot(bx - ax, by - ay) or 1.0
+            ux, uy = (bx - ax) / ln, (by - ay) / ln
+            n = sum(1 for v in world_verts(ob) if 0.0005 < (v.x - ax) * ux + (v.y - ay) * uy < ln - 0.0005
+                    and abs((v.x - ax) * -uy + (v.y - ay) * ux) < w['thickness'] / 2 - 0.0005)
+            assert n == 0, f"{ob.name}: {n} vertices inside wall {w['id']}"
     if pose:
         IX.pose(moving, 1)
         bpy.context.view_layer.update()

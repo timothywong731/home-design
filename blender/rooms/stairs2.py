@@ -18,7 +18,7 @@ from pathlib import Path
 
 import bpy
 
-from lib import materials as M, mouldings as mo, props as P
+from lib import materials as M, mouldings as mo, props as P, shell
 from rooms import stairs2_parts as SP
 
 ROOM = 'stairs2'
@@ -32,13 +32,13 @@ CAMERAS = [
     dict(name='guard', pos=(-0.35, 6.85, 4.95), look=(0.2, 7.7, 4.0), fov_deg=100, ref='v4 f_0183'),
     dict(name='archi', pos=(-0.05, 5.5, 4.95), look=(0.99, 6.15, 4.75), fov_deg=100, ref='v4 f_0196'),
     dict(name='winders', pos=(0.7, 7.45, 6.25), look=(0.62, 8.6, 5.55), fov_deg=100, ref='v4 f_0320'),
-    dict(name='corner', pos=(-0.25, 8.25, 7.55), look=(0.5, 8.75, 6.9), fov_deg=100, ref='v4 f_0349'),
+    dict(name='corner', pos=(-0.25, 8.25, 7.55), look=(0.5, 8.75, 6.9), fov_deg=100, ref='v13 t4 / v4 f_0349'),
+    dict(name='cats', pos=(-0.15, 8.35, 7.6), look=(0.75, 8.5, 6.75), fov_deg=100, ref='v13 t4 (N1, N2, dado)'),
     dict(name='top', pos=(0.55, 8.55, 7.5), look=(0.5, 7.2, 5.3), fov_deg=100, ref='v4 f_0355'),
     dict(name='down', pos=(0.6, 6.75, 5.75), look=(0.45, 5.0, 4.7), fov_deg=100, ref='v6 f_0014'),
 ]
 
 WHITE = 'joinery_white'
-GREIGE = '#C8C5BB'              # wall under the dado (stairs2.md 4)
 NOSE = 0.025                    # carpet nosing overhang
 X_WALL, X_OPEN = 0.99, 0.15     # staircase wall face / open side (strip and platform edge)
 XE = X_WALL - 0.015             # carpet runs into the 30 mm wall string
@@ -74,10 +74,13 @@ def wood():
     return M.solid('stairs_mahogany', '#2E211C', 0.14)
 
 
+BALL_R = 0.042                  # finial ball: 0.85-0.9 x the block face (v4 f_0177, f_0179; v13 t4; c_v5_139_bal)
+
+
 def newel(name, base, block, foot=None):
     """Mahogany newel on 95 mm stock (v4 f_0178 / f_0190, v5 f_0140).  Local z: square base to `base` with chamfered
     shoulders, ring, long plain shaft swelling slightly upward, two rings, square block from `block` (0.21 high,
-    the handrails enter it) with a pyramidal top, collar, ball finial; top of the ball = block + 0.373.
+    the handrails enter it) with a pyramidal top, collar, ball finial; top of the ball = block + 0.349.
     foot = (lo, hi) local corners of a box carrying part of the square base further down."""
     h, R, b = NEWEL_S / 2, 0.075, block                              # R > arris radius = full square after _square
     s0, s1 = base + 0.03, block - 0.03
@@ -89,13 +92,30 @@ def newel(name, base, block, foot=None):
          (0.036, s1),
          (R, b), (R, b + 0.21), (0.030, b + 0.240),                                                             # block
          (0.027, b + 0.245), (0.036, b + 0.250), (0.038, b + 0.257), (0.035, b + 0.263), (0.026, b + 0.266)]   # collar
-    p += [(0.055 * math.cos(math.radians(a)), b + 0.318 + 0.055 * math.sin(math.radians(a)))
-          for a in (-60, -45, -30, -15, 0, 15, 30, 45, 60, 75)] + [(0, b + 0.373)]
+    zb = b + 0.270 + BALL_R * math.sin(math.radians(60))           # ball centre: its -60 deg point on the collar
+    p += [(BALL_R * math.cos(math.radians(a)), zb + BALL_R * math.sin(math.radians(a)))
+          for a in (-60, -45, -30, -15, 0, 15, 30, 45, 60, 75)] + [(0, zb + BALL_R)]
     mb = mo.MB()
     mb.lathe(p, wood(), segs=32)
     if foot:
         mb.box(*foot, wood())
     return SP.square(mb.finish(name), h)
+
+
+def cut_back(name, sel, to):
+    """Slide the vertices of a shell trim run (`name`) for which sel(world co) holds to y = `to`: its end ring and
+    end cap move, the run gets shorter.  ponytail: edits the shell trim mesh of this unit's own rooms; skipped
+    quietly if the trim is missing (--bare)."""
+    ob = bpy.data.objects.get(name)
+    if ob is None:
+        return
+    mw, inv = ob.matrix_world, ob.matrix_world.inverted()
+    for v in ob.data.vertices:
+        w = mw @ v.co
+        if sel(w):
+            w.y = to
+            v.co = inv @ w
+    ob.data.update()
 
 
 class _Balusters:
@@ -158,7 +178,7 @@ def build(ctx):
         ux, uy = (bx - ax) / ln, (by - ay) / ln
         nosing(cb, [(ax + ux * 0.02, ay + uy * 0.02), (bx - ux * 0.05, by - uy * 0.05)], z0 + rise * (n - 1), rise, grey)
     # top nosing R13 and its 7 cm return against the old rear wall: the landing carpet wraps over it
-    xj = max(x for x, y in ctx.room_poly('landing2_head') if abs(y - yw) < 1e-6 and x < 0.5)        # 0.22
+    xj = max(x for x, y in ctx.room_poly('landing2_head') if abs(y - yw) < 1e-6 and x < 0.5)        # 0.32
     nosing(cb, [(xj - 0.02, yw), (X_OPEN, yw), (X_OPEN, ty + NEWEL_S / 2)], z2 - rise, rise, pale)
     # Bullnose (v6 f_0022-f_0024, v4 f_0190): the first step is carpeted in the landing carpet, stands 70 mm in
     # front of the newel's south face and ends in a quarter round on the line of the newel's west face; the newel
@@ -219,26 +239,39 @@ def build(ctx):
     ph = mo.profile_size('dado_landing')[1]
     dado = [(ph - h, p) for p, h in mo.PROFILES['dado_landing']]     # in the wall plane: (down from the top, off the wall)
     D = lambda y: NL(y) + DADO_H
-    zc, zt = z2 + 0.48, z2 + mo.TRIM['landing2_head']['dado']['top']         # level over the winders 6.50 / landing 7.01
-    yk = inv(zc - DADO_H)                                            # knee (8.23)
-    x_d = xj - mo.profile_size('dado_landing')[0]                    # to the face of the landing rail (external corner)
-    sn = (zt - zc) / (X_WALL - x_d)
+    # Round 3: level run at 6.60 (v13 t4 rectified on N1: the north rail falls 0.57 per metre from the landing rail,
+    # so 0.38 over the 0.67 wall; the east-wall run from the corner is level by its vanishing point, knee about 0.33
+    # south of the corner).  Not "level on the north wall" as the survey note has it: v13 t4 and v4 f_0348-f_0352
+    # both show the north rail raking and the east run level.
+    # Fixer round 3: the hall rail turns the external corner (xj, yw) in a mitre, runs 0.08 level on the north wall
+    # and knees down there (v13 t4 full-res, rectified on N1: corner and knee at the same height, 0.08-0.09 apart;
+    # 0.60-0.65 per metre after the knee), so the level run is 6.63 (0.38 fall, as measured in round 3).
+    zc, zt = z2 + 0.61, z2 + mo.TRIM['landing2_head']['dado']['top']         # level over the winders 6.63 / landing 7.01
+    yk = inv(zc - DADO_H)                                            # knee (8.26)
+    x_k, x_m = xj + 0.08, xj + 0.04                                  # knee / butt of the corner piece and the rake
+    sn = (zt - zc) / (X_WALL - x_k)
     kn = math.hypot(1, sn)
     ws.sweep(dado, [(X_WALL, y_arch, D(y_arch)), (X_WALL, yk, zc), (X_WALL, yw, zc)], WHITE, up=(-1, 0, 0),
              ends=((0, 0, -k), None))
-    ws.sweep(dado, [(X_WALL, yw, zc), (x_d, yw, zt)], WHITE, up=(0, -1, 0), ends=((0, 0, -kn), (0, 0, -kn)))
+    ws.sweep(dado, [(X_WALL, yw, zc), (x_k, yw, zt), (x_m, yw, zt)], WHITE, up=(0, -1, 0), ends=((0, 0, -kn), None))
+    # corner piece in the shell's own section and set-out (plumb, up +Z, room on the left): its end rings match the
+    # rake's level stub at x_m and the hall rail, whose end is slid from yw to yw + 0.04 to make room for the mitre
+    ws.sweep(mo.PROFILES['dado_landing'], [(x_m, yw, zt - ph), (xj, yw, zt - ph), (xj, yw + 0.04, zt - ph)], WHITE)
+    cut_back('landing2_head.dado', lambda w: w.x > xj - 0.05 and abs(w.y - yw) < 0.003, yw + 0.04)
     ctx.add(ws.finish('stairs2.wall_string'), ROOM, 'trim')
 
-    gb, paint, e = mo.MB(), M.paint(GREIGE), 0.0015                  # greige band, 1.5 mm proud of the plaster
+    # greige band, 1.5 mm proud of the plaster, in the landing's lower paint (a core repaint of the hall dado zone,
+    # survey #C0B9AD, follows here)
+    gb, paint, e = mo.MB(), shell.material(shell.finish('landing2_head')['lower']), 0.0015
     gb.face([(X_WALL - e, y, z - 0.03) for y, z in [(y_arch, Sz(y_arch))] + east + [(yw, zc), (yk, zc), (y_arch, D(y_arch))]],
             paint, hint=(-1, 0, 0))
-    gb.face([(x, yw - e, z - 0.03) for x, z in north + [(xj, zt_s), (xj, zc + sn * (X_WALL - xj)), (X_WALL, zc)]],
+    gb.face([(x, yw - e, z - 0.03) for x, z in north + [(xj, zt_s), (xj, zt), (x_k, zt), (X_WALL, zc)]],
             paint, hint=(0, -1, 0))
     band = gb.finish('stairs2.dado_band')
     M.uv_box(band)
     ctx.add(band, ROOM, 'trim')
 
-    # ---- ceiling of the well: the landing cove turns the external corner (0.22, 8.73) and runs along the old rear
+    # ---- ceiling of the well: the landing cove turns the external corner (0.32, 8.73) and runs along the old rear
     # wall into the staircase wall, which has only a thin shadow bead (landing2.md 3; v5 f_0153, v4 f_0369).  The
     # short return north overlaps the end of landing2_head.cornice by 2 mm so the mitre closes on it.
     cz = ctx.ceil_z('landing2_head')
@@ -250,7 +283,7 @@ def build(ctx):
     ctx.add(tb.finish('stairs2.cornice'), ROOM, 'trim')
 
     # ---- balustrade of the flight -------------------------------------------------------------------------
-    # Newel 1.40 high, not the spec's 1.20: the rail (0.90 above the nosing line) is 1.19 above the landing
+    # Newel 1.38 high, not the spec's 1.20: the rail (0.90 above the nosing line) is 1.19 above the landing
     # where it enters the block, and the ball stands at camera height in v4 f_0192.
     post = newel('stairs2.newel', 0.27, 1.03)
     post.location = (fx, fy, z0)
@@ -278,7 +311,9 @@ def build(ctx):
     # ceiling; only its south half (over T9) carries on down into the T9 carcass, 2 mm behind the R10 riser plane.
     zt0, h = max(Zs(yn1) - 0.06, ctx.ceil_z('landing1_ql') + 0.002), NEWEL_S / 2
     zt9 = z0 + rise * (ns - 1)                                       # T9 top (5.22)
-    turn = newel('landing2_platform.newel', z2 + 0.28 - zt0, zp + 0.81 - zt0,
+    # Block top 0.96 above the platform, level with the rail top (c_v5_139_bal, v13 t47.5); ball top 1.10 (survey
+    # 1.05, v13 t47.5 measured 1.06 on the 0.20 riser).
+    turn = newel('landing2_platform.newel', z2 + 0.28 - zt0, zp + 0.75 - zt0,
                  foot=((-h, -h, min(0.0, zt9 - 0.03 - zt0)), (h, R(ns) - 0.002 - ty, 0.001)))
     turn.location = (tx, ty, zt0)
     pb = mo.MB()
@@ -337,15 +372,19 @@ def build(ctx):
         ctx.add(ob, ROOM, 'joinery', lm='dynamic')
 
     # ---- the cat studies (stairs2.md 7; landing2.md 7 N1 / N2 are C5 / C4) ----------------------------------------
-    # C1-C3 step up the staircase wall 1.40 above the nosing line, C4 hangs over the winders on the same wall, C5 on
-    # the old rear wall (v5 f_0153: C5 higher than C4).  Brushed pale-gold frame, white mount, burgundy band.
-    # C1 sits 2 cm off the bathroom architrave, its top ~5 cm over the architrave head (v4 f_0196).
-    cats = [(1, (X_WALL, y_arch + 0.27, NL(6.35) + PRINT_H + 0.05), (-1, 0)),
+    # C1-C3 step up the staircase wall 1.40 above the nosing line, C4 (N2, lying tabby) on the same wall just south of
+    # the corner, C5 (N1, sitting cat) centred on the old rear wall.  Brushed pale-gold frame, white mount, burgundy
+    # band.  Round 3: 0.45 x 0.35 (survey; C1 aspect 1.29 in v4 f_0196), band 0.31 x 0.21 (C1: 0.68 / 0.60 of the
+    # frame); N1 centred on the wall, 1.45 above the landing (v13 t4 rectified: 0.15 / 0.45 / 0.16 along the wall);
+    # N2 at y 8.35 (its north edge 0.15 from the corner), 1.12 above the landing (survey: 0.35 under N1; v13 t4: 0.38
+    # above the level dado).  C1 2 cm off the bathroom architrave, top kept 5 cm over the architrave head (v4 f_0196).
+    W, Hc = 0.45, 0.35
+    cats = [(1, (X_WALL, y_arch + 0.02 + W / 2, NL(6.35) + PRINT_H + 0.235 - Hc / 2), (-1, 0)),
             (2, (X_WALL, 7.05, NL(7.05) + PRINT_H), (-1, 0)),
-            (3, (X_WALL, 7.75, NL(7.75) + PRINT_H), (-1, 0)), (4, (X_WALL, 8.40, z2 + 0.95), (-1, 0)),
-            (5, (0.58, yw, z2 + 1.45), (0, -1))]
+            (3, (X_WALL, 7.75, NL(7.75) + PRINT_H), (-1, 0)), (4, (X_WALL, 8.35, z2 + 1.12), (-1, 0)),
+            (5, ((xj + X_WALL) / 2, yw, z2 + 1.45), (0, -1))]
     for i, loc, facing in cats:
-        pic = P.framed_picture(image=str(ART / f'stairs2_cat{i}.jpg'), w=0.50, h=0.37, frame_style='champagne',
-                               frame_w=0.02, depth=0.018, mount=0.065, slip=('#5B2A30', 0.012), mount_mat='#F1F0EC',
+        pic = P.framed_picture(image=str(ART / f'stairs2_cat{i}.jpg'), w=W, h=Hc, frame_style='champagne',
+                               frame_w=0.02, depth=0.018, mount=0.052, slip=('#5B2A30', 0.012), mount_mat='#F1F0EC',
                                glass=True, name=f'stairs2.cat.{i}')
         ctx.add(P.place(pic, loc, facing=facing), ROOM, 'decor')

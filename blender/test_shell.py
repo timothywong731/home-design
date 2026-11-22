@@ -94,10 +94,10 @@ def whole():
     assert all(m == mat(h.rooms['living']['floor']['material']) and n.z > 0.9 and abs(c.z) < 1e-6 for c, n, m, *_ in faces('living.floor'))
     assert all(n.z < -0.9 and m == mat(shell.FINISHES['kitchen']['ceiling']) for c, n, m, *_ in faces('kitchen.ceiling'))
     assert {round(c.z, 2) for c, *_ in faces('kitchen.ceiling')} == {2.03, 2.95}               # nook soffit zone
-    assert {round(c.z, 2) for c, *_ in faces('hallway.ceiling')} == {2.3, 2.6, 2.84, 2.95}
+    assert {round(c.z, 2) for c, *_ in faces('hallway.ceiling')} == {2.3, 2.6, 2.7, 2.84, 2.95}
     assert any(m == mat('#2B3B4C') and abs(c.x + 0.65) < 1e-4 for c, n, m, *_ in faces('blue_bedroom.walls'))
     assert any(m == mat('metro_carrara_100x400') and z1 <= 3.42 + 1.2 + 1e-4 for c, n, m, z0, z1 in faces('green_bathroom.walls'))
-    lo, up = mat('#C8C5BB'), mat('#F1EEE6')                    # dado split 0.9425 above the landing floor 3.04
+    lo, up = mat(shell.HALL_LOWER), mat('#F1EEE6')             # dado split 0.9425 above the landing floor 3.04
     assert any(m == lo and abs(z1 - 3.9825) < 1e-4 for c, n, m, z0, z1 in faces('landing1_rear.walls'))
     assert any(m == up and abs(z0 - 3.9825) < 1e-4 for c, n, m, z0, z1 in faces('landing1_rear.walls'))
     carpet = mat(h.rooms['landing1_front']['floor']['material'])
@@ -108,7 +108,7 @@ def whole():
 
     # non-axis pieces: chamfers of both kinds, the stops of the four bay splays, haunches, loft slopes
     for n in ('living.chamfer.living_nw_chamfer', 'stairs.chamfer.hall_stair_diag', 'landing1_rear.chamfer.landing1_chamfer',
-              'vestibule.haunch.vest_haunch_w', 'vestibule.haunch.vest_haunch_e', 'hallway.arch_fill',
+              'vestibule.haunch.vest_ceiling_slope', 'hallway.arch_fill',
               'landing1_rear.arch_fill', 'landing2_head.arch_fill', 'vestibule.vault_fill'):
         assert n in names, n
     for n, z2 in (('living.chamfer.living_bay.0', 2.4), ('living.chamfer.living_bay.1', 2.4),
@@ -116,7 +116,7 @@ def whole():
         zs = [v.co.z for v in ob[n].data.vertices]
         assert abs(max(zs) - z2) < 1e-5 and len(ob[n].data.polygons) == 4, n                    # diagonal + 3 stop faces
     zs = [v.co.z for v in ob['loft_office.ceiling'].data.vertices]
-    assert abs(min(zs) - 7.41) < 0.01 and abs(max(zs) - 8.61) < 0.02 + 0.31, (min(zs), max(zs))  # liners reach the roof
+    assert abs(min(zs) - 7.57) < 0.01 and abs(max(zs) - 8.61) < 0.02 + 0.31, (min(zs), max(zs))  # liners reach the roof
     assert all(p.normal.z < 0 for p in ob['loft_office.ceiling'].data.polygons if abs(p.normal.z) > 0.5)
     for o in h.col('shell').objects:                           # nothing above the roof surface
         for v in o.data.vertices:
@@ -124,7 +124,7 @@ def whole():
             assert rz is None or v.co.z <= rz + 1e-3, (o.name, tuple(v.co), rz)
 
     # flights
-    for room, sid, n in (('stairs', 'stair_main', 14), ('basement_stair', 'stair_basement', 10), ('stairs2', 'stair_second', 12)):
+    for room, sid, n in (('stairs', 'stair_main', 13), ('basement_stair', 'stair_basement', 10), ('stairs2', 'stair_second', 12)):
         fl = ob[room + '.flight']
         assert fl['part'] == 'flight' and fl['room'] == room
         tops = sorted({round(p.center.z, 3) for p in fl.data.polygons if p.normal.z > 0.99})
@@ -187,17 +187,43 @@ def whole():
     th = {o.name.split('.threshold.')[1]: o.data.materials[0].name for o in h.col('shell').objects if '.threshold.' in o.name}
     assert th['d_basement'] == mat('silver_satin') and th['d_green'] == th['d_loft'] == th['d_study'] == mat('brass') and 'd_balcony' not in th, th
     d = lighting.downlight(h, 'loft_office', 2.0, 3.0)
-    assert abs(d.location.z - (5.9435 + 0.57735 * 3.0 - 0.015)) < 1e-6
+    assert abs(d.location.z - (6.30 + 0.50 * 3.0 - 0.015)) < 1e-6
     # round 3: the basement riser R9 stops at the pier (x 0.93); stair_second R10 has a back face over the QL; the
     # tile runs through d_wc; the three-centred hall arch rises vertically off the springing; landing1's steps cut
     r9 = [c for c, n, *_ in faces('basement_stair.flight') if abs(n.z) < 0.5 and abs(c.y - 6.0) < 0.01]
     assert r9 and all(c.x < 0.93 for c in r9), r9
     assert any(abs(c.y - 8.131) < 0.002 and n.y > 0.9 for c, n, *_ in faces('stairs2.flight'))
     assert any(abs(c.y - 10.2) < 0.07 and n.z > 0.9 and 1.47 < c.x < 2.08 for c, n, *_ in faces('wc.floor') + faces('utility.floor'))
+    # round 3 follow-ups: nothing of the solid basement flight's mass on its riser planes (lib.stairs' risers own them,
+    # coplanar pairs render black); each half of an inner door's hole carries its room's floor (d_kitchen: hall oak
+    # x 0.99..1.12, kitchen planks beyond); the hall boards register a joint on x -0.52
+    assert not [c for c, n, *_ in faces('basement_stair.walls') if abs(n.y) > 0.9 and 0.27 < c.x < 0.92
+                and 6.0 - 1e-3 < c.y < 7.4 + 1e-3 and -2.3 < c.z < -0.01], 'riser-plane faces of the solid flight'
+    def covers(name, x, y, z=0.0):                             # material of the up-facing face over (x, y, z), or None
+        me = ob[name].data
+        for p in me.polygons:
+            vs = [me.vertices[v].co for v in p.vertices]
+            if p.normal.z > 0.9 and abs(vs[0].z - z) < 1e-6 and min(v.x for v in vs) < x < max(v.x for v in vs)                     and min(v.y for v in vs) < y < max(v.y for v in vs):
+                return me.materials[p.material_index].name
+    assert covers('hallway.floor', 1.05, 8.24) == mat('oak_floor') and covers('kitchen.floor', 1.20, 8.24) == mat('wood_tile_floor')
+    assert covers('hallway.walls', 1.05, 8.24) is None and covers('kitchen.walls', 1.20, 8.24) is None
+    me = ob['hallway.floor'].data
+    w = me.materials[0]['size_m'][0]
+    assert all(abs(d.uv.x * w - (me.vertices[me.loops[i].vertex_index].co.x + 0.52)) < 1e-4 for i, d in enumerate(me.uv_layers[0].data))
     arc = shell._three_centred(-0.12, 0.47, 2.40, 2.75, 0.32, 24)(-1)
     assert arc[0] == (-0.59, 2.40) and abs(arc[-1][1] - 2.75) < 1e-9 and arc[1][1] - arc[0][1] > 15 * (arc[1][0] - arc[0][0])
     assert mouldings.steps_skip(h, 'landing1_front') == mouldings.steps_skip(h, 'landing1_rear') and \
         [round(v, 6) for v in mouldings.steps_skip(h, 'landing1_rear')[0]] == [-0.67, 7.88, 0.17, 8.38]
+    # round 3 (shell foundation): w_utility's frame (0.70 x 0.98 from 0.92) runs wider and lower behind the plaster of a
+    # 0.56 reveal with its board at 1.05 (shell.INNER); the eaves walls reach the lining `offset` under the roof
+    # where it is higher than the slab underside (eaves_front -0.17), never lower than the slab underside (eaves_rear)
+    assert shell.is_solid(h, 3.2, 11.61, 1.0) and not shell.is_solid(h, 3.2, 11.61, 1.1) and not shell.is_solid(h, 3.4, 11.61, 1.0)
+    assert shell.is_solid(h, 3.2, 11.30, 1.5) and not shell.is_solid(h, 3.4, 11.30, 1.5)
+    rz = h.roof_z(0.0, 2.0)
+    c0, cx, cy = shell._ceil_plane(h, 'eaves_front', 0.0, 2.0)
+    assert abs(c0 + cx * 0.0 + cy * 2.0 - (rz - 0.17)) < 1e-6
+    c0, cx, cy = shell._ceil_plane(h, 'eaves_rear', 2.0, 7.5)
+    assert abs(c0 + cx * 2.0 + cy * 7.5 - h.roof_under(2.0, 7.5)) < 1e-6
     return tris
 
 

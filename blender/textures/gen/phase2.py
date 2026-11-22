@@ -209,11 +209,16 @@ def underside():
 
 
 def plank_dark():
-    """Basement: the ground-floor wood-effect porcelain plank, darker grey-brown print (#7B6F5C)."""
+    """Basement: the ground-floor wood-effect porcelain plank, darker grey-brown print. Round 3: #7B6F5C rendered too
+    light against v6 f_0194 (walls equal); #5F5649 (23 % darker) matched f_0194 but left the basement stair (hr_263)
+    25 % too dark, so the print sits between: #695F4F, about 14 % darker and a shade greyer."""
     im = cv2.cvtColor(cv2.imread(os.path.join(TEX, 'wood_tile_floor_col.jpg')), cv2.COLOR_BGR2RGB).astype(np.float32) / 255
-    b = save('wood_tile_floor_dark_col', recolor(im, '#7B6F5C', contrast=1.25), 'wood_tile_floor_col.jpg recoloured by gen/phase2.py')
+    b = save('wood_tile_floor_dark_col', recolor(im, DARK, contrast=1.25, sat=0.85), 'wood_tile_floor_col.jpg recoloured by gen/phase2.py')
     e = dict(reg.__globals__['_manifest']['wood_tile_floor'])
-    reg('wood_tile_floor_dark', b, e['size_m'], nrm=e['nrm'], orm=e['orm'], rough=0.5, target='#7B6F5C', note='planks 200x1200 along V')
+    reg('wood_tile_floor_dark', b, e['size_m'], nrm=e['nrm'], orm=e['orm'], rough=0.5, target=DARK, note='planks 245x1200 along V')
+
+
+DARK = '#695F4F'
 
 
 def plank_grey():
@@ -221,7 +226,7 @@ def plank_grey():
     im = cv2.cvtColor(cv2.imread(os.path.join(TEX, 'wood_tile_floor_col.jpg')), cv2.COLOR_BGR2RGB).astype(np.float32) / 255
     b = save('wood_tile_floor_grey_col', recolor(im, '#6B6A66', contrast=1.2, sat=0.2), 'wood_tile_floor_col.jpg recoloured by gen/phase2.py')
     e = dict(reg.__globals__['_manifest']['wood_tile_floor'])
-    reg('wood_tile_floor_grey', b, e['size_m'], nrm=e['nrm'], orm=e['orm'], rough=0.5, target='#6B6A66', note='planks 200x1200 along V')
+    reg('wood_tile_floor_grey', b, e['size_m'], nrm=e['nrm'], orm=e['orm'], rough=0.5, target='#6B6A66', note='planks 245x1200 along V')
 
 
 def main():

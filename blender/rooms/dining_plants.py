@@ -110,9 +110,10 @@ def monstera(name, seed=0, lean=0.0, keep=None):
     return fin(mb, name)
 
 
-def citrus(name='dining.citrus', crown=.68, top=1.75, keep=None):
+def citrus(name='dining.citrus', crown=.68, top=1.75, keep=None, elong=1.05, n_leaves=800, leaf=1.0):
     """Citrus tree: olive glazed pot 0.33 x 0.30 with three embossed bands on a low dark stand, stout pale stem
-    bare for 0.75, dense irregular round head (dia `crown`) of some 800 glossy ovate leaves on twigs.
+    bare for 0.75, irregular head (dia `crown`, `elong` times as tall) of `n_leaves` glossy ovate leaves on twigs,
+    `leaf` = leaf size factor (1: 78 x 42 mm).
     keep(x, y, z) (local coords): leaves and twigs failing it are left out, so the head can push into a window
     recess without crossing its architraves or the curtain beside it."""
     keep = keep or (lambda x, y, z: True)
@@ -125,7 +126,7 @@ def citrus(name='dining.citrus', crown=.68, top=1.75, keep=None):
     mb.lathe([(.148, .36), (0, .36)], P.mat('soil'), 20)
     bark = M.solid('dining_citrus_bark', '#9A8B6C', .7)                             # pale grey-tan stem (f_0589)
     rc = crown / 2
-    zc = top - rc * 1.05
+    zc = top - rc * elong
     trunk = spline([(0, 0, .36), (.012, .004, .62), (-.008, -.006, .88), (.004, .003, zc - rc * .5)], 4)
     bar(mb, trunk, oval(.03, .03, 8), bark, up=(1, 0, 0), scale=[1.1 - .35 * i / (len(trunk) - 1) for i in range(len(trunk))])
     fork = Vector(trunk[-1])
@@ -135,17 +136,17 @@ def citrus(name='dining.citrus', crown=.68, top=1.75, keep=None):
         th, cz = rng.uniform(0, 2 * pi), rng.uniform(-.85, 1)
         s = math.sqrt(1 - cz * cz)
         r = rc * f * (1 + .1 * sin(3 * th + 1) * s + .08 * cos(2 * th) * cz)
-        return Vector((r * s * cos(th), r * s * sin(th), zc + r * cz * 1.05))
+        return Vector((r * s * cos(th), r * s * sin(th), zc + r * cz * elong))
     tips = [shell(.75) for _ in range(20)]
     for t in tips:                                                                  # twigs
         if not keep(*t):
             continue
         mid = fork.lerp(t, .5) + Vector((0, 0, .03))
         bar(mb, [tuple(fork), tuple(mid), tuple(t)], oval(.007, .007, 4), bark, up=(.3, .9, 0), caps=False)
-    L, W = .078, .042                                                               # ovate leaf, folded along the midrib
+    L, W = .078 * leaf, .042 * leaf                                                 # ovate leaf, folded along the midrib
     quad = [((0, 0, 0), (-W / 2, .26 * L, .007), (-W / 2, .62 * L, .007), (0, L, 0)),
             ((0, 0, 0), (0, L, 0), (W / 2, .62 * L, .007), (W / 2, .26 * L, .007))]
-    for i in range(800):
+    for i in range(n_leaves):
         base = shell(rng.uniform(.45, .97) ** .6) if i % 5 else tips[i // 5 % 20].lerp(fork, rng.uniform(0, .5))
         out = (base - Vector((0, 0, zc - .1))).normalized()
         d = (out + Vector((rng.uniform(-.7, .7), rng.uniform(-.7, .7), rng.uniform(-.5, .5)))).normalized()   # leaf axis

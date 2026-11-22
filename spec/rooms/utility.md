@@ -340,3 +340,24 @@ top of wall door D2 (looks like a clip-on hanger hook, not part of the door).
 - w_utility: inner reveal 0.23 deep (extReveal 0.01; corrections U2).
 - Reconciled section: rail y 11.26 (U3) and downlights y 11.12 (v2 f_0589), not the +0.12 shift.
 - The floor tile runs through the WC pocket-door opening (the shell lays the floor there, no white liner).
+
+## Phase 3 (21 Nov footage) — service unit notes
+- No interior footage this round (v11 shows both windows from the side passage only); room sizes, ceiling 2.40, the
+  pocket door, every cabinet, fitting and height above are unchanged.
+- **Window, two depths** (RECONCILE3 passage-11, `shell.INNER`): the uPVC frame is 0.70 x 0.98 from z 0.92 (outside,
+  low confidence); the room-side reveal stays **0.56 wide (y 11.33..11.89) with the board at 1.05**, cut 0.225 deep
+  to 5 mm before the frame (x 3.10..3.325, frame room face x 3.33). Tiles, steel trims and the dark board (top 1.062,
+  20 mm proud of the W-ext tiles, back to the frame) follow the inner hole. Conflict: inside, the frame's bottom
+  rail and the brass espagnolette on the sash's bottom rail stand directly on the board (v1 hr_0491, v2 f_0573); with
+  the 0.70 frame from 0.92 every member sits behind the plaster or under the board. Until joinery builds the room-side
+  frame at the inner hole, `utility.py` fills the reveal with a white liner (x 3.280..3.324): a fixed 20 mm frame ring
+  and inside it the sash's ring (30 / 35 head / 45 bottom rail, 10 mm further back) with the brass espagnolette (base
+  at the centre, lever towards -y), which swings with the joinery sash (group `utility.w_utility.sash.0`). Measured on
+  hr_0491 against the 0.56 reveal: glass 0.47 wide, white 45-50 mm at the sides, ~57 at the head, ~62 at the bottom.
+- **Worktop colour**: stays the round-2 **#90804A** honey oiled oak. Lit worktop top / cabinet door in the video:
+  hr_0476 0.9-1.1, hr_0489 1.24, hr_0491 0.78, v2 f_0553 ~1.5, f_0557 ~1.07 (R/G 1.07-1.14, B/G 0.73-0.83); previews
+  0.81-0.85 (R/G 1.08-1.15). A darker #685734 tried in round 3 read as walnut (0.71) and was reverted.
+- Cabinet doors carry concealed-hinge cups on their backs and the carcass sides the mounting plates (seen when open).
+- WC (same unit): the frame of `w_wc` now runs from 1.10 behind the 1.20 duct ledge, so a 65 mm flat white board on
+  the ledge stands for the frame's bottom member seen inside (wc.md 2.2: white from 1.22, glass from 1.28). Chrome
+  bleed caps on the towel rail uprights (v2 hr_0502).

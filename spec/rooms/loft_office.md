@@ -351,3 +351,44 @@ Added by the phase-2 reconcile step. `spec/house.next.json` is canonical; where 
 - The roof window's frame and sash are white below the roof plane, with an operating bar on the low rail (hr_313,
   hr_194); its sash and the blackout blind exclude each other. The eaves-rear hatch's west leaf opens 95 degrees (its
   knob clears the TV).
+
+## Round 3 re-fit (Slate Room, 21 Nov survey; module notes)
+Shell as built from house.json (brief `spec/phase3/briefs/loft_office.md`): front knee 1.08 with the stopgap front plane
+z = 6.30 + 0.50 y, flat 2.12 for y 4.62..5.31 east of x 1.25, rear slope 35 deg z = 12.33 - 0.70 y to the 1.23 rear knee.
+What the module now does (heights above the floor, world X / Y):
+- **TV** is a 43-inch set, 0.97 x 0.56 at y 5.58..6.55, z 0.62..1.18 (eaves_loft V1.4: TV wall = 2.23 TV heights with
+  the 1.23 knee; hr_344 read against the knee corner: right edge 0.56 high, bottom 0.62, top 1.18, north top corner
+  7.5 cm under the slope). Medal rail z 0.57 at y 5.62..6.48, eight ribbons y 6.07..6.42, discs at 0.24..0.30, clear of
+  the small leaning frame. Frames over the TV: limed y 5.50..5.82 z 1.25..1.52, rustic y 5.90..6.14 z 1.27..1.50.
+- **Rear knee certificates**: upper row z 0.70..1.18 (5 cm under the arris, hr_313), lower row z 0.20..0.65.
+- **East gable** (hr_183, hr_235): a/c 0.80 x 0.29 centred on the flat strip, y 4.565..5.365, z 1.77..2.06 (clear of
+  both slopes); periodic table centred under it, y 4.515..5.415, z 1.10..1.72; gilt frame y 5.455..5.825 z 1.45..1.72
+  (4 cm under the rear slope at its north edge), burgundy frame same y, z 1.13..1.40 (both 0.37 x 0.27, measured
+  against the 0.62 poster: 75 px of 170 px).
+- **Bookcase** 0.90 x 0.30 x 1.06 at x 0.82..1.72, top at the arris (eaves_loft 2.3), framed-panel ends, recessed plinth,
+  bottom board and two shelves, T&G back, 45 mm top with rounded front corners.
+- **Ensign** 0.61 x 0.91 (3 x 2 ft), y 2.60..3.21, z 0.12..1.03 (8 cm under the stopgap slope at the corner).
+- **Radiator** 20 columns at 63.5 mm = 1.27 x 0.57 (z 0.13..0.70), two wall brackets.
+- **Monitors** (fixer): both panels 0.82..1.19, 8 cm clear of the desk, tops 9 cm over the poster's bottom edge (hr_183:
+  the 27-inch's top 15-20 px over the poster's bottom from about 3.6 m = 1.17 with its 0.13 stand-off); the laptop on a
+  low wedge stand with its lid leaning back, top about 1.0, under the ultrawide.
+- **Chippendale chair** (fixer): the side chair re-legged with the carvers' cabriole ball-and-claw front legs and no
+  stretchers (hr_252; `loft_office_furn.chippendale`, a copy of the dining side-chair mesh). tv_frame.0 is limed oak
+  (#D2C3A6) with a cream mount, not champagne gilt (hr_344).
+- **Chippendale chair** faces the room with its back to the west hatch as filmed, but stands 0.78 north of the filmed
+  spot (centre 0.33, 3.78) so the 0.9 m floor strip in front of the hatch stays clear (owner, round 3); coffee table
+  x 0.92..1.92 (35 mm clear of the east hatch strip x 1.955..3.005). All three hatch strips are empty; 0.50 m lanes run
+  from the door to the middle, every hatch, the cabinet, TV, Velux, desk and dimmer.
+- **Colours**: floor repainted to `carpet_grey_twist` (#B9B4AB, survey #B6B3AC), walls to #F2F2EF (survey estimate);
+  the east gable stays #3B4046, slopes #EDEDEA.
+- New detail: mesh office chair (white frame with S-curved back, grey mesh seat / back / headrest, flip-up arms, chrome
+  five-star base, twin-wheel castors), 49-inch 1800R curved ultrawide with shell, hump and V-foot, 27-inch on a clamp arm,
+  architect lamp with a domed black / white shade on a C-clamp, two-stage desk legs and control panel, piano stool in a
+  striped cover (synthetic texture `loft_office_stripe.jpg`) with brass hinges, PC tower with smoked glass and status
+  light, woven basket pot (`loft_office_weave.jpg`), drawer card frames, lever-arch labels and ring pulls (blank).
+- Shell defect covered in the module (and reported): both gable faces leave a triangle open at y 3.90..4.33,
+  Z 8.25..8.465 (`loft_office.gable_patch`, only built while the defect exists). The envelope's main_rear slab dips to
+  Z 8.58 at y 5.371..5.38 in front of the 4 cm lobby ceiling step; `loft_office.step_cover` (x -0.65..0.26, 12 mm deep,
+  ceiling white) hides it.
+- Not modelled (declutter, as round 2): exercise bike and mat, shredder, toolbox, cutting mat, tripod, throws, desk clutter.
+- Round-3 whole-house check: the ensign hangs from 0.155 (was 0.12; bottom on the 0.15 skirting top instead of 3 cm behind its face), top 4.5 cm under the stopgap slope.

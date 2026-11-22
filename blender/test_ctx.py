@@ -54,17 +54,17 @@ def schema2():
     assert sd['id'] == 'hall_stair_diag'
     eq(sd['p'], (0.65, 5.05)), eq(sd['q'], (0.99, 5.39)), eq(sd['c'], (0.99, 5.05))
     (lc,) = h.chamfers('landing1_rear')
-    eq(lc['p'], (0.35, 8.73)), eq(lc['q'], (0.25, 8.83)), eq(lc['c'], (0.35, 8.83)), eq(lc['z'], (3.04, 5.49))
+    eq(lc['p'], (0.54, 8.73)), eq(lc['q'], (0.47, 8.80)), eq(lc['c'], (0.54, 8.80)), eq(lc['z'], (3.04, 5.64))
     assert h.chamfers('hallway') == [] and h.chamfers('shed_workshop') == []
     # chamfers: bay arris splays ("45 at the bottom, 90 at the top")
     leg = 0.15 / math.sqrt(2)
     assert (b0['id'], b1['id'], b0['reflex']) == ('living_bay.0', 'living_bay.1', True)
-    eq(b0['v'], (1.1, 0.99)), eq(b0['p'], (1.1 - leg, 0.99)), eq(b0['q'], (1.1, 0.99 - leg)), eq(b0['c'], (1.1 - leg, 0.99 - leg))
-    eq(b1['v'], (4.0, 0.99)), eq(b1['p'], (4.0, 0.99 - leg)), eq(b1['q'], (4.0 + leg, 0.99)), eq(b1['c'], (4.0 + leg, 0.99 - leg))
+    eq(b0['v'], (1.03, 0.99)), eq(b0['p'], (1.03 - leg, 0.99)), eq(b0['q'], (1.03, 0.99 - leg)), eq(b0['c'], (1.03 - leg, 0.99 - leg))
+    eq(b1['v'], (3.93, 0.99)), eq(b1['p'], (3.93, 0.99 - leg)), eq(b1['q'], (3.93 + leg, 0.99)), eq(b1['c'], (3.93 + leg, 0.99 - leg))
     eq(b0['z'], (0, 2.2)), eq(b0['stop'], (2.2, 2.4))
     g0, g1 = h.chamfers('green_bedroom')
-    eq(g0['v'], (1.16, 0.99)), eq(g1['v'], (3.9, 0.99)), eq(g0['z'], (3.42, 5.72)), eq(g0['stop'], (5.72, 5.82))
-    eq(math.dist(g0['p'], g0['v']), 0.12 / math.sqrt(2)), eq(g0['c'], (1.16 - 0.0848528, 0.99 - 0.0848528))
+    eq(g0['v'], (1.11, 0.99)), eq(g1['v'], (3.85, 0.99)), eq(g0['z'], (3.42, 5.72)), eq(g0['stop'], (5.72, 5.82))
+    eq(math.dist(g0['p'], g0['v']), 0.12 / math.sqrt(2)), eq(g0['c'], (1.11 - 0.0848528, 0.99 - 0.0848528))
     for ch in (b0, b1, g0, g1):                            # c lies in the wall, i.e. outside the room polygon
         room = 'living' if ch['id'].startswith('living') else 'green_bedroom'
         assert not C.point_in_poly(*ch['c'], h.room_poly(room))
@@ -72,27 +72,34 @@ def schema2():
     eq(h.room_poly('stairs', rect=True), [(0.15, 5.05), (0.99, 5.05), (0.99, 7.58), (0.15, 7.58)])
     lr = h.room_poly('living', rect=True)
     assert (0.8, 5.19) in lr and (1.21, 5.19) not in lr and len(lr) == len(h.room_poly('living')) - 1
-    assert (0.35, 8.83) in h.room_poly('landing1_rear', rect=True) and len(h.room_poly('landing1_rear', rect=True)) == 10
+    assert (0.54, 8.80) in h.room_poly('landing1_rear', rect=True) and len(h.room_poly('landing1_rear', rect=True)) == 8
     assert h.room_poly('dining', rect=True) == h.room_poly('dining') and len(h.room_poly('shed_workshop')) == 4
 
     # floors and ceilings
     eq(h.floor_z('landing1_front'), 3.42), eq(h.floor_z('landing1_front', -0.3, 8.0), 3.23), eq(h.floor_z('landing1_front', -0.3, 7.0), 3.42)
     eq(h.floor_z('eaves_rear', 3.0, 7.5), 6.37), eq(h.floor_z('eaves_rear', 2.0, 7.5), 6.49), eq(h.floor_z('shed_workshop'), -0.32)
     eq(h.ceil_z('hallway'), 2.95), eq(h.ceil_z('hallway', 0.5, 7.9), 2.3), eq(h.ceil_z('hallway', 0.5, 8.4), 2.6)
-    eq(h.ceil_z('hallway', 0.0, 3.0), 2.95), eq(h.ceil_z('kitchen', 2.0, 9.0), 2.03), eq(h.ceil_z('shed_store'), 1.83)
-    eq(h.ceil_z('loft_office'), 8.61), eq(h.ceil_z('loft_office', 2.0, 3.0), 5.9435 + 0.57735 * 3.0), eq(h.ceil_z('loft_office', 0.0, 5.8), 8.57)
-    eq(h.ceil_z('loft_office', 2.0, 2.54), 5.9435 + 0.57735 * 2.54)            # on the polygon edge (knee wall)
+    eq(h.ceil_z('hallway', 0.0, 3.0), 2.95), eq(h.ceil_z('kitchen', 2.0, 9.0), 2.03), eq(h.ceil_z('shed_store'), 2.02)
+    eq(h.ceil_z('loft_office'), 8.61), eq(h.ceil_z('loft_office', 2.0, 3.0), 6.30 + 0.50 * 3.0), eq(h.ceil_z('loft_office', 0.0, 5.8), 8.57)
+    eq(h.ceil_z('loft_office', 2.0, 2.54), 6.30 + 0.50 * 2.54)            # on the polygon edge (knee wall)
     assert h.ceil_z('balcony') is None and h.ceil_z('balcony', 1.0, 18.0) is None
-    eq(h.ceil_z('eaves_front', -0.3, 2.0), 6.2528 + 0.57735 * 2.0 - 0.30)      # under_roof: slab underside
+    # under_roof: the lining = min(ceilingZ, roof + offset, ceiling.planes) (envelope thins the slab 1 cm above it)
+    eq(h.ceil_z('eaves_front', -0.3, 2.0), h.roof_z(-0.3, 2.0) - 0.17)            # main lining
+    eq(h.ceil_z('eaves_front', 0.0, 2.44) - 6.49, 1.00, 0.005)                     # 1.00 at the knee-wall back
+    eq(h.ceil_z('eaves_front', 2.48, 1.0), 8.19), eq(h.ceil_z('eaves_front', 2.48, 2.4), 8.19)   # tunnel strip
+    eq(h.ceil_z('eaves_front', 1.11, 0.5) - 6.49, 0.31, 0.01)                      # tunnel lining foot (50 deg)
+    eq(h.ceil_z('eaves_front', 1.7, 2.4), h.roof_z(0.0, 2.4) - 0.17)               # main lining under the gable plane
+    eq(h.ceil_z('eaves_rear', 3.0, 7.5), h.roof_z(3.0, 7.5) - 0.31)                # lining 0.01 under the 0.30 slab
+    eq(h.ceil_z('vestibule', 0.0, 0.0), 2.62), eq(h.ceil_z('vestibule', 0.0, 0.31), 2.735), eq(h.ceil_z('vestibule', 0.0, 1.0), 2.85)
 
     # roof
-    eq(h.roof_z(2.0, 5.0), 9.14, 0.02), eq(h.roof_z(0.0, 0.0, ground=True), 3.3111), eq(h.roof_z(1.0, 12.0), 8.87)
+    eq(h.roof_z(2.0, 5.0), 9.14, 0.02), eq(h.roof_z(0.0, 0.0, ground=True), 3.14), eq(h.roof_z(1.0, 12.0), 8.87)
     assert h.roof_z(10, 10) is None and h.roof_z(0.0, 0.0) is None and h.roof_under(10, 10) is None
     assert h.roof_plane(1.0, 12.0) == 'rear_flat' and h.roof_plane(2.0, 1.0) == 'bay_gable_w' and h.roof_plane(0.0, 7.0) == 'stair_dormer'
     slab = {p['id']: h.roof_slab_t(p['id']) for p in h.spec['roof']['planes']}
     assert slab == dict(main_front=0.30, main_rear=0.30, stair_dormer=0.24, rear_flat=0.24, bay_gable_w=0.30, bay_gable_e=0.30,
                         porch_leanto=0.30), slab
-    eq(h.roof_under(1.0, 12.0), 8.63), eq(h.roof_under(0.0, 7.0), 8.63), eq(h.roof_under(0.0, 0.0, ground=True), 3.0111)
+    eq(h.roof_under(1.0, 12.0), 8.63), eq(h.roof_under(0.0, 7.0), 8.63), eq(h.roof_under(0.0, 0.0, ground=True), 2.84)
     for rid in h.rooms_on('2'):                            # every flat slab clears the ceilings of the kind-'room' rooms
         if h.kind(rid) == 'room' and rid != 'loft_office':
             x, y = h.room_poly(rid)[0]
@@ -101,7 +108,7 @@ def schema2():
     # stairs
     assert [s['id'] for s in h.stairs] == ['stair_main', 'stair_basement', 'steps_ql_rear', 'steps_rear_front', 'stair_second',
                                            'step_head_platform']
-    for sid, n, z1, zn, whole in (('stair_main', 14, 0.19, 2.66, False), ('stair_basement', 10, -0.21, -2.1, True),
+    for sid, n, z1, zn, whole in (('stair_main', 13, 0.2036, 2.6464, False), ('stair_basement', 10, -0.21, -2.1, True),
                                   ('stair_second', 12, 3.62, 5.82, True)):
         s = h.stair(sid)
         tr = s['treads']
@@ -112,28 +119,30 @@ def schema2():
         if whole:                                          # first and last riser lie on the footprint edge
             eq(sum(areas), C.poly_area(s['walk']['polygon']), 1e-4)
     eq(sorted(h.stair('stair_basement')['treads'][9]['poly']), [(0.265, 5.19), (1.25, 5.19), (1.25, 6.0)])     # last winder
-    eq(sorted(h.stair('stair_main')['treads'][5]['poly']), [(0.15, 6.06), (0.15, 6.29), (0.99, 6.06), (0.99, 6.29)])
+    eq(sorted(h.stair('stair_main')['treads'][5]['poly']), [(0.15, 6.106), (0.15, 6.359), (0.99, 6.106), (0.99, 6.359)])
     (t,) = h.stair('steps_rear_front')['treads']
     eq(t['poly'], [(-0.65, 8.13), (0.15, 8.13), (0.15, 7.88), (-0.65, 7.88)]), eq(t['z'], 3.23)
     assert h.stair('steps_ql_rear')['treads'] == [] and h.step_treads('landing1_front')[0]['z'] == t['z']
-    assert h.stairs['rise'] == 0.19 and h.stairs['landing']['z'] == 2.85 and h.stairs[1]['id'] == 'stair_basement'    # phase-1 key access
+    assert abs(h.stairs['rise'] - 2.85 / 14) < 1e-9 and h.stairs['landing']['z'] == 2.85 and h.stairs[1]['id'] == 'stair_basement'    # phase-1 key access
 
     # site
     assert h.zones_of('garden') == ['garden_path', 'deck', 'deck_step_n', 'deck_step_e', 'lawn', 'lavender_bed']
-    assert h.zones_of('front') == ['forecourt', 'forecourt_alley_mouth', 'footway', 'road'] and h.zones_of('shed') == ['shed_veranda']
+    assert h.zones_of('front') == ['forecourt', 'forecourt_alley_mouth', 'forecourt_alley_apron', 'footway', 'road']
+    assert h.zones_of('shed') == ['shed_veranda', 'shed_store_apron']
     assert h.zone('road')['walk'] is False and 'zFar' not in h.zone('forecourt')
-    for zid, (z0, z1) in (('forecourt', (-0.06, -0.14)), ('side_alley', (-0.08, -0.30))):      # both ends of each fall
+    for zid, (z0, z1) in (('forecourt', (-0.06, -0.36)), ('forecourt_alley_apron', (-0.08, -0.30))):      # both ends of each fall
         f = h.zone(zid)['fall']
         eq(h.zone_z(zid, *f['from']), z0), eq(h.zone_z(zid, *f['to']), z1), eq(h.zone_z(zid), z0)
         eq(h.zone_z(zid, (f['from'][0] + f['to'][0]) / 2, (f['from'][1] + f['to'][1]) / 2), (z0 + z1) / 2)
-    eq(h.zone_z('forecourt', -0.5, -9.0), -0.14), eq(h.zone_z('forecourt', 4.0, -2.66), -0.10), eq(h.zone_z('deck', 1.0, 18.0), -0.05)
-    assert h.zone_at(1.0, 18.0) == 'deck' and h.zone_at(3.5, 18.0) == 'deck_step_e' and h.zone_at(3.5, 19.5) == 'garden_path'
-    assert h.zone_at(4.8, 9.5) == 'side_alley' and h.zone_at(2.0, 5.0) is None            # the gate now leads somewhere
-    eq(h.ground_z(3.5, 9.1), -0.02), eq(h.ground_z(3.5, 9.5), -0.16), eq(h.ground_z(3.5, 12.0), -0.30), eq(h.ground_z(1.9, -2.66), -0.10)
+    eq(h.zone_z('forecourt', -0.5, -9.0), -0.36), eq(h.zone_z('forecourt', 4.0, -2.66), -0.06 - 0.30 * 2.54 / 5.08), eq(h.zone_z('deck', 1.0, 18.0), -0.05)
+    assert h.zone_at(1.0, 18.0) == 'deck' and h.zone_at(3.5, 18.5) == 'deck_step_e' and h.zone_at(3.5, 19.5) == 'garden_path'
+    assert h.zone_at(5.2, 5.0) == 'side_alley' and h.zone_at(4.8, 9.5) == 'side_passage' and h.zone_at(2.0, 5.0) is None            # the gate now leads somewhere
+    eq(h.ground_z(3.5, 9.1), -0.02), eq(h.ground_z(3.5, 9.5), -0.16), eq(h.ground_z(3.5, 12.0), -0.30), eq(h.ground_z(1.9, -2.66), -0.21)
     assert h.ground_z(2.0, 5.0) is None
 
     # openings, walls
-    assert len(h.spec['openings']) == 51 and len(h.openings) == 55 and len(h.walls) == 108 + 5
+    assert len(h.spec['openings']) == 51 and len(h.openings) == 55 and len(h.walls) == 108 + 6
+    assert h.walls['shed_w_west_store']['rooms'] == ['outside', 'shed_store'] and h.building_rooms['shed_store']['walk'] is True
     assert h.openings['shed_d1']['building'] == 'shed' and h.openings['shed_d1']['level'] == 'X' and 'building' not in h.spec['exterior']['buildings'][0]['openings'][0]
     assert h.walls['shed_w_front']['rooms'] == ['shed_workshop', 'outside'] and h.walls['shed_w_front']['kind'] == 'external'
     assert h.exterior_openings('X') == ['shed_w1', 'shed_d1', 'shed_w2', 'shed_store_doors']
@@ -147,24 +156,25 @@ def schema2():
     f = h.opening_frame('d_balcony')                       # connects end 'balcony' is not a room of the wall
     assert (f['level'], f['exterior'], f['outside_room'], f['room_pos'], f['room_neg'], f['swing_sign']) == \
         ('1', True, 'balcony', 'outside', 'blue_bedroom', 1)
-    eq(tuple(f['outward']), (0, 1)), eq(tuple(f['normal']), (0, 1)), eq(f['face_out'], 0.25), eq(f['z0'], 3.04), eq(tuple(f['center']), (1.29, 17.11, 3.04))
+    eq(tuple(f['outward']), (0, 1)), eq(tuple(f['normal']), (0, 1)), eq(f['face_out'], 0.25), eq(f['z0'], 3.04), eq(tuple(f['center']), (1.255, 17.11, 3.04))
     eq(f['ext_reveal'], 0.20), eq(f['head'], 1.9)          # explicit extReveal: 0.24 of reveal inside (blue_bedroom.md 2.3)
-    eq(h.zone_z('forecourt_alley_mouth', 4.98, 0.74), h.zone_z('side_alley', 4.98, 0.74))      # no step at the alley mouth
+    eq(h.zone_z('forecourt_alley_apron', 5.2, 1.7), h.zone_z('side_alley', 5.2, 1.7))        # no step at the street gate
+    eq(h.zone_z('forecourt_alley_apron', 5.2, -0.12), h.zone_z('forecourt_alley_mouth', 5.2, -0.12))   # nor at the apron's south edge
     nb = {q['id']: q for q in h.spec['exterior']['neighbours']}
     eq(h.neighbour_top(nb['west'], -1.0, 3.0)[0], h.roof_z(-0.5, 3.0)), eq(h.neighbour_top(nb['west'], -1.0, 12.0)[0], 8.9)
     assert h.neighbour_top(nb['east'], 5.6, 0.0) == (-99.0, -1) and h.neighbour_top(dict(polygon=[], z=[0, 7.0]), 0, 0) == (7.0, -1)
-    eq(h.roof_z(0.6, 0.0), 6.5), eq(h.roof_z(0.0, 0.44), 6.5, 0.01)       # gable eave edge = main eave: one gutter level
+    eq(h.roof_z(0.0, 0.44), 6.5, 0.01)                                    # main eave
     f = h.opening_frame('w_dining_n_w')                    # 0.38 recess in the 0.50 wall: d = 0.12
     eq(f['face_neg'], 0.13), eq(f['face_out'], 0.25), eq(f['ext_reveal'], 0.06), eq(tuple(f['outward']), (0, 1))
-    eq(h.opening_frame('w_ensuite')['ext_reveal'], 0.01)   # revealDepth 0.45 in the 0.50 wall
-    eq(h.opening_frame('w_yellow')['ext_reveal'], 0.10), eq(h.opening_frame('d_back')['ext_reveal'], 0.08)
+    eq(h.opening_frame('w_ensuite')['ext_reveal'], 0.04)
+    eq(h.opening_frame('w_yellow')['ext_reveal'], 0.15), eq(h.opening_frame('d_back')['ext_reveal'], 0.08)
     eq(h.opening_frame('d_street')['ext_reveal'], 0.06), eq(h.opening_frame('w_bay_front')['ext_reveal'], 0.015)   # 0.12 walls; the bay has an explicit extReveal
-    eq(h.opening_frame('w_wc')['ext_reveal'], 0.215)                # explicit extReveal beats the 0.10 default
+    eq(h.opening_frame('w_wc')['ext_reveal'], 0.265)                # explicit extReveal beats the 0.10 default
     f = h.opening_frame('d_street')
     assert (f['level'], f['exterior'], f['outside_room'], f['swing_sign']) == ('G', True, 'outside', -1)
     eq(tuple(f['outward']), (0, -1)), eq(f['face_out'], -0.06)
     f = h.opening_frame('w_study')                         # upper floor: same shape, center.z = floorZ + sill
-    eq(tuple(f['center']), (1.26, 17.11, 6.02 + 0.68)), eq(f['z0'], 6.02), eq(tuple(f['outward']), (0, 1))
+    eq(tuple(f['center']), (1.255, 17.11, 6.02 + 0.58)), eq(f['z0'], 6.02), eq(tuple(f['outward']), (0, 1))
     f = h.opening_frame('d_blue')
     assert (f['exterior'], f['outward'], f['face_out'], f['ext_reveal'], f['outside_room']) == (False, None, None, None, None)
     f = h.opening_frame('d_basement')                      # roomsBelow end: swing follows the wall's rooms

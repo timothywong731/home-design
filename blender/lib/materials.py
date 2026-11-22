@@ -86,6 +86,8 @@ ALIAS = {'oak_plank': 'oak_floor', 'victorian_geometric_tile': 'victorian_tile',
          'wood_effect_porcelain_plank_dark': 'wood_tile_floor_dark', 'concrete_or_flags': 'concrete_flags',
          'chipboard': 'vinyl_grey_sheet',    # eaves floor: grey sheet flooring laid over the boards (eaves.md 4)
          'glass_obscure': 'obscure_pane'}
+# keys whose texture lib/site_tex.py makes at build time (numpy, cached under build/tex/site)
+SITE = {'concrete_insitu': 'site_concrete'}     # in-situ concrete #A6A8A0: mottled, cast-in patches, faint algae
 
 # every finish / material key of blender/MULTILEVEL.md section 8 (mat() resolves each; test_joinery.py asserts it)
 SPEC_KEYS = (
@@ -93,14 +95,14 @@ SPEC_KEYS = (
     'porcelain_pale', 'steel_chequer_plate', 'wood_effect_porcelain_plank_dark',
     'marble_metro', 'metro_carrara_100x400', 'porcelain_calacatta_slab',
     'asphalt', 'clay_block_paving_red_herringbone', 'composite_deck_dark_brown', 'concrete_flags', 'concrete_or_flags',
-    'concrete_setts_grey_buff', 'grass', 'sandstone_flags_grey', 'soil_lavender', 'timber_box_dark',
+    'concrete_insitu', 'concrete_setts_grey_buff', 'grass', 'sandstone_flags_grey', 'soil_lavender', 'timber_box_dark',
     'buff_brick', 'closeboard_brown', 'closeboard_grey_painted', 'ledged_braced_grey', 'stock_brick_grey',
     'stock_brick_yellow', 'red_brick', 'white_masonry_paint', 'render_sandstone', 'plinth_black',
     'slate', 'fibre_cement_slate', 'flat_felt', 'roof_underside')
 
 # wall / ceiling paint colours by room (neutral-light estimates): paint(PAINT['living_pink'])
 PAINT = {
-    'hall_white': '#F2F0EA', 'hall_dado_grey': '#C8C5BB', 'joinery_white': '#F4F2EC', 'ceiling_white': '#F4F3EE',
+    'hall_white': '#F2F0EA', 'hall_dado_grey': '#C0B9AD', 'joinery_white': '#F4F2EC', 'ceiling_white': '#F4F3EE',
     'living_terracotta': '#A27365', 'living_pink': '#EADFD9', 'living_ceiling': '#F6F4EF',
     'kitchen_white': '#F1EFE9', 'kitchen_ceiling': '#F5F4F0',
     'utility_white': '#F1F0EB', 'utility_ceiling': '#F6F5F2',
@@ -183,6 +185,9 @@ def mat(key):
     key = ALIAS.get(key, key)
     if key in _cache:
         return _cache[key]
+    if key in SITE:
+        from . import site_tex                                      # it imports this module: not at the top
+        return site_tex.mat(SITE[key])
     if key in MANIFEST and not key.startswith('_'):
         e = MANIFEST[key]
         m = _build(key, base=e['base'], nrm=e.get('nrm'), orm=e.get('orm'), rough=e['rough'], metal=e['metal'],
