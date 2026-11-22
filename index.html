@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>House Walkthrough</title>
+<meta name="description" content="Interactive 3D walkthrough of a Victorian terrace house and garden with linked CAD floor plans.">
+<meta name="theme-color" content="#121417">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 7.5L8 2l6 5.5V14H2z' fill='none' stroke='%23d2a86a' stroke-width='1.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<canvas id="scene" tabindex="0" aria-label="3D view of the house. W A S D or arrow keys move, drag to look around, double-click to walk somewhere, click or Space to open doors and switch things."></canvas>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="loader-card">
+    <div class="loader-kicker">House and garden</div>
+    <div class="loader-title">3D walkthrough</div>
+    <form id="gate" hidden>
+      <label for="gate-pw">This walkthrough is private. Enter the password.</label>
+      <div class="gate-row"><input id="gate-pw" type="password" autocomplete="current-password" required><button type="submit">Open</button></div>
+      <div id="gate-msg" role="alert"></div>
+    </form>
+    <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+    <div id="loader-msg">Loading…</div>
+  </div>
+</div>
+
+<header id="topbar">
+  <div class="brand"><b>House</b><span>3D walkthrough</span></div>
+  <nav id="rooms" aria-label="Go to room"></nav>
+  <div class="tools">
+    <div class="seg" role="group" aria-label="View mode">
+      <button id="mode-walk" type="button" aria-pressed="true" title="Walk (O toggles)">Walk</button>
+      <button id="mode-orbit" type="button" aria-pressed="false" title="Dollhouse (O toggles)">Dollhouse</button>
+    </div>
+    <button id="btn-look" type="button" class="icon" aria-pressed="false" aria-label="Mouse-look" title="Mouse-look (L, Esc releases)">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>
+    </button>
+    <button id="btn-gallery" type="button" hidden>Renders</button>
+    <button id="btn-help" type="button" class="icon" aria-label="Controls and help" title="Controls (?)">?</button>
+  </div>
+</header>
+
+<section id="plan" aria-label="Floor plans and sections">
+  <div class="plan-head">
+    <button id="plan-toggle" type="button" class="plan-name" aria-expanded="true" aria-controls="plan-body" title="Show / hide plan (P)">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      <span>Plan</span>
+    </button>
+    <span id="plan-room" aria-live="polite"></span>
+    <div class="plan-tools">
+      <button id="plan-theme" type="button" class="icon" aria-pressed="false" title="Paper / model space" aria-label="Toggle paper theme">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+      </button>
+      <button id="plan-fit" type="button" class="icon" title="Fit drawing (0)" aria-label="Fit drawing">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+      </button>
+      <button id="plan-max" type="button" class="icon" aria-pressed="false" title="Full screen plan" aria-label="Full screen plan">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2H14v4.5M14 2l-5 5M6.5 14H2V9.5M2 14l5-5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="plan-tabs" class="plan-tabs" role="group" aria-label="Plan sheet" hidden></div>
+  <div id="plan-body" class="plan-body">
+    <canvas id="plan-canvas" tabindex="0" aria-label="Floor plan or cross-section. On a plan, click or tap to move there. Drag to pan, wheel or pinch to zoom, + - 0 keys."></canvas>
+    <div class="plan-empty" hidden>Floor plan not available yet.</div>
+  </div>
+  <div class="plan-foot">
+    <span id="plan-title">GROUND FLOOR PLAN</span>
+    <span id="plan-xy"></span>
+    <span class="dl">
+      <a id="dl-dxf" href="assets/house-plans.dxf" download title="AutoCAD DXF: plans and cross-sections, millimetres, true scale">DXF</a>
+      <a id="dl-pdf" href="assets/house-plans.pdf" download title="Vector PDF: one A3 sheet per plan and cross-section">PDF</a>
+    </span>
+  </div>
+</section>
+
+<div id="dh-levels" class="seg" role="group" aria-label="Dollhouse level" hidden></div>
+<div id="chip" role="status" aria-live="polite" hidden></div>
+<div id="fade" aria-hidden="true"></div>
+<div id="pad" aria-hidden="true"><div id="pad-knob"></div></div>
+<div id="hint" aria-hidden="true"></div>
+<div id="ix-tip" role="status" aria-live="polite" hidden></div>
+<div id="crosshair" aria-hidden="true"></div>
+
+<dialog id="help" aria-labelledby="help-title">
+  <form method="dialog" class="dlg-head"><h2 id="help-title">Controls</h2><button class="icon" aria-label="Close">&times;</button></form>
+  <div class="help-grid">
+    <section><h3>Walk</h3><dl>
+      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>&uarr;</kbd><kbd>&darr;</kbd></dt><dd>Move</dd>
+      <dt><kbd>&larr;</kbd><kbd>&rarr;</kbd></dt><dd>Turn</dd>
+      <dt>Drag</dt><dd>Look around</dd>
+      <dt>Double-click</dt><dd>Walk there (any key or drag stops)</dd>
+      <dt>Wheel</dt><dd>Zoom in / out</dd>
+      <dt><kbd>L</kbd> / eye button</dt><dd>Mouse-look (Esc to release)</dd>
+      <dt><kbd>Shift</kbd></dt><dd>Walk faster</dd>
+    </dl></section>
+    <section><h3>Use things</h3><dl>
+      <dt>Click</dt><dd>Open, close or switch what you point at</dd>
+      <dt><kbd>Space</kbd> / <kbd>E</kbd></dt><dd>Use what is in front of you</dd>
+      <dt>Wall switch</dt><dd>Room lights on / off</dd>
+      <dt>Dollhouse</dt><dd>Click works there too</dd>
+    </dl></section>
+    <section><h3>Touch</h3><dl>
+      <dt>Drag</dt><dd>Look around</dd>
+      <dt>Pad</dt><dd>Move</dd>
+      <dt>Tap</dt><dd>Open / close, switch</dd>
+      <dt>Double-tap</dt><dd>Walk there</dd>
+      <dt>Pinch</dt><dd>Zoom</dd>
+    </dl></section>
+    <section><h3>View</h3><dl>
+      <dt><kbd>O</kbd></dt><dd>Walk / dollhouse</dd>
+      <dt><kbd>1</kbd>&hellip;<kbd>9</kbd></dt><dd>Go to a room of the floor open in the room bar (yours unless you pick another)</dd>
+      <dt><kbd>PgUp</kbd><kbd>PgDn</kbd></dt><dd>Room bar: floor above / below</dd>
+      <dt><kbd>P</kbd></dt><dd>Show / hide plan</dd>
+      <dt><kbd>?</kbd></dt><dd>This help</dd>
+      <dt>Dollhouse</dt><dd>Drag to orbit, right-drag to pan, wheel to zoom; B G 1 2 cut the house above that floor, All shows the house, roof and garden</dd>
+    </dl></section>
+    <section><h3>Plan</h3><dl>
+      <dt>Tabs</dt><dd>Basement, floors, site; the plan follows you</dd>
+      <dt>A-A B-B C-C</dt><dd>Cross-sections through the house, on the lines marked on the plans; the marker shows your eye height</dd>
+      <dt>Click / tap</dt><dd>Move there (on that sheet's floor)</dd>
+      <dt>Drag, wheel, pinch</dt><dd>Pan and zoom</dd>
+      <dt><kbd>+</kbd><kbd>-</kbd><kbd>0</kbd></dt><dd>Zoom, fit</dd>
+      <dt>DXF / PDF</dt><dd>Download the drawings: plans and sections</dd>
+    </dl></section>
+  </div>
+  <p class="note">Drawn from video walkthroughs; dimensions are estimates. The plan shows doors as they stand; a closed door cannot be walked through until you open it. Double-click on another floor walks you there by the stairs.</p>
+</dialog>
+
+<dialog id="gallery" aria-labelledby="gallery-title">
+  <form method="dialog" class="dlg-head"><h2 id="gallery-title">Renders</h2><button class="icon" aria-label="Close">&times;</button></form>
+  <div class="grid"></div>
+  <figure class="lightbox" hidden>
+    <img alt="">
+    <figcaption></figcaption>
+    <button type="button" class="icon nav prev" aria-label="Previous render">&lsaquo;</button>
+    <button type="button" class="icon nav next" aria-label="Next render">&rsaquo;</button>
+    <button type="button" class="back">All renders</button>
+  </figure>
+</dialog>
+</body>
+</html>
